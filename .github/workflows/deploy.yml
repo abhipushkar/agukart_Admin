@@ -42,9 +42,9 @@ jobs:
 
         run: |
 
-          echo "DEPLOY_PATH=/var/www/html/adminpanel/codebackup" >> $GITHUB_ENV
+          echo "DEPLOY_PATH=/var/www/html/adminpanel" >> $GITHUB_ENV
 
-          echo "DEPLOYBUILD_PATH=/var/www/html/adminpanel" >> $GITHUB_ENV
+          echo "DEPLOYBUILD_PATH=/var/www/html/adminpanel/build" >> $GITHUB_ENV
 
           echo "BRANCH=main" >> $GITHUB_ENV
 
