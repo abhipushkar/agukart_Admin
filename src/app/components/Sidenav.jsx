@@ -4,7 +4,7 @@ import Scrollbar from "react-perfect-scrollbar";
 
 import { MatxVerticalNav } from "app/components";
 import useSettings from "app/hooks/useSettings";
-import { navigations, vendorNavigations } from "app/navigations";
+import {managerNavigations, navigations, vendorNavigations} from "app/navigations";
 import { localStorageKey } from "app/constant/localStorageKey";
 
 // STYLED COMPONENTS
@@ -50,7 +50,7 @@ export default function Sidenav({ children }) {
     <Fragment>
       <StyledScrollBar options={{ suppressScrollX: true }}>
         {children}
-        <MatxVerticalNav items={designation_id === "3" ? vendorNavigations : navigations} />
+        <MatxVerticalNav items={designation_id === "3" ? vendorNavigations : designation_id === "5" ? managerNavigations : navigations} />
       </StyledScrollBar>
 
       <SideNavMobile onClick={() => updateSidebarMode({ mode: "close" })} />

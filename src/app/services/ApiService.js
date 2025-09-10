@@ -1,6 +1,6 @@
 import axios from "axios";
 import { toast } from "react-toastify";
-import { ROUTE_CONSTANT } from "app/constant/routeContanst";
+// import { ROUTE_CONSTANT } from "app/constant/routeContanst";
 import {BASE_URL,LOGIN_BASE_URL} from "../../config.js";
 
 export const ApiService = {

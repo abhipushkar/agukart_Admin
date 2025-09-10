@@ -3,7 +3,7 @@ name: Deploy to DigitalOcean
 on:
   push:
     branches:
-      - production
+      - main  # Changed from production to main
 
 jobs:
   deploy:
@@ -11,53 +11,51 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3  # Updated to v3
 
       - name: Set up SSH
-        uses: webfactory/ssh-agent@v0.5.3
+        uses: webfactory/ssh-agent@v0.7.0  # Updated version
         with:
           ssh-private-key: ${{ secrets.DEPLOY_CODE }}
 
-      - name: Add GitHub to known_hosts (ensure SSH connection to GitHub)
+      - name: Add known hosts
         run: |
           mkdir -p ~/.ssh
           ssh-keyscan github.com >> ~/.ssh/known_hosts
-
-      - name: Add DigitalOcean server to known_hosts
-        run: |
-          mkdir -p ~/.ssh
           ssh-keyscan 165.22.9.131 >> ~/.ssh/known_hosts
- 
 
-      - name: Determine the branch to deploy
-        id: deploy_branch
+      - name: Setup deployment environment
         run: |
-          echo "Deploying to branch: $GITHUB_REF"
           echo "DEPLOYBUILD_PATH=/var/www/html/adminpanel" >> $GITHUB_ENV
-          if [[ "$GITHUB_REF" == "refs/heads/staging" ]]; then
-            echo "BRANCH=staging" >> $GITHUB_ENV
-            echo "DEPLOY_PATH=/mnt/volume_fra1_01/project.imgglobal.in/ecommercereact/adminpanel/codebackup" >> $GITHUB_ENV
-          elif [[ "$GITHUB_REF" == "refs/heads/production" ]]; then
-            echo "BRANCH=production" >> $GITHUB_ENV
-            echo "DEPLOY_PATH=/var/www/html/adminpanel/codebackup" >> $GITHUB_ENV
-          fi
+          echo "DEPLOY_PATH=/var/www/html/adminpanel/codebackup" >> $GITHUB_ENV
+          echo "BRANCH=main" >> $GITHUB_ENV
 
-      - name: Pull latest code on DigitalOcean server and Install dependencies
+      - name: Pull latest code on DigitalOcean server
         run: |
           ssh root@165.22.9.131 "
-            # Ensure that NVM is sourced for the current shell
-            node -v && 
-            npm -v &&
             cd ${{ env.DEPLOY_PATH }} && 
-            git pull origin ${{ env.BRANCH }} &&
+            git checkout ${{ env.BRANCH }} &&
+            git pull origin ${{ env.BRANCH }}
+          "
+
+      - name: Install dependencies and build
+        run: |
+          ssh root@165.22.9.131 "
+            # Load Node.js version if using nvm
+            [ -s \"\$NVM_DIR/nvm.sh\" ] && \. \"\$NVM_DIR/nvm.sh\"
+          
+            cd ${{ env.DEPLOY_PATH }} && 
             npm install --legacy-peer-deps &&
-            node updatePackageJson.js &&
             npm run build
           "
-      - name: Deploy build to DigitalOcean server
+
+      - name: Deploy build to production directory
         run: |
           ssh root@165.22.9.131 "
             scp -r ${{ env.DEPLOY_PATH }}/build/. ${{ env.DEPLOYBUILD_PATH }}/
           "
-        
-     
+
+      - name: Verify deployment
+        run: |
+          echo "Deployment completed successfully!"
+          echo "Application should be available at: https://admin.agukart.com/"

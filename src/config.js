@@ -15,6 +15,6 @@ export const auth0Config = {
 };
 
 export const BASE_URL = process.env.REACT_APP_API_URL + '/admin';
-export const LOGIN_BASE_URL = process.env.REACT_APP_API_URL
+export const LOGIN_BASE_URL = process.env.REACT_APP_API_URL;
 export const REACT_APP_BASE_URL = process.env.REACT_APP_BASE_URL
 export const REACT_APP_WEB_URL = process.env.REACT_APP_WEB_URL

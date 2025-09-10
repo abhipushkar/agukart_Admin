@@ -1,4 +1,4 @@
-import { get } from "lodash";
+// import { get } from "lodash";
 
 export const apiEndpoints = {
   userlist: "user-list",
@@ -40,12 +40,10 @@ export const apiEndpoints = {
   EditProduct: "edit-product",
   changeStatusProduct: "change-status-product",
   changeTopRatedStatus: "change-top-rated-status",
-  editProduct: "edit-product",
   copyProduct:"copy-same-product",
   deleteProduct: "delete-product",
   changeFeaturedStatus: "change-featured-status",
   changeBestSellerStatus: "change-best-seller-status",
-  editProduct: "edit-product",
   getOccassion: "get-occassion",
   addOccasion: "add-occassion",
   addOccasionImage: "add-occassion-image",
@@ -151,7 +149,6 @@ export const apiEndpoints = {
   deleteShippingTemplate:'deleteShippingTemplate',
   getAllShippingTemplates:'getAllShippingTemplate',
   getProductDataById:'get-productById',
-  getOrderHistory:'getOrderHistory',
   getUserOrderHistoryForMessages:'getUserOrderHistory',
   getReviews:'getReviews',
   getFavoriteProducts:'getFavoriteProducts',
@@ -178,7 +175,6 @@ export const apiEndpoints = {
   countriesBlocked:"country-blocked",
   getParentAdminCatgory: "get-admin-parent-category",
   getBlockedCountries:"get-blocked-country ",
-  changeFeatureStatus:"change-featured-status",
   getVendorProducts:"get-product-by-vendor-id",
   addStore:"create-store",
   updateStore:"update-store",
