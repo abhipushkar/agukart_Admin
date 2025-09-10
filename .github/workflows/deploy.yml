@@ -1,96 +1,49 @@
 name: Deploy Admin Panel to DigitalOcean
 
 on:
-
   push:
-
     branches:
-
       - main
 
 jobs:
-
   deploy:
-
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Checkout code
-
         uses: actions/checkout@v3
 
       - name: Set up SSH
-
         uses: webfactory/ssh-agent@v0.7.0
-
         with:
-
           ssh-private-key: ${{ secrets.DEPLOY_KEY }}
 
       - name: Add known hosts
-
         run: |
-
           mkdir -p ~/.ssh
-
           ssh-keyscan github.com >> ~/.ssh/known_hosts
-
           ssh-keyscan 165.22.9.131 >> ~/.ssh/known_hosts
 
-      - name: Setup deployment environment
-
-        run: |
-
-          echo "DEPLOY_PATH=/var/www/html/adminpanel" >> $GITHUB_ENV
-
-          echo "DEPLOYBUILD_PATH=/var/www/html/adminpanel/build" >> $GITHUB_ENV
-
-          echo "BRANCH=main" >> $GITHUB_ENV
-
-      - name: Pull latest code on DigitalOcean server
-
+      - name: Deploy Admin Panel
         run: |
           ssh root@165.22.9.131 "
-          git config --global --add safe.directory /var/www/html/adminpanel &&
-          cd /var/www/html/adminpanel &&
-          git fetch origin &&
-          git reset --hard HEAD &&
-          git checkout main &&
-          git pull origin main
-          "
-
-      - name: Install dependencies and build
-
-        run: |
-
-          ssh root@165.22.9.131 "
-
-            cd ${{ env.DEPLOY_PATH }} &&
-
+            git config --global --add safe.directory /var/www/html/adminpanel &&
+            cd /var/www/html/adminpanel &&
+            git fetch origin &&
+            git reset --hard HEAD &&
+            git checkout main &&
+            git pull origin main &&
             npm install --legacy-peer-deps &&
-
             npm run build
-
           "
 
-      - name: Deploy build to production directory
-
+      - name: Restart Apache
         run: |
-
           ssh root@165.22.9.131 "
-
-            rm -rf ${{ env.DEPLOYBUILD_PATH }}/* &&
-
-            cp -r ${{ env.DEPLOY_PATH }}/build/* ${{ env.DEPLOYBUILD_PATH }}/
-
+            systemctl restart apache2
           "
 
       - name: Verify deployment
-
         run: |
-
           echo "✅ Deployment completed successfully!"
-
           echo "🔗 Application should be available at: https://admin.agukart.com/"
-
