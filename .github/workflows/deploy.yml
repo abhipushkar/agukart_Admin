@@ -1,61 +1,100 @@
-name: Deploy to DigitalOcean
+name: Deploy Admin Panel to DigitalOcean
 
 on:
+
   push:
+
     branches:
-      - main  # Changed from production to main
+
+      - main
 
 jobs:
+
   deploy:
+
     runs-on: ubuntu-latest
 
     steps:
+
       - name: Checkout code
-        uses: actions/checkout@v3  # Updated to v3
+
+        uses: actions/checkout@v3
 
       - name: Set up SSH
-        uses: webfactory/ssh-agent@v0.7.0  # Updated version
+
+        uses: webfactory/ssh-agent@v0.7.0
+
         with:
+
           ssh-private-key: ${{ secrets.DEPLOY_KEY }}
 
       - name: Add known hosts
+
         run: |
+
           mkdir -p ~/.ssh
+
           ssh-keyscan github.com >> ~/.ssh/known_hosts
+
           ssh-keyscan 165.22.9.131 >> ~/.ssh/known_hosts
 
       - name: Setup deployment environment
+
         run: |
-          echo "DEPLOYBUILD_PATH=/var/www/html/adminpanel" >> $GITHUB_ENV
+
           echo "DEPLOY_PATH=/var/www/html/adminpanel/codebackup" >> $GITHUB_ENV
+
+          echo "DEPLOYBUILD_PATH=/var/www/html/adminpanel" >> $GITHUB_ENV
+
           echo "BRANCH=main" >> $GITHUB_ENV
 
       - name: Pull latest code on DigitalOcean server
+
         run: |
+
           ssh root@165.22.9.131 "
-            cd ${{ env.DEPLOY_PATH }} && 
+
+            cd ${{ env.DEPLOY_PATH }} &&
+
+            git fetch origin &&
+
             git checkout ${{ env.BRANCH }} &&
+
             git pull origin ${{ env.BRANCH }}
+
           "
 
       - name: Install dependencies and build
+
         run: |
+
           ssh root@165.22.9.131 "
-            # Load Node.js version if using nvm
-            [ -s \"\$NVM_DIR/nvm.sh\" ] && \. \"\$NVM_DIR/nvm.sh\"
-          
-            cd ${{ env.DEPLOY_PATH }} && 
+
+            cd ${{ env.DEPLOY_PATH }} &&
+
             npm install --legacy-peer-deps &&
+
             npm run build
+
           "
 
       - name: Deploy build to production directory
+
         run: |
+
           ssh root@165.22.9.131 "
-            scp -r ${{ env.DEPLOY_PATH }}/build/. ${{ env.DEPLOYBUILD_PATH }}/
+
+            rm -rf ${{ env.DEPLOYBUILD_PATH }}/* &&
+
+            cp -r ${{ env.DEPLOY_PATH }}/build/* ${{ env.DEPLOYBUILD_PATH }}/
+
           "
 
       - name: Verify deployment
+
         run: |
-          echo "Deployment completed successfully!"
-          echo "Application should be available at: https://admin.agukart.com/"
+
+          echo "✅ Deployment completed successfully!"
+
+          echo "🔗 Application should be available at: https://admin.agukart.com/"
+
