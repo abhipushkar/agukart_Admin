@@ -51,18 +51,13 @@ jobs:
       - name: Pull latest code on DigitalOcean server
 
         run: |
-
           ssh root@165.22.9.131 "
-            git config --global --add safe.directory /var/www/html/adminpanel
-
-            cd ${{ env.DEPLOY_PATH }} &&
-
-            git fetch origin &&
-
-            git checkout ${{ env.BRANCH }} &&
-
-            git pull origin ${{ env.BRANCH }}
-
+          git config --global --add safe.directory /var/www/html/adminpanel &&
+          cd /var/www/html/adminpanel &&
+          git fetch origin &&
+          git reset --hard HEAD &&
+          git checkout main &&
+          git pull origin main
           "
 
       - name: Install dependencies and build
