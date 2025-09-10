@@ -53,6 +53,7 @@ jobs:
         run: |
 
           ssh root@165.22.9.131 "
+            git config --global --add safe.directory /var/www/html/adminpanel
 
             cd ${{ env.DEPLOY_PATH }} &&
 
