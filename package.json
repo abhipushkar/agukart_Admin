@@ -1,6 +1,6 @@
 {
   "name": "matx-react",
-  "homepage": "https://api.agukart.com/dashboard/",
+  "homepage": "https://api.agukart.com/",
   "version": "4.0.0",
   "private": true,
   "scripts": {
