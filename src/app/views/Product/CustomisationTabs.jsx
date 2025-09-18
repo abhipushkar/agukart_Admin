@@ -441,6 +441,92 @@ const CustomisationTabs = ({
     );
   };
 
+    const handleImageUpload = (combindex, rowIndex, type, event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        setCombinations(prev => {
+            return prev.map((comb, i) => {
+                if (i !== combindex) return comb;
+
+                const updatedCombinations = comb.combinations.map((item, j) => {
+                    if (j !== rowIndex) return item;
+
+                    if (type.startsWith('main_images[')) {
+                        const imgIndex = parseInt(type.match(/\[(\d+)\]/)[1]);
+
+                        // Create or clone the main_images array
+                        const newMainImages = item.main_images ? [...item.main_images] : [];
+
+                        // Ensure array is long enough
+                        while (newMainImages.length <= imgIndex) {
+                            newMainImages.push(null);
+                        }
+
+                        // Store the File object - backend will process this
+                        newMainImages[imgIndex] = file;
+
+                        return {
+                            ...item,
+                            main_images: newMainImages
+                        };
+                    } else {
+                        // Handle preview_image and thumbnail - store File object
+                        return {
+                            ...item,
+                            [type]: file
+                        };
+                    }
+                });
+
+                return {
+                    ...comb,
+                    combinations: updatedCombinations
+                };
+            });
+        });
+    };
+
+    const handleImageRemove = (combindex, rowIndex, type) => {
+        setCombinations(prev => {
+            return prev.map((comb, i) => {
+                if (i !== combindex) return comb;
+
+                const updatedCombinations = comb.combinations.map((item, j) => {
+                    if (j !== rowIndex) return item;
+
+                    if (type.startsWith('main_images[')) {
+                        const imgIndex = parseInt(type.match(/\[(\d+)\]/)[1]);
+
+                        if (!item.main_images || item.main_images.length <= imgIndex) {
+                            return item;
+                        }
+
+                        const newMainImages = [...item.main_images];
+                        // Set to null - backend will handle removal
+                        newMainImages[imgIndex] = null;
+
+                        return {
+                            ...item,
+                            main_images: newMainImages
+                        };
+                    } else {
+                        // Set to null - backend will handle removal
+                        return {
+                            ...item,
+                            [type]: null
+                        };
+                    }
+                });
+
+                return {
+                    ...comb,
+                    combinations: updatedCombinations
+                };
+            });
+        });
+    };
+
   const handleCombChange = (e, combindex, index) => {
     const { name, value } = e.target;
     console.log(combindex, index, name, value, "llllllllllllllllllllll");
@@ -2220,6 +2306,46 @@ const CustomisationTabs = ({
                           {comb.combinations[0]?.name2}
                         </TableCell>
                       }
+                        <TableCell
+                            sx={{
+                                wordBreak: "keep-all"
+                            }}
+                            align="center"
+                        >
+                            Main Image 1
+                        </TableCell>
+                        <TableCell
+                            sx={{
+                                wordBreak: "keep-all"
+                            }}
+                            align="center"
+                        >
+                            Main Image 2
+                        </TableCell>
+                        <TableCell
+                            sx={{
+                                wordBreak: "keep-all"
+                            }}
+                            align="center"
+                        >
+                            Main Image 3
+                        </TableCell>
+                        <TableCell
+                            sx={{
+                                wordBreak: "keep-all"
+                            }}
+                            align="center"
+                        >
+                            Preview
+                        </TableCell>
+                        <TableCell
+                            sx={{
+                                wordBreak: "keep-all"
+                            }}
+                            align="center"
+                        >
+                            Thumbnail
+                        </TableCell>
                       {(variationsData.length >= 2 ? formValues?.prices === comb.variant_name : true)  && formValues?.isCheckedPrice && (
                         <TableCell
                           sx={{
@@ -2251,18 +2377,20 @@ const CustomisationTabs = ({
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    <TableRowComponent
-                      comb={comb}
-                      handleCombChange={handleCombChange}
-                      handleToggle={handleToggle}
-                      combindex={combindex}
-                      formValues={formValues}
-                      variationsData={variationsData}
-                      combinationError={combinationError}
-                      setCombinationError={setCombinationError}
-                      showAll = {showAll}
-                      setShowAll = {setShowAll}
-                    />
+                      <TableRowComponent
+                          comb={comb}
+                          handleCombChange={handleCombChange}
+                          handleToggle={handleToggle}
+                          combindex={combindex}
+                          formValues={formValues}
+                          variationsData={variationsData}
+                          combinationError={combinationError}
+                          setCombinationError={setCombinationError}
+                          handleImageUpload={handleImageUpload}
+                          handleImageRemove={handleImageRemove}
+                          showAll={showAll}
+                          setShowAll={setShowAll}
+                      />
                   </TableBody>
                 </Table>
               </TableContainer>
