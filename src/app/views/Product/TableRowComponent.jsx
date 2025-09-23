@@ -132,8 +132,8 @@ const TableRowComponent = ({
                     {renderImageCell(item, index, "thumbnail")}
 
                     {(variationsData.length >= 2 ? formValues?.prices === comb.variant_name : true) &&
-                        item?.isCheckedPrice !== "false" && // Changed from item?.isCheckedPrice
-                        item?.isVisible !== "false" && (
+                        formValues?.isCheckedPrice && // Changed from item?.isCheckedPrice
+                         (
                             <TableCell align="center">
                                 <input
                                     type="text"
@@ -155,8 +155,8 @@ const TableRowComponent = ({
                         )}
 
                     {(variationsData.length >= 2 ? formValues?.quantities === comb.variant_name : true) &&
-                        item?.isCheckedQuantity !== "false" && // Changed from item?.isCheckedQuantity
-                        item?.isVisible !== "false" &&(
+                        formValues?.isCheckedQuantity && // Changed from item?.isCheckedQuantity
+                      (
                             <TableCell align="center">
                                 <input
                                     type="text"

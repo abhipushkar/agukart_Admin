@@ -57,29 +57,29 @@ const buttonStyle = {
 const label = { inputProps: { "aria-label": "Switch demo" } };
 
 const VariantModal = ({
-    show,
-    handleCloseVariant,
-    varientName,
-    combinations,
-    setCombinations,
-    setFormData,
-    formValues,
-    setFormValues,
-    variationsData,
-    setVariationsData,
-    selectedVariations,
-    setSelectedVariations,
-    selectedVariant,
-    setSelectedVariant,
-    showVariantList,
-    setShowVariantList,
-    attrValues,
-    setAttrValues,
-    isEdit,
-    setIsEdit,
-    attrOptions,
-    setAttrOptions
-}) => {
+                          show,
+                          handleCloseVariant,
+                          varientName,
+                          combinations,
+                          setCombinations,
+                          setFormData,
+                          formValues,
+                          setFormValues,
+                          variationsData,
+                          setVariationsData,
+                          selectedVariations,
+                          setSelectedVariations,
+                          selectedVariant,
+                          setSelectedVariant,
+                          showVariantList,
+                          setShowVariantList,
+                          attrValues,
+                          setAttrValues,
+                          isEdit,
+                          setIsEdit,
+                          attrOptions,
+                          setAttrOptions
+                      }) => {
     console.log(showVariantList, "showVariantList")
 
     const normalizeValues = (val) => {
@@ -98,16 +98,6 @@ const VariantModal = ({
     console.log({ selectedVariant });
     console.log({ formValues });
     console.log({ selectedVariations });
-
-    // useEffect(() => {
-    //     if (variationsData?.length > 1) {
-    //         setFormValues((prv) => ({
-    //             ...prv,
-    //             prices: `${variationsData[0]?.name} and ${variationsData[1]?.name}`,
-    //             quantities: `${variationsData[0]?.name} and ${variationsData[1]?.name}`
-    //         }));
-    //     }
-    // }, [variationsData?.length > 1]);
 
     const handleTagHandler = (event, newValue) => {
         if (newValue == `Add All Options (${attrOptions?.length})`) {
@@ -157,7 +147,7 @@ const VariantModal = ({
                     (value) => variant?.variant_attribute.find((attr) => attr.attribute_value === value)?._id
                 );
             })
-            .filter(Boolean);               
+            .filter(Boolean);
         setFormData((prev) => ({
             ...prev,
             ParentMainId: prev.ParentMainId.filter((id) => !parentMainIds.includes(id)),
@@ -222,7 +212,6 @@ const VariantModal = ({
         });
         setAttrOptions([]);
         setIsEdit(false);
-        // setSelectedVariations([]);
     };
 
     const handleDeleteVariant = (name, index) => {
@@ -259,6 +248,7 @@ const VariantModal = ({
         }
     };
 
+    // UPDATED: generateCombinations function with image integration
     const generateCombinations = (data, variantName) => {
         const allCombinations = data.reduce((acc, variation, index) => {
             const { name, values } = variation;
@@ -266,9 +256,14 @@ const VariantModal = ({
 
             if (acc.length === 0) {
                 return safeValues?.map((value) => {
-                    const filteredId = variantName
-                        .find((variant) => variant.variant_name === name)
-                        ?.variant_attribute.find((attr) => attr.attribute_value === value)?._id;
+                    const variantData = variantName.find((variant) => variant.variant_name === name);
+                    const attributeData = variantData?.variant_attribute.find((attr) => attr.attribute_value === value);
+
+                    // Get images from the attribute data or fallback to null values
+                    const main_images = attributeData?.main_images || [null, null, null];
+                    const preview_image = attributeData?.preview_image || null;
+                    const thumbnail = attributeData?.thumbnail || null;
+                    const filteredId = attributeData?._id;
 
                     return {
                         [`value${index + 1}`]: value,
@@ -280,16 +275,24 @@ const VariantModal = ({
                         priceInput: formValues?.prices,
                         quantityInput: formValues?.quantities,
                         isCheckedPrice: formValues?.isCheckedPrice,
-                        isCheckedQuantity: formValues?.isCheckedQuantity
+                        isCheckedQuantity: formValues?.isCheckedQuantity,
+                        main_images,
+                        preview_image,
+                        thumbnail
                     };
                 });
             }
 
             return acc.flatMap((combination) =>
                 values?.map((value) => {
-                    const filteredId = variantName
-                        .find((variant) => variant.variant_name === name)
-                        ?.variant_attribute.find((attr) => attr.attribute_value === value)?._id;
+                    const variantData = variantName.find((variant) => variant.variant_name === name);
+                    const attributeData = variantData?.variant_attribute.find((attr) => attr.attribute_value === value);
+
+                    // Get images from the attribute data or fallback to null values
+                    const main_images = attributeData?.main_images || [null, null, null];
+                    const preview_image = attributeData?.preview_image || null;
+                    const thumbnail = attributeData?.thumbnail || null;
+                    const filteredId = attributeData?._id;
 
                     return {
                         ...combination,
@@ -302,7 +305,10 @@ const VariantModal = ({
                         priceInput: formValues?.prices,
                         quantityInput: formValues?.quantities,
                         isCheckedPrice: formValues?.isCheckedPrice,
-                        isCheckedQuantity: formValues?.isCheckedQuantity
+                        isCheckedQuantity: formValues?.isCheckedQuantity,
+                        main_images,
+                        preview_image,
+                        thumbnail
                     };
                 })
             );
@@ -311,196 +317,7 @@ const VariantModal = ({
         return allCombinations;
     };
 
-    // const generateCombinations = (variations)=>{
-    //     let combinations = [];
-    //     if(variations.length > 1){
-    //         for (let i = 0; i < variations[0].values.length; i++) {
-    //             for (let j = 0; j < variations[1].values.length; j++) {
-    //                 combinations.push({
-    //                     "value1": variations[0].values[i],
-    //                     "name1": variations[0].name,
-    //                     "price": "",
-    //                     "qty": "",
-    //                     "isVisible": true,
-    //                     "value2": variations[1].values[j],
-    //                     "name2": variations[1].name,
-    //                     "priceInput": formValues?.prices,
-    //                     "quantityInput": formValues?.quantities,
-    //                     isCheckedPrice: formValues?.isCheckedPrice,
-    //                     isCheckedQuantity: formValues?.isCheckedQuantity
-    //                 });
-    //             }
-    //         }
-    //     }else{
-    //         for (let j = 0; j < variations[0].values.length; j++) {
-    //             combinations.push({
-    //                 "value1": variations[0].values[j],
-    //                 "name1": variations[0].name,
-    //                 "price": "",
-    //                 "qty": "",
-    //                 "isVisible": true,
-    //                 "priceInput": formValues?.prices,
-    //                 "quantityInput": formValues?.quantities,
-    //                 isCheckedPrice: formValues?.isCheckedPrice,
-    //                 isCheckedQuantity: formValues?.isCheckedQuantity
-    //             });
-    //         }
-    //     }
-    //     return combinations;
-    // }
-
-    const handleGenerate = async () => {
-        let data = [];
-        let index = 0;
-        const existsPrice = variationsData.find(variation => variation.name == formValues?.prices)
-        const existsQuantity = variationsData.find(variation => variation.name == formValues?.quantities)
-        if ((formValues?.isCheckedPrice || formValues?.isCheckedQuantity) && (formValues?.prices || formValues?.quantities)) {
-            if (existsPrice && existsQuantity) {
-                for (const item of variationsData) {
-                    let result = await generateCombinations([item], varientName);
-                    data.push({ variant_name: item?.name, combinations: result });
-                }
-            } else {
-                if (formValues?.prices == formValues?.quantities && formValues.isCheckedPrice && formValues.isCheckedQuantity) {
-                    const variants = formValues?.prices.split("and").map(price => price.trim());
-                    const variationData = variationsData.filter((item) => variants.includes(item.name));
-                    let result = await generateCombinations(variationData, varientName);
-                    data.push({ variant_name: formValues?.prices || formValues?.quantities, combinations: result });
-                    if (variationsData.length > 2) {
-                        let variationData = variationsData.filter((item) => !variants.includes(item.name));
-                        let result = await generateCombinations(variationData, varientName);
-                        data.push({ variant_name: variationData[0].name, combinations: result });
-                    }
-                }
-                else {
-                    if (formValues?.prices == existsPrice?.name) {
-                        if (formValues.isCheckedPrice) {
-                            let variationData = variationsData.filter((item) => item.name == formValues?.prices);
-                            let result = await generateCombinations(variationData, varientName);
-                            data.push({ variant_name: formValues?.prices, combinations: result });
-                        }
-                        if (formValues.isCheckedQuantity) {
-                            const variants = formValues?.quantities.split("and").map(qty => qty.trim());
-                            let variationData = variationsData.filter((item) => variants.includes(item.name));
-                            let result = await generateCombinations(variationData, varientName);
-                            data.push({ variant_name: formValues?.quantities, combinations: result });
-                            if (!formValues.isCheckedPrice && variationsData.length > 2) {
-                                let variationData = variationsData.filter((item) => !variants.includes(item.name));
-                                console.log(variationData, "variationData");
-                                let result = await generateCombinations(variationData, varientName);
-                                data.push({ variant_name: variationData[0].name, combinations: result });
-                            }
-                        }
-                        if (formValues.isCheckedPrice && formValues.isCheckedQuantity && variationsData.length > 2) {
-                            const variants = formValues?.quantities.split("and").map(qty => qty.trim());
-                            variants.push(formValues?.prices);
-                            let variationData = variationsData.filter((item) => !variants.includes(item.name));
-                            if (variationData.length > 0) {
-                                let result = await generateCombinations(variationData, varientName);
-                                data.push({ variant_name: variationData[0].name, combinations: result });
-                            }
-                        }
-                    } else if (formValues?.prices.includes("and") && formValues?.quantities.includes("and")) {
-                        if (formValues.isCheckedPrice) {
-                            const variants = formValues?.prices.split("and").map(price => price.trim());
-                            let variationData = variationsData.filter((item) => variants.includes(item.name));
-                            let result = await generateCombinations(variationData, varientName);
-                            data.push({ variant_name: formValues?.prices, combinations: result });
-                        }
-                        if (formValues.isCheckedQuantity) {
-                            const variants2 = formValues?.quantities.split("and").map(qty => qty.trim());
-                            let variationData = variationsData.filter((item) => variants2.includes(item.name));
-                            let result = await generateCombinations(variationData, varientName);
-                            data.push({ variant_name: formValues?.quantities, combinations: result });
-                        }
-                    } else {
-                        if (formValues.isCheckedPrice) {
-                            const variants = formValues?.prices.split("and").map(price => price.trim());
-                            let variationData = variationsData.filter((item) => variants.includes(item.name));
-                            let result = await generateCombinations(variationData, varientName);
-                            data.push({ variant_name: formValues?.prices, combinations: result });
-                            if (!formValues.isCheckedQuantity && variationsData.length > 2) {
-                                let variationData = variationsData.filter((item) => !variants.includes(item.name));
-                                console.log(variationData, "variationData");
-                                let result = await generateCombinations(variationData, varientName);
-                                data.push({ variant_name: variationData[0].name, combinations: result });
-                            }
-                        }
-                        if (formValues.isCheckedQuantity) {
-                            let variationData = variationsData.filter((item) => item.name == formValues?.quantities);
-                            let result = await generateCombinations(variationData, varientName);
-                            data.push({ variant_name: formValues?.quantities, combinations: result });
-                        }
-                        if (formValues.isCheckedPrice && formValues.isCheckedQuantity && variationsData.length > 2) {
-                            const variants = formValues?.prices?.split("and").map(price => price.trim());
-                            variants.push(formValues?.quantities);
-                            let variationData = variationsData.filter((item) => !variants.includes(item.name));
-                            if (variationData.length > 0) {
-                                let result = await generateCombinations(variationData, varientName);
-                                data.push({ variant_name: variationData[0].name, combinations: result });
-                            }
-                        }
-                    }
-                }
-            }
-        } else {
-            for (const item of variationsData) {
-                let result = await generateCombinations([item], varientName);
-                data.push({ variant_name: item?.name, combinations: result });
-            }
-        }
-        setCombinations(data);
-
-        const filterId1 = varientName.find(
-            (item) => item?.variant_name === variationsData[0]?.name
-        )?.id;
-
-        const filterId2 = varientName.find(
-            (item) => item?.variant_name === variationsData[1]?.name
-        )?.id;
-
-
-        const filterId3 = varientName.find(
-            (item) => item?.variant_name === variationsData[2]?.name
-        )?.id;
-
-        const parentMainIds = [filterId1, filterId2, filterId3].filter(Boolean);
-
-        const allIds = variationsData
-            .flatMap((variation) => {
-                const variant = varientName.find((item) => item.variant_name === variation.name);
-                const safeValues = normalizeValues(variation.values);
-
-                return safeValues.map(
-                    (value) => variant?.variant_attribute.find((attr) => attr.attribute_value === value)?._id
-                );
-            })
-            .filter(Boolean);
-
-        setFormData((prev) => ({
-            ...prev,
-            ParentMainId: Array.from(new Set([...prev.ParentMainId, ...parentMainIds])),
-            varientName: Array.from(new Set([...prev.varientName, ...allIds]))
-        }));
-
-
-        // setFormValues((prev) => ({
-        //     ...prev,
-        //     prices:
-        //         formValues?.prices === formValues?.quantities
-        //             ? formValues?.prices
-        //             : `${variationsData[0]?.name} and ${variationsData[1]?.name}`,
-        //     quantities:
-        //         formValues?.quantities === formValues?.prices
-        //             ? formValues?.quantities
-        //             : `${variationsData[0]?.name} and ${variationsData[1]?.name}`,
-        //     isCheckedPrice: formValues?.isCheckedPrice,
-        //     isCheckedQuantity: formValues?.isCheckedQuantity
-        // }));
-
-        handleCloseVariant();
-    };
-
+    // UPDATED: transformCombinations function to preserve images
     const transformCombinations = (combinations) => {
         const nameValueMap = {};
 
@@ -538,10 +355,211 @@ const VariantModal = ({
 
         setSelectedVariations(selectedVariations);
 
-        return Object.entries(nameValueMap).map(([name, values]) => ({
-            name,
-            values: Array.from(values)
+        // Create variations data while preserving images from the first matching combination
+        const result = Object.entries(nameValueMap).map(([name, values]) => {
+            // Find a combination that has this name to extract images
+            const matchingCombination = combinations.find(comb =>
+                comb.name1 === name || comb.name2 === name
+            );
+
+            return {
+                name,
+                values: Array.from(values),
+                // Preserve image references if available
+                main_images: matchingCombination?.main_images,
+                preview_image: matchingCombination?.preview_image,
+                thumbnail: matchingCombination?.thumbnail
+            };
+        });
+
+        return result;
+    };
+
+    // UPDATED: handleGenerate function with image preservation
+    const handleGenerate = async () => {
+        let data = [];
+        let index = 0;
+        const existsPrice = variationsData.find(variation => variation.name == formValues?.prices)
+        const existsQuantity = variationsData.find(variation => variation.name == formValues?.quantities)
+        if ((formValues?.isCheckedPrice || formValues?.isCheckedQuantity) && (formValues?.prices || formValues?.quantities)) {
+            if (existsPrice && existsQuantity) {
+                for (const item of variationsData) {
+                    let result = await generateCombinations([item], varientName);
+                    data.push({
+                        variant_name: item?.name,
+                        combinations: result,
+                        // Pass through any existing images from the variation data
+                        main_images: item?.main_images,
+                        preview_image: item?.preview_image,
+                        thumbnail: item?.thumbnail
+                    });
+                }
+            } else {
+                if (formValues?.prices == formValues?.quantities && formValues.isCheckedPrice && formValues.isCheckedQuantity) {
+                    const variants = formValues?.prices.split("and").map(price => price.trim());
+                    const variationData = variationsData.filter((item) => variants.includes(item.name));
+                    let result = await generateCombinations(variationData, varientName);
+                    data.push({
+                        variant_name: formValues?.prices || formValues?.quantities,
+                        combinations: result
+                    });
+                    if (variationsData.length > 2) {
+                        let variationData = variationsData.filter((item) => !variants.includes(item.name));
+                        let result = await generateCombinations(variationData, varientName);
+                        data.push({
+                            variant_name: variationData[0].name,
+                            combinations: result
+                        });
+                    }
+                }
+                else {
+                    if (formValues?.prices == existsPrice?.name) {
+                        if (formValues.isCheckedPrice) {
+                            let variationData = variationsData.filter((item) => item.name == formValues?.prices);
+                            let result = await generateCombinations(variationData, varientName);
+                            data.push({
+                                variant_name: formValues?.prices,
+                                combinations: result
+                            });
+                        }
+                        if (formValues.isCheckedQuantity) {
+                            const variants = formValues?.quantities.split("and").map(qty => qty.trim());
+                            let variationData = variationsData.filter((item) => variants.includes(item.name));
+                            let result = await generateCombinations(variationData, varientName);
+                            data.push({
+                                variant_name: formValues?.quantities,
+                                combinations: result
+                            });
+                            if (!formValues.isCheckedPrice && variationsData.length > 2) {
+                                let variationData = variationsData.filter((item) => !variants.includes(item.name));
+                                console.log(variationData, "variationData");
+                                let result = await generateCombinations(variationData, varientName);
+                                data.push({
+                                    variant_name: variationData[0].name,
+                                    combinations: result
+                                });
+                            }
+                        }
+                        if (formValues.isCheckedPrice && formValues.isCheckedQuantity && variationsData.length > 2) {
+                            const variants = formValues?.quantities.split("and").map(qty => qty.trim());
+                            variants.push(formValues?.prices);
+                            let variationData = variationsData.filter((item) => !variants.includes(item.name));
+                            if (variationData.length > 0) {
+                                let result = await generateCombinations(variationData, varientName);
+                                data.push({
+                                    variant_name: variationData[0].name,
+                                    combinations: result
+                                });
+                            }
+                        }
+                    } else if (formValues?.prices.includes("and") && formValues?.quantities.includes("and")) {
+                        if (formValues.isCheckedPrice) {
+                            const variants = formValues?.prices.split("and").map(price => price.trim());
+                            let variationData = variationsData.filter((item) => variants.includes(item.name));
+                            let result = await generateCombinations(variationData, varientName);
+                            data.push({
+                                variant_name: formValues?.prices,
+                                combinations: result
+                            });
+                        }
+                        if (formValues.isCheckedQuantity) {
+                            const variants2 = formValues?.quantities.split("and").map(qty => qty.trim());
+                            let variationData = variationsData.filter((item) => variants2.includes(item.name));
+                            let result = await generateCombinations(variationData, varientName);
+                            data.push({
+                                variant_name: formValues?.quantities,
+                                combinations: result
+                            });
+                        }
+                    } else {
+                        if (formValues.isCheckedPrice) {
+                            const variants = formValues?.prices.split("and").map(price => price.trim());
+                            let variationData = variationsData.filter((item) => variants.includes(item.name));
+                            let result = await generateCombinations(variationData, varientName);
+                            data.push({
+                                variant_name: formValues?.prices,
+                                combinations: result
+                            });
+                            if (!formValues.isCheckedQuantity && variationsData.length > 2) {
+                                let variationData = variationsData.filter((item) => !variants.includes(item.name));
+                                console.log(variationData, "variationData");
+                                let result = await generateCombinations(variationData, varientName);
+                                data.push({
+                                    variant_name: variationData[0].name,
+                                    combinations: result
+                                });
+                            }
+                        }
+                        if (formValues.isCheckedQuantity) {
+                            let variationData = variationsData.filter((item) => item.name == formValues?.quantities);
+                            let result = await generateCombinations(variationData, varientName);
+                            data.push({
+                                variant_name: formValues?.quantities,
+                                combinations: result
+                            });
+                        }
+                        if (formValues.isCheckedPrice && formValues.isCheckedQuantity && variationsData.length > 2) {
+                            const variants = formValues?.prices?.split("and").map(price => price.trim());
+                            variants.push(formValues?.quantities);
+                            let variationData = variationsData.filter((item) => !variants.includes(item.name));
+                            if (variationData.length > 0) {
+                                let result = await generateCombinations(variationData, varientName);
+                                data.push({
+                                    variant_name: variationData[0].name,
+                                    combinations: result
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            for (const item of variationsData) {
+                let result = await generateCombinations([item], varientName);
+                data.push({
+                    variant_name: item?.name,
+                    combinations: result,
+                    // Pass through any existing images from the variation data
+                    main_images: item?.main_images,
+                    preview_image: item?.preview_image,
+                    thumbnail: item?.thumbnail
+                });
+            }
+        }
+        setCombinations(data);
+
+        const filterId1 = varientName.find(
+            (item) => item?.variant_name === variationsData[0]?.name
+        )?.id;
+
+        const filterId2 = varientName.find(
+            (item) => item?.variant_name === variationsData[1]?.name
+        )?.id;
+
+        const filterId3 = varientName.find(
+            (item) => item?.variant_name === variationsData[2]?.name
+        )?.id;
+
+        const parentMainIds = [filterId1, filterId2, filterId3].filter(Boolean);
+
+        const allIds = variationsData
+            .flatMap((variation) => {
+                const variant = varientName.find((item) => item.variant_name === variation.name);
+                const safeValues = normalizeValues(variation.values);
+
+                return safeValues.map(
+                    (value) => variant?.variant_attribute.find((attr) => attr.attribute_value === value)?._id
+                );
+            })
+            .filter(Boolean);
+
+        setFormData((prev) => ({
+            ...prev,
+            ParentMainId: Array.from(new Set([...prev.ParentMainId, ...parentMainIds])),
+            varientName: Array.from(new Set([...prev.varientName, ...allIds]))
         }));
+
+        handleCloseVariant();
     };
 
     useEffect(() => {
@@ -668,17 +686,6 @@ const VariantModal = ({
                                                 name="prices"
                                                 onChange={handleChange}
                                             >
-                                                {/* <MenuItem
-                                                    value={`${variationsData[0]?.name} and ${variationsData[1]?.name}`}
-                                                >
-                                                    {variationsData[0]?.name} and {variationsData[1]?.name}
-                                                </MenuItem>
-                                                <MenuItem value={variationsData[0]?.name}>
-                                                    {variationsData[0]?.name}
-                                                </MenuItem>
-                                                <MenuItem value={variationsData[1]?.name}>
-                                                    {variationsData[1]?.name}
-                                                </MenuItem> */}
                                                 {
                                                     nameCombinations?.map((item, index) => (
                                                         <MenuItem
@@ -721,17 +728,6 @@ const VariantModal = ({
                                                 name="quantities"
                                                 onChange={handleChange}
                                             >
-                                                {/* <MenuItem
-                                                    value={`${variationsData[0]?.name} and ${variationsData[1]?.name}`}
-                                                >
-                                                    {variationsData[0]?.name} and {variationsData[1]?.name}
-                                                </MenuItem>
-                                                <MenuItem value={variationsData[0]?.name}>
-                                                    {variationsData[0]?.name}
-                                                </MenuItem>
-                                                <MenuItem value={variationsData[1]?.name}>
-                                                    {variationsData[1]?.name}
-                                                </MenuItem> */}
                                                 {
                                                     nameCombinations?.map((item, index) => (
                                                         <MenuItem
