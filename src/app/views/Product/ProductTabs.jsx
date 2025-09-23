@@ -591,26 +591,26 @@ export default function BasicTabs() {
     const addProducthandler = async () => {
         // keep your existing combination validation logic
         const errors = {};
-        combinations.forEach((variant) => {
-            variant.combinations.forEach((item, index) => {
-                const isPriceCheckApplicable =
-                    (variationsData.length >= 2 ? formValues?.prices === variant.variant_name : true) &&
-                    item?.isCheckedPrice &&
-                    item?.isVisible;
-
-                if (isPriceCheckApplicable && (!item?.price)) {
-                    errors[`Price-${variant.variant_name}-${index}`] = "Price is required";
-                }
-                const isQtyCheckApplicable =
-                    (variationsData.length >= 2 ? formValues?.quantities === variant.variant_name : true) &&
-                    item?.isCheckedQuantity &&
-                    item?.isVisible;
-
-                if (isQtyCheckApplicable && (!item?.qty)) {
-                    errors[`Quantity-${variant.variant_name}-${index}`] = "Quantity is required";
-                }
-            });
-        });
+        // combinations.forEach((variant) => {
+        //     variant.combinations.forEach((item, index) => {
+        //         const isPriceCheckApplicable =
+        //             (variationsData.length >= 2 ? formValues?.prices === variant.variant_name : true) &&
+        //             item?.isCheckedPrice &&
+        //             item?.isVisible;
+        //
+        //         if (isPriceCheckApplicable && (!item?.price)) {
+        //             errors[`Price-${variant.variant_name}-${index}`] = "Price is required";
+        //         }
+        //         const isQtyCheckApplicable =
+        //             (variationsData.length >= 2 ? formValues?.quantities === variant.variant_name : true) &&
+        //             item?.isCheckedQuantity &&
+        //             item?.isVisible;
+        //
+        //         if (isQtyCheckApplicable && (!item?.qty)) {
+        //             errors[`Quantity-${variant.variant_name}-${index}`] = "Quantity is required";
+        //         }
+        //     });
+        // });
 
         if (Object.keys(errors).length > 0) {
             setCombinationError(errors);
