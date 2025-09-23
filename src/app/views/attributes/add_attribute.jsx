@@ -310,51 +310,6 @@ const AddAttribute = () => {
                                     </Select>
                                 </FormControl>
                             </Grid>
-
-                            <Grid item xs={12}>
-                                <FormControl fullWidth disabled={isCategoriesDisabled}>
-                                    <InputLabel>Attribute Options</InputLabel>
-                                    <Select
-                                        multiple
-                                        name="categories"
-                                        value={attributeData.categories}
-                                        onChange={handleCategoryChange}
-                                        input={<OutlinedInput label="Attribute Options" />}
-                                        renderValue={(selected) => (
-                                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                                {selected.map((value) => (
-                                                    <Chip
-                                                        key={value}
-                                                        label={dummyCategories.find(c => c.id == value)?.name || value}
-                                                    />
-                                                ))}
-                                            </Box>
-                                        )}
-                                    >
-                                        {dummyCategories.map((category) => (
-                                            <MenuItem key={category.id} value={category.id}>
-                                                <Checkbox checked={attributeData.categories.indexOf(category.id) > -1} />
-                                                <ListItemText primary={category.name} />
-                                            </MenuItem>
-                                        ))}
-                                    </Select>
-                                    {isCategoriesDisabled && (
-                                        <Alert severity="info" sx={{ mt: 1 }}>
-                                            Options are not needed for {attributeData.type} attributes
-                                        </Alert>
-                                    )}
-                                    {!isCategoriesDisabled && (
-                                        <Alert severity="info" sx={{ mt: 1 }}>
-                                            {attributeData.type === "Dropdown"
-                                                ? "Users will be able to select one option from these values"
-                                                : attributeData.type === "Multi-select"
-                                                    ? "Users will be able to select multiple options from these values"
-                                                    : "Compound attributes may have complex value structures"}
-                                        </Alert>
-                                    )}
-                                </FormControl>
-                            </Grid>
-
                             {showValuesSection && (
                                 <Grid item xs={12}>
                                     <Typography variant="h6" gutterBottom>
