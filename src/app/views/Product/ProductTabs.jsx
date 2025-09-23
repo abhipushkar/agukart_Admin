@@ -499,7 +499,43 @@ export default function BasicTabs() {
                 // Skip empty combinations
                 if (!comb) return;
 
-                // ... existing combination metadata appending ...
+                Object.keys(comb).forEach((fieldKey) => {
+                    const fieldVal = comb[fieldKey];
+
+                    if (
+                        fieldVal === null ||
+                        fieldVal === undefined ||
+                        fieldVal === "" ||
+                        fieldVal === "null" ||
+                        fieldVal === "undefined" ||
+                        fieldKey === "main_images" ||
+                        fieldKey === "preview_image" ||
+                        fieldKey === "thumbnail"
+                    ) {
+                        return; // skip nulls and skip file/image fields (they're handled separately below)
+                    }
+
+                    if (Array.isArray(fieldVal)) {
+                        fieldVal.forEach((item, idx) => {
+                            if (item !== null && item !== undefined && item !== "") {
+                                fData.append(
+                                    `combinationData[${vIndex}][combinations][${cIndex}][${fieldKey}][${idx}]`,
+                                    item
+                                );
+                            }
+                        });
+                    } else if (typeof fieldVal === "object") {
+                        fData.append(
+                            `combinationData[${vIndex}][combinations][${cIndex}][${fieldKey}]`,
+                            JSON.stringify(fieldVal)
+                        );
+                    } else {
+                        fData.append(
+                            `combinationData[${vIndex}][combinations][${cIndex}][${fieldKey}]`,
+                            String(fieldVal)
+                        );
+                    }
+                });
 
                 // Handle files - only append if they are File objects or empty strings
                 const mainArr = comb?.main_images || [];
@@ -509,11 +545,11 @@ export default function BasicTabs() {
                             `combinationData[${vIndex}][combinations][${cIndex}][main_images][]`,
                             img
                         );
-                    } else if (img === "") {
+                    } else if (typeof img === "string") {
                         // Append empty string for removed images
                         fData.append(
                             `combinationData[${vIndex}][combinations][${cIndex}][main_images][]`,
-                            ""
+                            img
                         );
                     }
                     // Note: We don't handle existing image URLs here as they're handled by the backend
@@ -524,11 +560,11 @@ export default function BasicTabs() {
                         `combinationData[${vIndex}][combinations][${cIndex}][preview_image]`,
                         comb.preview_image
                     );
-                } else if (comb?.preview_image === "") {
+                } else if (typeof comb?.preview_image === "string") {
                     // Append empty string for removed preview image
                     fData.append(
                         `combinationData[${vIndex}][combinations][${cIndex}][preview_image]`,
-                        ""
+                        comb?.preview_image
                     );
                 }
 
@@ -537,11 +573,11 @@ export default function BasicTabs() {
                         `combinationData[${vIndex}][combinations][${cIndex}][thumbnail]`,
                         comb.thumbnail
                     );
-                } else if (comb?.thumbnail === "") {
+                } else if (typeof comb.thumbnail === "string") {
                     // Append empty string for removed thumbnail
                     fData.append(
                         `combinationData[${vIndex}][combinations][${cIndex}][thumbnail]`,
-                        ""
+                        comb.thumbnail
                     );
                 }
             });

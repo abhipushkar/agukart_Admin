@@ -7,6 +7,7 @@
     "start": "set PORT=3001 && react-scripts start",
     "build": "node --max-old-space-size=4096 node_modules/react-scripts/scripts/build.js",
     "test": "react-scripts test",
+    "preview": "npx serve -s build",
     "eject": "react-scripts eject",
     "ghp": "react-scripts build && gh-pages -d build"
   },
