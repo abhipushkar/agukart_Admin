@@ -82,6 +82,11 @@ const VariantModal = ({
 }) => {
     console.log(showVariantList, "showVariantList")
 
+    const normalizeValues = (val) => {
+        if (!val) return [];
+        return Array.isArray(val) ? val : [val];
+    };
+
     const [nameCombinations, setNameCombinations] = useState([]);
     console.log(nameCombinations, "nameCombinations")
     console.log({ nameCombinations });
@@ -148,11 +153,11 @@ const VariantModal = ({
         const allIds = variationsData
             .flatMap((variation) => {
                 const variant = varientName.find((item) => item.variant_name === variation.name);
-                return variation.values.map(
+                return variation?.values?.map(
                     (value) => variant?.variant_attribute.find((attr) => attr.attribute_value === value)?._id
                 );
             })
-            .filter(Boolean);
+            .filter(Boolean);               
         setFormData((prev) => ({
             ...prev,
             ParentMainId: prev.ParentMainId.filter((id) => !parentMainIds.includes(id)),
@@ -257,9 +262,10 @@ const VariantModal = ({
     const generateCombinations = (data, variantName) => {
         const allCombinations = data.reduce((acc, variation, index) => {
             const { name, values } = variation;
+            const safeValues = Array.isArray(values) ? values : values ? [values] : []
 
             if (acc.length === 0) {
-                return values.map((value) => {
+                return safeValues?.map((value) => {
                     const filteredId = variantName
                         .find((variant) => variant.variant_name === name)
                         ?.variant_attribute.find((attr) => attr.attribute_value === value)?._id;
@@ -280,7 +286,7 @@ const VariantModal = ({
             }
 
             return acc.flatMap((combination) =>
-                values.map((value) => {
+                values?.map((value) => {
                     const filteredId = variantName
                         .find((variant) => variant.variant_name === name)
                         ?.variant_attribute.find((attr) => attr.attribute_value === value)?._id;
@@ -319,7 +325,7 @@ const VariantModal = ({
     //                     "value2": variations[1].values[j],
     //                     "name2": variations[1].name,
     //                     "priceInput": formValues?.prices,
-    //                     "quantityInput": formValues?.quantities,     
+    //                     "quantityInput": formValues?.quantities,
     //                     isCheckedPrice: formValues?.isCheckedPrice,
     //                     isCheckedQuantity: formValues?.isCheckedQuantity
     //                 });
@@ -334,7 +340,7 @@ const VariantModal = ({
     //                 "qty": "",
     //                 "isVisible": true,
     //                 "priceInput": formValues?.prices,
-    //                 "quantityInput": formValues?.quantities,     
+    //                 "quantityInput": formValues?.quantities,
     //                 isCheckedPrice: formValues?.isCheckedPrice,
     //                 isCheckedQuantity: formValues?.isCheckedQuantity
     //             });
@@ -453,6 +459,7 @@ const VariantModal = ({
             (item) => item?.variant_name === variationsData[1]?.name
         )?.id;
 
+
         const filterId3 = varientName.find(
             (item) => item?.variant_name === variationsData[2]?.name
         )?.id;
@@ -462,7 +469,9 @@ const VariantModal = ({
         const allIds = variationsData
             .flatMap((variation) => {
                 const variant = varientName.find((item) => item.variant_name === variation.name);
-                return variation.values.map(
+                const safeValues = normalizeValues(variation.values);
+
+                return safeValues.map(
                     (value) => variant?.variant_attribute.find((attr) => attr.attribute_value === value)?._id
                 );
             })
@@ -594,11 +603,16 @@ const VariantModal = ({
                                         <Typography>{item?.values?.length}</Typography>
                                         <Box mt={1} display={{ lg: 'flex', md: 'flex', xs: 'block' }} justifyContent="space-between" alignItems={"center"}>
                                             <Box>
-                                                {item?.values.map((data, valueIndex) => (
-                                                    <Typography display={"inline-block"} m={1} sx={{ padding: '2px 12px', border: '1px solid #c2c2c2', borderRadius: '8px' }} key={valueIndex}>
+                                                {Array.isArray(item?.values) ? item.values?.map((data, valueIndex) => (
+                                                    <Typography
+                                                        display={"inline-block"}
+                                                        m={1}
+                                                        sx={{ padding: '2px 12px', border: '1px solid #c2c2c2', borderRadius: '8px' }}
+                                                        key={valueIndex}
+                                                    >
                                                         {data}
                                                     </Typography>
-                                                ))}
+                                                )) : null}
                                             </Box>
                                             <Box display="flex" alignContent="center" justifyContent={"end"} mt={{ lg: 0, md: 0, xs: 2 }}>
                                                 <Button

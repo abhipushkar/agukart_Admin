@@ -117,8 +117,8 @@ const TableRowComponent = ({
                     <TableCell align="center">
                         <Checkbox {...label} size="small" />
                     </TableCell>
-                    {item?.name1 && <TableCell align="center">{item?.name1}</TableCell>}
-                    {item?.name2 && <TableCell align="center">{item?.name2}</TableCell>}
+                    {item?.value1 && <TableCell align="center">{item?.value1}</TableCell>}
+                    {item?.value2 && <TableCell align="center">{item?.value2}</TableCell>}
 
                     {/* Main Images */}
                     {renderImageCell(item, index, "main_images", 0)}
@@ -132,8 +132,8 @@ const TableRowComponent = ({
                     {renderImageCell(item, index, "thumbnail")}
 
                     {(variationsData.length >= 2 ? formValues?.prices === comb.variant_name : true) &&
-                        item?.isCheckedPrice &&
-                        item?.isVisible && (
+                        item?.isCheckedPrice !== "false" && // Changed from item?.isCheckedPrice
+                        item?.isVisible !== "false" && (
                             <TableCell align="center">
                                 <input
                                     type="text"
@@ -155,8 +155,8 @@ const TableRowComponent = ({
                         )}
 
                     {(variationsData.length >= 2 ? formValues?.quantities === comb.variant_name : true) &&
-                        item?.isCheckedQuantity &&
-                        item?.isVisible && (
+                        item?.isCheckedQuantity !== "false" && // Changed from item?.isCheckedQuantity
+                        item?.isVisible !== "false" &&(
                             <TableCell align="center">
                                 <input
                                     type="text"

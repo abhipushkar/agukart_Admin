@@ -202,7 +202,7 @@ const CustomisationTabs = ({
   const handleChange = (event, newKeys) => {
     // Extract titles (or use strings as they are) from the newKeys
     setValue(event.target.value);
-    const titles = newKeys.map((option) => (typeof option === "string" ? option : option.title));
+    const titles = newKeys?.map((option) => (typeof option === "string" ? option : option.title));
 
     // Update both keys and serchTemsKeyArray with the titles
     setKeys(titles);
@@ -282,17 +282,17 @@ const CustomisationTabs = ({
   };
 
   const varintHandler = (event, value) => {
-    setFormData((prv) => ({ ...prv, gender: value.map((option) => option._id) }));
+    setFormData((prv) => ({ ...prv, gender: value?.map((option) => option._id) }));
     setFormData((prv) => ({ ...prv, gender: value }));
   };
 
   const varintHandlerOcattion = (event, value) => {
-    setFormData((prv) => ({ ...prv, productdetailsOccassion: value.map((option) => option._id) }));
+    setFormData((prv) => ({ ...prv, productdetailsOccassion: value?.map((option) => option._id) }));
     setFormData((prv) => ({ ...prv, productdetailsOccassion: value }));
   };
 
   const handlevarintHandler = (event, value) => {
-    setFormData((prv) => ({ ...prv, combinedMaterials: value.map((option) => option?._id) }));
+    setFormData((prv) => ({ ...prv, combinedMaterials: value?.map((option) => option?._id) }));
     setFormData((prv) => ({ ...prv, combinedMaterials: value }));
   };
 
@@ -426,11 +426,11 @@ const CustomisationTabs = ({
 
   const handleToggle = (combindex, index) => {
     setCombinations((prev) =>
-      prev.map((item, i) =>
+      prev?.map((item, i) =>
         i === combindex
           ? {
             ...item,
-            combinations: item.combinations.map((comb, j) =>
+            combinations: item.combinations?.map((comb, j) =>
               j === index
                 ? { ...comb, isVisible: !comb.isVisible }
                 : comb
@@ -446,10 +446,10 @@ const CustomisationTabs = ({
         if (!file) return;
 
         setCombinations(prev => {
-            return prev.map((comb, i) => {
+            return prev?.map((comb, i) => {
                 if (i !== combindex) return comb;
 
-                const updatedCombinations = comb.combinations.map((item, j) => {
+                const updatedCombinations = comb.combinations?.map((item, j) => {
                     if (j !== rowIndex) return item;
 
                     if (type.startsWith('main_images[')) {
@@ -489,10 +489,10 @@ const CustomisationTabs = ({
 
     const handleImageRemove = (combindex, rowIndex, type) => {
         setCombinations(prev => {
-            return prev.map((comb, i) => {
+            return prev?.map((comb, i) => {
                 if (i !== combindex) return comb;
 
-                const updatedCombinations = comb.combinations.map((item, j) => {
+                const updatedCombinations = comb.combinations?.map((item, j) => {
                     if (j !== rowIndex) return item;
 
                     if (type.startsWith('main_images[')) {
@@ -503,18 +503,18 @@ const CustomisationTabs = ({
                         }
 
                         const newMainImages = [...item.main_images];
-                        // Set to null - backend will handle removal
-                        newMainImages[imgIndex] = null;
+                        // Set to empty string instead of null for backend compatibility
+                        newMainImages[imgIndex] = "";
 
                         return {
                             ...item,
                             main_images: newMainImages
                         };
                     } else {
-                        // Set to null - backend will handle removal
+                        // Set to empty string instead of null
                         return {
                             ...item,
-                            [type]: null
+                            [type]: ""
                         };
                     }
                 });
@@ -532,11 +532,11 @@ const CustomisationTabs = ({
     console.log(combindex, index, name, value, "llllllllllllllllllllll");
     if (/^\d*$/.test(value) && value.length <= 7) {
       setCombinations((prev) =>
-        prev.map((item, i) =>
+        prev?.map((item, i) =>
           i === combindex
             ? {
               ...item,
-              combinations: item.combinations.map((comb, j) =>
+              combinations: item.combinations?.map((comb, j) =>
                 j === index
                   ? { ...comb, [name]: value }
                   : comb
@@ -562,7 +562,7 @@ const CustomisationTabs = ({
     setShowVariantList(true);
     setSelectedVariant(item?.variant_name);
     setSelectedVariations([...selectedVariations, item?.variant_name]);
-    const options = item?.variant_attribute.map((item) => item?.attribute_value);
+    const options = item?.variant_attribute?.map((item) => item?.attribute_value);
     setAttrOptions(options);
   }
 
@@ -918,7 +918,7 @@ const CustomisationTabs = ({
                 setFormData((prev) => ({ ...prev, searchTerms: newInputValue }));
               }}
               renderTags={(value, getTagProps) =>
-                value?.map((option, index) => (
+                value??.map((option, index) => (
                   <Chip
                     variant="outlined"
                     label={option}
@@ -966,7 +966,7 @@ const CustomisationTabs = ({
                 setError("");
               }}
               renderTags={(value, getTagProps) =>
-                value.map((option, index) => (
+                value?.map((option, index) => (
                   <Chip
                     variant="outlined"
                     label={typeof option === "string" ? option : option.title}
@@ -2266,7 +2266,7 @@ const CustomisationTabs = ({
           </Box>
         </Box>
         {combinations?.length > 0 && (
-          combinations.map((comb, combindex) => (
+          combinations?.map((comb, combindex) => (
             <Box key={combindex}>
               <Typography variant="h6">
                 {comb.variant_name}
@@ -2400,8 +2400,8 @@ const CustomisationTabs = ({
 
         {/*  varient Attribute  */}
         {
-          varientName.map((item) => {
-            const titlevalue = item?.variant_attribute.map((res) => {
+          varientName?.map((item) => {
+            const titlevalue = item?.variant_attribute?.map((res) => {
               return { label: res?.attribute_value, _id: res?._id };
             });
             const seletedVariant = variationsData?.find(variation => variation.name === item.variant_name);
