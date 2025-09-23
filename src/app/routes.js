@@ -40,6 +40,7 @@ import {businessReportRoutes} from "./views/BusinessReport/BusinessReportRoutes"
 import {SubscribeEmailroutes} from "./views/SubscribeEmail/SubscribeEmailRoutes";
 import {reportRoutes} from "./views/Report/reportRoutes";
 import managerRoutes from "./views/manager/managerRoutes";
+import {attributeRoutes} from "./views/attributes/attribute_routes";
 // E-CHART PAGE
 const AppEchart = Loadable(lazy(() => import("app/views/charts/echarts/AppEchart")));
 // DASHBOARD PAGE
@@ -103,6 +104,7 @@ const routes = [
             ...SubscribeEmailroutes,
             ...reportRoutes,
             ...managerRoutes,
+            ...attributeRoutes,
         ]
     },
 

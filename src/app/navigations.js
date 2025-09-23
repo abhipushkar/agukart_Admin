@@ -320,6 +320,11 @@ export const navigations = [
                 path: ROUTE_CONSTANT.catalog.variant.list
             },
             {
+                name: "Attributes",
+                iconText: "event",
+                path: ROUTE_CONSTANT.catalog.attribute.list,
+            },
+            {
                 name: "Product",
                 iconText: "product",
                 path: ROUTE_CONSTANT.catalog.product.list

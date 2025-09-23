@@ -30,6 +30,10 @@ export const ROUTE_CONSTANT = {
             list: "/catalog/variant-list",
             add: "/catalog/add-variant"
         },
+        attribute: {
+            list: "/catalog/attribute-list",
+            add: "/catalog/add-attribute",
+        },
         product: {
             list: "/catalog/product-list",
             add: "/catalog/add-product/",
