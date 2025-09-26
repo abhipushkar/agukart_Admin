@@ -109,6 +109,38 @@ const CustomisationTabs = ({
     setFormData((prev) => ({ ...prev, isCombination: true }));
     setShow(true);
   }
+
+    // Update the handleEditImage function in CustomisationTabs.jsx
+    const handleEditImage = (combindex, rowIndex, imageType, editedImage, imageIndex = null) => {
+        setCombinations(prev => {
+            return prev?.map((comb, i) => {
+                if (i !== combindex) return comb;
+
+                const updatedCombinations = comb.combinations?.map((item, j) => {
+                    if (j !== rowIndex) return item;
+
+                    let editKey;
+                    if (imageType === "preview_image") {
+                        editKey = "edit_preview_image";
+                    } else if (imageType === "main_images" && imageIndex === 0) {
+                        editKey = "edit_main_image";
+                    }
+
+                    // Create updated combination with edited image
+                    return {
+                        ...item,
+                        [editKey]: editedImage // Store the edited File object
+                    };
+                });
+
+                return {
+                    ...comb,
+                    combinations: updatedCombinations
+                };
+            });
+        });
+    };
+
   const handleCloseVariant = () => {
     setShow(false);
   }
@@ -452,31 +484,40 @@ const CustomisationTabs = ({
                 const updatedCombinations = comb.combinations?.map((item, j) => {
                     if (j !== rowIndex) return item;
 
+                    let updatedItem = { ...item };
+
                     if (type.startsWith('main_images[')) {
                         const imgIndex = parseInt(type.match(/\[(\d+)\]/)[1]);
-
-                        // Create or clone the main_images array
                         const newMainImages = item.main_images ? [...item.main_images] : [];
 
-                        // Ensure array is long enough
                         while (newMainImages.length <= imgIndex) {
                             newMainImages.push(null);
                         }
 
-                        // Store the File object - backend will process this
                         newMainImages[imgIndex] = file;
 
-                        return {
-                            ...item,
+                        updatedItem = {
+                            ...updatedItem,
                             main_images: newMainImages
                         };
+
+                        // Clear edited image when uploading a new main image (first image only)
+                        if (imgIndex === 0 && updatedItem.edit_main_image) {
+                            updatedItem.edit_main_image = "";
+                        }
                     } else {
-                        // Handle preview_image and thumbnail - store File object
-                        return {
-                            ...item,
+                        updatedItem = {
+                            ...updatedItem,
                             [type]: file
                         };
+
+                        // Clear edited preview image when uploading a new preview image
+                        if (type === "preview_image" && updatedItem.edit_preview_image) {
+                            updatedItem.edit_preview_image = "";
+                        }
                     }
+
+                    return updatedItem;
                 });
 
                 return {
@@ -487,7 +528,7 @@ const CustomisationTabs = ({
         });
     };
 
-    const handleImageRemove = (combindex, rowIndex, type) => {
+    const handleImageRemove = (combindex, rowIndex, type, edited = "") => {
         setCombinations(prev => {
             return prev?.map((comb, i) => {
                 if (i !== combindex) return comb;
@@ -510,7 +551,7 @@ const CustomisationTabs = ({
                             ...item,
                             main_images: newMainImages
                         };
-                    } else {
+                    }else {
                         // Set to empty string instead of null
                         return {
                             ...item,
@@ -2388,6 +2429,7 @@ const CustomisationTabs = ({
                           setCombinationError={setCombinationError}
                           handleImageUpload={handleImageUpload}
                           handleImageRemove={handleImageRemove}
+                          handleEditImage={handleEditImage}
                           showAll={showAll}
                           setShowAll={setShowAll}
                       />

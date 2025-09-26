@@ -88,16 +88,6 @@ const VariantModal = ({
     };
 
     const [nameCombinations, setNameCombinations] = useState([]);
-    console.log(nameCombinations, "nameCombinations")
-    console.log({ nameCombinations });
-    console.log({ variationsData })
-    console.log({ attrValues });
-    // console.log({ attrOptions });
-    console.log({ varientName });
-    console.log({ variationsData });
-    console.log({ selectedVariant });
-    console.log({ formValues });
-    console.log({ selectedVariations });
 
     const handleTagHandler = (event, newValue) => {
         if (newValue == `Add All Options (${attrOptions?.length})`) {
@@ -126,40 +116,32 @@ const VariantModal = ({
 
     const handleApplyCancel = () => {
         handleCloseVariant();
-        const filterId1 = varientName.find(
-            (item) => item?.variant_name === variationsData[0]?.name
-        )?.id;
 
-        const filterId2 = varientName.find(
-            (item) => item?.variant_name === variationsData[1]?.name
-        )?.id;
-
-        const filterId3 = varientName.find(
-            (item) => item?.variant_name === variationsData[2]?.name
-        )?.id;
-
-        const parentMainIds = [filterId1, filterId2, filterId3].filter(Boolean);
+        // Use variantId directly from variationsData instead of looking up by name
+        const parentMainIds = variationsData.map(variation => variation.variantId).filter(Boolean);
 
         const allIds = variationsData
             .flatMap((variation) => {
-                const variant = varientName.find((item) => item.variant_name === variation.name);
+                const variant = varientName.find((item) => item.id === variation.variantId);
                 return variation?.values?.map(
                     (value) => variant?.variant_attribute.find((attr) => attr.attribute_value === value)?._id
                 );
             })
             .filter(Boolean);
+
         setFormData((prev) => ({
             ...prev,
             ParentMainId: prev.ParentMainId.filter((id) => !parentMainIds.includes(id)),
             varientName: prev.varientName.filter((id) => !allIds.includes(id)),
         }));
+
         setShowVariantList(false);
         setSelectedVariant('');
         setSelectedVariations([]);
         setVariationsData([]);
         setCombinations([]);
         setFormValues({ prices: "", quantities: "", isCheckedPrice: false, isCheckedQuantity: false });
-    }
+    };
 
     useEffect(() => {
         if (selectedVariant) {
@@ -196,37 +178,48 @@ const VariantModal = ({
         setShowVariantList(false);
     };
 
+    // In handleDone function - update to store variantId
     const handleDone = () => {
         if (isEdit) {
             setVariationsData((prv) =>
-                prv.map((item, i) => (item?.name === selectedVariant ? attrValues : item))
+                prv.map((item, i) => (item?.variantId === attrValues.variantId ? attrValues : item))
             );
         } else {
-            setVariationsData((prv) => [...prv, attrValues]);
+            // Find the variant in varientName to get its ID
+            const variantData = varientName.find(item => item.variant_name === selectedVariant);
+            setVariationsData((prv) => [...prv, {
+                ...attrValues,
+                variantId: variantData?.id, // Store the variant ID
+                name: selectedVariant
+            }]);
         }
         setShowVariantList(false);
         setSelectedVariant("");
         setAttrValues({
             name: "",
-            values: []
+            values: [],
+            variantId: null // Initialize with variantId
         });
         setAttrOptions([]);
         setIsEdit(false);
     };
 
-    const handleDeleteVariant = (name, index) => {
-        const variant = varientName.find((item) => item.variant_name === name);
-        const parentMainId = variant.id;
-        const allIds = variant?.variant_attribute.map((attr) => attr._id);
+    const handleDeleteVariant = (variantId, index) => {
+        // Use variantId directly instead of looking up by name
+        const variant = varientName.find((item) => item.id === variantId);
+        const parentMainId = variant?.id;
+        const allIds = variant?.variant_attribute?.map((attr) => attr._id) || [];
+
         console.log({ parentMainId, allIds });
         setFormData((prev) => ({
             ...prev,
             ParentMainId: prev.ParentMainId.filter((id) => id !== parentMainId),
             varientName: prev.varientName.filter((id) => !allIds.includes(id)),
         }));
+
         const filterData = variationsData.filter((item, i) => i !== index);
         setVariationsData(filterData);
-        const filterSelected = selectedVariations.filter((item) => item !== name);
+        const filterSelected = selectedVariations.filter((item) => item !== variant?.variant_name);
         setSelectedVariations(filterSelected);
         setFormValues({ prices: "", quantities: "", isCheckedPrice: false, isCheckedQuantity: false });
         setCombinations([]);
@@ -235,7 +228,7 @@ const VariantModal = ({
     const handleEdit = (item) => {
         setShowVariantList(true);
         setSelectedVariant(item?.name);
-        setAttrValues((prv) => ({ ...prv, name: item?.name, values: item?.values }));
+        setAttrValues((prv) => ({ ...prv, name: item?.name, values: item?.values, variantId: item?.variantId }));
         setIsEdit(true);
     };
 
@@ -373,6 +366,52 @@ const VariantModal = ({
         });
 
         return result;
+    };
+
+    // Add this function to update combination names/attributes
+    const updateCombinationNames = (combinations, varientName) => {
+        return combinations.map(combinationGroup => {
+            // Find the current variant data by ID (more reliable than name)
+            const currentVariant = varientName.find(variant =>
+                variant.variant_name === combinationGroup.variant_name ||
+                variant.id === combinationGroup.variantId
+            );
+
+            if (!currentVariant) return combinationGroup; // Return unchanged if variant not found
+
+            const updatedCombinations = combinationGroup.combinations.map(comb => {
+                const updatedComb = { ...comb };
+
+                // Update variant names and attribute values
+                Object.keys(comb).forEach(key => {
+                    if (key.startsWith('name')) {
+                        const index = key.replace('name', '');
+                        const valueKey = `value${index}`;
+
+                        // Find the corresponding attribute in current variant data
+                        const currentAttribute = currentVariant.variant_attribute.find(attr =>
+                            attr.attribute_value === comb[valueKey] ||
+                            attr._id === comb.combIds?.[index-1]
+                        );
+
+                        if (currentAttribute) {
+                            // Update the name to current variant name
+                            updatedComb[key] = currentVariant.variant_name;
+                            // Update the value to current attribute value
+                            updatedComb[valueKey] = currentAttribute.attribute_value;
+                        }
+                    }
+                });
+
+                return updatedComb;
+            });
+
+            return {
+                ...combinationGroup,
+                variant_name: currentVariant.variant_name, // Update the group name
+                combinations: updatedCombinations
+            };
+        });
     };
 
     // UPDATED: handleGenerate function with image preservation
@@ -540,11 +579,11 @@ const VariantModal = ({
             (item) => item?.variant_name === variationsData[2]?.name
         )?.id;
 
-        const parentMainIds = [filterId1, filterId2, filterId3].filter(Boolean);
+        const parentMainIds = variationsData.map(variation => variation.variantId).filter(Boolean);
 
         const allIds = variationsData
             .flatMap((variation) => {
-                const variant = varientName.find((item) => item.variant_name === variation.name);
+                const variant = varientName.find((item) => item.id === variation.variantId);
                 const safeValues = normalizeValues(variation.values);
 
                 return safeValues.map(
@@ -616,7 +655,7 @@ const VariantModal = ({
                         {variationsData?.length > 0 && (
                             <Box>
                                 {variationsData?.map((item, i) => (
-                                    <Card sx={{ marginBottom: '16px', border: '1px solid #9f9f9f', boxShadow: '0 0 3px #d3d3d3', padding: '20px' }}>
+                                    <Card key={i} sx={{ marginBottom: '16px', border: '1px solid #9f9f9f', boxShadow: '0 0 3px #d3d3d3', padding: '20px' }}>
                                         <Typography fontWeight={500}>{item?.name}</Typography>
                                         <Typography>{item?.values?.length}</Typography>
                                         <Box mt={1} display={{ lg: 'flex', md: 'flex', xs: 'block' }} justifyContent="space-between" alignItems={"center"}>
@@ -641,7 +680,7 @@ const VariantModal = ({
                                                 </Button>
                                                 <Button
                                                     sx={{ ...buttonStyle, ...{ backgroundColor: "lightgrey", borderRadius: '50%', minWidth: 'auto', width: '40px', height: '40px' } }}
-                                                    onClick={() => handleDeleteVariant(item?.name, i)}
+                                                    onClick={() => handleDeleteVariant(item?.variantId, i)} // Pass variantId instead of name
                                                 >
                                                     <DeleteIcon />
                                                 </Button>
@@ -781,7 +820,7 @@ const VariantModal = ({
                                     discoverability.
                                 </Typography>
                                 <Box my={4}>
-                                    {varientName.map((item, index) => (
+                                    {varientName?.map((item, index) => (
                                         <Button
                                             key={index}
                                             mt={2}

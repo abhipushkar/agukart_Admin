@@ -132,6 +132,7 @@ export default function BasicTabs() {
                 };
                 const tabs = res?.data?.productData?.tabs || [];
 
+                console.log("Setting variationsData in Producttabs from api", variationsData);
                 setVariationsData(variationsData);
                 setFormValues(formValues);
                 setSelectedVariations([...variationsData?.map((item) => item?.name) || []]);
@@ -395,8 +396,6 @@ export default function BasicTabs() {
     console.log("deleteIconData", uniqueSetarr);
 
 // ---------------- helper to build FormData ----------------
-    // ---------------- helper to build FormData ----------------
-// ---------------- helper to build FormData ----------------
     const buildProductFormData = (payload, combinations) => {
         const fData = new FormData();
 
@@ -510,7 +509,9 @@ export default function BasicTabs() {
                         fieldVal === "undefined" ||
                         fieldKey === "main_images" ||
                         fieldKey === "preview_image" ||
-                        fieldKey === "thumbnail"
+                        fieldKey === "thumbnail" ||
+                        fieldKey === "edit_main_image" ||
+                        fieldKey === "edit_preview_image"
                     ) {
                         return; // skip nulls and skip file/image fields (they're handled separately below)
                     }
@@ -578,6 +579,33 @@ export default function BasicTabs() {
                     fData.append(
                         `combinationData[${vIndex}][combinations][${cIndex}][thumbnail]`,
                         comb.thumbnail
+                    );
+                }
+
+                if (comb?.edit_main_image instanceof File) {
+                    console.log("Sending as binary", comb?.edit_main_image);
+                    fData.append(
+                        `combinationData[${vIndex}][combinations][${cIndex}][edit_main_image]`,
+                        comb.edit_main_image
+                    );
+                } else if (typeof comb?.edit_main_image === "string") {
+                    console.log("Sending as string", comb?.edit_main_image);
+                    fData.append(
+                        `combinationData[${vIndex}][combinations][${cIndex}][edit_main_image]`,
+                        comb?.edit_main_image
+                    );
+                }
+
+                if (comb?.edit_preview_image instanceof File) {
+                    fData.append(
+                        `combinationData[${vIndex}][combinations][${cIndex}][edit_preview_image]`,
+                        comb.edit_preview_image
+                    );
+                } else if (typeof comb?.edit_preview_image === "string") {
+
+                    fData.append(
+                        `combinationData[${vIndex}][combinations][${cIndex}][edit_preview_image]`,
+                        comb.edit_preview_image
                     );
                 }
             });
