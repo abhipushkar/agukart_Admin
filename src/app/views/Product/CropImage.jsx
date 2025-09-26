@@ -16,8 +16,6 @@ import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { makeStyles } from "@material-ui/core/styles";
 import ImageTile from "./ImageTile";
-import Cropper from "react-cropper";
-import "cropperjs/dist/cropper.css";
 import ZoomInIcon from "@mui/icons-material/ZoomIn";
 import ZoomOutIcon from "@mui/icons-material/ZoomOut";
 import RotateLeftIcon from "@mui/icons-material/RotateLeft";
@@ -25,7 +23,9 @@ import RotateRightIcon from "@mui/icons-material/RotateRight";
 import Modal from "@mui/material/Modal";
 import CheckIcon from "@mui/icons-material/Check";
 import { useEffect } from "react";
-import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
+import Cropper from 'react-easy-crop';
+import { getCroppedImg } from './cropUtil';
+import Slider from '@mui/material/Slider';
 
 const style = {
     position: "absolute",
@@ -61,13 +61,18 @@ const CropImage = ({
     const [deletedImg, setDeletedImg] = useState([]);
     const [chooseImg, setChooseImg] = useState(null);
     const [open, setOpen] = useState(false);
-    const [cropper, setCropper] = useState(null);
     const [indexing, setIndexing] = useState(images.length > 0 ? 0 : null);
     const [altText, setAltText] = useState(alts || []);
     const [open1, setOpen1] = React.useState(false);
     const [isDragging, setIsDragging] = useState(false);
     const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
     const [imgDimensions, setImgDimensions] = useState({ width: 0, height: 0 });
+
+    // React Easy Crop states
+    const [crop, setCrop] = useState({ x: 0, y: 0 });
+    const [zoom, setZoom] = useState(1);
+    const [rotation, setRotation] = useState(0);
+    const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
 
     const handleOpen1 = () => setOpen1(true);
     const handleClose = () => setOpen1(false);
@@ -282,58 +287,68 @@ const CropImage = ({
         setAltText(newAltText);
     };
 
-    const handleCrop = () => {
-        if (cropper) {
-            console.log({ cropper });
-            const findIdArr = images
-                ?.filter((item) => !item?.id && item?.src === cropper?.originalUrl)
-                .map((item) => item?.src);
-            console.log({ findIdArr });
-            if (findIdArr?.length > 0) {
-                setDeletedImg([...deletedImg, findIdArr[0]]);
+    const handleCropComplete = (croppedArea, croppedAreaPixels) => {
+        setCroppedAreaPixels(croppedAreaPixels);
+    };
+
+    const handleCrop = async () => {
+        if (selectedImage && croppedAreaPixels) {
+            try {
+                const croppedImageBlob = await getCroppedImg(
+                    selectedImage?.src ? selectedImage.src : selectedImage,
+                    croppedAreaPixels,
+                    rotation
+                );
+
+                const croppedDataUrl = URL.createObjectURL(croppedImageBlob);
+
+                const base64ToFile = (dataUrl, filename) => {
+                    const arr = dataUrl?.split(",");
+                    const mime = arr[0]?.match(/:(.*?);/)[1];
+                    const bstr = atob(arr[1]);
+                    let n = bstr?.length;
+                    const u8arr = new Uint8Array(n);
+
+                    while (n--) {
+                        u8arr[n] = bstr?.charCodeAt(n);
+                    }
+
+                    return new File([u8arr], filename, { type: mime });
+                };
+
+                const newCroppedFile = new File([croppedImageBlob], "cropped-image.jpg", {
+                    type: 'image/jpeg'
+                });
+
+                let sortArr = newCroppedFile;
+                sortArr.sortOrder = indexing + 1;
+
+                setImages((prevImages) =>
+                    prevImages.map((img, idx) =>
+                        idx === indexing ? { ...img, src: croppedDataUrl, file: sortArr } : img
+                    )
+                );
+
+                setSelectedImage(croppedDataUrl);
+                setOpen(false);
+
+                // Reset crop state
+                setCrop({ x: 0, y: 0 });
+                setZoom(1);
+                setRotation(0);
+            } catch (error) {
+                console.error('Error cropping image:', error);
+                handleOpen("error", "Error cropping image");
             }
-            const croppedDataUrl = cropper?.getCroppedCanvas()?.toDataURL();
-
-            const base64ToFile = (dataUrl, filename) => {
-                const arr = dataUrl?.split(",");
-                const mime = arr[0]?.match(/:(.*?);/)[1];
-                const bstr = atob(arr[1]);
-                let n = bstr?.length;
-                const u8arr = new Uint8Array(n);
-
-                while (n--) {
-                    u8arr[n] = bstr?.charCodeAt(n);
-                }
-
-                return new File([u8arr], filename, { type: mime });
-            };
-
-            const newCroppedFile = base64ToFile(croppedDataUrl, "cropped-image.jpg");
-            console.log({ newCroppedFile });
-            let sortArr = newCroppedFile;
-            sortArr.sortOrder = indexing + 1;
-
-            setImages((prevImages) =>
-                prevImages.map((img, idx) =>
-                    idx === indexing ? { ...img, src: croppedDataUrl, file: sortArr } : img
-                )
-            );
-
-            setSelectedImage(croppedDataUrl);
-            setOpen(false);
         }
     };
 
     const handleZoom = (value) => {
-        if (cropper) {
-            cropper.zoom(value);
-        }
+        setZoom(prev => Math.max(0.1, Math.min(prev + value, 3)));
     };
 
     const handleRotate = (degree) => {
-        if (cropper) {
-            cropper.rotate(degree);
-        }
+        setRotation(prev => (prev + degree) % 360);
     };
 
     const handleApply = () => {
@@ -470,23 +485,26 @@ const CropImage = ({
                             </Grid>
                             <Grid item lg={8} md={8} xs={12}>
                                 {open ? (
-                                    <>
+                                    <Box sx={{ position: 'relative', height: '500px', width: '100%' }}>
                                         <Cropper
-                                            src={selectedImage?.src ? selectedImage?.src : selectedImage}
-                                            sx={{
-                                                height: "100vh",
-                                                width: "100%",
-                                                ".cropper-container": { height: "100vh" }
+                                            image={selectedImage?.src ? selectedImage.src : selectedImage}
+                                            crop={crop}
+                                            zoom={zoom}
+                                            rotation={rotation}
+                                            aspect={1}
+                                            onCropChange={setCrop}
+                                            onZoomChange={setZoom}
+                                            onRotationChange={setRotation}
+                                            onCropComplete={handleCropComplete}
+                                            style={{
+                                                containerStyle: {
+                                                    height: '100%',
+                                                    width: '100%',
+                                                    background: '#f4f4f4'
+                                                }
                                             }}
-                                            initialAspectRatio={1}
-                                            guides={false}
-                                            cropBoxResizable={true}
-                                            dragMode="move"
-                                            zoomable={true}
-                                            scalable={true}
-                                            onInitialized={(instance) => setCropper(instance)}
                                         />
-                                    </>
+                                    </Box>
                                 ) : (
                                     <Box
                                         sx={{
@@ -701,6 +719,33 @@ const CropImage = ({
                                                             <RotateRightIcon />
                                                         </IconButton>
                                                     </Grid>
+                                                    {/* Zoom Slider */}
+                                                    <Grid item lg={12} md={12} xs={12}>
+                                                        <Typography variant="body2" textAlign="center">
+                                                            Zoom: {zoom.toFixed(1)}x
+                                                        </Typography>
+                                                        <Slider
+                                                            value={zoom}
+                                                            min={1}
+                                                            max={3}
+                                                            step={0.1}
+                                                            onChange={(e, newValue) => setZoom(newValue)}
+                                                            sx={{ width: '90%', mx: 'auto' }}
+                                                        />
+                                                    </Grid>
+                                                    {/* Rotation Slider */}
+                                                    <Grid item lg={12} md={12} xs={12}>
+                                                        <Typography variant="body2" textAlign="center">
+                                                            Rotation: {rotation}°
+                                                        </Typography>
+                                                        <Slider
+                                                            value={rotation}
+                                                            min={0}
+                                                            max={360}
+                                                            onChange={(e, newValue) => setRotation(newValue)}
+                                                            sx={{ width: '90%', mx: 'auto' }}
+                                                        />
+                                                    </Grid>
                                                 </Grid>
                                             </Box>
                                         )}
@@ -729,24 +774,24 @@ const CropImage = ({
                                                     </Typography>
                                                 ) : (
                                                     <Typography component="div">
-                                                        <Button
-                                                            sx={{
-                                                                width: "100%",
-                                                                display: "flex",
-                                                                justifyContent: "center",
-                                                                alignItems: "center",
-                                                                borderRadius: "30px",
-                                                                padding: "8px 16px",
-                                                                border: "none",
-                                                                background: "#ededed",
-                                                                fontSize: "16px",
-                                                                color: "#000",
-                                                                "&:hover": { background: "#ededed", boxShadow: "0 0 3px #000" }
-                                                            }}
-                                                            onClick={() => setThumbnailOpen(true)}
-                                                        >
-                                                            <OpenInFullIcon sx={{ marginRight: "4px" }} /> Adjust thumbnail
-                                                        </Button>
+                                                        {/*<Button*/}
+                                                        {/*    sx={{*/}
+                                                        {/*        width: "100%",*/}
+                                                        {/*        display: "flex",*/}
+                                                        {/*        justifyContent: "center",*/}
+                                                        {/*        alignItems: "center",*/}
+                                                        {/*        borderRadius: "30px",*/}
+                                                        {/*        padding: "8px 16px",*/}
+                                                        {/*        border: "none",*/}
+                                                        {/*        background: "#ededed",*/}
+                                                        {/*        fontSize: "16px",*/}
+                                                        {/*        color: "#000",*/}
+                                                        {/*        "&:hover": { background: "#ededed", boxShadow: "0 0 3px #000" }*/}
+                                                        {/*    }}*/}
+                                                        {/*    onClick={() => setThumbnailOpen(true)}*/}
+                                                        {/*>*/}
+                                                        {/*    <OpenInFullIcon sx={{ marginRight: "4px" }} /> Adjust thumbnail*/}
+                                                        {/*</Button>*/}
                                                     </Typography>
                                                 )}
                                             </>

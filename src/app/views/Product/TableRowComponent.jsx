@@ -1,8 +1,18 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import TableRow from "@mui/material/TableRow";
 import TableCell from "@mui/material/TableCell";
-import {Box, Button, Checkbox, styled, Switch, Tooltip} from "@mui/material";
+import {Box, Button, Checkbox, styled, Switch, Tooltip, IconButton, Slider, Dialog, DialogActions, DialogContent, DialogTitle} from "@mui/material";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
+import EditIcon from "@mui/icons-material/Edit";
+import CropIcon from "@mui/icons-material/Crop";
+import ZoomInIcon from "@mui/icons-material/ZoomIn";
+import ZoomOutIcon from "@mui/icons-material/ZoomOut";
+import RotateLeftIcon from "@mui/icons-material/RotateLeft";
+import RotateRightIcon from "@mui/icons-material/RotateRight";
+import CheckIcon from "@mui/icons-material/Check";
+import CloseIcon from "@mui/icons-material/Close";
+import Cropper from 'react-easy-crop';
+import { getCroppedImg } from './cropUtil';
 
 const VisuallyHiddenInput = styled("input")({
     clip: "rect(0 0 0 0)",
@@ -27,7 +37,8 @@ const TableRowComponent = ({
                                showAll,
                                handleImageUpload,
                                handleImageRemove,
-                               setShowAll
+                               setShowAll,
+                               handleEditImage
                            }) => {
     const label = { inputProps: { "aria-label": "Switch demo" } };
 
@@ -37,20 +48,60 @@ const TableRowComponent = ({
 
     const itemsToShow = showAll ? comb.combinations : comb.combinations.slice(0, 5);
 
+    const isImageEditable = (imageType, imageIndex, item) => {
+        if (imageType === "preview_image") return true;
+        if (imageType === "main_images" && imageIndex === 0) return true;
+        return false;
+    };
+
     const renderImageCell = (item, index, imageType, imageIndex = null) => {
         let imageValue;
+        let editedImageValue;
 
         if (imageIndex !== null) {
-            // Handle main_images array
             imageValue = item.main_images && item.main_images[imageIndex];
+            if (imageIndex === 0) {
+                editedImageValue = item.edit_main_image;
+            }
         } else {
-            // Handle preview_image and thumbnail
             imageValue = item[imageType];
+            if (imageType === "preview_image") {
+                editedImageValue = item.edit_preview_image;
+            }
         }
 
-        const isFile = imageValue instanceof File;
-        const displayUrl = isFile ? URL.createObjectURL(imageValue) : imageValue;
+        const isImageRemoved = imageValue === "" || imageValue === null;
+        const isEditedImageRemoved = editedImageValue === "" || editedImageValue === null;
+
+        const createSafeObjectURL = (fileOrUrl) => {
+            if (!fileOrUrl) return null;
+
+            if (typeof fileOrUrl === 'string') {
+                return fileOrUrl;
+            }
+
+            if (fileOrUrl instanceof File || fileOrUrl instanceof Blob) {
+                try {
+                    return URL.createObjectURL(fileOrUrl);
+                } catch (error) {
+                    console.error('Error creating object URL:', error);
+                    return null;
+                }
+            }
+
+            return null;
+        };
+
+        const shouldUseEditedImage = !isImageRemoved && !isEditedImageRemoved && editedImageValue;
+
+        const displayUrl = isImageRemoved ? null :
+            shouldUseEditedImage ? createSafeObjectURL(editedImageValue) :
+                createSafeObjectURL(imageValue) || (typeof imageValue === 'string' ? imageValue : null);
+
+        const displayMini = createSafeObjectURL(imageValue) || (typeof imageValue === 'string' ? imageValue : null);
+
         const imageKey = imageIndex !== null ? `main_images[${imageIndex}]` : imageType;
+        const isEditable = isImageEditable(imageType, imageIndex, item);
 
         return (
             <TableCell align="center">
@@ -62,18 +113,41 @@ const TableRowComponent = ({
                     {displayUrl ? (
                         <ImageTooltip
                             imageUrl={displayUrl}
+                            originalImage={imageValue}
+                            editedImage={shouldUseEditedImage ? editedImageValue : null}
                             onImageChange={(e) => handleImageUpload(combindex, index, imageKey, e)}
                             onImageRemove={() => handleImageRemove(combindex, index, imageKey)}
+                            onImageEdit={isEditable ? (editedImage) => handleEditImage(combindex, index, imageType, editedImage, imageIndex) : null}
+                            isEditable={isEditable}
+                            combindex={combindex}
+                            rowIndex={index}
+                            imageType={imageType}
+                            imageIndex={imageIndex}
                         >
                             <Box
                                 sx={{
                                     width: 69,
                                     height: 69,
-                                    border: '1px dashed #ccc',
+                                    border: shouldUseEditedImage ? '2px solid green' : '1px dashed #ccc',
                                     p: 0.5,
-                                    cursor: 'pointer'
+                                    cursor: 'pointer',
+                                    position: 'relative'
                                 }}
                             >
+                                {shouldUseEditedImage && (
+                                    <Box
+                                        sx={{
+                                            position: 'absolute',
+                                            top: -5,
+                                            right: -5,
+                                            width: 12,
+                                            height: 12,
+                                            backgroundColor: 'green',
+                                            borderRadius: '50%',
+                                            border: '2px solid white'
+                                        }}
+                                    />
+                                )}
                                 <img
                                     src={displayUrl}
                                     alt={`${imageKey} preview`}
@@ -132,8 +206,7 @@ const TableRowComponent = ({
                     {renderImageCell(item, index, "thumbnail")}
 
                     {(variationsData.length >= 2 ? formValues?.prices === comb.variant_name : true) &&
-                        formValues?.isCheckedPrice && // Changed from item?.isCheckedPrice
-                         (
+                        formValues?.isCheckedPrice && (
                             <TableCell align="center">
                                 <input
                                     type="text"
@@ -155,8 +228,7 @@ const TableRowComponent = ({
                         )}
 
                     {(variationsData.length >= 2 ? formValues?.quantities === comb.variant_name : true) &&
-                        formValues?.isCheckedQuantity && // Changed from item?.isCheckedQuantity
-                      (
+                        formValues?.isCheckedQuantity && (
                             <TableCell align="center">
                                 <input
                                     type="text"
@@ -209,76 +281,248 @@ const TableRowComponent = ({
     );
 };
 
-const ImageTooltip = ({ imageUrl, onImageChange, onImageRemove, children }) => {
+const ImageTooltip = ({
+                          imageUrl,
+                          originalImage,
+                          editedImage,
+                          onImageChange,
+                          onImageRemove,
+                          onImageEdit,
+                          isEditable,
+                          children,
+                          combindex,
+                          rowIndex,
+                          imageType,
+                          imageIndex
+                      }) => {
     const [open, setOpen] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [cropDialogOpen, setCropDialogOpen] = useState(false);
+    const [crop, setCrop] = useState({ x: 0, y: 0 });
+    const [zoom, setZoom] = useState(1);
+    const [rotation, setRotation] = useState(0);
+    const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+
+    const hasValidImage = imageUrl && imageUrl !== "";
 
     const handleTooltipOpen = () => {
+        if (!hasValidImage) return;
         setOpen(true);
     };
 
     const handleTooltipClose = () => {
         setOpen(false);
+        setIsEditing(false);
     };
 
+    const handleEditStart = () => {
+        setCropDialogOpen(true);
+    };
+
+    const handleCropComplete = (croppedArea, croppedAreaPixels) => {
+        setCroppedAreaPixels(croppedAreaPixels);
+    };
+
+    const handleCropApply = async () => {
+        try {
+            const croppedImage = await getCroppedImg(
+                imageUrl,
+                croppedAreaPixels,
+                rotation
+            );
+
+            const editedFile = new File([croppedImage], `edited-${Date.now()}.jpg`, {
+                type: 'image/jpeg'
+            });
+
+            onImageEdit(editedFile);
+            setCropDialogOpen(false);
+            setOpen(false);
+        } catch (error) {
+            console.error('Error cropping image:', error);
+        }
+    };
+
+    const handleCropCancel = () => {
+        setCropDialogOpen(false);
+        setCrop({ x: 0, y: 0 });
+        setZoom(1);
+        setRotation(0);
+    };
+
+    const renderNormalControls = () => (
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'center' }}>
+            {isEditable && (
+                <Button
+                    variant="contained"
+                    size="small"
+                    color="primary"
+                    onClick={handleEditStart}
+                    sx={{ fontSize: '12px' }}
+                    startIcon={<CropIcon />}
+                >
+                    Edit
+                </Button>
+            )}
+            <Button
+                variant="outlined"
+                size="small"
+                color="error"
+                onClick={onImageRemove}
+                sx={{ fontSize: '12px' }}
+            >
+                Remove
+            </Button>
+        </Box>
+    );
+
     return (
-        <Tooltip
-            open={open}
-            onClose={handleTooltipClose}
-            onOpen={handleTooltipOpen}
-            title={
-                <Box sx={{ p: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <img
-                        src={imageUrl}
-                        alt="Preview"
-                        style={{
-                            width: '150px',
-                            height: '150px',
-                            objectFit: 'contain',
-                            marginBottom: '10px'
-                        }}
-                    />
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                        {/*<Button*/}
-                        {/*    variant="contained"*/}
-                        {/*    size="small"*/}
-                        {/*    component="label"*/}
-                        {/*    sx={{ fontSize: '12px' }}*/}
-                        {/*>*/}
-                        {/*    Change*/}
-                        {/*    <VisuallyHiddenInput*/}
-                        {/*        type="file"*/}
-                        {/*        onChange={onImageChange}*/}
-                        {/*        accept="image/*"*/}
-                        {/*    />*/}
-                        {/*</Button>*/}
-                        <Button
-                            variant="outlined"
-                            size="small"
-                            color="error"
-                            onClick={onImageRemove}
-                            sx={{ fontSize: '12px' }}
+        <>
+            <Tooltip
+                open={open && !cropDialogOpen}
+                onClose={handleTooltipClose}
+                onOpen={handleTooltipOpen}
+                title={
+                    <Box sx={{
+                        p: 2,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        minWidth: 280
+                    }}>
+                        {editedImage && (
+                            <Box
+                                sx={{
+                                    mb: 1,
+                                    px: 1,
+                                    py: 0.5,
+                                    backgroundColor: 'success.light',
+                                    color: 'white',
+                                    borderRadius: 1,
+                                    fontSize: '0.75rem',
+                                    fontWeight: 'bold'
+                                }}
+                            >
+                                ✓ Edited Version
+                            </Box>
+                        )}
+
+                        <Box
+                            sx={{
+                                width: 250,
+                                height: 250,
+                                overflow: 'hidden',
+                                borderRadius: 1,
+                                border: '2px solid',
+                                borderColor: editedImage ? 'success.main' : 'grey.300',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                backgroundColor: 'grey.100',
+                                mb: 2
+                            }}
                         >
-                            Remove
-                        </Button>
+                            <img
+                                src={imageUrl}
+                                alt="Preview"
+                                style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    objectFit: 'contain'
+                                }}
+                            />
+                        </Box>
+
+                        {renderNormalControls()}
                     </Box>
-                </Box>
-            }
-            arrow
-            placement="top"
-            componentsProps={{
-                tooltip: {
-                    sx: {
-                        bgcolor: 'common.white',
-                        color: 'common.black',
-                        border: '1px solid',
-                        borderColor: 'divider',
-                        boxShadow: 1
-                    }
                 }
-            }}
-        >
-            {children}
-        </Tooltip>
+                arrow
+                placement="top"
+                componentsProps={{
+                    tooltip: {
+                        sx: {
+                            bgcolor: 'common.white',
+                            color: 'common.black',
+                            border: '1px solid',
+                            borderColor: 'divider',
+                            boxShadow: 3,
+                            maxWidth: 500
+                        }
+                    }
+                }}
+            >
+                {children}
+            </Tooltip>
+
+            {/* Crop Dialog */}
+            <Dialog
+                open={cropDialogOpen}
+                onClose={handleCropCancel}
+                maxWidth="md"
+                fullWidth
+            >
+                <DialogTitle>Edit Image</DialogTitle>
+                <DialogContent>
+                    <Box sx={{ position: 'relative', height: 400, width: '100%' }}>
+                        <Cropper
+                            image={imageUrl}
+                            crop={crop}
+                            zoom={zoom}
+                            rotation={rotation}
+                            aspect={1}
+                            onCropChange={setCrop}
+                            onZoomChange={setZoom}
+                            onRotationChange={setRotation}
+                            onCropComplete={handleCropComplete}
+                        />
+                    </Box>
+
+                    {/* Controls */}
+                    <Box sx={{ mt: 2 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <IconButton onClick={() => setZoom(prev => Math.max(prev - 0.1, 1))}>
+                                <ZoomOutIcon />
+                            </IconButton>
+                            <Slider
+                                value={zoom}
+                                min={1}
+                                max={3}
+                                step={0.1}
+                                onChange={(e, newValue) => setZoom(newValue)}
+                                sx={{ flex: 1 }}
+                            />
+                            <IconButton onClick={() => setZoom(prev => Math.min(prev + 0.1, 3))}>
+                                <ZoomInIcon />
+                            </IconButton>
+                        </Box>
+
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 1 }}>
+                            <IconButton onClick={() => setRotation(prev => prev - 90)}>
+                                <RotateLeftIcon />
+                            </IconButton>
+                            <Slider
+                                value={rotation}
+                                min={0}
+                                max={360}
+                                onChange={(e, newValue) => setRotation(newValue)}
+                                sx={{ flex: 1 }}
+                            />
+                            <IconButton onClick={() => setRotation(prev => prev + 90)}>
+                                <RotateRightIcon />
+                            </IconButton>
+                        </Box>
+                    </Box>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCropCancel} color="error" startIcon={<CloseIcon />}>
+                        Cancel
+                    </Button>
+                    <Button onClick={handleCropApply} color="success" startIcon={<CheckIcon />}>
+                        Apply Changes
+                    </Button>
+                </DialogActions>
+            </Dialog>
+        </>
     );
 };
 
