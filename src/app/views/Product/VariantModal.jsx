@@ -21,7 +21,12 @@ import {
     ListItem,
     ListItemText,
     ListItemSecondaryAction,
-    List
+    List,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    Chip
 } from "@mui/material";
 import { useEffect } from "react";
 import Card from "@mui/material/Card";
@@ -29,7 +34,10 @@ import ModeEditIcon from "@mui/icons-material/ModeEdit";
 import Switch from "@mui/material/Switch";
 import { color } from "highcharts";
 import { set } from "lodash";
-
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import DragHandleIcon from '@mui/icons-material/DragHandle';
+import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 
 const style = {
     position: "absolute",
@@ -55,6 +63,14 @@ const buttonStyle = {
 }
 
 const label = { inputProps: { "aria-label": "Switch demo" } };
+
+// Reorder function for drag and drop
+const reorder = (list, startIndex, endIndex) => {
+    const result = Array.from(list);
+    const [removed] = result.splice(startIndex, 1);
+    result.splice(endIndex, 0, removed);
+    return result;
+};
 
 const VariantModal = ({
                           show,
@@ -88,6 +104,11 @@ const VariantModal = ({
     };
 
     const [nameCombinations, setNameCombinations] = useState([]);
+    const [customVariantDialogOpen, setCustomVariantDialogOpen] = useState(false);
+    const [customVariantName, setCustomVariantName] = useState("");
+    const [customAttributes, setCustomAttributes] = useState([""]);
+    const [customVariants, setCustomVariants] = useState([]);
+    const [newAttribute, setNewAttribute] = useState("");
 
     const handleTagHandler = (event, newValue) => {
         if (newValue == `Add All Options (${attrOptions?.length})`) {
@@ -108,7 +129,6 @@ const VariantModal = ({
         }
     };
 
-
     const handleCancel = () => {
         handleCloseVariant();
         setShowVariantList(false);
@@ -122,7 +142,8 @@ const VariantModal = ({
 
         const allIds = variationsData
             .flatMap((variation) => {
-                const variant = varientName.find((item) => item.id === variation.variantId);
+                const variant = varientName.find((item) => item.id === variation.variantId) ||
+                    customVariants.find((item) => item.id === variation.variantId);
                 return variation?.values?.map(
                     (value) => variant?.variant_attribute.find((attr) => attr.attribute_value === value)?._id
                 );
@@ -145,16 +166,23 @@ const VariantModal = ({
 
     useEffect(() => {
         if (selectedVariant) {
+            // Check both predefined variants and custom variants
             const data = varientName.filter((item) => item?.variant_name === selectedVariant);
-            const options = data[0]?.variant_attribute.map((item) => item?.attribute_value);
+            const customData = customVariants.filter((item) => item?.variant_name === selectedVariant);
+
+            const allData = [...data, ...customData];
+            const options = allData[0]?.variant_attribute.map((item) => item?.attribute_value);
             setAttrOptions(options);
         }
     }, [selectedVariant]);
 
     const handleDeleteVariation = (selectedVariantName) => {
-        const variant = varientName.find((item) => item.variant_name === selectedVariantName);
-        const parentMainId = variant.id;
+        // Check both predefined and custom variants
+        const variant = varientName.find((item) => item.variant_name === selectedVariantName) ||
+            customVariants.find((item) => item.variant_name === selectedVariantName);
+        const parentMainId = variant?.id;
         const allIds = variant?.variant_attribute.map((attr) => attr._id);
+
         setFormData((prev) => ({
             ...prev,
             ParentMainId: prev.ParentMainId.filter((id) => id !== parentMainId),
@@ -185,8 +213,9 @@ const VariantModal = ({
                 prv.map((item, i) => (item?.variantId === attrValues.variantId ? attrValues : item))
             );
         } else {
-            // Find the variant in varientName to get its ID
-            const variantData = varientName.find(item => item.variant_name === selectedVariant);
+            // Find the variant in both predefined and custom variants to get its ID
+            const variantData = varientName.find(item => item.variant_name === selectedVariant) ||
+                customVariants.find(item => item.variant_name === selectedVariant);
             setVariationsData((prv) => [...prv, {
                 ...attrValues,
                 variantId: variantData?.id, // Store the variant ID
@@ -206,7 +235,8 @@ const VariantModal = ({
 
     const handleDeleteVariant = (variantId, index) => {
         // Use variantId directly instead of looking up by name
-        const variant = varientName.find((item) => item.id === variantId);
+        const variant = varientName.find((item) => item.id === variantId) ||
+            customVariants.find((item) => item.id === variantId);
         const parentMainId = variant?.id;
         const allIds = variant?.variant_attribute?.map((attr) => attr._id) || [];
 
@@ -241,15 +271,153 @@ const VariantModal = ({
         }
     };
 
+    // Custom Variant Functions
+    const handleOpenCustomVariantDialog = () => {
+        setCustomVariantDialogOpen(true);
+        setCustomVariantName("");
+        setCustomAttributes([""]);
+        setNewAttribute("");
+    };
+
+    const handleCloseCustomVariantDialog = () => {
+        setCustomVariantDialogOpen(false);
+        setCustomVariantName("");
+        setCustomAttributes([""]);
+        setNewAttribute("");
+    };
+
+    const handleAddNewAttribute = () => {
+        if (newAttribute.trim()) {
+            setCustomAttributes(prev => [...prev, newAttribute.trim()]);
+            setNewAttribute("");
+        }
+    };
+
+    const handleAttributeKeyPress = (e) => {
+        if (e.key === 'Enter') {
+            handleAddNewAttribute();
+        }
+    };
+
+    const handleRemoveAttribute = (index) => {
+        setCustomAttributes(prev => prev.filter((_, i) => i !== index));
+    };
+
+    const handleMoveAttributeUp = (index) => {
+        if (index > 0) {
+            const newAttributes = [...customAttributes];
+            [newAttributes[index], newAttributes[index - 1]] = [newAttributes[index - 1], newAttributes[index]];
+            setCustomAttributes(newAttributes);
+        }
+    };
+
+    const handleMoveAttributeDown = (index) => {
+        if (index < customAttributes.length - 1) {
+            const newAttributes = [...customAttributes];
+            [newAttributes[index], newAttributes[index + 1]] = [newAttributes[index + 1], newAttributes[index]];
+            setCustomAttributes(newAttributes);
+        }
+    };
+
+    const handleSaveCustomVariant = () => {
+        if (!customVariantName.trim()) {
+            alert("Please enter a variant name");
+            return;
+        }
+
+        const filteredAttributes = customAttributes.filter(attr => attr.trim() !== "");
+        if (filteredAttributes.length < 2) {
+            alert("Please add at least 2 attribute values");
+            return;
+        }
+
+        // Create custom variant object
+        const customVariant = {
+            id: `custom-${Date.now()}`,
+            variant_name: customVariantName.trim(),
+            variant_attribute: filteredAttributes.map((attr, index) => ({
+                _id: `custom-attr-${Date.now()}-${index}`,
+                attribute_value: attr.trim(),
+                main_images: [null, null, null],
+                preview_image: null,
+                thumbnail: null
+            }))
+        };
+
+        // Add to custom variants
+        setCustomVariants(prev => [...prev, customVariant]);
+
+        // Auto-select this variant and add to selected variations
+        setSelectedVariations(prev => [...prev, customVariant.variant_name]);
+        setSelectedVariant(customVariant.variant_name);
+
+        // Set attributes for selection
+        setAttrValues(prev => ({
+            ...prev,
+            name: customVariant.variant_name,
+            values: filteredAttributes
+        }));
+
+        // Close dialog
+        handleCloseCustomVariantDialog();
+    };
+
+    // Combine predefined and custom variants for display
+    const getAllVariants = () => {
+        return [...varientName, ...customVariants];
+    };
+
+    // Drag and drop handlers
+    const onDragEnd = (result, listType) => {
+        if (!result.destination) {
+            return;
+        }
+
+        if (listType === 'attributes') {
+            const items = reorder(
+                attrValues.values,
+                result.source.index,
+                result.destination.index
+            );
+            setAttrValues(prev => ({ ...prev, values: items }));
+        } else if (listType === 'customAttributes') {
+            const filteredAttributes = customAttributes.filter(attr => attr.trim() !== "");
+            const items = reorder(
+                filteredAttributes,
+                result.source.index,
+                result.destination.index
+            );
+            setCustomAttributes(items);
+        }
+    };
+
+    // Function to move attribute values up/down in the selected list (fallback)
+    const handleMoveValueUp = (index) => {
+        if (index > 0) {
+            const newValues = [...attrValues.values];
+            [newValues[index], newValues[index - 1]] = [newValues[index - 1], newValues[index]];
+            setAttrValues(prev => ({ ...prev, values: newValues }));
+        }
+    };
+
+    const handleMoveValueDown = (index) => {
+        if (index < attrValues.values.length - 1) {
+            const newValues = [...attrValues.values];
+            [newValues[index], newValues[index + 1]] = [newValues[index + 1], newValues[index]];
+            setAttrValues(prev => ({ ...prev, values: newValues }));
+        }
+    };
+
     // UPDATED: generateCombinations function with image integration
     const generateCombinations = (data, variantName) => {
+        const allVariants = getAllVariants();
         const allCombinations = data.reduce((acc, variation, index) => {
             const { name, values } = variation;
             const safeValues = Array.isArray(values) ? values : values ? [values] : []
 
             if (acc.length === 0) {
                 return safeValues?.map((value) => {
-                    const variantData = variantName.find((variant) => variant.variant_name === name);
+                    const variantData = allVariants.find((variant) => variant.variant_name === name);
                     const attributeData = variantData?.variant_attribute.find((attr) => attr.attribute_value === value);
 
                     // Get images from the attribute data or fallback to null values
@@ -278,7 +446,7 @@ const VariantModal = ({
 
             return acc.flatMap((combination) =>
                 values?.map((value) => {
-                    const variantData = variantName.find((variant) => variant.variant_name === name);
+                    const variantData = allVariants.find((variant) => variant.variant_name === name);
                     const attributeData = variantData?.variant_attribute.find((attr) => attr.attribute_value === value);
 
                     // Get images from the attribute data or fallback to null values
@@ -370,9 +538,10 @@ const VariantModal = ({
 
     // Add this function to update combination names/attributes
     const updateCombinationNames = (combinations, varientName) => {
+        const allVariants = getAllVariants();
         return combinations.map(combinationGroup => {
             // Find the current variant data by ID (more reliable than name)
-            const currentVariant = varientName.find(variant =>
+            const currentVariant = allVariants.find(variant =>
                 variant.variant_name === combinationGroup.variant_name ||
                 variant.id === combinationGroup.variantId
             );
@@ -567,23 +736,12 @@ const VariantModal = ({
         }
         setCombinations(data);
 
-        const filterId1 = varientName.find(
-            (item) => item?.variant_name === variationsData[0]?.name
-        )?.id;
-
-        const filterId2 = varientName.find(
-            (item) => item?.variant_name === variationsData[1]?.name
-        )?.id;
-
-        const filterId3 = varientName.find(
-            (item) => item?.variant_name === variationsData[2]?.name
-        )?.id;
-
+        const allVariants = getAllVariants();
         const parentMainIds = variationsData.map(variation => variation.variantId).filter(Boolean);
 
         const allIds = variationsData
             .flatMap((variation) => {
-                const variant = varientName.find((item) => item.id === variation.variantId);
+                const variant = allVariants.find((item) => item.id === variation.variantId);
                 const safeValues = normalizeValues(variation.values);
 
                 return safeValues.map(
@@ -691,9 +849,14 @@ const VariantModal = ({
                             </Box>
                         )}
                         {variationsData?.length < 3 && (
-                            <Button variant="outlined" sx={{ fontSize: '13px', fontWeight: 500, borderRadius: '30px', color: '#000', borderColor: '#000' }} onClick={() => setShowVariantList(true)}>
-                                <AddIcon sx={{ fontSize: '21px' }} />Add a Variation
-                            </Button>
+                            <Box display="flex" gap={1} flexDirection="column">
+                                <Button variant="outlined" sx={{ fontSize: '13px', fontWeight: 500, borderRadius: '30px', color: '#000', borderColor: '#000' }} onClick={() => setShowVariantList(true)}>
+                                    <AddIcon sx={{ fontSize: '21px' }} />Add a Predefined Variation
+                                </Button>
+                                <Button variant="outlined" sx={{ fontSize: '13px', fontWeight: 500, borderRadius: '30px', color: '#000', borderColor: '#000' }} onClick={handleOpenCustomVariantDialog}>
+                                    <AddIcon sx={{ fontSize: '21px' }} />Add a Custom Variation
+                                </Button>
+                            </Box>
                         )}
                         {variationsData?.length > 0 && (
                             <Box py={1} sx={{ borderTop: '1px solid #e0e0e0', marginTop: '18px' }}>
@@ -819,30 +982,90 @@ const VariantModal = ({
                                     You can add upto 2 variations. Use the variation types listed here for peak
                                     discoverability.
                                 </Typography>
-                                <Box my={4}>
-                                    {varientName?.map((item, index) => (
-                                        <Button
-                                            key={index}
-                                            mt={2}
-                                            variant="contained"
-                                            sx={{
-                                                backgroundColor: "lightgrey",
-                                                color: "black",
-                                                borderRadius: "50px",
-                                                marginRight: "10px",
-                                                '&:hover': { background: '#000', color: '#fff' }
-                                            }}
-                                            onClick={() => {
-                                                setSelectedVariations([...selectedVariations, item?.variant_name]);
-                                                setSelectedVariant(item?.variant_name);
-                                            }}
-                                            disabled={selectedVariations.includes(item?.variant_name)}
-                                        >
-                                            {selectedVariations.includes(item?.variant_name) && <CheckIcon />}{" "}
-                                            {item?.variant_name}
-                                        </Button>
-                                    ))}
-                                </Box>
+
+                                {/* Predefined Variants Section */}
+                                {varientName.length > 0 && (
+                                    <Box mt={3}>
+                                        <Typography variant="h6" gutterBottom>
+                                            Predefined Variants
+                                        </Typography>
+                                        <Box my={2}>
+                                            {varientName.map((item, index) => (
+                                                <Button
+                                                    key={index}
+                                                    variant="contained"
+                                                    sx={{
+                                                        backgroundColor: "lightgrey",
+                                                        color: "black",
+                                                        borderRadius: "50px",
+                                                        marginRight: "10px",
+                                                        marginBottom: "10px",
+                                                        '&:hover': { background: '#000', color: '#fff' }
+                                                    }}
+                                                    onClick={() => {
+                                                        setSelectedVariations([...selectedVariations, item?.variant_name]);
+                                                        setSelectedVariant(item?.variant_name);
+                                                    }}
+                                                    disabled={selectedVariations.includes(item?.variant_name)}
+                                                >
+                                                    {selectedVariations.includes(item?.variant_name) && <CheckIcon />}{" "}
+                                                    {item?.variant_name}
+                                                </Button>
+                                            ))}
+                                        </Box>
+                                    </Box>
+                                )}
+
+                                {/* Custom Variants Section */}
+                                {customVariants.length > 0 && (
+                                    <Box mt={3}>
+                                        <Typography variant="h6" gutterBottom>
+                                            Custom Variants
+                                        </Typography>
+                                        <Box my={2}>
+                                            {customVariants.map((item, index) => (
+                                                <Button
+                                                    key={index}
+                                                    variant="contained"
+                                                    sx={{
+                                                        backgroundColor: "#e3f2fd",
+                                                        color: "black",
+                                                        borderRadius: "50px",
+                                                        marginRight: "10px",
+                                                        marginBottom: "10px",
+                                                        border: "1px solid #2196f3",
+                                                        '&:hover': { background: '#1976d2', color: '#fff' }
+                                                    }}
+                                                    onClick={() => {
+                                                        setSelectedVariations([...selectedVariations, item?.variant_name]);
+                                                        setSelectedVariant(item?.variant_name);
+                                                    }}
+                                                    disabled={selectedVariations.includes(item?.variant_name)}
+                                                >
+                                                    {selectedVariations.includes(item?.variant_name) && <CheckIcon />}{" "}
+                                                    {item?.variant_name}
+                                                </Button>
+                                            ))}
+                                        </Box>
+                                    </Box>
+                                )}
+
+                                <Button
+                                    variant="outlined"
+                                    sx={{
+                                        fontSize: '13px',
+                                        fontWeight: 500,
+                                        borderRadius: '30px',
+                                        color: '#000',
+                                        borderColor: '#000',
+                                        mb: 2,
+                                        mt: 2
+                                    }}
+                                    onClick={handleOpenCustomVariantDialog}
+                                >
+                                    <AddIcon sx={{ fontSize: '21px' }} />Add Custom Variation
+                                </Button>
+                                <br />
                                 <Button mt={2} sx={buttonStyle} onClick={handleCancel}>
                                     Cancel
                                 </Button>
@@ -861,23 +1084,64 @@ const VariantModal = ({
                                     discoverability. Buyers won't see custom options in filters.
                                 </Typography>
                                 <Box my={3}>
-                                    {/* Dropdown Component */}
-                                    <Autocomplete
-                                        multiple
-                                        id="dropdown-with-list"
-                                        true
-                                        disableCloseOnSelect
-                                        options={[...attrOptions, `Add All Options (${attrOptions?.length})`]}
-                                        getOptionLabel={(option) => option}
-                                        value={[]}
-                                        onChange={(event, newValue) => {
-                                            handleTagHandler(event, newValue);
-                                        }}
-                                        renderInput={(params) => (
+                                    {/* Dropdown Component for predefined variants */}
+                                    {varientName.find(item => item.variant_name === selectedVariant) ? (
+                                        <Autocomplete
+                                            multiple
+                                            id="dropdown-with-list"
+                                            true
+                                            disableCloseOnSelect
+                                            options={[...attrOptions, `Add All Options (${attrOptions?.length})`]}
+                                            getOptionLabel={(option) => option}
+                                            value={[]}
+                                            onChange={(event, newValue) => {
+                                                handleTagHandler(event, newValue);
+                                            }}
+                                            renderInput={(params) => (
+                                                <TextField
+                                                    {...params}
+                                                    label="Enter an option..."
+                                                    placeholder="Enter an option..."
+                                                    sx={{
+                                                        "& .MuiInputBase-root": {
+                                                            padding: "0 11px",
+                                                        },
+                                                        "& .MuiFormLabel-root": {
+                                                            top: "-7px",
+                                                        },
+                                                    }}
+                                                />
+                                            )}
+                                            renderOption={(props, option) => {
+                                                const isSelected = attrValues.values.includes(option);
+                                                return (
+                                                    <ListItem
+                                                        {...props}
+                                                        sx={{
+                                                            backgroundColor: isSelected ? "rgba(0, 123, 255, 0.2)" : "inherit",
+                                                            "&:hover": {
+                                                                backgroundColor: isSelected
+                                                                    ? "rgba(0, 123, 255, 0.3)"
+                                                                    : "rgba(0, 0, 0, 0.04)",
+                                                            },
+                                                        }}
+                                                    >
+                                                        <ListItemText primary={option} />
+                                                        {isSelected && <CheckIcon color="primary" />}
+                                                    </ListItem>
+                                                );
+                                            }}
+                                        />
+                                    ) : (
+                                        /* Text input for custom variants */
+                                        <Box>
                                             <TextField
-                                                {...params}
-                                                label="Enter an option..."
-                                                placeholder="Enter an option..."
+                                                fullWidth
+                                                label="Add new attribute"
+                                                value={newAttribute}
+                                                onChange={(e) => setNewAttribute(e.target.value)}
+                                                onKeyPress={handleAttributeKeyPress}
+                                                placeholder="Enter attribute value and press Enter"
                                                 sx={{
                                                     "& .MuiInputBase-root": {
                                                         padding: "0 11px",
@@ -887,82 +1151,202 @@ const VariantModal = ({
                                                     },
                                                 }}
                                             />
-                                        )}
-                                        renderOption={(props, option) => {
-                                            const isSelected = attrValues.values.includes(option);
-                                            return (
-                                                <ListItem
-                                                    {...props}
-                                                    sx={{
-                                                        backgroundColor: isSelected ? "rgba(0, 123, 255, 0.2)" : "inherit",
-                                                        "&:hover": {
-                                                            backgroundColor: "rgba(0, 123, 255, 0.1)",
-                                                        },
-                                                    }}
-                                                    secondaryAction={
-                                                        <IconButton edge="end" size="small">
-                                                            <AddIcon />
-                                                        </IconButton>
-                                                    }
-                                                >
-                                                    <ListItemText primary={option} />
-                                                </ListItem>
-                                            );
-                                        }}
-                                        sx={{ width: "100%" }}
-                                    />
-
-                                    {/* List of Selected Options */}
-                                    <List>
-                                        {attrValues?.values?.map((option, index) => (
-                                            <ListItem
-                                                key={index}
-                                                sx={{
-                                                    border: "1px solid #ccc",
-                                                    borderRadius: "4px",
-                                                    marginBottom: "8px",
-                                                    display: "flex",
-                                                    alignItems: "center",
-                                                }}
+                                            <Button
+                                                onClick={handleAddNewAttribute}
+                                                sx={{ mt: 1 }}
+                                                disabled={!newAttribute.trim()}
                                             >
-                                                <ListItemText primary={option} />
-                                                <ListItemSecondaryAction>
-                                                    <IconButton edge="end" onClick={() => handleTagDelete(option)}>
-                                                        <DeleteIcon />
-                                                    </IconButton>
-                                                </ListItemSecondaryAction>
-                                            </ListItem>
-                                        ))}
-                                    </List>
+                                                Add Attribute
+                                            </Button>
+                                        </Box>
+                                    )}
+
+                                    {/* Selected Attributes List with Drag and Drop */}
+                                    {attrValues.values.length > 0 && (
+                                        <Box mt={3}>
+                                            <Typography variant="subtitle1" gutterBottom>
+                                                Selected Attributes (Drag to reorder):
+                                            </Typography>
+                                            <DragDropContext onDragEnd={(result) => onDragEnd(result, 'attributes')}>
+                                                <Droppable droppableId="attributes">
+                                                    {(provided) => (
+                                                        <List {...provided.droppableProps} ref={provided.innerRef}>
+                                                            {attrValues.values.map((option, index) => (
+                                                                <Draggable key={option} draggableId={option} index={index}>
+                                                                    {(provided, snapshot) => (
+                                                                        <ListItem
+                                                                            ref={provided.innerRef}
+                                                                            {...provided.draggableProps}
+                                                                            sx={{
+                                                                                border: "1px solid #e0e0e0",
+                                                                                borderRadius: "8px",
+                                                                                marginBottom: "8px",
+                                                                                padding: "8px 16px",
+                                                                                backgroundColor: snapshot.isDragging ? "#e3f2fd" : "#fafafa",
+                                                                                transform: snapshot.isDragging ? 'rotate(5deg)' : 'none',
+                                                                                transition: 'all 0.2s ease',
+                                                                                boxShadow: snapshot.isDragging ? '0 4px 8px rgba(0,0,0,0.2)' : 'none'
+                                                                            }}
+                                                                            secondaryAction={
+                                                                                <Box display="flex" gap={1}>
+                                                                                    <IconButton
+                                                                                        size="small"
+                                                                                        onClick={() => handleTagDelete(option)}
+                                                                                        color="error"
+                                                                                    >
+                                                                                        <DeleteIcon fontSize="small" />
+                                                                                    </IconButton>
+                                                                                </Box>
+                                                                            }
+                                                                        >
+                                                                            <div {...provided.dragHandleProps}>
+                                                                                <DragHandleIcon sx={{ mr: 2, color: 'gray', cursor: 'grab' }} />
+                                                                            </div>
+                                                                            <ListItemText
+                                                                                primary={
+                                                                                    <Typography>
+                                                                                        {option}
+                                                                                    </Typography>
+                                                                                }
+                                                                            />
+                                                                        </ListItem>
+                                                                    )}
+                                                                </Draggable>
+                                                            ))}
+                                                            {provided.placeholder}
+                                                        </List>
+                                                    )}
+                                                </Droppable>
+                                            </DragDropContext>
+                                        </Box>
+                                    )}
                                 </Box>
-                                <Box display="flex" alignItems={'center'} justifyContent="space-between" mt={4}>
+                                <Box display="flex" justifyContent="space-between">
+                                    <Button sx={buttonStyle} onClick={() => {
+                                        setSelectedVariant('');
+                                        setAttrValues({
+                                            name: "",
+                                            values: []
+                                        });
+                                        setAttrOptions([]);
+                                        setNewAttribute("");
+                                    }}>
+                                        Cancel
+                                    </Button>
                                     <Button
-                                        onClick={()=>{handleDeleteVariation(selectedVariant)}}
                                         variant="contained"
                                         sx={{ ...buttonStyle, ...{ background: '#000', color: '#fff' } }}
+                                        onClick={handleDone}
+                                        disabled={attrValues.values.length < 2}
                                     >
-                                        <DeleteIcon /> Delete variation
+                                        Done
                                     </Button>
-                                    <Box display="flex" alignItems={"center"}>
-                                        {attrValues?.values.length <= 1 && (
-                                            <Typography mr={1}>Add at least 2 option</Typography>
-                                        )}
-                                        <Button
-                                            onClick={handleDone}
-                                            disabled={attrValues?.values.length <= 1 ? true : false}
-                                            variant="contained"
-                                            sx={{ ...buttonStyle, ...{ background: 'grey', color: '#fff' } }}
-                                        >
-                                            Done
-                                        </Button>
-                                    </Box>
                                 </Box>
                             </>
                         )}
                     </Box>
-                )
-                }
+                )}
             </Modal>
+
+            {/* Custom Variant Dialog */}
+            <Dialog open={customVariantDialogOpen} onClose={handleCloseCustomVariantDialog} maxWidth="sm" fullWidth>
+                <DialogTitle>Add Custom Variation</DialogTitle>
+                <DialogContent>
+                    <TextField
+                        fullWidth
+                        label="Variation Name"
+                        value={customVariantName}
+                        onChange={(e) => setCustomVariantName(e.target.value)}
+                        margin="normal"
+                        placeholder="e.g., Style, Pattern, Finish, etc."
+                    />
+                    <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
+                        Add Attribute Values (Minimum 2 required)
+                    </Typography>
+
+                    {/* Text input for adding new attributes */}
+                    <Box display="flex" gap={1} mb={2}>
+                        <TextField
+                            fullWidth
+                            label="Add attribute value"
+                            value={newAttribute}
+                            onChange={(e) => setNewAttribute(e.target.value)}
+                            onKeyPress={handleAttributeKeyPress}
+                            placeholder="Enter attribute value and press Enter"
+                        />
+                        <Button
+                            onClick={handleAddNewAttribute}
+                            disabled={!newAttribute.trim()}
+                            variant="outlined"
+                            sx={{ minWidth: 'auto' }}
+                        >
+                            <AddIcon />
+                        </Button>
+                    </Box>
+
+                    {/* List of added attributes with Drag and Drop */}
+                    {customAttributes.filter(attr => attr.trim() !== "").length > 0 && (
+                        <Box mt={2}>
+                            <Typography variant="subtitle2" gutterBottom>
+                                Added Attributes (Drag to reorder):
+                            </Typography>
+                            <DragDropContext onDragEnd={(result) => onDragEnd(result, 'customAttributes')}>
+                                <Droppable droppableId="customAttributes">
+                                    {(provided) => (
+                                        <List {...provided.droppableProps} ref={provided.innerRef}>
+                                            {customAttributes.filter(attr => attr.trim() !== "").map((attribute, index) => (
+                                                <Draggable key={attribute} draggableId={attribute} index={index}>
+                                                    {(provided, snapshot) => (
+                                                        <ListItem
+                                                            ref={provided.innerRef}
+                                                            {...provided.draggableProps}
+                                                            sx={{
+                                                                border: "1px solid #e0e0e0",
+                                                                borderRadius: "8px",
+                                                                marginBottom: "8px",
+                                                                padding: "8px 16px",
+                                                                backgroundColor: snapshot.isDragging ? "#e3f2fd" : "#fafafa",
+                                                                transform: snapshot.isDragging ? 'rotate(5deg)' : 'none',
+                                                                transition: 'all 0.2s ease',
+                                                                boxShadow: snapshot.isDragging ? '0 4px 8px rgba(0,0,0,0.2)' : 'none'
+                                                            }}
+                                                            secondaryAction={
+                                                                <IconButton
+                                                                    size="small"
+                                                                    onClick={() => handleRemoveAttribute(index)}
+                                                                    color="error"
+                                                                >
+                                                                    <DeleteIcon fontSize="small" />
+                                                                </IconButton>
+                                                            }
+                                                        >
+                                                            <div {...provided.dragHandleProps}>
+                                                                <DragHandleIcon sx={{ mr: 2, color: 'gray', cursor: 'grab' }} />
+                                                            </div>
+                                                            <ListItemText primary={attribute} />
+                                                        </ListItem>
+                                                    )}
+                                                </Draggable>
+                                            ))}
+                                            {provided.placeholder}
+                                        </List>
+                                    )}
+                                </Droppable>
+                            </DragDropContext>
+                        </Box>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseCustomVariantDialog}>Cancel</Button>
+                    <Button
+                        onClick={handleSaveCustomVariant}
+                        variant="contained"
+                        disabled={!customVariantName.trim() || customAttributes.filter(attr => attr.trim() !== "").length < 2}
+                    >
+                        Save Variation
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </div>
     );
 };

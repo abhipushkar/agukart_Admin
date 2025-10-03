@@ -87,8 +87,30 @@ const CropImage = ({
     const VIEW_H = 500;
     const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
     const clampPan = ({ scale = 1, x = 0, y = 0 }) => {
-        const maxX = ((VIEW_W * scale) - VIEW_W) / 2;
-        const maxY = ((VIEW_H * scale) - VIEW_H) / 2;
+        if (!imgDimensions.width || !imgDimensions.height) {
+            return { scale, x: 0, y: 0 };
+        }
+
+        const imgAspect = imgDimensions.width / imgDimensions.height;
+        const viewAspect = VIEW_W / VIEW_H;
+
+        let maxX = 0;
+        let maxY = 0;
+
+        if (imgAspect > viewAspect) {
+            // Wide image - constrain vertical movement, allow horizontal within bounds
+            const scaledHeight = VIEW_W / imgAspect;
+            maxY = (VIEW_H - scaledHeight) / 2;
+            // When zoomed, allow more horizontal movement
+            maxX = (VIEW_W * (scale - 1)) / 2;
+        } else {
+            // Tall image - constrain horizontal movement, allow vertical within bounds
+            const scaledWidth = VIEW_H * imgAspect;
+            maxX = (VIEW_W - scaledWidth) / 2;
+            // When zoomed, allow more vertical movement
+            maxY = (VIEW_H * (scale - 1)) / 2;
+        }
+
         return {
             scale,
             x: clamp(x, -maxX, maxX),
@@ -120,19 +142,8 @@ const CropImage = ({
         const newY = clientY - dragStart.y;
 
         setTransformData(prev => {
-            if ((prev?.scale || 1) > 1) {
-                // when zoomed → free pan
-                return { ...prev, x: newX, y: newY };
-            } else {
-                // no zoom → restrict based on orientation
-                if (imgDimensions.width > imgDimensions.height) {
-                    // wide image → horizontal pan only
-                    return { ...prev, x: newX, y: 0, scale: 1 };
-                } else {
-                    // tall image → vertical pan only
-                    return { ...prev, y: newY, x: 0, scale: 1 };
-                }
-            }
+            const next = { scale: prev?.scale || 1, x: newX, y: newY };
+            return clampPan(next);
         });
     };
 
@@ -561,15 +572,15 @@ const CropImage = ({
                                                         alt="Zoomable"
                                                         onLoad={handleImageLoad}
                                                         style={{
-                                                            maxWidth: imgDimensions.width >= imgDimensions.height ? "100%" : "auto",
-                                                            maxHeight: imgDimensions.height > imgDimensions.width ? "100%" : "auto",
-                                                            objectFit: "contain",
+                                                            width: imgDimensions.width >= imgDimensions.height ? '100%' : 'auto',
+                                                            height: imgDimensions.height > imgDimensions.width ? '100%' : 'auto',
+                                                            objectFit: 'contain',
                                                             transformOrigin: "center center",
                                                             transform: `translate3d(${transformData?.x || 0}px, ${transformData?.y || 0}px, 0) scale(${transformData?.scale || 1})`,
                                                             transition: isDragging ? "none" : "transform 0.15s ease-out",
                                                             willChange: "transform",
                                                             backfaceVisibility: "hidden",
-                                                            pointerEvents: "none" // Prevent image from interfering with drag events
+                                                            pointerEvents: "none"
                                                         }}
                                                     />
                                                 </Box>
@@ -591,7 +602,7 @@ const CropImage = ({
                                                             type="range"
                                                             name="zoom"
                                                             min="1"
-                                                            max="3"
+                                                            max="5"
                                                             step="0.1"
                                                             value={transformData?.scale || 1}
                                                             onChange={(e) => handleTranslateChange("scale", Number(e.target.value))}
@@ -774,24 +785,24 @@ const CropImage = ({
                                                     </Typography>
                                                 ) : (
                                                     <Typography component="div">
-                                                        {/*<Button*/}
-                                                        {/*    sx={{*/}
-                                                        {/*        width: "100%",*/}
-                                                        {/*        display: "flex",*/}
-                                                        {/*        justifyContent: "center",*/}
-                                                        {/*        alignItems: "center",*/}
-                                                        {/*        borderRadius: "30px",*/}
-                                                        {/*        padding: "8px 16px",*/}
-                                                        {/*        border: "none",*/}
-                                                        {/*        background: "#ededed",*/}
-                                                        {/*        fontSize: "16px",*/}
-                                                        {/*        color: "#000",*/}
-                                                        {/*        "&:hover": { background: "#ededed", boxShadow: "0 0 3px #000" }*/}
-                                                        {/*    }}*/}
-                                                        {/*    onClick={() => setThumbnailOpen(true)}*/}
-                                                        {/*>*/}
-                                                        {/*    <OpenInFullIcon sx={{ marginRight: "4px" }} /> Adjust thumbnail*/}
-                                                        {/*</Button>*/}
+                                                        <Button
+                                                            sx={{
+                                                                width: "100%",
+                                                                display: "flex",
+                                                                justifyContent: "center",
+                                                                alignItems: "center",
+                                                                borderRadius: "30px",
+                                                                padding: "8px 16px",
+                                                                border: "none",
+                                                                background: "#ededed",
+                                                                fontSize: "16px",
+                                                                color: "#000",
+                                                                "&:hover": { background: "#ededed", boxShadow: "0 0 3px #000" }
+                                                            }}
+                                                            onClick={() => setThumbnailOpen(true)}
+                                                        >
+                                                            <OpenInFullIcon sx={{ marginRight: "4px" }} /> Adjust thumbnail
+                                                        </Button>
                                                     </Typography>
                                                 )}
                                             </>
