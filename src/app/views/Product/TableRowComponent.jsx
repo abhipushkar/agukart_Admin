@@ -11,6 +11,7 @@ import RotateLeftIcon from "@mui/icons-material/RotateLeft";
 import RotateRightIcon from "@mui/icons-material/RotateRight";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
+import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import Cropper from 'react-easy-crop';
 import { getCroppedImg } from './cropUtil';
 
@@ -26,6 +27,75 @@ const VisuallyHiddenInput = styled("input")({
     width: 1,
 });
 
+// Draggable row component
+const DraggableTableRow = ({
+                               children,
+                               index,
+                               onDragStart,
+                               onDragOver,
+                               onDrop,
+                               onDragEnd,
+                               isDragging,
+                               isDragOver,
+                               ...props
+                           }) => {
+    const handleDragStart = (e) => {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', index.toString());
+        onDragStart(e, index);
+    };
+
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        onDragOver(e, index);
+    };
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        onDrop(e, index);
+    };
+
+    return (
+        <TableRow
+            {...props}
+            draggable
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+            onDragEnd={onDragEnd}
+            sx={{
+                cursor: isDragging ? 'grabbing' : 'grab',
+                backgroundColor: isDragging
+                    ? 'rgba(25, 118, 210, 0.08)'
+                    : isDragOver
+                        ? 'rgba(0, 0, 0, 0.04)'
+                        : 'transparent',
+                opacity: isDragging ? 0.7 : 1,
+                transform: isDragging ? 'scale(1.02)' : 'scale(1)',
+                transition: 'all 0.2s ease',
+                boxShadow: isDragging ? '0 4px 20px rgba(0,0,0,0.15)' : 'none',
+                position: 'relative',
+                '&:hover': {
+                    backgroundColor: isDragging
+                        ? 'rgba(25, 118, 210, 0.08)'
+                        : 'rgba(0, 0, 0, 0.04)',
+                },
+                '& .drag-handle': {
+                    opacity: isDragging ? 1 : 0.3,
+                    transition: 'opacity 0.2s ease',
+                },
+                '&:hover .drag-handle': {
+                    opacity: 0.7,
+                },
+                borderBottom: isDragOver ? '2px dashed #1976d2' : '1px solid rgba(224, 224, 224, 1)'
+            }}
+        >
+            {children}
+        </TableRow>
+    );
+};
+
 const TableRowComponent = ({
                                comb,
                                handleCombChange,
@@ -38,15 +108,78 @@ const TableRowComponent = ({
                                handleImageUpload,
                                handleImageRemove,
                                setShowAll,
-                               handleEditImage
+                               handleEditImage,
+                               onRowReorder
                            }) => {
     const label = { inputProps: { "aria-label": "Switch demo" } };
+
+    // Drag and drop state
+    const [draggingIndex, setDraggingIndex] = useState(null);
+    const [dragOverIndex, setDragOverIndex] = useState(null);
 
     const handleSeeMore = () => {
         setShowAll((prev) => !prev);
     };
 
     const itemsToShow = showAll ? comb.combinations : comb.combinations.slice(0, 5);
+
+    // Fixed Drag and drop handlers - SIMPLIFIED VERSION
+    const handleDragStart = (e, index) => {
+        console.log('Drag start:', index);
+        setDraggingIndex(index);
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', index.toString());
+    };
+
+    const handleDragOver = (e, index) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+
+        // Only update if we're dragging over a different row
+        if (draggingIndex !== null && draggingIndex !== index) {
+            console.log('Drag over index:', index);
+            setDragOverIndex(index);
+        }
+    };
+
+    const handleDragEnd = () => {
+        console.log('Drag end');
+        setDraggingIndex(null);
+        setDragOverIndex(null);
+    };
+
+    const handleDrop = (e, targetIndex) => {
+        e.preventDefault();
+        const sourceIndex = parseInt(e.dataTransfer.getData('text/plain'));
+
+        console.log('Drop event - FINAL:', {
+            sourceIndex,
+            targetIndex, // This is the actual row index where drop occurred
+            dragOverIndex // This should be the same as targetIndex
+        });
+
+        // Use targetIndex directly - this is the actual row where the drop happened
+        if (sourceIndex !== targetIndex && onRowReorder) {
+            console.log('Calling onRowReorder with:', {
+                combindex,
+                sourceIndex,
+                targetIndex
+            });
+            onRowReorder(combindex, sourceIndex, targetIndex);
+        }
+
+        setDraggingIndex(null);
+        setDragOverIndex(null);
+    };
+
+    // Handle drag handle events
+    const handleDragHandleMouseDown = (e) => {
+        e.stopPropagation();
+    };
+
+    const handleDragHandleTouchStart = (e) => {
+        e.stopPropagation();
+    };
 
     const isImageEditable = (imageType, imageIndex, item) => {
         if (imageType === "preview_image") return true;
@@ -182,12 +315,41 @@ const TableRowComponent = ({
     return (
         <>
             {itemsToShow?.map((item, index) => (
-                <TableRow
-                    key={index}
-                    sx={{
-                        wordBreak: "keep-all"
-                    }}
+                <DraggableTableRow
+                    key={`${combindex}-${index}-${item.value1}-${item.value2}`}
+                    index={index}
+                    onDragStart={handleDragStart}
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
+                    onDragEnd={handleDragEnd}
+                    isDragging={draggingIndex === index}
+                    isDragOver={dragOverIndex === index}
                 >
+                    <TableCell align="center">
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <IconButton
+                                className="drag-handle"
+                                size="small"
+                                sx={{
+                                    cursor: 'grab',
+                                    '&:active': {
+                                        cursor: 'grabbing',
+                                    },
+                                    touchAction: 'none'
+                                }}
+                                onMouseDown={handleDragHandleMouseDown}
+                                onTouchStart={handleDragHandleTouchStart}
+                                draggable={false} // Important: don't make the button itself draggable
+                            >
+                                <DragIndicatorIcon
+                                    sx={{
+                                        color: 'text.secondary',
+                                        opacity: draggingIndex === index ? 1 : 0.6
+                                    }}
+                                />
+                            </IconButton>
+                        </Box>
+                    </TableCell>
                     <TableCell align="center">
                         <Checkbox {...label} size="small" />
                     </TableCell>
@@ -256,7 +418,7 @@ const TableRowComponent = ({
                             onChange={() => handleToggle(combindex, index)}
                         />
                     </TableCell>
-                </TableRow>
+                </DraggableTableRow>
             ))}
 
             {comb.combinations.length > 5 && (

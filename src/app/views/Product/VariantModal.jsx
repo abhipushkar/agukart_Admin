@@ -25,19 +25,12 @@ import {
     Dialog,
     DialogTitle,
     DialogContent,
-    DialogActions,
-    Chip
+    DialogActions
 } from "@mui/material";
 import { useEffect } from "react";
 import Card from "@mui/material/Card";
 import ModeEditIcon from "@mui/icons-material/ModeEdit";
 import Switch from "@mui/material/Switch";
-import { color } from "highcharts";
-import { set } from "lodash";
-import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
-import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
-import DragHandleIcon from '@mui/icons-material/DragHandle';
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 
 const style = {
     position: "absolute",
@@ -63,14 +56,6 @@ const buttonStyle = {
 }
 
 const label = { inputProps: { "aria-label": "Switch demo" } };
-
-// Reorder function for drag and drop
-const reorder = (list, startIndex, endIndex) => {
-    const result = Array.from(list);
-    const [removed] = result.splice(startIndex, 1);
-    result.splice(endIndex, 0, removed);
-    return result;
-};
 
 const VariantModal = ({
                           show,
@@ -106,9 +91,91 @@ const VariantModal = ({
     const [nameCombinations, setNameCombinations] = useState([]);
     const [customVariantDialogOpen, setCustomVariantDialogOpen] = useState(false);
     const [customVariantName, setCustomVariantName] = useState("");
-    const [customAttributes, setCustomAttributes] = useState([""]);
+    const [customVariantOptions, setCustomVariantOptions] = useState([""]);
     const [customVariants, setCustomVariants] = useState([]);
-    const [newAttribute, setNewAttribute] = useState("");
+
+    // Function to open custom variant dialog
+    const handleOpenCustomVariantDialog = () => {
+        setCustomVariantDialogOpen(true);
+        setCustomVariantName("");
+        setCustomVariantOptions([""]);
+    };
+
+    // Function to close custom variant dialog
+    // Function to close custom variant dialog
+    const handleCloseCustomVariantDialog = () => {
+        setCustomVariantDialogOpen(false);
+        setCustomVariantName("");
+        setCustomVariantOptions([""]);
+    };
+
+    // Function to add new option field
+    const handleAddOption = () => {
+        setCustomVariantOptions([...customVariantOptions, ""]);
+    };
+
+    // Function to remove option field
+    const handleRemoveOption = (index) => {
+        if (customVariantOptions.length > 1) {
+            const newOptions = customVariantOptions.filter((_, i) => i !== index);
+            setCustomVariantOptions(newOptions);
+        }
+    };
+
+    // Function to update option value
+    const handleOptionChange = (index, value) => {
+        const newOptions = [...customVariantOptions];
+        newOptions[index] = value;
+        setCustomVariantOptions(newOptions);
+    };
+
+    // Function to save custom variant - UPDATED: No ID generation for custom variants
+    const handleSaveCustomVariant = () => {
+        if (!customVariantName.trim()) {
+            alert("Please enter a variant name");
+            return;
+        }
+
+        const validOptions = customVariantOptions.filter(opt => opt.trim() !== "");
+        if (validOptions.length < 2) {
+            alert("Please add at least 2 options");
+            return;
+        }
+
+        // Create custom variant object - NO IDs for custom variants
+        const newCustomVariant = {
+            variant_name: customVariantName.trim(),
+            variant_attribute: validOptions.map((option) => ({
+                // No _id for custom attributes - backend will handle this
+                attribute_value: option.trim(),
+                main_images: [null, null, null],
+                preview_image: null,
+                thumbnail: null
+            })),
+            isCustom: true
+        };
+
+        // Add to custom variants list
+        setCustomVariants(prev => [...prev, newCustomVariant]);
+
+        // Close dialog and reset
+        handleCloseCustomVariantDialog();
+
+        // Auto-select the newly created variant
+        setSelectedVariations([...selectedVariations, newCustomVariant.variant_name]);
+        setSelectedVariant(newCustomVariant.variant_name);
+
+        // Set attribute options for the new variant
+        setAttrOptions(validOptions);
+        setAttrValues({
+            name: newCustomVariant.variant_name,
+            values: [],
+            // Remove variantId - we'll use name as identifier until backend provides IDs
+        });
+    };
+
+    // Combine predefined variants with custom variants
+    const allVariants = [...varientName, ...customVariants];
 
     const handleTagHandler = (event, newValue) => {
         if (newValue == `Add All Options (${attrOptions?.length})`) {
@@ -137,23 +204,23 @@ const VariantModal = ({
     const handleApplyCancel = () => {
         handleCloseVariant();
 
-        // Use variantId directly from variationsData instead of looking up by name
-        const parentMainIds = variationsData.map(variation => variation.variantId).filter(Boolean);
+        // Use variant names as identifiers since we don't have backend IDs yet
+        const parentMainNames = variationsData.map(variation => variation.name).filter(Boolean);
 
-        const allIds = variationsData
+        const allAttributeValues = variationsData
             .flatMap((variation) => {
-                const variant = varientName.find((item) => item.id === variation.variantId) ||
-                    customVariants.find((item) => item.id === variation.variantId);
+                const variant = allVariants.find((item) => item.variant_name === variation.name);
                 return variation?.values?.map(
-                    (value) => variant?.variant_attribute.find((attr) => attr.attribute_value === value)?._id
+                    (value) => variant?.variant_attribute.find((attr) => attr.attribute_value === value)?.attribute_value
                 );
             })
             .filter(Boolean);
 
         setFormData((prev) => ({
             ...prev,
-            ParentMainId: prev.ParentMainId.filter((id) => !parentMainIds.includes(id)),
-            varientName: prev.varientName.filter((id) => !allIds.includes(id)),
+            // Filter by name instead of ID since we don't have backend IDs for custom variants
+            ParentMainId: prev.ParentMainId.filter((id) => !parentMainNames.includes(id)),
+            varientName: prev.varientName.filter((name) => !allAttributeValues.includes(name)),
         }));
 
         setShowVariantList(false);
@@ -166,27 +233,22 @@ const VariantModal = ({
 
     useEffect(() => {
         if (selectedVariant) {
-            // Check both predefined variants and custom variants
-            const data = varientName.filter((item) => item?.variant_name === selectedVariant);
-            const customData = customVariants.filter((item) => item?.variant_name === selectedVariant);
-
-            const allData = [...data, ...customData];
-            const options = allData[0]?.variant_attribute.map((item) => item?.attribute_value);
+            const data = allVariants.filter((item) => item?.variant_name === selectedVariant);
+            const options = data[0]?.variant_attribute.map((item) => item?.attribute_value);
             setAttrOptions(options);
         }
     }, [selectedVariant]);
 
     const handleDeleteVariation = (selectedVariantName) => {
-        // Check both predefined and custom variants
-        const variant = varientName.find((item) => item.variant_name === selectedVariantName) ||
-            customVariants.find((item) => item.variant_name === selectedVariantName);
-        const parentMainId = variant?.id;
-        const allIds = variant?.variant_attribute.map((attr) => attr._id);
+        const variant = allVariants.find((item) => item.variant_name === selectedVariantName);
+        const parentMainName = variant.variant_name;
+        const allAttributeValues = variant?.variant_attribute.map((attr) => attr.attribute_value);
 
         setFormData((prev) => ({
             ...prev,
-            ParentMainId: prev.ParentMainId.filter((id) => id !== parentMainId),
-            varientName: prev.varientName.filter((id) => !allIds.includes(id)),
+            // Use name as identifier for custom variants
+            ParentMainId: prev.ParentMainId.filter((id) => id !== parentMainName),
+            varientName: prev.varientName.filter((name) => !allAttributeValues.includes(name)),
         }));
         setSelectedVariant("");
         setAttrValues({
@@ -206,19 +268,15 @@ const VariantModal = ({
         setShowVariantList(false);
     };
 
-    // In handleDone function - update to store variantId
+    // In handleDone function - updated to use name as identifier
     const handleDone = () => {
         if (isEdit) {
             setVariationsData((prv) =>
-                prv.map((item, i) => (item?.variantId === attrValues.variantId ? attrValues : item))
+                prv.map((item, i) => (item?.name === attrValues.name ? attrValues : item))
             );
         } else {
-            // Find the variant in both predefined and custom variants to get its ID
-            const variantData = varientName.find(item => item.variant_name === selectedVariant) ||
-                customVariants.find(item => item.variant_name === selectedVariant);
             setVariationsData((prv) => [...prv, {
                 ...attrValues,
-                variantId: variantData?.id, // Store the variant ID
                 name: selectedVariant
             }]);
         }
@@ -226,210 +284,55 @@ const VariantModal = ({
         setSelectedVariant("");
         setAttrValues({
             name: "",
-            values: [],
-            variantId: null // Initialize with variantId
+            values: []
         });
         setAttrOptions([]);
         setIsEdit(false);
     };
 
-    const handleDeleteVariant = (variantId, index) => {
-        // Use variantId directly instead of looking up by name
-        const variant = varientName.find((item) => item.id === variantId) ||
-            customVariants.find((item) => item.id === variantId);
-        const parentMainId = variant?.id;
-        const allIds = variant?.variant_attribute?.map((attr) => attr._id) || [];
+    const handleTagDelete = (option) => {
+        setAttrValues((prv) => ({ ...prv, values: prv.values.filter((item) => item !== option) }));
+    }
 
-        console.log({ parentMainId, allIds });
-        setFormData((prev) => ({
-            ...prev,
-            ParentMainId: prev.ParentMainId.filter((id) => id !== parentMainId),
-            varientName: prev.varientName.filter((id) => !allIds.includes(id)),
-        }));
-
-        const filterData = variationsData.filter((item, i) => i !== index);
-        setVariationsData(filterData);
-        const filterSelected = selectedVariations.filter((item) => item !== variant?.variant_name);
-        setSelectedVariations(filterSelected);
-        setFormValues({ prices: "", quantities: "", isCheckedPrice: false, isCheckedQuantity: false });
-        setCombinations([]);
-    };
-
-    const handleEdit = (item) => {
-        setShowVariantList(true);
-        setSelectedVariant(item?.name);
-        setAttrValues((prv) => ({ ...prv, name: item?.name, values: item?.values, variantId: item?.variantId }));
-        setIsEdit(true);
-    };
-
-    const handleChange = (e) => {
-        const { name, value, checked } = e.target;
-        if (name === "isCheckedPrice" || name === "isCheckedQuantity") {
-            setFormValues((prev) => ({ ...prev, [name]: checked }));
-        } else {
-            setFormValues((prev) => ({ ...prev, [name]: value }));
+    const generateNameCombinations = () => {
+        const names = variationsData.map(item => item.name);
+        const combinations = [...names];
+        for (let i = 0; i < names.length; i++) {
+            for (let j = i + 1; j < names.length; j++) {
+                combinations.push(`${names[i]} and ${names[j]}`);
+            }
+        }
+        setNameCombinations(combinations);
+        if (!formValues?.prices && !formValues?.quantities) {
+            setFormValues((prv) => ({
+                ...prv,
+                prices: combinations[0],
+                quantities: combinations[0]
+            }));
         }
     };
 
-    // Custom Variant Functions
-    const handleOpenCustomVariantDialog = () => {
-        setCustomVariantDialogOpen(true);
-        setCustomVariantName("");
-        setCustomAttributes([""]);
-        setNewAttribute("");
-    };
-
-    const handleCloseCustomVariantDialog = () => {
-        setCustomVariantDialogOpen(false);
-        setCustomVariantName("");
-        setCustomAttributes([""]);
-        setNewAttribute("");
-    };
-
-    const handleAddNewAttribute = () => {
-        if (newAttribute.trim()) {
-            setCustomAttributes(prev => [...prev, newAttribute.trim()]);
-            setNewAttribute("");
-        }
-    };
-
-    const handleAttributeKeyPress = (e) => {
-        if (e.key === 'Enter') {
-            handleAddNewAttribute();
-        }
-    };
-
-    const handleRemoveAttribute = (index) => {
-        setCustomAttributes(prev => prev.filter((_, i) => i !== index));
-    };
-
-    const handleMoveAttributeUp = (index) => {
-        if (index > 0) {
-            const newAttributes = [...customAttributes];
-            [newAttributes[index], newAttributes[index - 1]] = [newAttributes[index - 1], newAttributes[index]];
-            setCustomAttributes(newAttributes);
-        }
-    };
-
-    const handleMoveAttributeDown = (index) => {
-        if (index < customAttributes.length - 1) {
-            const newAttributes = [...customAttributes];
-            [newAttributes[index], newAttributes[index + 1]] = [newAttributes[index + 1], newAttributes[index]];
-            setCustomAttributes(newAttributes);
-        }
-    };
-
-    const handleSaveCustomVariant = () => {
-        if (!customVariantName.trim()) {
-            alert("Please enter a variant name");
-            return;
-        }
-
-        const filteredAttributes = customAttributes.filter(attr => attr.trim() !== "");
-        if (filteredAttributes.length < 2) {
-            alert("Please add at least 2 attribute values");
-            return;
-        }
-
-        // Create custom variant object
-        const customVariant = {
-            id: `custom-${Date.now()}`,
-            variant_name: customVariantName.trim(),
-            variant_attribute: filteredAttributes.map((attr, index) => ({
-                _id: `custom-attr-${Date.now()}-${index}`,
-                attribute_value: attr.trim(),
-                main_images: [null, null, null],
-                preview_image: null,
-                thumbnail: null
-            }))
-        };
-
-        // Add to custom variants
-        setCustomVariants(prev => [...prev, customVariant]);
-
-        // Auto-select this variant and add to selected variations
-        setSelectedVariations(prev => [...prev, customVariant.variant_name]);
-        setSelectedVariant(customVariant.variant_name);
-
-        // Set attributes for selection
-        setAttrValues(prev => ({
-            ...prev,
-            name: customVariant.variant_name,
-            values: filteredAttributes
-        }));
-
-        // Close dialog
-        handleCloseCustomVariantDialog();
-    };
-
-    // Combine predefined and custom variants for display
-    const getAllVariants = () => {
-        return [...varientName, ...customVariants];
-    };
-
-    // Drag and drop handlers
-    const onDragEnd = (result, listType) => {
-        if (!result.destination) {
-            return;
-        }
-
-        if (listType === 'attributes') {
-            const items = reorder(
-                attrValues.values,
-                result.source.index,
-                result.destination.index
-            );
-            setAttrValues(prev => ({ ...prev, values: items }));
-        } else if (listType === 'customAttributes') {
-            const filteredAttributes = customAttributes.filter(attr => attr.trim() !== "");
-            const items = reorder(
-                filteredAttributes,
-                result.source.index,
-                result.destination.index
-            );
-            setCustomAttributes(items);
-        }
-    };
-
-    // Function to move attribute values up/down in the selected list (fallback)
-    const handleMoveValueUp = (index) => {
-        if (index > 0) {
-            const newValues = [...attrValues.values];
-            [newValues[index], newValues[index - 1]] = [newValues[index - 1], newValues[index]];
-            setAttrValues(prev => ({ ...prev, values: newValues }));
-        }
-    };
-
-    const handleMoveValueDown = (index) => {
-        if (index < attrValues.values.length - 1) {
-            const newValues = [...attrValues.values];
-            [newValues[index], newValues[index + 1]] = [newValues[index + 1], newValues[index]];
-            setAttrValues(prev => ({ ...prev, values: newValues }));
-        }
-    };
-
-    // UPDATED: generateCombinations function with image integration
+    // UPDATED: generateCombinations function to work with names instead of IDs
     const generateCombinations = (data, variantName) => {
-        const allVariants = getAllVariants();
         const allCombinations = data.reduce((acc, variation, index) => {
             const { name, values } = variation;
             const safeValues = Array.isArray(values) ? values : values ? [values] : []
 
             if (acc.length === 0) {
                 return safeValues?.map((value) => {
-                    const variantData = allVariants.find((variant) => variant.variant_name === name);
+                    const variantData = variantName.find((variant) => variant.variant_name === name);
                     const attributeData = variantData?.variant_attribute.find((attr) => attr.attribute_value === value);
 
                     // Get images from the attribute data or fallback to null values
                     const main_images = attributeData?.main_images || [null, null, null];
                     const preview_image = attributeData?.preview_image || null;
                     const thumbnail = attributeData?.thumbnail || null;
-                    const filteredId = attributeData?._id;
 
                     return {
                         [`value${index + 1}`]: value,
                         [`name${index + 1}`]: name,
-                        combIds: [filteredId],
+                        // Store attribute value instead of ID for custom variants
+                        combValues: [value],
                         price: "",
                         qty: "",
                         isVisible: true,
@@ -446,20 +349,20 @@ const VariantModal = ({
 
             return acc.flatMap((combination) =>
                 values?.map((value) => {
-                    const variantData = allVariants.find((variant) => variant.variant_name === name);
+                    const variantData = variantName.find((variant) => variant.variant_name === name);
                     const attributeData = variantData?.variant_attribute.find((attr) => attr.attribute_value === value);
 
                     // Get images from the attribute data or fallback to null values
                     const main_images = attributeData?.main_images || [null, null, null];
                     const preview_image = attributeData?.preview_image || null;
                     const thumbnail = attributeData?.thumbnail || null;
-                    const filteredId = attributeData?._id;
 
                     return {
                         ...combination,
                         [`value${index + 1}`]: value,
                         [`name${index + 1}`]: name,
-                        combIds: [...(combination.combIds || []), filteredId],
+                        // Store attribute value instead of ID
+                        combValues: [...(combination.combValues || []), value],
                         price: "",
                         qty: "",
                         isVisible: true,
@@ -478,7 +381,197 @@ const VariantModal = ({
         return allCombinations;
     };
 
-    // UPDATED: transformCombinations function to preserve images
+    // UPDATED: handleGenerate function - EXCLUDE custom variants from FormData
+    const handleGenerate = async () => {
+        let data = [];
+        let index = 0;
+        const existsPrice = variationsData.find(variation => variation.name == formValues?.prices)
+        const existsQuantity = variationsData.find(variation => variation.name == formValues?.quantities)
+        if ((formValues?.isCheckedPrice || formValues?.isCheckedQuantity) && (formValues?.prices || formValues?.quantities)) {
+            if (existsPrice && existsQuantity) {
+                for (const item of variationsData) {
+                    let result = await generateCombinations([item], allVariants);
+                    data.push({
+                        variant_name: item?.name,
+                        combinations: result,
+                        main_images: item?.main_images,
+                        preview_image: item?.preview_image,
+                        thumbnail: item?.thumbnail
+                    });
+                }
+            } else {
+                if (formValues?.prices == formValues?.quantities && formValues.isCheckedPrice && formValues.isCheckedQuantity) {
+                    const variants = formValues?.prices.split("and").map(price => price.trim());
+                    const variationData = variationsData.filter((item) => variants.includes(item.name));
+                    let result = await generateCombinations(variationData, allVariants);
+                    data.push({
+                        variant_name: formValues?.prices || formValues?.quantities,
+                        combinations: result
+                    });
+                    if (variationsData.length > 2) {
+                        let variationData = variationsData.filter((item) => !variants.includes(item.name));
+                        let result = await generateCombinations(variationData, allVariants);
+                        data.push({
+                            variant_name: variationData[0].name,
+                            combinations: result
+                        });
+                    }
+                }
+                else {
+                    if (formValues?.prices == existsPrice?.name) {
+                        if (formValues.isCheckedPrice) {
+                            let variationData = variationsData.filter((item) => item.name == formValues?.prices);
+                            let result = await generateCombinations(variationData, allVariants);
+                            data.push({
+                                variant_name: formValues?.prices,
+                                combinations: result
+                            });
+                        }
+                        if (formValues.isCheckedQuantity) {
+                            const variants = formValues?.quantities.split("and").map(qty => qty.trim());
+                            let variationData = variationsData.filter((item) => variants.includes(item.name));
+                            let result = await generateCombinations(variationData, allVariants);
+                            data.push({
+                                variant_name: formValues?.quantities,
+                                combinations: result
+                            });
+                            if (!formValues.isCheckedPrice && variationsData.length > 2) {
+                                let variationData = variationsData.filter((item) => !variants.includes(item.name));
+                                console.log(variationData, "variationData");
+                                let result = await generateCombinations(variationData, allVariants);
+                                data.push({
+                                    variant_name: variationData[0].name,
+                                    combinations: result
+                                });
+                            }
+                        }
+                        if (formValues.isCheckedPrice && formValues.isCheckedQuantity && variationsData.length > 2) {
+                            const variants = formValues?.quantities.split("and").map(qty => qty.trim());
+                            variants.push(formValues?.prices);
+                            let variationData = variationsData.filter((item) => !variants.includes(item.name));
+                            if (variationData.length > 0) {
+                                let result = await generateCombinations(variationData, allVariants);
+                                data.push({
+                                    variant_name: variationData[0].name,
+                                    combinations: result
+                                });
+                            }
+                        }
+                    } else if (formValues?.prices.includes("and") && formValues?.quantities.includes("and")) {
+                        if (formValues.isCheckedPrice) {
+                            const variants = formValues?.prices.split("and").map(price => price.trim());
+                            let variationData = variationsData.filter((item) => variants.includes(item.name));
+                            let result = await generateCombinations(variationData, allVariants);
+                            data.push({
+                                variant_name: formValues?.prices,
+                                combinations: result
+                            });
+                        }
+                        if (formValues.isCheckedQuantity) {
+                            const variants2 = formValues?.quantities.split("and").map(qty => qty.trim());
+                            let variationData = variationsData.filter((item) => variants2.includes(item.name));
+                            let result = await generateCombinations(variationData, allVariants);
+                            data.push({
+                                variant_name: formValues?.quantities,
+                                combinations: result
+                            });
+                        }
+                    } else {
+                        if (formValues.isCheckedPrice) {
+                            const variants = formValues?.prices.split("and").map(price => price.trim());
+                            let variationData = variationsData.filter((item) => variants.includes(item.name));
+                            let result = await generateCombinations(variationData, allVariants);
+                            data.push({
+                                variant_name: formValues?.prices,
+                                combinations: result
+                            });
+                            if (!formValues.isCheckedQuantity && variationsData.length > 2) {
+                                let variationData = variationsData.filter((item) => !variants.includes(item.name));
+                                console.log(variationData, "variationData");
+                                let result = await generateCombinations(variationData, allVariants);
+                                data.push({
+                                    variant_name: variationData[0].name,
+                                    combinations: result
+                                });
+                            }
+                        }
+                        if (formValues.isCheckedQuantity) {
+                            let variationData = variationsData.filter((item) => item.name == formValues?.quantities);
+                            let result = await generateCombinations(variationData, allVariants);
+                            data.push({
+                                variant_name: formValues?.quantities,
+                                combinations: result
+                            });
+                        }
+                        if (formValues.isCheckedPrice && formValues.isCheckedQuantity && variationsData.length > 2) {
+                            const variants = formValues?.prices?.split("and").map(price => price.trim());
+                            variants.push(formValues?.quantities);
+                            let variationData = variationsData.filter((item) => !variants.includes(item.name));
+                            if (variationData.length > 0) {
+                                let result = await generateCombinations(variationData, allVariants);
+                                data.push({
+                                    variant_name: variationData[0].name,
+                                    combinations: result
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            for (const item of variationsData) {
+                let result = await generateCombinations([item], allVariants);
+                data.push({
+                    variant_name: item?.name,
+                    combinations: result,
+                    main_images: item?.main_images,
+                    preview_image: item?.preview_image,
+                    thumbnail: item?.thumbnail
+                });
+            }
+        }
+        setCombinations(data);
+
+        // UPDATED: Only include predefined variants in FormData - EXCLUDE custom variants
+        const parentMainIds = variationsData
+            .map(variation => {
+                const variant = allVariants.find((item) => item.variant_name === variation.name);
+                // Only include predefined variants (those with IDs), exclude custom variants
+                return variant?.id && !variant.isCustom ? variant.id : null;
+            })
+            .filter(Boolean);
+
+        const allIds = variationsData
+            .flatMap((variation) => {
+                const variant = allVariants.find((item) => item.variant_name === variation.name);
+                const safeValues = normalizeValues(variation.values);
+
+                return safeValues.map((value) => {
+                    const attributeData = variant?.variant_attribute.find((attr) => attr.attribute_value === value);
+                    // Only include predefined attributes (those with _id), exclude custom attributes
+                    return attributeData?._id && !variant.isCustom ? attributeData._id : null;
+                });
+            })
+            .filter(Boolean);
+
+        setFormData((prev) => ({
+            ...prev,
+            // Only include IDs for predefined variants, exclude custom variants
+            ParentMainId: Array.from(new Set([...prev.ParentMainId, ...parentMainIds])),
+            varientName: Array.from(new Set([...prev.varientName, ...allIds]))
+        }));
+
+        handleCloseVariant();
+    };
+
+    useEffect(() => {
+        if (combinations?.length > 0 && variationsData?.length <= 0) {
+            const result = transformCombinations(combinations);
+            setVariationsData(result);
+        }
+    }, [combinations]);
+
+    // UPDATED: transformCombinations function
     const transformCombinations = (combinations) => {
         const nameValueMap = {};
 
@@ -516,9 +609,7 @@ const VariantModal = ({
 
         setSelectedVariations(selectedVariations);
 
-        // Create variations data while preserving images from the first matching combination
         const result = Object.entries(nameValueMap).map(([name, values]) => {
-            // Find a combination that has this name to extract images
             const matchingCombination = combinations.find(comb =>
                 comb.name1 === name || comb.name2 === name
             );
@@ -526,7 +617,6 @@ const VariantModal = ({
             return {
                 name,
                 values: Array.from(values),
-                // Preserve image references if available
                 main_images: matchingCombination?.main_images,
                 preview_image: matchingCombination?.preview_image,
                 thumbnail: matchingCombination?.thumbnail
@@ -536,257 +626,43 @@ const VariantModal = ({
         return result;
     };
 
-    // Add this function to update combination names/attributes
-    const updateCombinationNames = (combinations, varientName) => {
-        const allVariants = getAllVariants();
-        return combinations.map(combinationGroup => {
-            // Find the current variant data by ID (more reliable than name)
-            const currentVariant = allVariants.find(variant =>
-                variant.variant_name === combinationGroup.variant_name ||
-                variant.id === combinationGroup.variantId
-            );
+    // UPDATED: handleDeleteVariant function to use names
+    const handleDeleteVariant = (variantName, index) => {
+        const variant = allVariants.find((item) => item.variant_name === variantName);
+        const parentMainName = variant?.variant_name;
+        const allAttributeValues = variant?.variant_attribute?.map((attr) => attr.attribute_value) || [];
 
-            if (!currentVariant) return combinationGroup; // Return unchanged if variant not found
-
-            const updatedCombinations = combinationGroup.combinations.map(comb => {
-                const updatedComb = { ...comb };
-
-                // Update variant names and attribute values
-                Object.keys(comb).forEach(key => {
-                    if (key.startsWith('name')) {
-                        const index = key.replace('name', '');
-                        const valueKey = `value${index}`;
-
-                        // Find the corresponding attribute in current variant data
-                        const currentAttribute = currentVariant.variant_attribute.find(attr =>
-                            attr.attribute_value === comb[valueKey] ||
-                            attr._id === comb.combIds?.[index-1]
-                        );
-
-                        if (currentAttribute) {
-                            // Update the name to current variant name
-                            updatedComb[key] = currentVariant.variant_name;
-                            // Update the value to current attribute value
-                            updatedComb[valueKey] = currentAttribute.attribute_value;
-                        }
-                    }
-                });
-
-                return updatedComb;
-            });
-
-            return {
-                ...combinationGroup,
-                variant_name: currentVariant.variant_name, // Update the group name
-                combinations: updatedCombinations
-            };
-        });
-    };
-
-    // UPDATED: handleGenerate function with image preservation
-    const handleGenerate = async () => {
-        let data = [];
-        let index = 0;
-        const existsPrice = variationsData.find(variation => variation.name == formValues?.prices)
-        const existsQuantity = variationsData.find(variation => variation.name == formValues?.quantities)
-        if ((formValues?.isCheckedPrice || formValues?.isCheckedQuantity) && (formValues?.prices || formValues?.quantities)) {
-            if (existsPrice && existsQuantity) {
-                for (const item of variationsData) {
-                    let result = await generateCombinations([item], varientName);
-                    data.push({
-                        variant_name: item?.name,
-                        combinations: result,
-                        // Pass through any existing images from the variation data
-                        main_images: item?.main_images,
-                        preview_image: item?.preview_image,
-                        thumbnail: item?.thumbnail
-                    });
-                }
-            } else {
-                if (formValues?.prices == formValues?.quantities && formValues.isCheckedPrice && formValues.isCheckedQuantity) {
-                    const variants = formValues?.prices.split("and").map(price => price.trim());
-                    const variationData = variationsData.filter((item) => variants.includes(item.name));
-                    let result = await generateCombinations(variationData, varientName);
-                    data.push({
-                        variant_name: formValues?.prices || formValues?.quantities,
-                        combinations: result
-                    });
-                    if (variationsData.length > 2) {
-                        let variationData = variationsData.filter((item) => !variants.includes(item.name));
-                        let result = await generateCombinations(variationData, varientName);
-                        data.push({
-                            variant_name: variationData[0].name,
-                            combinations: result
-                        });
-                    }
-                }
-                else {
-                    if (formValues?.prices == existsPrice?.name) {
-                        if (formValues.isCheckedPrice) {
-                            let variationData = variationsData.filter((item) => item.name == formValues?.prices);
-                            let result = await generateCombinations(variationData, varientName);
-                            data.push({
-                                variant_name: formValues?.prices,
-                                combinations: result
-                            });
-                        }
-                        if (formValues.isCheckedQuantity) {
-                            const variants = formValues?.quantities.split("and").map(qty => qty.trim());
-                            let variationData = variationsData.filter((item) => variants.includes(item.name));
-                            let result = await generateCombinations(variationData, varientName);
-                            data.push({
-                                variant_name: formValues?.quantities,
-                                combinations: result
-                            });
-                            if (!formValues.isCheckedPrice && variationsData.length > 2) {
-                                let variationData = variationsData.filter((item) => !variants.includes(item.name));
-                                console.log(variationData, "variationData");
-                                let result = await generateCombinations(variationData, varientName);
-                                data.push({
-                                    variant_name: variationData[0].name,
-                                    combinations: result
-                                });
-                            }
-                        }
-                        if (formValues.isCheckedPrice && formValues.isCheckedQuantity && variationsData.length > 2) {
-                            const variants = formValues?.quantities.split("and").map(qty => qty.trim());
-                            variants.push(formValues?.prices);
-                            let variationData = variationsData.filter((item) => !variants.includes(item.name));
-                            if (variationData.length > 0) {
-                                let result = await generateCombinations(variationData, varientName);
-                                data.push({
-                                    variant_name: variationData[0].name,
-                                    combinations: result
-                                });
-                            }
-                        }
-                    } else if (formValues?.prices.includes("and") && formValues?.quantities.includes("and")) {
-                        if (formValues.isCheckedPrice) {
-                            const variants = formValues?.prices.split("and").map(price => price.trim());
-                            let variationData = variationsData.filter((item) => variants.includes(item.name));
-                            let result = await generateCombinations(variationData, varientName);
-                            data.push({
-                                variant_name: formValues?.prices,
-                                combinations: result
-                            });
-                        }
-                        if (formValues.isCheckedQuantity) {
-                            const variants2 = formValues?.quantities.split("and").map(qty => qty.trim());
-                            let variationData = variationsData.filter((item) => variants2.includes(item.name));
-                            let result = await generateCombinations(variationData, varientName);
-                            data.push({
-                                variant_name: formValues?.quantities,
-                                combinations: result
-                            });
-                        }
-                    } else {
-                        if (formValues.isCheckedPrice) {
-                            const variants = formValues?.prices.split("and").map(price => price.trim());
-                            let variationData = variationsData.filter((item) => variants.includes(item.name));
-                            let result = await generateCombinations(variationData, varientName);
-                            data.push({
-                                variant_name: formValues?.prices,
-                                combinations: result
-                            });
-                            if (!formValues.isCheckedQuantity && variationsData.length > 2) {
-                                let variationData = variationsData.filter((item) => !variants.includes(item.name));
-                                console.log(variationData, "variationData");
-                                let result = await generateCombinations(variationData, varientName);
-                                data.push({
-                                    variant_name: variationData[0].name,
-                                    combinations: result
-                                });
-                            }
-                        }
-                        if (formValues.isCheckedQuantity) {
-                            let variationData = variationsData.filter((item) => item.name == formValues?.quantities);
-                            let result = await generateCombinations(variationData, varientName);
-                            data.push({
-                                variant_name: formValues?.quantities,
-                                combinations: result
-                            });
-                        }
-                        if (formValues.isCheckedPrice && formValues.isCheckedQuantity && variationsData.length > 2) {
-                            const variants = formValues?.prices?.split("and").map(price => price.trim());
-                            variants.push(formValues?.quantities);
-                            let variationData = variationsData.filter((item) => !variants.includes(item.name));
-                            if (variationData.length > 0) {
-                                let result = await generateCombinations(variationData, varientName);
-                                data.push({
-                                    variant_name: variationData[0].name,
-                                    combinations: result
-                                });
-                            }
-                        }
-                    }
-                }
-            }
-        } else {
-            for (const item of variationsData) {
-                let result = await generateCombinations([item], varientName);
-                data.push({
-                    variant_name: item?.name,
-                    combinations: result,
-                    // Pass through any existing images from the variation data
-                    main_images: item?.main_images,
-                    preview_image: item?.preview_image,
-                    thumbnail: item?.thumbnail
-                });
-            }
-        }
-        setCombinations(data);
-
-        const allVariants = getAllVariants();
-        const parentMainIds = variationsData.map(variation => variation.variantId).filter(Boolean);
-
-        const allIds = variationsData
-            .flatMap((variation) => {
-                const variant = allVariants.find((item) => item.id === variation.variantId);
-                const safeValues = normalizeValues(variation.values);
-
-                return safeValues.map(
-                    (value) => variant?.variant_attribute.find((attr) => attr.attribute_value === value)?._id
-                );
-            })
-            .filter(Boolean);
-
+        console.log({ parentMainName, allAttributeValues });
         setFormData((prev) => ({
             ...prev,
-            ParentMainId: Array.from(new Set([...prev.ParentMainId, ...parentMainIds])),
-            varientName: Array.from(new Set([...prev.varientName, ...allIds]))
+            ParentMainId: prev.ParentMainId.filter((id) => id !== parentMainName),
+            varientName: prev.varientName.filter((name) => !allAttributeValues.includes(name)),
         }));
 
-        handleCloseVariant();
+        const filterData = variationsData.filter((item, i) => i !== index);
+        setVariationsData(filterData);
+        const filterSelected = selectedVariations.filter((item) => item !== variant?.variant_name);
+        setSelectedVariations(filterSelected);
+        setFormValues({ prices: "", quantities: "", isCheckedPrice: false, isCheckedQuantity: false });
+        setCombinations([]);
     };
 
-    useEffect(() => {
-        if (combinations?.length > 0 && variationsData?.length <= 0) {
-            const result = transformCombinations(combinations);
-            setVariationsData(result);
-        }
-    }, [combinations]);
+    const handleEdit = (item) => {
+        setShowVariantList(true);
+        setSelectedVariant(item?.name);
+        setAttrValues((prv) => ({ ...prv, name: item?.name, values: item?.values }));
+        setIsEdit(true);
+    };
 
-    const handleTagDelete = (option) => {
-        setAttrValues((prv) => ({ ...prv, values: prv.values.filter((item) => item !== option) }));
-    }
-
-    const generateNameCombinations = () => {
-        const names = variationsData.map(item => item.name);
-        const combinations = [...names];
-        for (let i = 0; i < names.length; i++) {
-            for (let j = i + 1; j < names.length; j++) {
-                combinations.push(`${names[i]} and ${names[j]}`);
-            }
-        }
-        setNameCombinations(combinations);
-        if (!formValues?.prices && !formValues?.quantities) {
-            setFormValues((prv) => ({
-                ...prv,
-                prices: combinations[0],
-                quantities: combinations[0]
-            }));
+    const handleChange = (e) => {
+        const { name, value, checked } = e.target;
+        if (name === "isCheckedPrice" || name === "isCheckedQuantity") {
+            setFormValues((prev) => ({ ...prev, [name]: checked }));
+        } else {
+            setFormValues((prev) => ({ ...prev, [name]: value }));
         }
     };
+
     useEffect(() => {
         if (variationsData?.length > 1) {
             generateNameCombinations();
@@ -838,7 +714,7 @@ const VariantModal = ({
                                                 </Button>
                                                 <Button
                                                     sx={{ ...buttonStyle, ...{ backgroundColor: "lightgrey", borderRadius: '50%', minWidth: 'auto', width: '40px', height: '40px' } }}
-                                                    onClick={() => handleDeleteVariant(item?.variantId, i)} // Pass variantId instead of name
+                                                    onClick={() => handleDeleteVariant(item?.name, i)} // Use name instead of variantId
                                                 >
                                                     <DeleteIcon />
                                                 </Button>
@@ -849,14 +725,9 @@ const VariantModal = ({
                             </Box>
                         )}
                         {variationsData?.length < 3 && (
-                            <Box display="flex" gap={1} flexDirection="column">
-                                <Button variant="outlined" sx={{ fontSize: '13px', fontWeight: 500, borderRadius: '30px', color: '#000', borderColor: '#000' }} onClick={() => setShowVariantList(true)}>
-                                    <AddIcon sx={{ fontSize: '21px' }} />Add a Predefined Variation
-                                </Button>
-                                <Button variant="outlined" sx={{ fontSize: '13px', fontWeight: 500, borderRadius: '30px', color: '#000', borderColor: '#000' }} onClick={handleOpenCustomVariantDialog}>
-                                    <AddIcon sx={{ fontSize: '21px' }} />Add a Custom Variation
-                                </Button>
-                            </Box>
+                            <Button variant="outlined" sx={{ fontSize: '13px', fontWeight: 500, borderRadius: '30px', color: '#000', borderColor: '#000' }} onClick={() => setShowVariantList(true)}>
+                                <AddIcon sx={{ fontSize: '21px' }} />Add a Variation
+                            </Button>
                         )}
                         {variationsData?.length > 0 && (
                             <Box py={1} sx={{ borderTop: '1px solid #e0e0e0', marginTop: '18px' }}>
@@ -982,90 +853,47 @@ const VariantModal = ({
                                     You can add upto 2 variations. Use the variation types listed here for peak
                                     discoverability.
                                 </Typography>
-
-                                {/* Predefined Variants Section */}
-                                {varientName.length > 0 && (
-                                    <Box mt={3}>
-                                        <Typography variant="h6" gutterBottom>
-                                            Predefined Variants
-                                        </Typography>
-                                        <Box my={2}>
-                                            {varientName.map((item, index) => (
-                                                <Button
-                                                    key={index}
-                                                    variant="contained"
-                                                    sx={{
-                                                        backgroundColor: "lightgrey",
-                                                        color: "black",
-                                                        borderRadius: "50px",
-                                                        marginRight: "10px",
-                                                        marginBottom: "10px",
-                                                        '&:hover': { background: '#000', color: '#fff' }
-                                                    }}
-                                                    onClick={() => {
-                                                        setSelectedVariations([...selectedVariations, item?.variant_name]);
-                                                        setSelectedVariant(item?.variant_name);
-                                                    }}
-                                                    disabled={selectedVariations.includes(item?.variant_name)}
-                                                >
-                                                    {selectedVariations.includes(item?.variant_name) && <CheckIcon />}{" "}
-                                                    {item?.variant_name}
-                                                </Button>
-                                            ))}
-                                        </Box>
-                                    </Box>
-                                )}
-
-                                {/* Custom Variants Section */}
-                                {customVariants.length > 0 && (
-                                    <Box mt={3}>
-                                        <Typography variant="h6" gutterBottom>
-                                            Custom Variants
-                                        </Typography>
-                                        <Box my={2}>
-                                            {customVariants.map((item, index) => (
-                                                <Button
-                                                    key={index}
-                                                    variant="contained"
-                                                    sx={{
-                                                        backgroundColor: "#e3f2fd",
-                                                        color: "black",
-                                                        borderRadius: "50px",
-                                                        marginRight: "10px",
-                                                        marginBottom: "10px",
-                                                        border: "1px solid #2196f3",
-                                                        '&:hover': { background: '#1976d2', color: '#fff' }
-                                                    }}
-                                                    onClick={() => {
-                                                        setSelectedVariations([...selectedVariations, item?.variant_name]);
-                                                        setSelectedVariant(item?.variant_name);
-                                                    }}
-                                                    disabled={selectedVariations.includes(item?.variant_name)}
-                                                >
-                                                    {selectedVariations.includes(item?.variant_name) && <CheckIcon />}{" "}
-                                                    {item?.variant_name}
-                                                </Button>
-                                            ))}
-                                        </Box>
-                                    </Box>
-                                )}
-
-                                <Button
-                                    variant="outlined"
-                                    sx={{
-                                        fontSize: '13px',
-                                        fontWeight: 500,
-                                        borderRadius: '30px',
-                                        color: '#000',
-                                        borderColor: '#000',
-                                        mb: 2,
-                                        mt: 2
-                                    }}
-                                    onClick={handleOpenCustomVariantDialog}
-                                >
-                                    <AddIcon sx={{ fontSize: '21px' }} />Add Custom Variation
-                                </Button>
-                                <br />
+                                <Box my={4}>
+                                    {allVariants?.map((item, index) => (
+                                        <Button
+                                            key={index}
+                                            mt={2}
+                                            variant="contained"
+                                            sx={{
+                                                backgroundColor: "lightgrey",
+                                                color: "black",
+                                                borderRadius: "50px",
+                                                marginRight: "10px",
+                                                '&:hover': { background: '#000', color: '#fff' }
+                                            }}
+                                            onClick={() => {
+                                                setSelectedVariations([...selectedVariations, item?.variant_name]);
+                                                setSelectedVariant(item?.variant_name);
+                                            }}
+                                            disabled={selectedVariations.includes(item?.variant_name)}
+                                        >
+                                            {selectedVariations.includes(item?.variant_name) && <CheckIcon />}{" "}
+                                            {item?.variant_name}
+                                        </Button>
+                                    ))}
+                                </Box>
+                                <Box my={2}>
+                                    <Button
+                                        variant="outlined"
+                                        onClick={handleOpenCustomVariantDialog}
+                                        sx={{
+                                            borderColor: '#1976d2',
+                                            color: '#1976d2',
+                                            '&:hover': {
+                                                borderColor: '#1565c0',
+                                                backgroundColor: 'rgba(25, 118, 210, 0.04)'
+                                            }
+                                        }}
+                                    >
+                                        <AddIcon sx={{ mr: 1 }} />
+                                        Add Custom Variant
+                                    </Button>
+                                </Box>
                                 <Button mt={2} sx={buttonStyle} onClick={handleCancel}>
                                     Cancel
                                 </Button>
@@ -1084,64 +912,22 @@ const VariantModal = ({
                                     discoverability. Buyers won't see custom options in filters.
                                 </Typography>
                                 <Box my={3}>
-                                    {/* Dropdown Component for predefined variants */}
-                                    {varientName.find(item => item.variant_name === selectedVariant) ? (
-                                        <Autocomplete
-                                            multiple
-                                            id="dropdown-with-list"
-                                            true
-                                            disableCloseOnSelect
-                                            options={[...attrOptions, `Add All Options (${attrOptions?.length})`]}
-                                            getOptionLabel={(option) => option}
-                                            value={[]}
-                                            onChange={(event, newValue) => {
-                                                handleTagHandler(event, newValue);
-                                            }}
-                                            renderInput={(params) => (
-                                                <TextField
-                                                    {...params}
-                                                    label="Enter an option..."
-                                                    placeholder="Enter an option..."
-                                                    sx={{
-                                                        "& .MuiInputBase-root": {
-                                                            padding: "0 11px",
-                                                        },
-                                                        "& .MuiFormLabel-root": {
-                                                            top: "-7px",
-                                                        },
-                                                    }}
-                                                />
-                                            )}
-                                            renderOption={(props, option) => {
-                                                const isSelected = attrValues.values.includes(option);
-                                                return (
-                                                    <ListItem
-                                                        {...props}
-                                                        sx={{
-                                                            backgroundColor: isSelected ? "rgba(0, 123, 255, 0.2)" : "inherit",
-                                                            "&:hover": {
-                                                                backgroundColor: isSelected
-                                                                    ? "rgba(0, 123, 255, 0.3)"
-                                                                    : "rgba(0, 0, 0, 0.04)",
-                                                            },
-                                                        }}
-                                                    >
-                                                        <ListItemText primary={option} />
-                                                        {isSelected && <CheckIcon color="primary" />}
-                                                    </ListItem>
-                                                );
-                                            }}
-                                        />
-                                    ) : (
-                                        /* Text input for custom variants */
-                                        <Box>
+                                    <Autocomplete
+                                        multiple
+                                        id="dropdown-with-list"
+                                        true
+                                        disableCloseOnSelect
+                                        options={[...attrOptions, `Add All Options (${attrOptions?.length})`]}
+                                        getOptionLabel={(option) => option}
+                                        value={[]}
+                                        onChange={(event, newValue) => {
+                                            handleTagHandler(event, newValue);
+                                        }}
+                                        renderInput={(params) => (
                                             <TextField
-                                                fullWidth
-                                                label="Add new attribute"
-                                                value={newAttribute}
-                                                onChange={(e) => setNewAttribute(e.target.value)}
-                                                onKeyPress={handleAttributeKeyPress}
-                                                placeholder="Enter attribute value and press Enter"
+                                                {...params}
+                                                label="Enter an option..."
+                                                placeholder="Enter an option..."
                                                 sx={{
                                                     "& .MuiInputBase-root": {
                                                         padding: "0 11px",
@@ -1151,93 +937,68 @@ const VariantModal = ({
                                                     },
                                                 }}
                                             />
-                                            <Button
-                                                onClick={handleAddNewAttribute}
-                                                sx={{ mt: 1 }}
-                                                disabled={!newAttribute.trim()}
-                                            >
-                                                Add Attribute
-                                            </Button>
-                                        </Box>
-                                    )}
+                                        )}
+                                        renderOption={(props, option) => {
+                                            const isSelected = attrValues.values.includes(option);
+                                            return (
+                                                <ListItem
+                                                    {...props}
+                                                    sx={{
+                                                        backgroundColor: isSelected ? "rgba(0, 123, 255, 0.2)" : "inherit",
+                                                        "&:hover": {
+                                                            backgroundColor: "rgba(0, 123, 255, 0.1)",
+                                                        },
+                                                    }}
+                                                    secondaryAction={
+                                                        <IconButton edge="end" size="small">
+                                                            <AddIcon />
+                                                        </IconButton>
+                                                    }
+                                                >
+                                                    <ListItemText primary={option} />
+                                                </ListItem>
+                                            );
+                                        }}
+                                        sx={{ width: "100%" }}
+                                    />
 
-                                    {/* Selected Attributes List with Drag and Drop */}
-                                    {attrValues.values.length > 0 && (
-                                        <Box mt={3}>
-                                            <Typography variant="subtitle1" gutterBottom>
-                                                Selected Attributes (Drag to reorder):
-                                            </Typography>
-                                            <DragDropContext onDragEnd={(result) => onDragEnd(result, 'attributes')}>
-                                                <Droppable droppableId="attributes">
-                                                    {(provided) => (
-                                                        <List {...provided.droppableProps} ref={provided.innerRef}>
-                                                            {attrValues.values.map((option, index) => (
-                                                                <Draggable key={option} draggableId={option} index={index}>
-                                                                    {(provided, snapshot) => (
-                                                                        <ListItem
-                                                                            ref={provided.innerRef}
-                                                                            {...provided.draggableProps}
-                                                                            sx={{
-                                                                                border: "1px solid #e0e0e0",
-                                                                                borderRadius: "8px",
-                                                                                marginBottom: "8px",
-                                                                                padding: "8px 16px",
-                                                                                backgroundColor: snapshot.isDragging ? "#e3f2fd" : "#fafafa",
-                                                                                transform: snapshot.isDragging ? 'rotate(5deg)' : 'none',
-                                                                                transition: 'all 0.2s ease',
-                                                                                boxShadow: snapshot.isDragging ? '0 4px 8px rgba(0,0,0,0.2)' : 'none'
-                                                                            }}
-                                                                            secondaryAction={
-                                                                                <Box display="flex" gap={1}>
-                                                                                    <IconButton
-                                                                                        size="small"
-                                                                                        onClick={() => handleTagDelete(option)}
-                                                                                        color="error"
-                                                                                    >
-                                                                                        <DeleteIcon fontSize="small" />
-                                                                                    </IconButton>
-                                                                                </Box>
-                                                                            }
-                                                                        >
-                                                                            <div {...provided.dragHandleProps}>
-                                                                                <DragHandleIcon sx={{ mr: 2, color: 'gray', cursor: 'grab' }} />
-                                                                            </div>
-                                                                            <ListItemText
-                                                                                primary={
-                                                                                    <Typography>
-                                                                                        {option}
-                                                                                    </Typography>
-                                                                                }
-                                                                            />
-                                                                        </ListItem>
-                                                                    )}
-                                                                </Draggable>
-                                                            ))}
-                                                            {provided.placeholder}
-                                                        </List>
-                                                    )}
-                                                </Droppable>
-                                            </DragDropContext>
-                                        </Box>
-                                    )}
+                                    <List>
+                                        {attrValues?.values?.map((option, index) => (
+                                            <ListItem
+                                                key={index}
+                                                sx={{
+                                                    border: "1px solid #ccc",
+                                                    borderRadius: "4px",
+                                                    marginTop: "8px",
+                                                    padding: "8px 16px",
+                                                    display: "flex",
+                                                    justifyContent: "space-between",
+                                                    alignItems: "center",
+                                                }}
+                                            >
+                                                <ListItemText primary={option} />
+                                                <ListItemSecondaryAction>
+                                                    <IconButton
+                                                        edge="end"
+                                                        aria-label="delete"
+                                                        onClick={() => handleTagDelete(option)}
+                                                    >
+                                                        <DeleteIcon />
+                                                    </IconButton>
+                                                </ListItemSecondaryAction>
+                                            </ListItem>
+                                        ))}
+                                    </List>
                                 </Box>
-                                <Box display="flex" justifyContent="space-between">
-                                    <Button sx={buttonStyle} onClick={() => {
-                                        setSelectedVariant('');
-                                        setAttrValues({
-                                            name: "",
-                                            values: []
-                                        });
-                                        setAttrOptions([]);
-                                        setNewAttribute("");
-                                    }}>
-                                        Cancel
+                                <Box display="flex" justifyContent="space-between" mt={4}>
+                                    <Button sx={buttonStyle} onClick={() => handleDeleteVariation(selectedVariant)}>
+                                        Delete
                                     </Button>
                                     <Button
                                         variant="contained"
                                         sx={{ ...buttonStyle, ...{ background: '#000', color: '#fff' } }}
                                         onClick={handleDone}
-                                        disabled={attrValues.values.length < 2}
+                                        disabled={attrValues?.values?.length <= 0}
                                     >
                                         Done
                                     </Button>
@@ -1248,102 +1009,48 @@ const VariantModal = ({
                 )}
             </Modal>
 
-            {/* Custom Variant Dialog */}
             <Dialog open={customVariantDialogOpen} onClose={handleCloseCustomVariantDialog} maxWidth="sm" fullWidth>
-                <DialogTitle>Add Custom Variation</DialogTitle>
+                <DialogTitle>Add Custom Variant</DialogTitle>
                 <DialogContent>
                     <TextField
+                        autoFocus
+                        margin="dense"
+                        label="Variant Name"
+                        type="text"
                         fullWidth
-                        label="Variation Name"
+                        variant="outlined"
                         value={customVariantName}
                         onChange={(e) => setCustomVariantName(e.target.value)}
-                        margin="normal"
-                        placeholder="e.g., Style, Pattern, Finish, etc."
+                        sx={{ mb: 2 }}
                     />
-                    <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
-                        Add Attribute Values (Minimum 2 required)
+                    <Typography variant="subtitle1" gutterBottom>
+                        Options (at least 2 required):
                     </Typography>
-
-                    {/* Text input for adding new attributes */}
-                    <Box display="flex" gap={1} mb={2}>
-                        <TextField
-                            fullWidth
-                            label="Add attribute value"
-                            value={newAttribute}
-                            onChange={(e) => setNewAttribute(e.target.value)}
-                            onKeyPress={handleAttributeKeyPress}
-                            placeholder="Enter attribute value and press Enter"
-                        />
-                        <Button
-                            onClick={handleAddNewAttribute}
-                            disabled={!newAttribute.trim()}
-                            variant="outlined"
-                            sx={{ minWidth: 'auto' }}
-                        >
-                            <AddIcon />
-                        </Button>
-                    </Box>
-
-                    {/* List of added attributes with Drag and Drop */}
-                    {customAttributes.filter(attr => attr.trim() !== "").length > 0 && (
-                        <Box mt={2}>
-                            <Typography variant="subtitle2" gutterBottom>
-                                Added Attributes (Drag to reorder):
-                            </Typography>
-                            <DragDropContext onDragEnd={(result) => onDragEnd(result, 'customAttributes')}>
-                                <Droppable droppableId="customAttributes">
-                                    {(provided) => (
-                                        <List {...provided.droppableProps} ref={provided.innerRef}>
-                                            {customAttributes.filter(attr => attr.trim() !== "").map((attribute, index) => (
-                                                <Draggable key={attribute} draggableId={attribute} index={index}>
-                                                    {(provided, snapshot) => (
-                                                        <ListItem
-                                                            ref={provided.innerRef}
-                                                            {...provided.draggableProps}
-                                                            sx={{
-                                                                border: "1px solid #e0e0e0",
-                                                                borderRadius: "8px",
-                                                                marginBottom: "8px",
-                                                                padding: "8px 16px",
-                                                                backgroundColor: snapshot.isDragging ? "#e3f2fd" : "#fafafa",
-                                                                transform: snapshot.isDragging ? 'rotate(5deg)' : 'none',
-                                                                transition: 'all 0.2s ease',
-                                                                boxShadow: snapshot.isDragging ? '0 4px 8px rgba(0,0,0,0.2)' : 'none'
-                                                            }}
-                                                            secondaryAction={
-                                                                <IconButton
-                                                                    size="small"
-                                                                    onClick={() => handleRemoveAttribute(index)}
-                                                                    color="error"
-                                                                >
-                                                                    <DeleteIcon fontSize="small" />
-                                                                </IconButton>
-                                                            }
-                                                        >
-                                                            <div {...provided.dragHandleProps}>
-                                                                <DragHandleIcon sx={{ mr: 2, color: 'gray', cursor: 'grab' }} />
-                                                            </div>
-                                                            <ListItemText primary={attribute} />
-                                                        </ListItem>
-                                                    )}
-                                                </Draggable>
-                                            ))}
-                                            {provided.placeholder}
-                                        </List>
-                                    )}
-                                </Droppable>
-                            </DragDropContext>
+                    {customVariantOptions.map((option, index) => (
+                        <Box key={index} display="flex" alignItems="center" mb={1}>
+                            <TextField
+                                fullWidth
+                                variant="outlined"
+                                placeholder={`Option ${index + 1}`}
+                                value={option}
+                                onChange={(e) => handleOptionChange(index, e.target.value)}
+                                sx={{ mr: 1 }}
+                            />
+                            {customVariantOptions.length > 1 && (
+                                <IconButton onClick={() => handleRemoveOption(index)} color="error">
+                                    <DeleteIcon />
+                                </IconButton>
+                            )}
                         </Box>
-                    )}
+                    ))}
+                    <Button onClick={handleAddOption} startIcon={<AddIcon />} sx={{ mt: 1 }}>
+                        Add Option
+                    </Button>
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={handleCloseCustomVariantDialog}>Cancel</Button>
-                    <Button
-                        onClick={handleSaveCustomVariant}
-                        variant="contained"
-                        disabled={!customVariantName.trim() || customAttributes.filter(attr => attr.trim() !== "").length < 2}
-                    >
-                        Save Variation
+                    <Button onClick={handleSaveCustomVariant} variant="contained">
+                        Save Variant
                     </Button>
                 </DialogActions>
             </Dialog>

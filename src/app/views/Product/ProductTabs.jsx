@@ -396,7 +396,7 @@ export default function BasicTabs() {
     console.log("deleteIconData", uniqueSetarr);
 
 // ---------------- helper to build FormData ----------------
-    const buildProductFormData = (payload, combinations) => {
+    const buildProductFormData = (payload, combinations, customizationData) => {
         const fData = new FormData();
 
         // fields that can be null/dates
@@ -602,7 +602,6 @@ export default function BasicTabs() {
                         comb.edit_preview_image
                     );
                 } else if (typeof comb?.edit_preview_image === "string") {
-
                     fData.append(
                         `combinationData[${vIndex}][combinations][${cIndex}][edit_preview_image]`,
                         comb.edit_preview_image
@@ -611,9 +610,112 @@ export default function BasicTabs() {
             });
         });
 
+        // 3) Append customization data with images
+        if (customizationData && customizationData.customizations && customizationData.customizations.length > 0) {
+            customizationData.customizations.forEach((customization, cIndex) => {
+                // Append basic customization fields
+                fData.append(`customizationData[customizations][${cIndex}][title]`, customization.title || '');
+                fData.append(`customizationData[customizations][${cIndex}][label]`, customization.label || '');
+                fData.append(`customizationData[customizations][${cIndex}][instructions]`, customization.instructions || '');
+                fData.append(`customizationData[customizations][${cIndex}][isCompulsory]`, customization.isCompulsory ? 'true' : 'false');
+                fData.append(`customizationData[customizations][${cIndex}][isVariant]`, customization.isVariant ? 'true' : 'false');
+
+                // Handle text customization specific fields
+                if (customization.placeholder !== undefined) {
+                    fData.append(`customizationData[customizations][${cIndex}][placeholder]`, customization.placeholder);
+                }
+                if (customization.price !== undefined) {
+                    fData.append(`customizationData[customizations][${cIndex}][price]`, customization.price);
+                }
+                if (customization.min !== undefined) {
+                    fData.append(`customizationData[customizations][${cIndex}][min]`, customization.min);
+                }
+                if (customization.max !== undefined) {
+                    fData.append(`customizationData[customizations][${cIndex}][max]`, customization.max);
+                }
+
+                // Handle option list for variant and dropdown customizations
+                if (customization.optionList && Array.isArray(customization.optionList)) {
+                    customization.optionList.forEach((option, oIndex) => {
+                        // Append basic option fields
+                        fData.append(`customizationData[customizations][${cIndex}][optionList][${oIndex}][optionName]`, option.optionName || '');
+                        fData.append(`customizationData[customizations][${cIndex}][optionList][${oIndex}][priceDifference]`, option.priceDifference || '0');
+
+                        // Handle main images array
+                        if (option.main_images && Array.isArray(option.main_images)) {
+                            option.main_images.forEach((image, imgIndex) => {
+                                if (image instanceof File) {
+                                    fData.append(
+                                        `customizationData[customizations][${cIndex}][optionList][${oIndex}][main_images][]`,
+                                        image
+                                    );
+                                } else if (typeof image === "string") {
+                                    // Append empty string for removed images
+                                    fData.append(
+                                        `customizationData[customizations][${cIndex}][optionList][${oIndex}][main_images][]`,
+                                        image
+                                    );
+                                }
+                            });
+                        }
+
+                        // Handle preview image
+                        if (option.preview_image instanceof File) {
+                            fData.append(
+                                `customizationData[customizations][${cIndex}][optionList][${oIndex}][preview_image]`,
+                                option.preview_image
+                            );
+                        } else if (typeof option.preview_image === "string") {
+                            fData.append(
+                                `customizationData[customizations][${cIndex}][optionList][${oIndex}][preview_image]`,
+                                option.preview_image
+                            );
+                        }
+
+                        // Handle thumbnail image
+                        if (option.thumbnail instanceof File) {
+                            fData.append(
+                                `customizationData[customizations][${cIndex}][optionList][${oIndex}][thumbnail]`,
+                                option.thumbnail
+                            );
+                        } else if (typeof option.thumbnail === "string") {
+                            fData.append(
+                                `customizationData[customizations][${cIndex}][optionList][${oIndex}][thumbnail]`,
+                                option.thumbnail
+                            );
+                        }
+
+                        // Handle edited images
+                        if (option.edit_main_image instanceof File) {
+                            fData.append(
+                                `customizationData[customizations][${cIndex}][optionList][${oIndex}][edit_main_image]`,
+                                option.edit_main_image
+                            );
+                        } else if (typeof option.edit_main_image === "string") {
+                            fData.append(
+                                `customizationData[customizations][${cIndex}][optionList][${oIndex}][edit_main_image]`,
+                                option.edit_main_image
+                            );
+                        }
+
+                        if (option.edit_preview_image instanceof File) {
+                            fData.append(
+                                `customizationData[customizations][${cIndex}][optionList][${oIndex}][edit_preview_image]`,
+                                option.edit_preview_image
+                            );
+                        } else if (typeof option.edit_preview_image === "string") {
+                            fData.append(
+                                `customizationData[customizations][${cIndex}][optionList][${oIndex}][edit_preview_image]`,
+                                option.edit_preview_image
+                            );
+                        }
+                    });
+                }
+            });
+        }
+
         return fData;
     };
-
 // ----------------------------------------------------------
 
     const addProducthandler = async () => {
@@ -761,7 +863,7 @@ export default function BasicTabs() {
 
         try {
             setLoading(true);
-            const fData = buildProductFormData(payload, combinations);
+            const fData = buildProductFormData(payload, combinations, customizationData);
             const res = await ApiService.postImage(apiEndpoints.addProduct, fData, auth_key);
             setLoading(false);
             if (res?.status === 200) {
@@ -847,7 +949,7 @@ export default function BasicTabs() {
 
         try {
             setDraftLoading(true);
-            const fData = buildProductFormData(payload, combinations);
+            const fData = buildProductFormData(payload, combinations, customizationData);
             const res = await ApiService.postImage(apiEndpoints.addDraftProduct, fData, auth_key);
             setDraftLoading(false);
             if (res?.status === 200) {
@@ -974,7 +1076,7 @@ export default function BasicTabs() {
 
         try {
             setLoading(true);
-            const fData = buildProductFormData(payload, combinations);
+            const fData = buildProductFormData(payload, combinations, customizationData);
             const res = await ApiService.postImage(apiEndpoints.addProduct, fData, auth_key);
             setLoading(false);
             if (res?.status === 200) {
@@ -1347,10 +1449,16 @@ export default function BasicTabs() {
             {formData.customization === "Yes" ? (
                 <>
                     <CustomTabPanel value={tabsValue} index={5}>
-                        <CustomisationInner customizationData={customizationData}
-                                            setCustomizationData={setCustomizationData}
-                                            EditProducthandler={EditProducthandler} loading={loading}
-                                            draftLoading={draftLoading} handleDraftProduct={handleDraftProduct}/>
+                        <CustomisationInner
+                            customizationData={customizationData}
+                            setCustomizationData={setCustomizationData}
+                            EditProducthandler={EditProducthandler}
+                            loading={loading}
+                            draftLoading={draftLoading}
+                            handleDraftProduct={handleDraftProduct}
+                            variants={variationsData} // Pass the predefined variants
+                            customVariants={[]} // Empty array for custom variants
+                        />
                     </CustomTabPanel>
                 </>
             ) : (
