@@ -20,7 +20,14 @@ import {
     DialogContent,
     DialogTitle,
     Slider,
-    Chip
+    Chip,
+    Collapse,
+    Card,
+    CardContent,
+    CardHeader,
+    FormControlLabel,
+    Checkbox,
+    Divider
 } from "@mui/material";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 import CropIcon from "@mui/icons-material/Crop";
@@ -33,6 +40,10 @@ import RotateRightIcon from "@mui/icons-material/RotateRight";
 import CheckIcon from "@mui/icons-material/Check";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import CollectionsIcon from "@mui/icons-material/Collections";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import Cropper from 'react-easy-crop';
 import { getCroppedImg } from './cropUtil';
 
@@ -131,6 +142,7 @@ const VariantCustomizationTable = ({
     const [zoom, setZoom] = useState(1);
     const [rotation, setRotation] = useState(0);
     const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+    const [expanded, setExpanded] = useState(true);
 
     // Drag and drop state
     const [draggingIndex, setDraggingIndex] = useState(null);
@@ -149,6 +161,72 @@ const VariantCustomizationTable = ({
             ...updatedCustomizations[index],
             optionList: updatedOptionList
         };
+
+        setCustomizationData({
+            ...customizationData,
+            customizations: updatedCustomizations
+        });
+    };
+
+    const handleCustomizationChange = (field, value) => {
+        const updatedCustomizations = [...customizationData.customizations];
+
+        updatedCustomizations[index] = {
+            ...updatedCustomizations[index],
+            [field]: value
+        };
+
+        setCustomizationData({
+            ...customizationData,
+            customizations: updatedCustomizations
+        });
+    };
+
+    const handleTitleChange = (value) => {
+        handleCustomizationChange('title', value);
+    };
+
+    const handleLabelChange = (value) => {
+        handleCustomizationChange('label', value);
+    };
+
+    const handleInstructionsChange = (value) => {
+        handleCustomizationChange('instructions', value);
+    };
+
+    const handleIsCompulsoryChange = (value) => {
+        handleCustomizationChange('isCompulsory', value);
+    };
+
+    const handleRemoveVariant = () => {
+        const updatedCustomizations = [...customizationData.customizations];
+        updatedCustomizations.splice(index, 1);
+
+        setCustomizationData({
+            ...customizationData,
+            customizations: updatedCustomizations
+        });
+    };
+
+    const handleMoveUp = () => {
+        if (index === 0) return;
+
+        const updatedCustomizations = [...customizationData.customizations];
+        const [current] = updatedCustomizations.splice(index, 1);
+        updatedCustomizations.splice(index - 1, 0, current);
+
+        setCustomizationData({
+            ...customizationData,
+            customizations: updatedCustomizations
+        });
+    };
+
+    const handleMoveDown = () => {
+        if (index === customizationData.customizations.length - 1) return;
+
+        const updatedCustomizations = [...customizationData.customizations];
+        const [current] = updatedCustomizations.splice(index, 1);
+        updatedCustomizations.splice(index + 1, 0, current);
 
         setCustomizationData({
             ...customizationData,
@@ -690,186 +768,294 @@ const VariantCustomizationTable = ({
 
     return (
         <Box sx={{ mt: 2 }}>
-            <Typography variant="h6" gutterBottom>
-                {customization?.title} - Variant Options
-            </Typography>
-
-            <TableContainer component={Paper}>
-                <Table>
-                    <TableHead>
-                        <TableRow>
-                            <TableCell align="center"></TableCell>
-                            <TableCell align="center">Option Name</TableCell>
-
-                            {/* Bulk Upload Column */}
-                            <TableCell align="center">Bulk Upload</TableCell>
-
-                            <TableCell align="center">Main Image 1</TableCell>
-                            <TableCell align="center">Main Image 2</TableCell>
-                            <TableCell align="center">Main Image 3</TableCell>
-                            <TableCell align="center">Preview Image</TableCell>
-                            <TableCell align="center">Thumbnail</TableCell>
-                            <TableCell align="center">Price Difference</TableCell>
-                            <TableCell align="center">Visible</TableCell>
-                            <TableCell align="center">Actions</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {customization.optionList?.map((option, optionIndex) => (
-                            <DraggableTableRow
-                                key={optionIndex}
-                                index={optionIndex}
-                                onDragStart={handleDragStart}
-                                onDragOver={handleDragOver}
-                                onDrop={handleDrop}
-                                onDragEnd={handleDragEnd}
-                                isDragging={draggingIndex === optionIndex}
-                                isDragOver={dragOverIndex === optionIndex}
+            <Card variant="outlined">
+                <CardHeader
+                    title={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
+                            <IconButton
+                                onClick={() => setExpanded(!expanded)}
+                                size="small"
                             >
-                                {/* Drag Handle Column */}
-                                <TableCell align="center">
-                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                {expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                            </IconButton>
+
+                            <TextField
+                                value={customization?.title || ""}
+                                onChange={(e) => handleTitleChange(e.target.value)}
+                                placeholder="Variant Name"
+                                size="small"
+                                sx={{ flex: 1 }}
+                            />
+
+                            <Box sx={{ display: 'flex', gap: 1 }}>
+                                <Tooltip title="Move Up">
+                                    <span>
                                         <IconButton
-                                            className="drag-handle"
+                                            onClick={handleMoveUp}
+                                            disabled={index === 0}
                                             size="small"
-                                            sx={{
-                                                cursor: 'grab',
-                                                '&:active': {
-                                                    cursor: 'grabbing',
-                                                },
-                                                touchAction: 'none'
-                                            }}
                                         >
-                                            <DragIndicatorIcon
-                                                sx={{
-                                                    color: 'text.secondary',
-                                                    opacity: draggingIndex === optionIndex ? 1 : 0.6
-                                                }}
-                                            />
+                                            <KeyboardArrowUpIcon />
                                         </IconButton>
-                                    </Box>
-                                </TableCell>
+                                    </span>
+                                </Tooltip>
 
-                                <TableCell align="center">
-                                    <TextField
-                                        value={option.optionName || ""}
-                                        onChange={(e) => handleOptionChange(optionIndex, 'optionName', e.target.value)}
-                                        placeholder="Option name"
-                                        size="small"
-                                    />
-                                </TableCell>
+                                <Tooltip title="Move Down">
+                                    <span>
+                                        <IconButton
+                                            onClick={handleMoveDown}
+                                            disabled={index === customizationData.customizations.length - 1}
+                                            size="small"
+                                        >
+                                            <KeyboardArrowDownIcon />
+                                        </IconButton>
+                                    </span>
+                                </Tooltip>
 
-                                {/* Bulk Upload Cell */}
-                                {renderBulkUploadCell(option, optionIndex)}
-
-                                {/* Main Images */}
-                                {renderImageCell(option, optionIndex, "main_images", 0)}
-                                {renderImageCell(option, optionIndex, "main_images", 1)}
-                                {renderImageCell(option, optionIndex, "main_images", 2)}
-
-                                {/* Preview Image */}
-                                {renderImageCell(option, optionIndex, "preview_image")}
-
-                                {/* Thumbnail */}
-                                {renderImageCell(option, optionIndex, "thumbnail")}
-
-                                <TableCell align="center">
-                                    <TextField
-                                        type="number"
-                                        value={option.priceDifference || ""}
-                                        onChange={(e) => handleOptionChange(optionIndex, 'priceDifference', e.target.value)}
-                                        placeholder="0.00"
-                                        size="small"
-                                        sx={{ width: 100 }}
-                                    />
-                                </TableCell>
-
-                                {/* Toggle Switch Column */}
-                                <TableCell align="center">
-                                    <Switch
-                                        checked={option.isVisible !== false} // Default to true if not set
-                                        onChange={() => {
-                                            const updatedCustomizations = [...customizationData.customizations];
-                                            const updatedOptionList = [...updatedCustomizations[index].optionList];
-
-                                            updatedOptionList[optionIndex] = {
-                                                ...updatedOptionList[optionIndex],
-                                                isVisible: !(updatedOptionList[optionIndex]?.isVisible !== false)
-                                            };
-
-                                            updatedCustomizations[index] = {
-                                                ...updatedCustomizations[index],
-                                                optionList: updatedOptionList
-                                            };
-
-                                            setCustomizationData({
-                                                ...customizationData,
-                                                customizations: updatedCustomizations
-                                            });
-                                        }}
-                                        inputProps={{ 'aria-label': 'controlled' }}
-                                    />
-                                </TableCell>
-
-                                <TableCell align="center">
+                                <Tooltip title="Remove Variant">
                                     <IconButton
+                                        onClick={handleRemoveVariant}
+                                        color="error"
                                         size="small"
-                                        onClick={() => {
-                                            const updatedCustomizations = [...customizationData.customizations];
-                                            const updatedOptionList = [...updatedCustomizations[index].optionList];
-                                            updatedOptionList.splice(optionIndex, 1);
-                                            updatedCustomizations[index] = {
-                                                ...updatedCustomizations[index],
-                                                optionList: updatedOptionList
-                                            };
-                                            setCustomizationData({
-                                                ...customizationData,
-                                                customizations: updatedCustomizations
-                                            });
-                                        }}
                                     >
                                         <DeleteIcon />
                                     </IconButton>
-                                </TableCell>
-                            </DraggableTableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </TableContainer>
+                                </Tooltip>
+                            </Box>
+                        </Box>
+                    }
+                    sx={{
+                        '& .MuiCardHeader-content': {
+                            width: '100%'
+                        }
+                    }}
+                />
 
-            <Button
-                variant="outlined"
-                sx={{ mt: 2 }}
-                onClick={() => {
-                    const updatedCustomizations = [...customizationData.customizations];
-                    const updatedOptionList = [...updatedCustomizations[index].optionList];
+                <Collapse in={expanded}>
+                    <CardContent>
+                        {/* Configuration Fields Above Options List */}
+                        <Box sx={{ mb: 3, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
+                            <Typography variant="h6" gutterBottom>
+                                Configuration
+                            </Typography>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                <TextField
+                                    label="Label"
+                                    value={customization?.label || ""}
+                                    onChange={(e) => handleLabelChange(e.target.value)}
+                                    placeholder="Enter label for this variant"
+                                    size="small"
+                                    fullWidth
+                                />
 
-                    updatedOptionList.push({
-                        optionName: "",
-                        priceDifference: "0",
-                        main_images: [null, null, null],
-                        preview_image: null,
-                        thumbnail: null,
-                        isVisible: true,
-                        edit_main_image: null,
-                        edit_main_image_data: null,
-                        edit_preview_image: null,
-                        edit_preview_image_data: null
-                    });
+                                <TextField
+                                    label="Instructions"
+                                    value={customization?.instructions || ""}
+                                    onChange={(e) => handleInstructionsChange(e.target.value)}
+                                    placeholder="Enter instructions for customers"
+                                    size="small"
+                                    multiline
+                                    rows={2}
+                                    fullWidth
+                                />
 
-                    updatedCustomizations[index] = {
-                        ...updatedCustomizations[index],
-                        optionList: updatedOptionList
-                    };
+                                <FormControlLabel
+                                    control={
+                                        <Checkbox
+                                            checked={customization?.isCompulsory || false}
+                                            onChange={(e) => handleIsCompulsoryChange(e.target.checked)}
+                                        />
+                                    }
+                                    label="Is Compulsory"
+                                />
+                            </Box>
+                        </Box>
 
-                    setCustomizationData({
-                        ...customizationData,
-                        customizations: updatedCustomizations
-                    });
-                }}
-            >
-                Add Option
-            </Button>
+                        <Divider sx={{ my: 2 }} />
+
+                        <Typography variant="h6" gutterBottom>
+                            Options List
+                        </Typography>
+
+                        <TableContainer component={Paper} variant="outlined">
+                            <Table size="small">
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell align="center"></TableCell>
+                                        <TableCell align="center">Option Name</TableCell>
+
+                                        {/* Bulk Upload Column */}
+                                        <TableCell align="center">Bulk Upload</TableCell>
+
+                                        <TableCell align="center">Main Image 1</TableCell>
+                                        <TableCell align="center">Main Image 2</TableCell>
+                                        <TableCell align="center">Main Image 3</TableCell>
+                                        <TableCell align="center">Preview Image</TableCell>
+                                        <TableCell align="center">Thumbnail</TableCell>
+                                        <TableCell align="center">Price Difference</TableCell>
+                                        <TableCell align="center">Visible</TableCell>
+                                        <TableCell align="center">Actions</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {customization.optionList?.map((option, optionIndex) => (
+                                        <DraggableTableRow
+                                            key={optionIndex}
+                                            index={optionIndex}
+                                            onDragStart={handleDragStart}
+                                            onDragOver={handleDragOver}
+                                            onDrop={handleDrop}
+                                            onDragEnd={handleDragEnd}
+                                            isDragging={draggingIndex === optionIndex}
+                                            isDragOver={dragOverIndex === optionIndex}
+                                        >
+                                            {/* Drag Handle Column */}
+                                            <TableCell align="center">
+                                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                    <IconButton
+                                                        className="drag-handle"
+                                                        size="small"
+                                                        sx={{
+                                                            cursor: 'grab',
+                                                            '&:active': {
+                                                                cursor: 'grabbing',
+                                                            },
+                                                            touchAction: 'none'
+                                                        }}
+                                                    >
+                                                        <DragIndicatorIcon
+                                                            sx={{
+                                                                color: 'text.secondary',
+                                                                opacity: draggingIndex === optionIndex ? 1 : 0.6
+                                                            }}
+                                                        />
+                                                    </IconButton>
+                                                </Box>
+                                            </TableCell>
+
+                                            <TableCell align="center">
+                                                <TextField
+                                                    value={option.optionName || ""}
+                                                    onChange={(e) => handleOptionChange(optionIndex, 'optionName', e.target.value)}
+                                                    placeholder="Option name"
+                                                    size="small"
+                                                />
+                                            </TableCell>
+
+                                            {/* Bulk Upload Cell */}
+                                            {renderBulkUploadCell(option, optionIndex)}
+
+                                            {/* Main Images */}
+                                            {renderImageCell(option, optionIndex, "main_images", 0)}
+                                            {renderImageCell(option, optionIndex, "main_images", 1)}
+                                            {renderImageCell(option, optionIndex, "main_images", 2)}
+
+                                            {/* Preview Image */}
+                                            {renderImageCell(option, optionIndex, "preview_image")}
+
+                                            {/* Thumbnail */}
+                                            {renderImageCell(option, optionIndex, "thumbnail")}
+
+                                            <TableCell align="center">
+                                                <TextField
+                                                    type="number"
+                                                    value={option.priceDifference || ""}
+                                                    onChange={(e) => handleOptionChange(optionIndex, 'priceDifference', e.target.value)}
+                                                    placeholder="0.00"
+                                                    size="small"
+                                                    sx={{ width: 100 }}
+                                                />
+                                            </TableCell>
+
+                                            {/* Toggle Switch Column */}
+                                            <TableCell align="center">
+                                                <Switch
+                                                    checked={option.isVisible !== false} // Default to true if not set
+                                                    onChange={() => {
+                                                        const updatedCustomizations = [...customizationData.customizations];
+                                                        const updatedOptionList = [...updatedCustomizations[index].optionList];
+
+                                                        updatedOptionList[optionIndex] = {
+                                                            ...updatedOptionList[optionIndex],
+                                                            isVisible: !(updatedOptionList[optionIndex]?.isVisible !== false)
+                                                        };
+
+                                                        updatedCustomizations[index] = {
+                                                            ...updatedCustomizations[index],
+                                                            optionList: updatedOptionList
+                                                        };
+
+                                                        setCustomizationData({
+                                                            ...customizationData,
+                                                            customizations: updatedCustomizations
+                                                        });
+                                                    }}
+                                                    inputProps={{ 'aria-label': 'controlled' }}
+                                                />
+                                            </TableCell>
+
+                                            <TableCell align="center">
+                                                <IconButton
+                                                    size="small"
+                                                    onClick={() => {
+                                                        const updatedCustomizations = [...customizationData.customizations];
+                                                        const updatedOptionList = [...updatedCustomizations[index].optionList];
+                                                        updatedOptionList.splice(optionIndex, 1);
+                                                        updatedCustomizations[index] = {
+                                                            ...updatedCustomizations[index],
+                                                            optionList: updatedOptionList
+                                                        };
+                                                        setCustomizationData({
+                                                            ...customizationData,
+                                                            customizations: updatedCustomizations
+                                                        });
+                                                    }}
+                                                >
+                                                    <DeleteIcon />
+                                                </IconButton>
+                                            </TableCell>
+                                        </DraggableTableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+
+                        <Button
+                            variant="outlined"
+                            sx={{ mt: 2 }}
+                            onClick={() => {
+                                const updatedCustomizations = [...customizationData.customizations];
+                                const updatedOptionList = [...updatedCustomizations[index].optionList];
+
+                                updatedOptionList.push({
+                                    optionName: "",
+                                    priceDifference: "0",
+                                    main_images: [null, null, null],
+                                    preview_image: null,
+                                    thumbnail: null,
+                                    isVisible: true,
+                                    edit_main_image: null,
+                                    edit_main_image_data: null,
+                                    edit_preview_image: null,
+                                    edit_preview_image_data: null
+                                });
+
+                                updatedCustomizations[index] = {
+                                    ...updatedCustomizations[index],
+                                    optionList: updatedOptionList
+                                };
+
+                                setCustomizationData({
+                                    ...customizationData,
+                                    customizations: updatedCustomizations
+                                });
+                            }}
+                        >
+                            Add Option
+                        </Button>
+                    </CardContent>
+                </Collapse>
+            </Card>
 
             {/* Enhanced Crop Dialog */}
             <Dialog

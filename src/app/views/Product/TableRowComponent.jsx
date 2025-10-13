@@ -529,8 +529,8 @@ const ImageTooltip = ({
         console.log("Edited Image in useEffect", editData, typeof editData);
         editData = typeof editData === "string" ? JSON.parse(editData) : editData;
         console.log("Edited Image in useEffect", editData, typeof editData);
-        setZoom(editData?.scale);
-            setCrop({x: editData?.x, y: editData?.y});
+        setZoom(editData?.scale || 1);
+            setCrop({x: editData?.x || 0, y: editData?.y || 0});
             setRotation(0);
     }, [])
 
@@ -627,6 +627,9 @@ const ImageTooltip = ({
 
     const handleCropCancel = () => {
         setCropDialogOpen(false);
+        console.log("Edited Data", typeof editData, editData);
+        editData = typeof editData === "string" ? JSON.parse(editData) : editData;
+        console.log("Edited Data", typeof editData, editData);
         setZoom(editData?.scale || 1);
         setCrop({x: editData?.x || 0, y: editData?.y || 0});
         setRotation(0);
