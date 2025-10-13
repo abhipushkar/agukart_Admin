@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import TableRow from "@mui/material/TableRow";
 import TableCell from "@mui/material/TableCell";
-import {Box, Button, Checkbox, styled, Switch, Tooltip, IconButton, Slider, Dialog, DialogActions, DialogContent, DialogTitle} from "@mui/material";
+import {Box, Button, Checkbox, styled, Switch, Tooltip, IconButton, Slider, Dialog, DialogActions, DialogContent, DialogTitle, Chip} from "@mui/material";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 import EditIcon from "@mui/icons-material/Edit";
 import CropIcon from "@mui/icons-material/Crop";
@@ -12,8 +12,10 @@ import RotateRightIcon from "@mui/icons-material/RotateRight";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
+import CollectionsIcon from "@mui/icons-material/Collections";
 import Cropper from 'react-easy-crop';
-import { getCroppedImg } from './cropUtil';
+import {createBlobUrl, fetchImageAsBlob, getCroppedImg, revokeBlobUrl} from './cropUtil';
+import Typography from "@mui/material/Typography";
 
 const VisuallyHiddenInput = styled("input")({
     clip: "rect(0 0 0 0)",
@@ -181,13 +183,26 @@ const TableRowComponent = ({
         e.stopPropagation();
     };
 
+    // New function to handle bulk image upload
+    const handleBulkImageUpload = (combindex, rowIndex, event) => {
+        const files = Array.from(event.target.files);
+
+        if (files.length === 0) return;
+
+        // Upload first 3 images to main_images[0], main_images[1], main_images[2]
+        files.slice(0, 3).forEach((file, index) => {
+            const imageKey = `main_images[${index}]`;
+            handleImageUpload(combindex, rowIndex, imageKey, { target: { files: [file] } });
+        });
+    };
+
     const isImageEditable = (imageType, imageIndex, item) => {
         if (imageType === "preview_image") return true;
         if (imageType === "main_images" && imageIndex === 0) return true;
         return false;
     };
 
-    const renderImageCell = (item, index, imageType, imageIndex = null) => {
+    const renderImageCell = (item, index, imageType, imageIndex = null, editData = null) => {
         let imageValue;
         let editedImageValue;
 
@@ -246,11 +261,12 @@ const TableRowComponent = ({
                     {displayUrl ? (
                         <ImageTooltip
                             imageUrl={displayUrl}
-                            originalImage={imageValue}
+                            editData={editData}
+                            originalImage={displayMini}
                             editedImage={shouldUseEditedImage ? editedImageValue : null}
                             onImageChange={(e) => handleImageUpload(combindex, index, imageKey, e)}
                             onImageRemove={() => handleImageRemove(combindex, index, imageKey)}
-                            onImageEdit={isEditable ? (editedImage) => handleEditImage(combindex, index, imageType, editedImage, imageIndex) : null}
+                            onImageEdit={isEditable ? (editedImage, editData) => handleEditImage(combindex, index, imageType, editedImage, imageIndex, editData) : null}
                             isEditable={isEditable}
                             combindex={combindex}
                             rowIndex={index}
@@ -312,6 +328,43 @@ const TableRowComponent = ({
         );
     };
 
+    // New function to render bulk upload cell
+    const renderBulkUploadCell = (item, index) => {
+        const hasMainImages = item.main_images && item.main_images.some(img => img && img !== "");
+        const uploadedCount = item.main_images ? item.main_images.filter(img => img && img !== "").length : 0;
+
+        return (
+            <TableCell align="center">
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                    <Button
+                        component="label"
+                        variant="outlined"
+                        size="small"
+                        startIcon={<CollectionsIcon />}
+                        sx={{ fontSize: '12px' }}
+                    >
+                        Bulk Upload
+                        <VisuallyHiddenInput
+                            type="file"
+                            multiple
+                            onChange={(e) => handleBulkImageUpload(combindex, index, e)}
+                            accept="image/*"
+                        />
+                    </Button>
+
+                    {hasMainImages && (
+                        <Chip
+                            label={`${uploadedCount}/3 images`}
+                            size="small"
+                            color={uploadedCount === 3 ? "success" : "default"}
+                            variant="outlined"
+                        />
+                    )}
+                </Box>
+            </TableCell>
+        );
+    };
+
     return (
         <>
             {itemsToShow?.map((item, index) => (
@@ -353,16 +406,20 @@ const TableRowComponent = ({
                     <TableCell align="center">
                         <Checkbox {...label} size="small" />
                     </TableCell>
+
                     {item?.value1 && <TableCell align="center">{item?.value1}</TableCell>}
                     {item?.value2 && <TableCell align="center">{item?.value2}</TableCell>}
 
+                    {/* Bulk Upload Column */}
+                    {renderBulkUploadCell(item, index)}
+
                     {/* Main Images */}
-                    {renderImageCell(item, index, "main_images", 0)}
+                    {renderImageCell(item, index, "main_images", 0, item.edit_main_image_data || null)}
                     {renderImageCell(item, index, "main_images", 1)}
                     {renderImageCell(item, index, "main_images", 2)}
 
                     {/* Preview Image */}
-                    {renderImageCell(item, index, "preview_image")}
+                    {renderImageCell(item, index, "preview_image", null, item.edit_preview_image_data || null)}
 
                     {/* Thumbnail */}
                     {renderImageCell(item, index, "thumbnail")}
@@ -423,7 +480,7 @@ const TableRowComponent = ({
 
             {comb.combinations.length > 5 && (
                 <TableRow>
-                    <TableCell colSpan={10} align="center">
+                    <TableCell colSpan={11} align="center">
                         <button
                             onClick={handleSeeMore}
                             style={{
@@ -446,6 +503,7 @@ const TableRowComponent = ({
 const ImageTooltip = ({
                           imageUrl,
                           originalImage,
+    editData,
                           editedImage,
                           onImageChange,
                           onImageRemove,
@@ -467,6 +525,15 @@ const ImageTooltip = ({
 
     const hasValidImage = imageUrl && imageUrl !== "";
 
+    useEffect(() => {
+        console.log("Edited Image in useEffect", editData, typeof editData);
+        editData = typeof editData === "string" ? JSON.parse(editData) : editData;
+        console.log("Edited Image in useEffect", editData, typeof editData);
+        setZoom(editData?.scale);
+            setCrop({x: editData?.x, y: editData?.y});
+            setRotation(0);
+    }, [])
+
     const handleTooltipOpen = () => {
         if (!hasValidImage) return;
         setOpen(true);
@@ -486,29 +553,82 @@ const ImageTooltip = ({
     };
 
     const handleCropApply = async () => {
+        let blobUrl = null;
+
         try {
+            // Validate crop area
+            if (!croppedAreaPixels || !croppedAreaPixels.width || !croppedAreaPixels.height) {
+                throw new Error('Invalid crop area');
+            }
+
+            let imageToCrop = originalImage;
+
+            // If it's an external URL, fetch it as blob first to avoid CORS issues
+            if (typeof originalImage === 'string' &&
+                (originalImage.startsWith('http') || originalImage.startsWith('https'))) {
+
+                try {
+                    const blob = await fetchImageAsBlob(originalImage);
+                    blobUrl = createBlobUrl(blob);
+                    imageToCrop = blobUrl;
+                } catch (fetchError) {
+                    console.warn('Failed to fetch image via CORS, trying direct method:', fetchError);
+                    // Continue with original URL and hope CORS works
+                }
+            }
+
             const croppedImage = await getCroppedImg(
-                imageUrl,
+                imageToCrop,
                 croppedAreaPixels,
                 rotation
             );
+
+            // Validate the cropped image
+            if (!croppedImage || croppedImage.size === 0) {
+                throw new Error('Cropped image is empty');
+            }
 
             const editedFile = new File([croppedImage], `edited-${Date.now()}.jpg`, {
                 type: 'image/jpeg'
             });
 
-            onImageEdit(editedFile);
+            editData = {
+                scale: zoom,
+                x: crop.x,
+                y: crop.y,
+                rotation: rotation,
+                croppedAreaPixels: croppedAreaPixels,
+                timestamp: new Date().toISOString()
+            };
+
+            onImageEdit(editedFile, editData);
             setCropDialogOpen(false);
             setOpen(false);
+
         } catch (error) {
             console.error('Error cropping image:', error);
+
+            // Show user-friendly error message
+            if (error.message.includes('CORS') || error.message.includes('tainted')) {
+                alert('Unable to edit this image due to security restrictions. Please download the image and upload it again, or contact the administrator to enable CORS on the image server.');
+            } else if (error.message.includes('dimensions') || error.message.includes('Invalid crop')) {
+                alert('Invalid crop area selected. Please try cropping again.');
+            } else {
+                alert('Failed to process the image. Please try again or use a different image.');
+            }
+        } finally {
+            // Clean up blob URL if we created one
+            if (blobUrl) {
+                revokeBlobUrl(blobUrl);
+            }
         }
     };
 
+
     const handleCropCancel = () => {
         setCropDialogOpen(false);
-        setCrop({ x: 0, y: 0 });
-        setZoom(1);
+        setZoom(editData?.scale || 1);
+        setCrop({x: editData?.x || 0, y: editData?.y || 0});
         setRotation(0);
     };
 
@@ -537,6 +657,19 @@ const ImageTooltip = ({
             </Button>
         </Box>
     );
+
+    // Function to calculate visual differences between original and edited
+    const getEditSummary = () => {
+        console.log("Edited Image", editData);
+        if (!editedImage) return null;
+
+        const summary = [];
+        if (zoom !== 1) summary.push(`Zoom: ${zoom?.toFixed(1)}x`);
+        if (rotation !== 0) summary.push(`Rotation: ${rotation}°`);
+        if (crop?.x !== 0 || crop?.y !== 0) summary.push(`Position: (${Math.round(crop?.x)}, ${Math.round(crop?.y)})`);
+
+        return summary.length > 0 ? summary.join(', ') : 'Custom crop applied';
+    };
 
     return (
         <>
@@ -595,6 +728,23 @@ const ImageTooltip = ({
                             />
                         </Box>
 
+                        {editedImage && getEditSummary() && (
+                            <Box
+                                sx={{
+                                    mb: 1,
+                                    px: 1,
+                                    py: 0.5,
+                                    backgroundColor: 'info.light',
+                                    color: 'white',
+                                    borderRadius: 1,
+                                    fontSize: '0.7rem',
+                                    textAlign: 'center'
+                                }}
+                            >
+                                {getEditSummary()}
+                            </Box>
+                        )}
+
                         {renderNormalControls()}
                     </Box>
                 }
@@ -616,32 +766,85 @@ const ImageTooltip = ({
                 {children}
             </Tooltip>
 
-            {/* Crop Dialog */}
+            {/* Enhanced Crop Dialog */}
             <Dialog
                 open={cropDialogOpen}
                 onClose={handleCropCancel}
-                maxWidth="md"
+                maxWidth="lg"
                 fullWidth
             >
-                <DialogTitle>Edit Image</DialogTitle>
+                <DialogTitle>
+                    Edit Image
+                    {editedImage && (
+                        <Box sx={{ fontSize: '0.9rem', color: 'text.secondary', mt: 0.5 }}>
+                            Current edits: {getEditSummary()}
+                        </Box>
+                    )}
+                </DialogTitle>
                 <DialogContent>
-                    <Box sx={{ position: 'relative', height: 400, width: '100%' }}>
-                        <Cropper
-                            image={imageUrl}
-                            crop={crop}
-                            zoom={zoom}
-                            rotation={rotation}
-                            aspect={1}
-                            onCropChange={setCrop}
-                            onZoomChange={setZoom}
-                            onRotationChange={setRotation}
-                            onCropComplete={handleCropComplete}
-                        />
+                    <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', md: 'row' } }}>
+                        {/* Original Image */}
+                        <Box sx={{ flex: 1 }}>
+                            <Typography variant="subtitle2" gutterBottom align="center">
+                                Original Image
+                            </Typography>
+                            <Box sx={{
+                                position: 'relative',
+                                height: 300,
+                                width: '100%',
+                                border: '2px solid',
+                                borderColor: 'primary.main',
+                                borderRadius: 1,
+                                overflow: 'hidden'
+                            }}>
+                                <img
+                                    src={originalImage}
+                                    alt="Original"
+                                    style={{
+                                        width: '100%',
+                                        height: '100%',
+                                        objectFit: 'contain'
+                                    }}
+                                />
+                            </Box>
+                        </Box>
+
+                        {/* Edited Image Preview */}
+                        <Box sx={{ flex: 1 }}>
+                            <Typography variant="subtitle2" gutterBottom align="center">
+                                Edited Preview
+                            </Typography>
+                            <Box sx={{
+                                position: 'relative',
+                                height: 300,
+                                width: '100%',
+                                border: '2px solid',
+                                borderColor: 'success.main',
+                                borderRadius: 1,
+                                overflow: 'hidden'
+                            }}>
+                                <Cropper
+                                    image={originalImage}
+                                    crop={crop}
+                                    zoom={zoom}
+                                    rotation={rotation}
+                                    aspect={1}
+                                    onCropChange={setCrop}
+                                    onZoomChange={setZoom}
+                                    onRotationChange={setRotation}
+                                    onCropComplete={handleCropComplete}
+                                    crossOrigin="anonymous"
+                                />
+                            </Box>
+                        </Box>
                     </Box>
 
                     {/* Controls */}
                     <Box sx={{ mt: 2 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                            <Typography variant="body2" sx={{ minWidth: 80 }}>
+                                Zoom: {zoom?.toFixed(1)}x
+                            </Typography>
                             <IconButton onClick={() => setZoom(prev => Math.max(prev - 0.1, 1))}>
                                 <ZoomOutIcon />
                             </IconButton>
@@ -658,7 +861,10 @@ const ImageTooltip = ({
                             </IconButton>
                         </Box>
 
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <Typography variant="body2" sx={{ minWidth: 80 }}>
+                                Rotation: {rotation}°
+                            </Typography>
                             <IconButton onClick={() => setRotation(prev => prev - 90)}>
                                 <RotateLeftIcon />
                             </IconButton>
@@ -672,6 +878,12 @@ const ImageTooltip = ({
                             <IconButton onClick={() => setRotation(prev => prev + 90)}>
                                 <RotateRightIcon />
                             </IconButton>
+                        </Box>
+
+                        <Box sx={{ mt: 2, display: 'flex', gap: 1, justifyContent: 'center' }}>
+                            <Typography variant="body2" color="text.secondary">
+                                Position: X: {Math.round(crop.x)}, Y: {Math.round(crop.y)}
+                            </Typography>
                         </Box>
                     </Box>
                 </DialogContent>

@@ -103,7 +103,7 @@ const CustomisationTabs = ({
     }
 
     // Update the handleEditImage function in CustomisationTabs.jsx
-    const handleEditImage = (combindex, rowIndex, imageType, editedImage, imageIndex = null) => {
+    const handleEditImage = (combindex, rowIndex, imageType, editedImage, imageIndex = null, editData = null) => {
         setCombinations(prev => {
             return prev?.map((comb, i) => {
                 if (i !== combindex) return comb;
@@ -118,11 +118,20 @@ const CustomisationTabs = ({
                         editKey = "edit_main_image";
                     }
 
-                    // Create updated combination with edited image
-                    return {
-                        ...item, [editKey]: editedImage // Store the edited File object
+                    const updatedItem = {
+                        ...item,
+                        [editKey]: editedImage
                     };
+
+
+                    if (editData && editKey) {
+                        updatedItem[`${editKey}_data`] = editData;
+
+                    }
+                    return updatedItem;
+
                 });
+                console.log("Edited Data", editData, updatedCombinations);
 
                 return {
                     ...comb, combinations: updatedCombinations
@@ -2149,6 +2158,14 @@ const CustomisationTabs = ({
                                                 }}
                                                 align="center"
                                             >
+
+                                            </TableCell>
+                                            <TableCell
+                                                sx={{
+                                                    wordBreak: "keep-all"
+                                                }}
+                                                align="center"
+                                            >
                                                 S.No
                                             </TableCell>
                                             {comb.combinations[0]?.name1 && <TableCell
@@ -2167,6 +2184,14 @@ const CustomisationTabs = ({
                                             >
                                                 {comb.combinations[0]?.name2}
                                             </TableCell>}
+                                            <TableCell
+                                                sx={{
+                                                    wordBreak: "keep-all"
+                                                }}
+                                                align="center"
+                                            >
+                                                Multiple Upload
+                                            </TableCell>
                                             <TableCell
                                                 sx={{
                                                     wordBreak: "keep-all"

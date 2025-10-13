@@ -487,14 +487,15 @@ export default function BasicTabs() {
 
         // 2) Append ALL combination data (not just files) - only non-empty values
         combinations.forEach((variant, vIndex) => {
+            console.log("Edited Data", variant);
             // Skip empty variants
             if (!variant || !variant.combinations || variant.combinations.length === 0) {
                 return;
             }
 
-            // ... existing variant-level data appending ...
-
             (variant.combinations || []).forEach((comb, cIndex) => {
+                console.log("Edited Data", comb);
+
                 // Skip empty combinations
                 if (!comb) return;
 
@@ -514,6 +515,19 @@ export default function BasicTabs() {
                         fieldKey === "edit_preview_image"
                     ) {
                         return; // skip nulls and skip file/image fields (they're handled separately below)
+                    }
+
+                    console.log("Edited Data", JSON.stringify(fieldVal), fieldKey, fieldKey === "edit_main_image_data",
+                        fieldKey === "edit_preview_image_data");
+
+                    if ((fieldKey === "edit_main_image_data" ||
+                        fieldKey === "edit_preview_image_data") && fieldVal && fieldKey) {
+                        console.log("Edited Data", JSON.stringify(fieldVal), fieldKey);
+                        fData.append(
+                            `combinationData[${vIndex}][combinations][${cIndex}][${fieldKey}]`,
+                            typeof fieldVal === "string" ? fieldVal : JSON.stringify(fieldVal)
+                        );
+                        return;
                     }
 
                     if (Array.isArray(fieldVal)) {
@@ -547,13 +561,11 @@ export default function BasicTabs() {
                             img
                         );
                     } else if (typeof img === "string") {
-                        // Append empty string for removed images
                         fData.append(
                             `combinationData[${vIndex}][combinations][${cIndex}][main_images][]`,
                             img
                         );
                     }
-                    // Note: We don't handle existing image URLs here as they're handled by the backend
                 });
 
                 if (comb?.preview_image instanceof File) {
@@ -610,8 +622,12 @@ export default function BasicTabs() {
             });
         });
 
-        // 3) Append customization data with images
+        // 3) Append customization data with images - UPDATED TO MATCH COMBINATIONS STRUCTURE
         if (customizationData && customizationData.customizations && customizationData.customizations.length > 0) {
+            // Append basic customization fields
+            fData.append(`customizationData[label]`, customizationData.label || '');
+            fData.append(`customizationData[instructions]`, customizationData.instructions || '');
+
             customizationData.customizations.forEach((customization, cIndex) => {
                 // Append basic customization fields
                 fData.append(`customizationData[customizations][${cIndex}][title]`, customization.title || '');
@@ -640,6 +656,22 @@ export default function BasicTabs() {
                         // Append basic option fields
                         fData.append(`customizationData[customizations][${cIndex}][optionList][${oIndex}][optionName]`, option.optionName || '');
                         fData.append(`customizationData[customizations][${cIndex}][optionList][${oIndex}][priceDifference]`, option.priceDifference || '0');
+                        fData.append(`customizationData[customizations][${cIndex}][optionList][${oIndex}][isVisible]`, option.isVisible !== false ? 'true' : 'false');
+
+                        // Handle edit data for images
+                        if (option.edit_main_image_data) {
+                            fData.append(
+                                `customizationData[customizations][${cIndex}][optionList][${oIndex}][edit_main_image_data]`,
+                                typeof option.edit_main_image_data === "string" ? option.edit_main_image_data : JSON.stringify(option.edit_main_image_data)
+                            );
+                        }
+
+                        if (option.edit_preview_image_data) {
+                            fData.append(
+                                `customizationData[customizations][${cIndex}][optionList][${oIndex}][edit_preview_image_data]`,
+                                typeof option.edit_preview_image_data === "string" ? option.edit_preview_image_data : JSON.stringify(option.edit_preview_image_data)
+                            );
+                        }
 
                         // Handle main images array
                         if (option.main_images && Array.isArray(option.main_images)) {
@@ -805,7 +837,6 @@ export default function BasicTabs() {
             bullet_points: formData.bulletPoints,
             description: formData.productDescription,
             customize: formData.customization,
-            customizationData: customizationData || {},
             search_terms: keys,
             launch_date: formData.launchData,
             release_date: formData.releaseDate,
@@ -892,7 +923,6 @@ export default function BasicTabs() {
             bullet_points: formData.bulletPoints,
             description: formData.productDescription,
             customize: formData.customization,
-            customizationData: customizationData || {},
             search_terms: keys,
             launch_date: formData.launchData,
             release_date: formData.releaseDate,
@@ -1018,7 +1048,6 @@ export default function BasicTabs() {
             bullet_points: formData.bulletPoints,
             description: formData.productDescription,
             customize: formData.customization,
-            customizationData: customizationData || {},
             search_terms: keys,
             launch_date: formData.launchData,
             release_date: formData.releaseDate,
