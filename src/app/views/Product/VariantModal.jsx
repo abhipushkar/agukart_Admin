@@ -197,7 +197,7 @@ const VariantModal = ({
     };
 
     const handleCancel = () => {
-        handleCloseVariant();
+        // handleCloseVariant();
         setShowVariantList(false);
     };
 
@@ -224,11 +224,11 @@ const VariantModal = ({
         }));
 
         setShowVariantList(false);
-        setSelectedVariant('');
-        setSelectedVariations([]);
-        setVariationsData([]);
-        setCombinations([]);
-        setFormValues({ prices: "", quantities: "", isCheckedPrice: false, isCheckedQuantity: false });
+        // setSelectedVariant('');
+        // setSelectedVariations([]);
+        // setVariationsData([]);
+        // setCombinations([]);
+        // setFormValues({ prices: "", quantities: "", isCheckedPrice: false, isCheckedQuantity: false });
     };
 
     useEffect(() => {
@@ -263,8 +263,8 @@ const VariantModal = ({
         );
         setFormValues({ prices: "", quantities: "", isCheckedPrice: false, isCheckedQuantity: false });
         setIsEdit(false);
-        setAttrOptions([]);
-        setCombinations([]);
+        // setAttrOptions([]);
+        // setCombinations([]);
         setShowVariantList(false);
     };
 

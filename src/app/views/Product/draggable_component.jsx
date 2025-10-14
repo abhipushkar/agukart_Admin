@@ -60,25 +60,36 @@ const DraggableCustomizationItem = ({
         }
     });
 
-    const [{ isDragging }, drag] = useDrag({
+    const [{ isDragging }, drag, preview] = useDrag({
         type: ItemTypes.CUSTOMIZATION_ITEM,
-        item: { id, index },
+        item: { id, index, type: ItemTypes.CUSTOMIZATION_ITEM },
         collect: (monitor) => ({
             isDragging: monitor.isDragging()
         })
     });
 
+    // Use preview for the entire component but drag only for the handle
     drag(drop(ref));
 
     return (
         <Box
-            ref={ref}
+            ref={preview} // Use preview for the entire component
             sx={{
                 opacity: isDragging ? 0.5 : 1,
-                cursor: "move"
+                cursor: "move",
+                // transform: isDragging ? 'rotate(5deg)' : 'none',
+                transition: isDragging ? 'none' : 'all 0.2s ease',
+                boxShadow: isDragging ? '0 4px 20px rgba(0,0,0,0.15)' : 'none',
+                position: 'relative',
+                zIndex: isDragging ? 1000 : 1,
             }}
         >
-            <Accordion defaultExpanded={defaultExpanded}>
+            <Accordion
+                defaultExpanded={defaultExpanded}
+                sx={{
+                    pointerEvents: isDragging ? 'none' : 'auto',
+                }}
+            >
                 <Box
                     sx={{
                         height: "40px"
@@ -86,14 +97,16 @@ const DraggableCustomizationItem = ({
                     display={"flex"}
                 >
                     <Box
-                        ref={ref}
+                        ref={ref} // Drag handle reference
                         sx={{
-                            cursor: "pointer",
+                            cursor: isDragging ? 'grabbing' : 'grab',
                             display: "flex",
                             alignItems: "center",
                             border: "1px solid black",
                             justifyContent: "space-between",
-                            width: "100%"
+                            width: "100%",
+                            userSelect: 'none',
+                            touchAction: 'none',
                         }}
                     >
                         <Box
@@ -107,7 +120,8 @@ const DraggableCustomizationItem = ({
                                     fontSize: "24px",
                                     fontWeight: "700",
                                     borderRight: "1px solid black",
-                                    paddingInline: "10px"
+                                    paddingInline: "10px",
+                                    cursor: isDragging ? 'grabbing' : 'grab',
                                 }}
                             >
                                 {index + 1}
@@ -144,7 +158,8 @@ const DraggableCustomizationItem = ({
                                 sx={{
                                     fontSize: "15px",
                                     fontWeight: "600",
-                                    paddingInline: "10px"
+                                    paddingInline: "10px",
+                                    cursor: isDragging ? 'grabbing' : 'grab',
                                 }}
                             >
                                 Change Order
@@ -166,6 +181,9 @@ const DraggableCustomizationItem = ({
                         expandIcon={<ExpandMoreIcon />}
                         aria-controls="panel1-content"
                         id="panel1-header"
+                        sx={{
+                            cursor: isDragging ? 'grabbing' : 'pointer',
+                        }}
                     ></AccordionSummary>
                 </Box>
                 <AccordionDetails>

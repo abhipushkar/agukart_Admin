@@ -78,9 +78,17 @@ const DraggableTableRow = ({
                                isDragOver,
                                ...props
                            }) => {
+    const ref = useRef(null);
+
     const handleDragStart = (e) => {
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/plain', index.toString());
+
+        // Set drag image to be the row itself
+        if (ref.current) {
+            e.dataTransfer.setDragImage(ref.current, 0, 0);
+        }
+
         onDragStart(e, index);
     };
 
@@ -95,14 +103,19 @@ const DraggableTableRow = ({
         onDrop(e, index);
     };
 
+    const handleDragEnd = (e) => {
+        onDragEnd(e);
+    };
+
     return (
         <TableRow
             {...props}
+            ref={ref}
             draggable
             onDragStart={handleDragStart}
             onDragOver={handleDragOver}
             onDrop={handleDrop}
-            onDragEnd={onDragEnd}
+            onDragEnd={handleDragEnd}
             sx={{
                 cursor: isDragging ? 'grabbing' : 'grab',
                 backgroundColor: isDragging
@@ -112,9 +125,10 @@ const DraggableTableRow = ({
                         : 'transparent',
                 opacity: isDragging ? 0.7 : 1,
                 transform: isDragging ? 'scale(1.02)' : 'scale(1)',
-                transition: 'all 0.2s ease',
+                transition: isDragging ? 'none' : 'all 0.2s ease',
                 boxShadow: isDragging ? '0 4px 20px rgba(0,0,0,0.15)' : 'none',
                 position: 'relative',
+                zIndex: isDragging ? 1000 : 1,
                 '&:hover': {
                     backgroundColor: isDragging
                         ? 'rgba(25, 118, 210, 0.08)'
@@ -605,6 +619,13 @@ const VariantCustomizationTable = ({
         setDraggingIndex(sourceIndex);
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/plain', sourceIndex.toString());
+
+        // Set a custom drag image if needed
+        const dragImage = e.currentTarget;
+        if (dragImage) {
+            const rect = dragImage.getBoundingClientRect();
+            e.dataTransfer.setDragImage(dragImage, rect.width / 2, rect.height / 2);
+        }
     };
 
     const handleDragOver = (e, targetIndex) => {
@@ -1081,11 +1102,17 @@ const VariantCustomizationTable = ({
                                                         className="drag-handle"
                                                         size="small"
                                                         sx={{
-                                                            cursor: 'grab',
+                                                            cursor: draggingIndex === optionIndex ? 'grabbing' : 'grab',
                                                             '&:active': {
                                                                 cursor: 'grabbing',
                                                             },
-                                                            touchAction: 'none'
+                                                            touchAction: 'none',
+                                                            userSelect: 'none',
+                                                        }}
+                                                        draggable={true}
+                                                        onDragStart={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDragStart(e, optionIndex);
                                                         }}
                                                     >
                                                         <DragIndicatorIcon

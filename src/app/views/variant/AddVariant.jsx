@@ -23,7 +23,10 @@ import {
     Dialog,
     DialogContent,
     IconButton,
-    Tooltip
+    Tooltip,
+    Chip,
+    DialogTitle,
+    DialogActions
 } from "@mui/material";
 import AppsIcon from "@mui/icons-material/Apps";
 import React from "react";
@@ -40,6 +43,7 @@ import {EditTwoTone, Close} from "@mui/icons-material";
 import {Fragment} from "react";
 import ConfirmModal from "app/components/ConfirmModal";
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
+import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 
 const VisuallyHiddenInput = styled("input")({
     clip: "rect(0 0 0 0)",
@@ -83,19 +87,6 @@ const ImageTooltip = ({ imageUrl, onImageChange, onImageRemove, children }) => {
                         }}
                     />
                     <Box sx={{ display: 'flex', gap: 1 }}>
-                        {/*<Button*/}
-                        {/*    variant="contained"*/}
-                        {/*    size="small"*/}
-                        {/*    component="label"*/}
-                        {/*    sx={{ fontSize: '12px' }}*/}
-                        {/*>*/}
-                        {/*    Change*/}
-                        {/*    <VisuallyHiddenInput*/}
-                        {/*        type="file"*/}
-                        {/*        onChange={onImageChange}*/}
-                        {/*        accept="image/*"*/}
-                        {/*    />*/}
-                        {/*</Button>*/}
                         <Button
                             variant="outlined"
                             size="small"
@@ -127,6 +118,75 @@ const ImageTooltip = ({ imageUrl, onImageChange, onImageRemove, children }) => {
     );
 };
 
+// Draggable Table Row Component
+const DraggableTableRow = ({
+                               children,
+                               index,
+                               onDragStart,
+                               onDragOver,
+                               onDrop,
+                               onDragEnd,
+                               isDragging,
+                               isDragOver,
+                               ...props
+                           }) => {
+    const handleDragStart = (e) => {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', index.toString());
+        onDragStart(e, index);
+    };
+
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        onDragOver(e, index);
+    };
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        onDrop(e, index);
+    };
+
+    return (
+        <TableRow
+            {...props}
+            draggable
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+            onDragEnd={onDragEnd}
+            sx={{
+                cursor: isDragging ? 'grabbing' : 'grab',
+                backgroundColor: isDragging
+                    ? 'rgba(25, 118, 210, 0.08)'
+                    : isDragOver
+                        ? 'rgba(0, 0, 0, 0.04)'
+                        : 'transparent',
+                opacity: isDragging ? 0.7 : 1,
+                transform: isDragging ? 'scale(1.02)' : 'scale(1)',
+                transition: 'all 0.2s ease',
+                boxShadow: isDragging ? '0 4px 20px rgba(0,0,0,0.15)' : 'none',
+                position: 'relative',
+                '&:hover': {
+                    backgroundColor: isDragging
+                        ? 'rgba(25, 118, 210, 0.08)'
+                        : 'rgba(0, 0, 0, 0.04)',
+                },
+                '& .drag-handle': {
+                    opacity: isDragging ? 1 : 0.3,
+                    transition: 'opacity 0.2s ease',
+                },
+                '&:hover .drag-handle': {
+                    opacity: 0.7,
+                },
+                borderBottom: isDragOver ? '2px dashed #1976d2' : '1px solid rgba(224, 224, 224, 1)'
+            }}
+        >
+            {children}
+        </TableRow>
+    );
+};
+
 const AddVariant = () => {
     const [inputFields, setInputFields] = useState([
         {
@@ -147,6 +207,8 @@ const AddVariant = () => {
     const [editData, setEditData] = useState({});
     const [imageDialogOpen, setImageDialogOpen] = useState(false);
     const [currentImage, setCurrentImage] = useState("");
+    const [bulkInput, setBulkInput] = useState("");
+    const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
 
     const [deleteValue, setDeleteValue] = useState([]);
     const [open, setOpen] = React.useState(false);
@@ -157,6 +219,10 @@ const AddVariant = () => {
         i: "",
         deleteId: ""
     });
+
+    // Drag and drop state
+    const [draggingIndex, setDraggingIndex] = useState(null);
+    const [dragOverIndex, setDragOverIndex] = useState(null);
 
     const logOut = () => {
         localStorage.removeItem(localStorageKey.auth_key);
@@ -193,9 +259,45 @@ const AddVariant = () => {
             .min(2, "Name is too short - should be 2 chars minimum")
     });
 
+    // Drag and drop handlers
+    const handleDragStart = (e, sourceIndex) => {
+        setDraggingIndex(sourceIndex);
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', sourceIndex.toString());
+    };
+
+    const handleDragOver = (e, targetIndex) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+
+        if (draggingIndex !== null && draggingIndex !== targetIndex) {
+            setDragOverIndex(targetIndex);
+        }
+    };
+
+    const handleDragEnd = () => {
+        setDraggingIndex(null);
+        setDragOverIndex(null);
+    };
+
+    const handleDrop = (e, targetIndex) => {
+        e.preventDefault();
+        const sourceIndex = parseInt(e.dataTransfer.getData('text/plain'));
+
+        if (sourceIndex !== targetIndex) {
+            const newInputFields = [...inputFields];
+            const [movedItem] = newInputFields.splice(sourceIndex, 1);
+            newInputFields.splice(targetIndex, 0, movedItem);
+            setInputFields(newInputFields);
+        }
+
+        setDraggingIndex(null);
+        setDragOverIndex(null);
+    };
+
     const handleAddFields = () => {
         const newInputFields = inputFields.concat({
-            id: inputFields.length + 1,
+            id: Date.now(), // Use timestamp for unique ID
             attributeValue: "",
             sortOrder: "",
             status: false,
@@ -206,6 +308,43 @@ const AddVariant = () => {
             thumbnailImageUrl: ""
         });
         setInputFields(newInputFields);
+    };
+
+    // New function to handle bulk attribute addition
+    const handleBulkAddAttributes = () => {
+        if (!bulkInput.trim()) return;
+
+        // Split by comma and trim each attribute
+        const attributes = bulkInput.split(',')
+            .map(attr => attr.trim())
+            .filter(attr => attr.length > 0);
+
+        if (attributes.length === 0) return;
+
+        const newAttributes = attributes.map((attribute, index) => ({
+            id: Date.now() + index, // Unique IDs
+            attributeValue: attribute,
+            sortOrder: "",
+            status: false,
+            _id: "new",
+            previewImage: null,
+            thumbnailImage: null,
+            previewImageUrl: "",
+            thumbnailImageUrl: ""
+        }));
+
+        setInputFields(prev => [...prev, ...newAttributes]);
+        setBulkInput(""); // Clear the input after adding
+        setBulkDialogOpen(false); // Close dialog after adding
+    };
+
+    const handleOpenBulkDialog = () => {
+        setBulkDialogOpen(true);
+    };
+
+    const handleCloseBulkDialog = () => {
+        setBulkDialogOpen(false);
+        setBulkInput("");
     };
 
     const handleRemoveFields = (index, id) => {
@@ -481,6 +620,7 @@ const AddVariant = () => {
                 thumbnailImageUrl: ""
             }
         ]);
+        setBulkInput("");
     };
 
     return (
@@ -569,6 +709,7 @@ const AddVariant = () => {
                                             <Table sx={{minWidth: 650}} aria-label="variant attributes table">
                                                 <TableHead>
                                                     <TableRow>
+                                                        <TableCell width="50px">Drag</TableCell>
                                                         <TableCell>Name</TableCell>
                                                         <TableCell align="center">Preview Image (16x16)</TableCell>
                                                         <TableCell align="center">Thumbnail Image (16x16)</TableCell>
@@ -578,7 +719,38 @@ const AddVariant = () => {
                                                 </TableHead>
                                                 <TableBody>
                                                     {inputFields.map((inputField, index) => (
-                                                        <TableRow key={inputField.id}>
+                                                        <DraggableTableRow
+                                                            key={inputField.id}
+                                                            index={index}
+                                                            onDragStart={handleDragStart}
+                                                            onDragOver={handleDragOver}
+                                                            onDrop={handleDrop}
+                                                            onDragEnd={handleDragEnd}
+                                                            isDragging={draggingIndex === index}
+                                                            isDragOver={dragOverIndex === index}
+                                                        >
+                                                            <TableCell align="center">
+                                                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                                    <IconButton
+                                                                        className="drag-handle"
+                                                                        size="small"
+                                                                        sx={{
+                                                                            cursor: 'grab',
+                                                                            '&:active': {
+                                                                                cursor: 'grabbing',
+                                                                            },
+                                                                            touchAction: 'none'
+                                                                        }}
+                                                                    >
+                                                                        <DragIndicatorIcon
+                                                                            sx={{
+                                                                                color: 'text.secondary',
+                                                                                opacity: draggingIndex === index ? 1 : 0.6
+                                                                            }}
+                                                                        />
+                                                                    </IconButton>
+                                                                </Box>
+                                                            </TableCell>
                                                             <TableCell component="th" scope="row">
                                                                 <TextField
                                                                     id={`attributeValue${inputField.id}`}
@@ -722,21 +894,38 @@ const AddVariant = () => {
                                                                     Remove
                                                                 </Button>
                                                             </TableCell>
-                                                        </TableRow>
+                                                        </DraggableTableRow>
                                                     ))}
                                                 </TableBody>
                                             </Table>
                                         </TableContainer>
 
-                                        <Button
-                                            sx={{mt: 2}}
-                                            variant="contained"
-                                            color="primary"
-                                            onClick={handleAddFields}
-                                            type="button"
-                                        >
-                                            Add More Attributes
-                                        </Button>
+                                        <Box sx={{display: 'flex', gap: 2, mt: 2, flexWrap: 'wrap'}}>
+                                            <Button
+                                                variant="contained"
+                                                color="primary"
+                                                onClick={handleAddFields}
+                                                type="button"
+                                            >
+                                                Add Single Attribute
+                                            </Button>
+
+                                            <Button
+                                                variant="outlined"
+                                                color="primary"
+                                                onClick={handleOpenBulkDialog}
+                                                type="button"
+                                            >
+                                                Add Multiple Attributes
+                                            </Button>
+
+                                            <Box sx={{flex: 1}}>
+                                                <Typography variant="caption" color="text.secondary">
+                                                    Total Attributes: {inputFields.length} |
+                                                    Drag and drop to reorder attributes
+                                                </Typography>
+                                            </Box>
+                                        </Box>
                                     </Box>
 
                                     <Box sx={{ml: "16px", mt: "16px", width: "100%"}}>
@@ -767,37 +956,67 @@ const AddVariant = () => {
                 </Box>
             </Box>
 
-            {/*/!* Image Dialog *!/*/}
-            {/*<Dialog*/}
-            {/*    open={imageDialogOpen}*/}
-            {/*    onClose={handleCloseImageDialog}*/}
-            {/*    maxWidth="md"*/}
-            {/*    fullWidth*/}
-            {/*>*/}
-            {/*    <DialogContent sx={{position: 'relative', p: 4}}>*/}
-            {/*        <IconButton*/}
-            {/*            aria-label="close"*/}
-            {/*            onClick={handleCloseImageDialog}*/}
-            {/*            sx={{*/}
-            {/*                position: 'absolute',*/}
-            {/*                right: 8,*/}
-            {/*                top: 8,*/}
-            {/*                color: (theme) => theme.palette.grey[500],*/}
-            {/*            }}*/}
-            {/*        >*/}
-            {/*            <Close/>*/}
-            {/*        </IconButton>*/}
-            {/*        {currentImage && (*/}
-            {/*            <Box sx={{display: 'flex', justifyContent: 'center', alignItems: 'center'}}>*/}
-            {/*                <img*/}
-            {/*                    src={currentImage}*/}
-            {/*                    alt="Enlarged view"*/}
-            {/*                    style={{maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain'}}*/}
-            {/*                />*/}
-            {/*            </Box>*/}
-            {/*        )}*/}
-            {/*    </DialogContent>*/}
-            {/*</Dialog>*/}
+            {/* Bulk Add Attributes Dialog */}
+            <Dialog
+                open={bulkDialogOpen}
+                onClose={handleCloseBulkDialog}
+                maxWidth="md"
+                fullWidth
+            >
+                <DialogTitle>
+                    Add Multiple Attributes
+                </DialogTitle>
+                <DialogContent>
+                    <Box sx={{mt: 2}}>
+                        <Typography variant="body1" sx={{mb: 2}}>
+                            Enter attribute names separated by commas. Each attribute will be added as a separate row.
+                        </Typography>
+
+                        <TextField
+                            value={bulkInput}
+                            onChange={(e) => setBulkInput(e.target.value)}
+                            // onKeyPress={handleBulkInputKeyPress}
+                            placeholder="Enter attributes separated by commas (e.g., stone, color, size, material)"
+                            fullWidth
+                            multiline
+                            rows={4}
+                            autoFocus
+                        />
+
+                        {bulkInput && (
+                            <Box sx={{mt: 2, p: 2, backgroundColor: '#f5f5f5', borderRadius: 1}}>
+                                <Typography variant="subtitle2" sx={{mb: 1}}>
+                                    Preview - Will add {bulkInput.split(',').filter(attr => attr.trim()).length} attributes:
+                                </Typography>
+                                <Box sx={{display: 'flex', flexWrap: 'wrap', gap: 1}}>
+                                    {bulkInput.split(',').map((attr, index) => (
+                                        attr.trim() && (
+                                            <Chip
+                                                key={index}
+                                                label={attr.trim()}
+                                                size="small"
+                                                variant="outlined"
+                                            />
+                                        )
+                                    ))}
+                                </Box>
+                            </Box>
+                        )}
+                    </Box>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseBulkDialog}>
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={handleBulkAddAttributes}
+                        variant="contained"
+                        disabled={!bulkInput.trim()}
+                    >
+                        Add Attributes
+                    </Button>
+                </DialogActions>
+            </Dialog>
 
             <ConfirmModal
                 open={open}
