@@ -1,5 +1,17 @@
+// CustomisationInner.jsx (Updated - Only drag functionality)
 import * as React from "react";
-import { Box, CircularProgress, Stack, TextField, Typography, Button, Modal } from "@mui/material";
+import {
+    Box,
+    CircularProgress,
+    Stack,
+    TextField,
+    Typography,
+    Button,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions
+} from "@mui/material";
 import Accordion from "@mui/material/Accordion";
 import AccordionSummary from "@mui/material/AccordionSummary";
 import AccordionDetails from "@mui/material/AccordionDetails";
@@ -8,18 +20,17 @@ import CreateIcon from "@mui/icons-material/Create";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { styled } from "@mui/material/styles";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import TextCustomisation from "./edit-customisation/TextCustomisation";
-import DataCustomisation from "./edit-customisation/DataCustomisation";
 import OptionDropdown from "./edit-customisation/OptionDropdown";
 import VariantCustomizationTable from "./varaintCustomisationTable";
 import { useLocation } from "react-router-dom";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
-import { useDrag, useDrop } from "react-dnd";
 import { ApiService } from "app/services/ApiService";
 import { apiEndpoints } from "app/constant/apiEndpoints";
 import { localStorageKey } from "app/constant/localStorageKey";
+import DraggableCustomizationItem from "./draggable_component";
 
 const VisuallyHiddenInput = styled("input")({
     clip: "rect(0 0 0 0)",
@@ -33,204 +44,6 @@ const VisuallyHiddenInput = styled("input")({
     width: 1
 });
 
-const style = {
-    position: "absolute",
-    top: "50%",
-    left: "50%",
-    transform: "translate(-50%, -50%)",
-    width: 800,
-    bgcolor: "background.paper",
-    border: "2px solid #000",
-    boxShadow: 24,
-    p: 4
-};
-
-const ItemTypes = {
-    BOX: "box"
-};
-
-const DraggableBox = ({
-                          id,
-                          index,
-                          i,
-                          moveBox,
-                          optionDropDownForm,
-                          addCustomizationHandler,
-                          customizationData,
-                          setCustomizationData
-                      }) => {
-    const ref = useRef(null);
-
-    const [, drop] = useDrop({
-        accept: ItemTypes.BOX,
-        hover(item, monitor) {
-            if (!ref.current) {
-                return;
-            }
-            const dragIndex = item.index;
-            const hoverIndex = index;
-
-            if (dragIndex === hoverIndex) {
-                return;
-            }
-
-            const hoverBoundingRect = ref.current.getBoundingClientRect();
-            const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
-            const clientOffset = monitor.getClientOffset();
-            const hoverClientY = clientOffset.y - hoverBoundingRect.top;
-
-            if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) {
-                return;
-            }
-
-            if (dragIndex > hoverIndex && hoverClientY > hoverMiddleY) {
-                return;
-            }
-
-            moveBox(dragIndex, hoverIndex);
-            item.index = hoverIndex;
-        }
-    });
-
-    const [{ isDragging }, drag] = useDrag({
-        type: ItemTypes.BOX,
-        item: { id, index },
-        collect: (monitor) => ({
-            isDragging: monitor.isDragging()
-        })
-    });
-
-    drag(drop(ref));
-
-    return (
-        <Box>
-            <OptionDropdown
-                myMyRef={ref}
-                key={i}
-                index={i}
-                addCustomizationHandler={addCustomizationHandler}
-                optionDropDownForm={optionDropDownForm}
-                customizationData={customizationData}
-                setCustomizationData={setCustomizationData}
-            />
-        </Box>
-    );
-};
-
-const DraggableBox2 = ({ id, index, i, moveBox, customizationData, setCustomizationData }) => {
-    const ref = useRef(null);
-
-    const [, drop] = useDrop({
-        accept: ItemTypes.BOX,
-        hover(item, monitor) {
-            if (!ref.current) {
-                return;
-            }
-            const dragIndex = item.index;
-            const hoverIndex = index;
-
-            if (dragIndex === hoverIndex) {
-                return;
-            }
-
-            const hoverBoundingRect = ref.current.getBoundingClientRect();
-            const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
-            const clientOffset = monitor.getClientOffset();
-            const hoverClientY = clientOffset.y - hoverBoundingRect.top;
-
-            if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) {
-                return;
-            }
-
-            if (dragIndex > hoverIndex && hoverClientY > hoverMiddleY) {
-                return;
-            }
-
-            moveBox(dragIndex, hoverIndex);
-            item.index = hoverIndex;
-        }
-    });
-
-    const [{ isDragging }, drag] = useDrag({
-        type: ItemTypes.BOX,
-        item: { id, index },
-        collect: (monitor) => ({
-            isDragging: monitor.isDragging()
-        })
-    });
-
-    drag(drop(ref));
-
-    return (
-        <Box>
-            <TextCustomisation
-                myMyRef={ref}
-                customizationData={customizationData}
-                setCustomizationData={setCustomizationData}
-                index={index}
-            />
-        </Box>
-    );
-};
-
-const DraggableBox3 = ({ id, index, i, moveBox, customizationData, setCustomizationData, variants, customVariants }) => {
-    const ref = useRef(null);
-
-    const [, drop] = useDrop({
-        accept: ItemTypes.BOX,
-        hover(item, monitor) {
-            if (!ref.current) {
-                return;
-            }
-            const dragIndex = item.index;
-            const hoverIndex = index;
-
-            if (dragIndex === hoverIndex) {
-                return;
-            }
-
-            const hoverBoundingRect = ref.current.getBoundingClientRect();
-            const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
-            const clientOffset = monitor.getClientOffset();
-            const hoverClientY = clientOffset.y - hoverBoundingRect.top;
-
-            if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) {
-                return;
-            }
-
-            if (dragIndex > hoverIndex && hoverClientY > hoverMiddleY) {
-                return;
-            }
-
-            moveBox(dragIndex, hoverIndex);
-            item.index = hoverIndex;
-        }
-    });
-
-    const [{ isDragging }, drag] = useDrag({
-        type: ItemTypes.BOX,
-        item: { id, index },
-        collect: (monitor) => ({
-            isDragging: monitor.isDragging()
-        })
-    });
-
-    drag(drop(ref));
-
-    return (
-        <Box>
-            <VariantCustomizationTable
-                myMyRef={ref}
-                customizationData={customizationData}
-                setCustomizationData={setCustomizationData}
-                index={index}
-                variants={variants}
-                customVariants={customVariants}
-            />
-        </Box>
-    );
-};
-
 const CustomisationInner = ({
                                 customizationData,
                                 setCustomizationData,
@@ -239,7 +52,8 @@ const CustomisationInner = ({
                                 EditProducthandler,
                                 handleDraftProduct,
                                 variants = [],
-                                customVariants = []
+                                customVariants = [],
+                                categoryId
                             }) => {
     const { state } = useLocation();
     const [open, setOpen] = React.useState(false);
@@ -249,12 +63,39 @@ const CustomisationInner = ({
     const [selectedAttributes, setSelectedAttributes] = React.useState([]);
     const [modalStep, setModalStep] = React.useState(1);
     const [allVariants, setAllVariants] = useState([]);
+    const [apiVariants, setApiVariants] = useState([]);
+    const [loadingVariants, setLoadingVariants] = useState(false);
+    const [titleModalOpen, setTitleModalOpen] = useState(false);
+    const [editingIndex, setEditingIndex] = useState(null);
+    const [newTitle, setNewTitle] = useState("");
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
 
-    // Combine predefined variants with custom variants
+    // Fetch variants from API when categoryId changes
+    const getCategoryVariants = async () => {
+        if (categoryId) {
+            setLoadingVariants(true);
+            try {
+                const res = await ApiService.get(`${apiEndpoints.GetVariantCategories}/${categoryId}`, auth_key);
+                if (res.status === 200) {
+                    setApiVariants(res?.data?.parent || []);
+                }
+            } catch (error) {
+                console.error("Error fetching variants:", error);
+            } finally {
+                setLoadingVariants(false);
+            }
+        }
+    };
+
     useEffect(() => {
-        setAllVariants([...variants, ...customVariants]);
-    }, [variants, customVariants]);
+        getCategoryVariants();
+    }, [categoryId]);
+
+    // Combine predefined variants with custom variants and API variants
+    useEffect(() => {
+        const combined = [...apiVariants];
+        setAllVariants(combined);
+    }, [variants, customVariants, apiVariants]);
 
     const handleOpen = () => {
         setOpen(true);
@@ -283,10 +124,16 @@ const CustomisationInner = ({
     const handleVariantSelect = (variant) => {
         setSelectedVariant(variant);
         setActiveBox("Variant");
-        // Extract attributes from variant data
-        const attributes = variant.variant_attribute?.map(attr => attr.attribute_value) || variant.values || [];
+        const attributes = variant.variant_attribute?.map(attr => ({
+            value: attr.attribute_value,
+            main_images: attr.main_images || [null, null, null],
+            preview_image: attr.preview_image || null,
+            thumbnail: attr.thumbnail || null,
+            attributeId: attr._id
+        })) || variant.values || [];
+
         setVariantAttributes(attributes);
-        setSelectedAttributes(attributes);
+        setSelectedAttributes([]);
         setModalStep(2);
     };
 
@@ -309,15 +156,14 @@ const CustomisationInner = ({
     };
 
     const addCustomizationHandler = () => {
-        console.log("Adding customization:", { activeBox, selectedVariant, selectedAttributes });
-
         if (activeBox === "Text") {
+            const title = "Text Customization";
             setCustomizationData((prev) => ({
                 ...prev,
                 customizations: [
                     ...(prev?.customizations || []),
                     {
-                        title: "Text Customization",
+                        title: title,
                         placeholder: "",
                         label: "",
                         instructions: "",
@@ -330,12 +176,13 @@ const CustomisationInner = ({
             }));
         }
         else if (activeBox === "Option Dropdown") {
+            const title = "Option Dropdown";
             setCustomizationData((prev) => ({
                 ...prev,
                 customizations: [
                     ...(prev?.customizations || []),
                     {
-                        title: `Option Dropdown`,
+                        title: title,
                         label: "",
                         instructions: "",
                         isCompulsory: false,
@@ -351,21 +198,21 @@ const CustomisationInner = ({
         }
         else if (activeBox === "Variant" && selectedVariant) {
             const selectedVariantData = allVariants.find(v =>
-                v.variant_name === selectedVariant.variant_name || v.name === selectedVariant.name
+                v.variant_name === selectedVariant.variant_name
             );
 
             const optionList = selectedAttributes.map(attribute => {
-                // Find the attribute data from the variant
                 const attributeData = selectedVariantData?.variant_attribute?.find(
-                    attr => attr.attribute_value === attribute
+                    attr => attr.attribute_value === attribute.value || attr.attribute_value === attribute
                 );
 
                 return {
-                    optionName: attribute,
+                    optionName: attribute.value || attribute,
                     priceDifference: "0",
                     main_images: attributeData?.main_images || [null, null, null],
                     preview_image: attributeData?.preview_image || null,
-                    thumbnail: attributeData?.thumbnail || null
+                    thumbnail: attributeData?.thumbnail || null,
+                    isVisible: true
                 };
             });
 
@@ -375,10 +222,9 @@ const CustomisationInner = ({
                 instructions: `Choose ${selectedVariant.variant_name || selectedVariant.name}`,
                 isCompulsory: false,
                 optionList: optionList,
-                isVariant: true
+                isVariant: true,
+                variantId: selectedVariant.id || selectedVariant._id
             };
-
-            console.log("Adding variant customization:", newVariantCustomization);
 
             setCustomizationData((prev) => ({
                 ...prev,
@@ -391,21 +237,56 @@ const CustomisationInner = ({
         handleClose();
     };
 
-    const moveBox = (fromIndex, toIndex) => {
-        const updatedForm = [...customizationData.optionDropDownForm];
-        const [removed] = updatedForm.splice(fromIndex, 1);
-        updatedForm.splice(toIndex, 0, removed);
-        setCustomizationData((prev) => ({ ...prev, optionDropDownForm: updatedForm }));
+    const isVariantSelected = (variantName) => {
+        return customizationData?.customizations?.some(
+            customization => customization.isVariant && customization.title === variantName
+        );
     };
 
-    const moveBox2 = (fromIndex, toIndex) => {
-        const updatedForm = [...customizationData.customizations];
-        const [removed] = updatedForm.splice(fromIndex, 1);
-        updatedForm.splice(toIndex, 0, removed);
+    const hasTextCustomization = customizationData?.customizations?.some(
+        customization => !customization.optionList && !customization.isVariant
+    );
+
+    const hasOptionDropdown = customizationData?.customizations?.some(
+        customization => customization.optionList && !customization.isVariant
+    );
+
+    const moveCustomizationItem = (fromIndex, toIndex) => {
+        const updatedCustomizations = [...customizationData.customizations];
+        const [movedItem] = updatedCustomizations.splice(fromIndex, 1);
+        updatedCustomizations.splice(toIndex, 0, movedItem);
+
         setCustomizationData((prev) => ({
             ...prev,
-            customizations: updatedForm,
+            customizations: updatedCustomizations,
         }));
+    };
+
+    const handleCustomizationDelete = (index) => {
+        setCustomizationData((prev) => ({
+            ...prev,
+            customizations: prev.customizations.filter((_, i) => i !== index)
+        }));
+    };
+
+    const handleTitleEdit = (index) => {
+        setEditingIndex(index);
+        setNewTitle(customizationData.customizations[index]?.title || "");
+        setTitleModalOpen(true);
+    };
+
+    const handleTitleChange = () => {
+        if (editingIndex === null) return;
+
+        setCustomizationData((prev) => ({
+            ...prev,
+            customizations: prev.customizations.map((item, idx) =>
+                idx === editingIndex ? { ...item, title: newTitle } : item
+            )
+        }));
+        setTitleModalOpen(false);
+        setEditingIndex(null);
+        setNewTitle("");
     };
 
     const handleChange = (e) => {
@@ -423,11 +304,10 @@ const CustomisationInner = ({
         if (modalStep === 1) {
             return (
                 <>
-                    <Typography id="modal-modal-title" variant="h6" component="h2">
+                    <Typography variant="h6" component="h2" gutterBottom>
                         Add Customisation
                     </Typography>
-                    <Typography
-                        id="modal-modal-description"
+                    <Box
                         sx={{
                             mt: 2,
                             display: "flex",
@@ -435,108 +315,150 @@ const CustomisationInner = ({
                             gap: "10px"
                         }}
                     >
-                        {/* Standard customization types */}
-                        {["Text", "Option Dropdown"].map((title, index) => (
-                            <Box
-                                key={`standard-${index}`}
-                                className={activeBox === title ? "active" : ""}
-                                sx={{
-                                    border:
-                                        activeBox === title
-                                            ? "2px solid #1976d2"
-                                            : "2px solid #eee",
-                                    width: "30%",
-                                    height: "180px",
-                                    cursor: "pointer",
-                                    backgroundColor: activeBox === title ? "#fff" : "inherit"
-                                }}
-                                onClick={() => handleBoxClick(title)}
-                            >
+                        {["Text", "Option Dropdown"].map((title, index) => {
+                            const isSelected = title === "Text" ? hasTextCustomization : hasOptionDropdown;
+                            return (
                                 <Box
+                                    key={`standard-${index}`}
+                                    className={activeBox === title ? "active" : ""}
                                     sx={{
-                                        fontWeight: "500",
-                                        padding: "8px",
-                                        fontSize: "13px",
-                                        borderBottom: "1px solid gray",
-                                        backgroundColor: activeBox === title ? "#1976d2" : "#fff",
-                                        color: activeBox === title ? "#fff" : "#000"
+                                        border: isSelected ? "2px solid green" :
+                                            activeBox === title ? "2px solid #1976d2" : "2px solid #eee",
+                                        width: "30%",
+                                        height: "180px",
+                                        cursor: "pointer",
+                                        backgroundColor: activeBox === title ? "#fff" : "inherit",
+                                        position: "relative",
+                                        borderRadius: 1,
+                                        overflow: 'hidden'
                                     }}
+                                    onClick={() => handleBoxClick(title)}
                                 >
-                                    {title}
+                                    {isSelected && (
+                                        <Box
+                                            sx={{
+                                                position: "absolute",
+                                                top: -5,
+                                                right: -5,
+                                                width: 20,
+                                                height: 20,
+                                                backgroundColor: "green",
+                                                borderRadius: "50%",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                color: "white",
+                                                fontSize: "12px",
+                                                fontWeight: "bold"
+                                            }}
+                                        >
+                                            ✓
+                                        </Box>
+                                    )}
+                                    <Box
+                                        sx={{
+                                            fontWeight: "500",
+                                            padding: "8px",
+                                            fontSize: "13px",
+                                            borderBottom: "1px solid gray",
+                                            backgroundColor: activeBox === title ? "#1976d2" : "#fff",
+                                            color: activeBox === title ? "#fff" : "#000"
+                                        }}
+                                    >
+                                        {title}
+                                        {isSelected && (
+                                            <Typography variant="caption" display="block" sx={{ fontStyle: 'italic' }}>
+                                                (Already added)
+                                            </Typography>
+                                        )}
+                                    </Box>
+                                    <Box
+                                        sx={{
+                                            padding: "5px"
+                                        }}
+                                    >
+                                        {title === "Text" &&
+                                            "Allow buyers to add their personalized text on your product. Ideal for names printed on a surface."}
+                                        {title === "Option Dropdown" &&
+                                            "Allow buyers to choose from different sets of options that you offer. Ideal for products with different variations."}
+                                    </Box>
                                 </Box>
-                                <Box
-                                    sx={{
-                                        padding: "5px"
-                                    }}
-                                >
-                                    {title === "Text" &&
-                                        "Allow buyers to add their personalized text on your product. Ideal for names printed on a surface."}
-                                    {title === "Option Dropdown" &&
-                                        "Allow buyers to choose from different sets of options that you offer. Ideal for products with different variations."}
-                                </Box>
-                            </Box>
-                        ))}
+                            );
+                        })}
 
-                        {/* Dynamic variants from the same source as VariantModal */}
-                        {allVariants.map((variant, index) => (
-                            <Box
-                                key={`variant-${index}`}
-                                className={activeBox === (variant.variant_name || variant.name) ? "active" : ""}
-                                sx={{
-                                    border:
-                                        activeBox === (variant.variant_name || variant.name)
-                                            ? "2px solid #1976d2"
-                                            : "2px solid #eee",
-                                    width: "30%",
-                                    height: "180px",
-                                    cursor: "pointer",
-                                    backgroundColor: activeBox === (variant.variant_name || variant.name) ? "#fff" : "inherit"
-                                }}
-                                onClick={() => handleVariantSelect(variant)}
-                            >
-                                <Box
-                                    sx={{
-                                        fontWeight: "500",
-                                        padding: "8px",
-                                        fontSize: "13px",
-                                        borderBottom: "1px solid gray",
-                                        backgroundColor: activeBox === (variant.variant_name || variant.name) ? "#1976d2" : "#fff",
-                                        color: activeBox === (variant.variant_name || variant.name) ? "#fff" : "#000"
-                                    }}
-                                >
-                                    {variant.variant_name || variant.name}
-                                </Box>
-                                <Box
-                                    sx={{
-                                        padding: "5px"
-                                    }}
-                                >
-                                    {`Allow buyers to choose from ${variant.variant_attribute?.length || variant.values?.length || 0} ${variant.variant_name || variant.name} options.`}
-                                </Box>
+                        {loadingVariants ? (
+                            <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', py: 2 }}>
+                                <CircularProgress size={24} />
                             </Box>
-                        ))}
-                    </Typography>
-
-                    {/* Add Customisation Button for Step 1 */}
-                    <Box
-                        sx={{
-                            borderTop: "1px solid gray",
-                            marginTop: "20px",
-                            display: "flex",
-                            justifyContent: "end"
-                        }}
-                    >
-                        <Button
-                            variant="contained"
-                            sx={{
-                                marginTop: "20px",
-                                backgroundColor: "#1976d2"
-                            }}
-                            onClick={addCustomizationHandler}
-                            disabled={activeBox === "Variant"} // Disable if variant is selected (should go to step 2)
-                        >
-                            Add Customisation
-                        </Button>
+                        ) : (
+                            allVariants.map((variant, index) => {
+                                const isSelected = isVariantSelected(variant.variant_name || variant.name);
+                                return (
+                                    <Box
+                                        key={`variant-${index}`}
+                                        className={activeBox === (variant.variant_name || variant.name) ? "active" : ""}
+                                        sx={{
+                                            border: isSelected ? "2px solid green" :
+                                                activeBox === (variant.variant_name || variant.name) ? "2px solid #1976d2" : "2px solid #eee",
+                                            width: "30%",
+                                            height: "180px",
+                                            cursor: "pointer",
+                                            backgroundColor: activeBox === (variant.variant_name || variant.name) ? "#fff" : "inherit",
+                                            position: "relative",
+                                            borderRadius: 1,
+                                            overflow: 'hidden'
+                                        }}
+                                        onClick={() => handleVariantSelect(variant)}
+                                    >
+                                        {isSelected && (
+                                            <Box
+                                                sx={{
+                                                    position: "absolute",
+                                                    top: -5,
+                                                    right: -5,
+                                                    width: 20,
+                                                    height: 20,
+                                                    backgroundColor: "green",
+                                                    borderRadius: "50%",
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    justifyContent: "center",
+                                                    color: "white",
+                                                    fontSize: "12px",
+                                                    fontWeight: "bold"
+                                                }}
+                                            >
+                                                ✓
+                                            </Box>
+                                        )}
+                                        <Box
+                                            sx={{
+                                                fontWeight: "500",
+                                                padding: "8px",
+                                                fontSize: "13px",
+                                                borderBottom: "1px solid gray",
+                                                backgroundColor: activeBox === (variant.variant_name || variant.name) ? "#1976d2" : "#fff",
+                                                color: activeBox === (variant.variant_name || variant.name) ? "#fff" : "#000"
+                                            }}
+                                        >
+                                            {variant.variant_name || variant.name}
+                                            {isSelected && (
+                                                <Typography variant="caption" display="block" sx={{ fontStyle: 'italic' }}>
+                                                    (Already added)
+                                                </Typography>
+                                            )}
+                                        </Box>
+                                        <Box
+                                            sx={{
+                                                padding: "5px"
+                                            }}
+                                        >
+                                            {`Allow buyers to choose from ${variant.variant_attribute?.length || variant.values?.length || 0} ${variant.variant_name || variant.name} options.`}
+                                        </Box>
+                                    </Box>
+                                );
+                            })
+                        )}
                     </Box>
                 </>
             );
@@ -545,11 +467,11 @@ const CustomisationInner = ({
         if (modalStep === 2 && selectedVariant) {
             return (
                 <>
-                    <Typography id="modal-modal-title" variant="h6" component="h2">
+                    <Typography variant="h6" component="h2" gutterBottom>
                         Select {selectedVariant.variant_name || selectedVariant.name} Options
                     </Typography>
                     <Typography
-                        id="modal-modal-description"
+                        variant="body1"
                         sx={{
                             mt: 2
                         }}
@@ -567,53 +489,152 @@ const CustomisationInner = ({
                         </Button>
 
                         <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                            {variantAttributes.map((attribute, index) => (
-                                <Box
-                                    key={index}
-                                    sx={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        padding: "8px",
-                                        border: "1px solid #ddd",
-                                        borderRadius: "4px",
-                                        cursor: "pointer",
-                                        backgroundColor: selectedAttributes.includes(attribute) ? "#e3f2fd" : "transparent"
-                                    }}
-                                    onClick={() => handleAttributeToggle(attribute)}
-                                >
-                                    <input
-                                        type="checkbox"
-                                        checked={selectedAttributes.includes(attribute)}
-                                        onChange={() => handleAttributeToggle(attribute)}
-                                        style={{ marginRight: "8px" }}
-                                    />
-                                    <Typography>{attribute}</Typography>
-                                </Box>
-                            ))}
+                            {variantAttributes.map((attribute, index) => {
+                                const attributeValue = attribute.value || attribute;
+                                const hasImages = attribute.main_images || attribute.preview_image || attribute.thumbnail;
+
+                                return (
+                                    <Box
+                                        key={index}
+                                        sx={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            padding: "8px",
+                                            border: "1px solid #ddd",
+                                            borderRadius: "4px",
+                                            cursor: "pointer",
+                                            backgroundColor: selectedAttributes.includes(attribute) ? "#e3f2fd" : "transparent"
+                                        }}
+                                        onClick={() => handleAttributeToggle(attribute)}
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedAttributes.includes(attribute)}
+                                            onChange={() => handleAttributeToggle(attribute)}
+                                            style={{ marginRight: "8px" }}
+                                        />
+                                        <Typography sx={{ flex: 1 }}>{attributeValue}</Typography>
+                                        {hasImages && (
+                                            <Box sx={{
+                                                ml: 2,
+                                                display: 'flex',
+                                                gap: 0.5,
+                                                opacity: 0.7
+                                            }}>
+                                                {attribute.preview_image && (
+                                                    <Box sx={{
+                                                        width: 24,
+                                                        height: 24,
+                                                        borderRadius: '2px',
+                                                        overflow: 'hidden'
+                                                    }}>
+                                                        <img
+                                                            src={attribute.preview_image}
+                                                            alt="Preview"
+                                                            style={{
+                                                                width: '100%',
+                                                                height: '100%',
+                                                                objectFit: 'cover'
+                                                            }}
+                                                        />
+                                                    </Box>
+                                                )}
+                                                {attribute.thumbnail && (
+                                                    <Box sx={{
+                                                        width: 24,
+                                                        height: 24,
+                                                        borderRadius: '2px',
+                                                        overflow: 'hidden'
+                                                    }}>
+                                                        <img
+                                                            src={attribute.thumbnail}
+                                                            alt="Thumbnail"
+                                                            style={{
+                                                                width: '100%',
+                                                                height: '100%',
+                                                                objectFit: 'cover'
+                                                            }}
+                                                        />
+                                                    </Box>
+                                                )}
+                                            </Box>
+                                        )}
+                                    </Box>
+                                );
+                            })}
                         </Box>
                     </Box>
-
-                    <Box sx={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>
-                        <Button
-                            variant="outlined"
-                            onClick={() => {
-                                setModalStep(1);
-                                setSelectedVariant(null);
-                                setSelectedAttributes([]);
-                                setActiveBox("Text");
-                            }}
-                        >
-                            Back
-                        </Button>
-                        <Button
-                            variant="contained"
-                            onClick={addCustomizationHandler}
-                            disabled={selectedAttributes.length === 0}
-                        >
-                            Add Customisation
-                        </Button>
-                    </Box>
                 </>
+            );
+        }
+    };
+
+    const renderDialogActions = () => {
+        if (modalStep === 1) {
+            return (
+                <Button
+                    variant="contained"
+                    onClick={addCustomizationHandler}
+                    disabled={activeBox === "Variant"}
+                >
+                    Add Customisation
+                </Button>
+            );
+        }
+
+        if (modalStep === 2) {
+            return (
+                <>
+                    <Button
+                        variant="outlined"
+                        onClick={() => {
+                            setModalStep(1);
+                            setSelectedVariant(null);
+                            setSelectedAttributes([]);
+                            setActiveBox("Text");
+                        }}
+                    >
+                        Back
+                    </Button>
+                    <Button
+                        variant="contained"
+                        onClick={addCustomizationHandler}
+                        disabled={selectedAttributes.length === 0}
+                    >
+                        Add Customisation
+                    </Button>
+                </>
+            );
+        }
+    };
+
+    const renderCustomizationContent = (item, index) => {
+        if (item?.isVariant) {
+            return (
+                <VariantCustomizationTable
+                    customizationData={customizationData}
+                    setCustomizationData={setCustomizationData}
+                    index={index}
+                    variants={allVariants}
+                    customVariants={customVariants}
+                />
+            );
+        } else if (!item?.optionList) {
+            return (
+                <TextCustomisation
+                    customizationData={customizationData}
+                    setCustomizationData={setCustomizationData}
+                    index={index}
+                />
+            );
+        } else {
+            return (
+                <OptionDropdown
+                    optionDropDownForm={customizationData?.customizations[index]}
+                    customizationData={customizationData}
+                    setCustomizationData={setCustomizationData}
+                    index={index}
+                />
             );
         }
     };
@@ -922,50 +943,19 @@ const CustomisationInner = ({
                                     <Stack gap={2} mt={2}>
                                         <DndProvider backend={HTML5Backend}>
                                             {customizationData?.customizations?.length > 0 &&
-                                                customizationData?.customizations?.map((item, i) => {
-                                                    console.log("Rendering customization:", item);
-                                                    if (item?.isVariant) {
-                                                        return (
-                                                            <DraggableBox3
-                                                                key={i}
-                                                                id={i}
-                                                                index={i}
-                                                                i={i}
-                                                                moveBox={moveBox2}
-                                                                customizationData={customizationData}
-                                                                setCustomizationData={setCustomizationData}
-                                                                variants={variants}
-                                                                customVariants={customVariants}
-                                                            />
-                                                        );
-                                                    } else if (!item?.optionList) {
-                                                        return (
-                                                            <DraggableBox2
-                                                                key={i}
-                                                                id={i}
-                                                                index={i}
-                                                                i={i}
-                                                                moveBox={moveBox2}
-                                                                customizationData={customizationData}
-                                                                setCustomizationData={setCustomizationData}
-                                                            />
-                                                        );
-                                                    } else {
-                                                        return (
-                                                            <DraggableBox
-                                                                key={i}
-                                                                id={i}
-                                                                index={i}
-                                                                i={i}
-                                                                moveBox={moveBox}
-                                                                addCustomizationHandler={addCustomizationHandler}
-                                                                optionDropDownForm={customizationData?.customizations[i]}
-                                                                customizationData={customizationData}
-                                                                setCustomizationData={setCustomizationData}
-                                                            />
-                                                        );
-                                                    }
-                                                })}
+                                                customizationData?.customizations?.map((item, i) => (
+                                                    <DraggableCustomizationItem
+                                                        key={i}
+                                                        id={i}
+                                                        index={i}
+                                                        moveItem={moveCustomizationItem}
+                                                        title={item.title}
+                                                        onTitleEdit={() => handleTitleEdit(i)}
+                                                        onDelete={() => handleCustomizationDelete(i)}
+                                                    >
+                                                        {renderCustomizationContent(item, i)}
+                                                    </DraggableCustomizationItem>
+                                                ))}
                                         </DndProvider>
                                     </Stack>
                                     <Box
@@ -1009,16 +999,30 @@ const CustomisationInner = ({
                                                 >
                                                     Add Customisation
                                                 </Button>
-                                                <Modal
+                                                <Dialog
                                                     open={open}
                                                     onClose={handleClose}
-                                                    aria-labelledby="modal-modal-title"
-                                                    aria-describedby="modal-modal-description"
+                                                    maxWidth="lg"
+                                                    fullWidth
+                                                    PaperProps={{
+                                                        sx: {
+                                                            minHeight: '500px'
+                                                        }
+                                                    }}
                                                 >
-                                                    <Box sx={style}>
+                                                    <DialogTitle>
+                                                        {modalStep === 1 ? "Add Customisation" : `Select ${selectedVariant?.variant_name || selectedVariant?.name} Options`}
+                                                    </DialogTitle>
+                                                    <DialogContent>
                                                         {renderModalContent()}
-                                                    </Box>
-                                                </Modal>
+                                                    </DialogContent>
+                                                    <DialogActions>
+                                                        {modalStep === 1 ? (
+                                                            <Button onClick={handleClose}>Cancel</Button>
+                                                        ) : null}
+                                                        {renderDialogActions()}
+                                                    </DialogActions>
+                                                </Dialog>
                                             </div>
                                         </Box>
                                     </Box>
@@ -1076,6 +1080,34 @@ const CustomisationInner = ({
                     </div>
                 </Box>
             </Box>
+
+            {/* Title Edit Modal */}
+            <Dialog
+                open={titleModalOpen}
+                onClose={() => setTitleModalOpen(false)}
+                maxWidth="sm"
+                fullWidth
+            >
+                <DialogTitle>Change Title</DialogTitle>
+                <DialogContent>
+                    <TextField
+                        autoFocus
+                        margin="dense"
+                        label="New Title"
+                        type="text"
+                        fullWidth
+                        variant="outlined"
+                        value={newTitle}
+                        onChange={(e) => setNewTitle(e.target.value)}
+                    />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setTitleModalOpen(false)}>Cancel</Button>
+                    <Button onClick={handleTitleChange} variant="contained">
+                        Save
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </>
     );
 };

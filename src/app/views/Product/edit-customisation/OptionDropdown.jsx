@@ -346,88 +346,88 @@ function OptionDropdown({
           }}
           display={"flex"}
         >
-          <Box
-            ref={myMyRef}
-            sx={{
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              border: "1px solid black",
-              justifyContent: "space-between",
-              width: "100%"
-            }}
-          >
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center"
-              }}
-            >
-              <Box
-                sx={{
-                  fontSize: "24px",
-                  fontWeight: "700",
-                  borderRight: "1px solid black",
-                  paddingInline: "10px"
-                }}
-              >
-                {index + 1}
-              </Box>
-              <Box
-                sx={{
-                  marginLeft: "10px"
-                }}
-              >
-                <Box onClick={() => setOpenTitleModal(true)} sx={{ cursor: "pointer" }}>
-                  <CreateIcon
-                    sx={{
-                      color: "black"
-                    }}
-                  />
-                </Box>
-              </Box>
-              <Box
-                sx={{
-                  fontWeight: "700",
-                  marginLeft: "10px"
-                }}
-              >
-                {optionDropDownForm?.title}
-              </Box>
-            </Box>
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center"
-              }}
-            >
-              <Box
-                sx={{
-                  fontSize: "15px",
-                  fontWeight: "600",
-                  paddingInline: "10px"
-                }}
-              >
-                Change Order
-              </Box>
-              <Box
-                sx={{
-                  borderLeft: "1px solid black",
-                  borderRight: "1px solid black",
-                  paddingInline: "10px"
-                }}
-              >
-                <Button onClick={() => optionDropDownDeleteHandler(index)}>
-                  <DeleteIcon sx={{ color: "black" }} />
-                </Button>
-              </Box>
-            </Box>
-          </Box>
-          <AccordionSummary
-            expandIcon={<ExpandMoreIcon />}
-            aria-controls="panel3-content"
-            id="panel3-header"
-          ></AccordionSummary>
+          {/*<Box*/}
+          {/*  ref={myMyRef}*/}
+          {/*  sx={{*/}
+          {/*    cursor: "pointer",*/}
+          {/*    display: "flex",*/}
+          {/*    alignItems: "center",*/}
+          {/*    border: "1px solid black",*/}
+          {/*    justifyContent: "space-between",*/}
+          {/*    width: "100%"*/}
+          {/*  }}*/}
+          {/*>*/}
+          {/*  <Box*/}
+          {/*    sx={{*/}
+          {/*      display: "flex",*/}
+          {/*      alignItems: "center"*/}
+          {/*    }}*/}
+          {/*  >*/}
+          {/*    <Box*/}
+          {/*      sx={{*/}
+          {/*        fontSize: "24px",*/}
+          {/*        fontWeight: "700",*/}
+          {/*        borderRight: "1px solid black",*/}
+          {/*        paddingInline: "10px"*/}
+          {/*      }}*/}
+          {/*    >*/}
+          {/*      {index + 1}*/}
+          {/*    </Box>*/}
+          {/*    <Box*/}
+          {/*      sx={{*/}
+          {/*        marginLeft: "10px"*/}
+          {/*      }}*/}
+          {/*    >*/}
+          {/*      <Box onClick={() => setOpenTitleModal(true)} sx={{ cursor: "pointer" }}>*/}
+          {/*        <CreateIcon*/}
+          {/*          sx={{*/}
+          {/*            color: "black"*/}
+          {/*          }}*/}
+          {/*        />*/}
+          {/*      </Box>*/}
+          {/*    </Box>*/}
+          {/*    <Box*/}
+          {/*      sx={{*/}
+          {/*        fontWeight: "700",*/}
+          {/*        marginLeft: "10px"*/}
+          {/*      }}*/}
+          {/*    >*/}
+          {/*      {optionDropDownForm?.title}*/}
+          {/*    </Box>*/}
+          {/*  </Box>*/}
+          {/*  <Box*/}
+          {/*    sx={{*/}
+          {/*      display: "flex",*/}
+          {/*      alignItems: "center"*/}
+          {/*    }}*/}
+          {/*  >*/}
+          {/*    <Box*/}
+          {/*      sx={{*/}
+          {/*        fontSize: "15px",*/}
+          {/*        fontWeight: "600",*/}
+          {/*        paddingInline: "10px"*/}
+          {/*      }}*/}
+          {/*    >*/}
+          {/*      Change Order*/}
+          {/*    </Box>*/}
+          {/*    <Box*/}
+          {/*      sx={{*/}
+          {/*        borderLeft: "1px solid black",*/}
+          {/*        borderRight: "1px solid black",*/}
+          {/*        paddingInline: "10px"*/}
+          {/*      }}*/}
+          {/*    >*/}
+          {/*      <Button onClick={() => optionDropDownDeleteHandler(index)}>*/}
+          {/*        <DeleteIcon sx={{ color: "black" }} />*/}
+          {/*      </Button>*/}
+          {/*    </Box>*/}
+          {/*  </Box>*/}
+          {/*</Box>*/}
+          {/*<AccordionSummary*/}
+          {/*  expandIcon={<ExpandMoreIcon />}*/}
+          {/*  aria-controls="panel3-content"*/}
+          {/*  id="panel3-header"*/}
+          {/*></AccordionSummary>*/}
         </Box>
         <Modal
           open={openTitleModal}

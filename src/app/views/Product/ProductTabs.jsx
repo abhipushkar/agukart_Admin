@@ -1487,6 +1487,7 @@ export default function BasicTabs() {
                             handleDraftProduct={handleDraftProduct}
                             variants={variationsData} // Pass the predefined variants
                             customVariants={[]} // Empty array for custom variants
+                            categoryId={formData.subCategory}
                         />
                     </CustomTabPanel>
                 </>

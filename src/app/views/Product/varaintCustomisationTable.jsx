@@ -1,3 +1,4 @@
+// varaintCustomisationTable.jsx
 import React, { useState, useRef } from "react";
 import {
     Box,
@@ -27,7 +28,12 @@ import {
     CardHeader,
     FormControlLabel,
     Checkbox,
-    Divider
+    Divider,
+    List,
+    ListItem,
+    ListItemText,
+    ListItemSecondaryAction,
+    Autocomplete
 } from "@mui/material";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 import CropIcon from "@mui/icons-material/Crop";
@@ -44,6 +50,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import AddIcon from "@mui/icons-material/Add";
 import Cropper from 'react-easy-crop';
 import { getCroppedImg } from './cropUtil';
 
@@ -143,10 +150,126 @@ const VariantCustomizationTable = ({
     const [rotation, setRotation] = useState(0);
     const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
     const [expanded, setExpanded] = useState(true);
+    const [optionsModalOpen, setOptionsModalOpen] = useState(false);
+    const [availableOptions, setAvailableOptions] = useState([]);
+    const [selectedOptions, setSelectedOptions] = useState([]);
 
     // Drag and drop state
     const [draggingIndex, setDraggingIndex] = useState(null);
     const [dragOverIndex, setDragOverIndex] = useState(null);
+
+    // Configuration handlers to match Option Dropdown
+    const handleVariantConfigChange = (field, value) => {
+        const updatedCustomizations = [...customizationData.customizations];
+        updatedCustomizations[index] = {
+            ...updatedCustomizations[index],
+            [field]: value
+        };
+        setCustomizationData({
+            ...customizationData,
+            customizations: updatedCustomizations
+        });
+    };
+
+    const handleLabelChange = (value) => {
+        handleVariantConfigChange('label', value);
+    };
+
+    const handleInstructionsChange = (value) => {
+        handleVariantConfigChange('instructions', value);
+    };
+
+    const handleIsCompulsoryChange = (value) => {
+        handleVariantConfigChange('isCompulsory', value);
+    };
+
+    // Open options modal
+    const handleOpenOptionsModal = () => {
+        // Get all available options from the variant data
+        const variantData = variants?.find(v =>
+            v.variant_name === customization?.title || v.name === customization?.title
+        );
+
+        if (variantData) {
+            const options = variantData.variant_attribute?.map(attr => ({
+                value: attr.attribute_value,
+                main_images: attr.main_images || [null, null, null],
+                preview_image: attr.preview_image || null,
+                thumbnail: attr.thumbnail || null,
+                attributeId: attr._id
+            })) || [];
+
+            setAvailableOptions(options);
+
+            // Set currently selected options
+            const currentSelected = customization?.optionList?.map(option => ({
+                value: option.optionName,
+                main_images: option.main_images || [null, null, null],
+                preview_image: option.preview_image || null,
+                thumbnail: option.thumbnail || null
+            })) || [];
+
+            setSelectedOptions(currentSelected);
+        }
+        setOptionsModalOpen(true);
+    };
+
+    // Handle option selection in modal
+    const handleOptionToggle = (option) => {
+        setSelectedOptions(prev => {
+            const isSelected = prev.some(opt => opt.value === option.value);
+            if (isSelected) {
+                return prev.filter(opt => opt.value !== option.value);
+            } else {
+                return [...prev, option];
+            }
+        });
+    };
+
+    // Handle select all options
+    const handleSelectAllOptions = () => {
+        if (selectedOptions.length === availableOptions.length) {
+            setSelectedOptions([]);
+        } else {
+            setSelectedOptions([...availableOptions]);
+        }
+    };
+
+    // Apply selected options to the customization
+    const handleApplyOptions = () => {
+        const updatedCustomizations = [...customizationData.customizations];
+        const updatedOptionList = selectedOptions.map(option => {
+            // Check if this option already exists in the current optionList
+            const existingOption = customization.optionList?.find(
+                opt => opt.optionName === option.value
+            );
+
+            if (existingOption) {
+                return existingOption;
+            }
+
+            return {
+                optionName: option.value,
+                priceDifference: "0",
+                main_images: option.main_images || [null, null, null],
+                preview_image: option.preview_image || null,
+                thumbnail: option.thumbnail || null,
+                isVisible: true
+            };
+        });
+
+        updatedCustomizations[index] = {
+            ...updatedCustomizations[index],
+            optionList: updatedOptionList
+        };
+
+        setCustomizationData({
+            ...customizationData,
+            customizations: updatedCustomizations
+        });
+
+        setOptionsModalOpen(false);
+    };
 
     const handleOptionChange = (optionIndex, field, value) => {
         const updatedCustomizations = [...customizationData.customizations];
@@ -184,18 +307,6 @@ const VariantCustomizationTable = ({
 
     const handleTitleChange = (value) => {
         handleCustomizationChange('title', value);
-    };
-
-    const handleLabelChange = (value) => {
-        handleCustomizationChange('label', value);
-    };
-
-    const handleInstructionsChange = (value) => {
-        handleCustomizationChange('instructions', value);
-    };
-
-    const handleIsCompulsoryChange = (value) => {
-        handleCustomizationChange('isCompulsory', value);
     };
 
     const handleRemoveVariant = () => {
@@ -286,17 +397,51 @@ const VariantCustomizationTable = ({
         });
     };
 
-    // New function to handle bulk image upload
+    // Fixed bulk image upload function
     const handleBulkImageUpload = (optionIndex, event) => {
         const files = Array.from(event.target.files);
+        console.log('Bulk upload files:', files);
 
         if (files.length === 0) return;
 
+        const updatedCustomizations = [...customizationData.customizations];
+        const updatedOptionList = [...updatedCustomizations[index].optionList];
+        let updatedOption = { ...updatedOptionList[optionIndex] };
+
+        // Initialize main_images array if it doesn't exist
+        const newMainImages = updatedOption.main_images ? [...updatedOption.main_images] : [null, null, null];
+
         // Upload first 3 images to main_images[0], main_images[1], main_images[2]
         files.slice(0, 3).forEach((file, imgIndex) => {
-            const imageKey = `main_images[${imgIndex}]`;
-            handleImageUpload(optionIndex, imageKey, { target: { files: [file] } });
+            if (imgIndex < 3) {
+                newMainImages[imgIndex] = file;
+            }
         });
+
+        updatedOption = {
+            ...updatedOption,
+            main_images: newMainImages
+        };
+
+        // Clear edited main image data for the first image
+        if (updatedOption.edit_main_image) {
+            updatedOption.edit_main_image = "";
+            updatedOption.edit_main_image_data = null;
+        }
+
+        updatedOptionList[optionIndex] = updatedOption;
+        updatedCustomizations[index] = {
+            ...updatedCustomizations[index],
+            optionList: updatedOptionList
+        };
+
+        setCustomizationData({
+            ...customizationData,
+            customizations: updatedCustomizations
+        });
+
+        // Reset the input value to allow uploading the same files again
+        event.target.value = '';
     };
 
     const handleImageRemove = (optionIndex, imageType, imageIndex = null) => {
@@ -717,7 +862,7 @@ const VariantCustomizationTable = ({
         );
     };
 
-    // New function to render bulk upload cell
+    // Fixed function to render bulk upload cell
     const renderBulkUploadCell = (option, optionIndex) => {
         const hasMainImages = option.main_images && option.main_images.some(img => img && img !== "");
         const uploadedCount = option.main_images ? option.main_images.filter(img => img && img !== "").length : 0;
@@ -768,114 +913,137 @@ const VariantCustomizationTable = ({
 
     return (
         <Box sx={{ mt: 2 }}>
-            <Card variant="outlined">
-                <CardHeader
-                    title={
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
-                            <IconButton
-                                onClick={() => setExpanded(!expanded)}
-                                size="small"
-                            >
-                                {expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                            </IconButton>
-
-                            <TextField
-                                value={customization?.title || ""}
-                                onChange={(e) => handleTitleChange(e.target.value)}
-                                placeholder="Variant Name"
-                                size="small"
-                                sx={{ flex: 1 }}
-                            />
-
-                            <Box sx={{ display: 'flex', gap: 1 }}>
-                                <Tooltip title="Move Up">
-                                    <span>
-                                        <IconButton
-                                            onClick={handleMoveUp}
-                                            disabled={index === 0}
-                                            size="small"
-                                        >
-                                            <KeyboardArrowUpIcon />
-                                        </IconButton>
-                                    </span>
-                                </Tooltip>
-
-                                <Tooltip title="Move Down">
-                                    <span>
-                                        <IconButton
-                                            onClick={handleMoveDown}
-                                            disabled={index === customizationData.customizations.length - 1}
-                                            size="small"
-                                        >
-                                            <KeyboardArrowDownIcon />
-                                        </IconButton>
-                                    </span>
-                                </Tooltip>
-
-                                <Tooltip title="Remove Variant">
-                                    <IconButton
-                                        onClick={handleRemoveVariant}
-                                        color="error"
-                                        size="small"
-                                    >
-                                        <DeleteIcon />
-                                    </IconButton>
-                                </Tooltip>
-                            </Box>
-                        </Box>
-                    }
-                    sx={{
-                        '& .MuiCardHeader-content': {
-                            width: '100%'
-                        }
-                    }}
-                />
-
-                <Collapse in={expanded}>
-                    <CardContent>
-                        {/* Configuration Fields Above Options List */}
-                        <Box sx={{ mb: 3, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
-                            <Typography variant="h6" gutterBottom>
-                                Configuration
+            {/* ADDED CONFIGURATION SECTION TO MATCH OPTION DROPDOWN */}
+            <Box sx={{ mb: 3, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
+                <Typography variant="h6" gutterBottom>
+                    Configuration
+                </Typography>
+                <Box sx={{display: 'flex', flexDirection: 'column', gap: 2, width: "100%"}}>
+                    <Box sx={{ display: 'flex', flexDirection: 'row', gap: 2, width: "100%" }}>
+                        <Box sx={{width: "100%"}}>
+                            <Typography variant="subtitle2" gutterBottom>
+                                Label
                             </Typography>
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                <TextField
-                                    label="Label"
-                                    value={customization?.label || ""}
-                                    onChange={(e) => handleLabelChange(e.target.value)}
-                                    placeholder="Enter label for this variant"
-                                    size="small"
-                                    fullWidth
-                                />
-
-                                <TextField
-                                    label="Instructions"
-                                    value={customization?.instructions || ""}
-                                    onChange={(e) => handleInstructionsChange(e.target.value)}
-                                    placeholder="Enter instructions for customers"
-                                    size="small"
-                                    multiline
-                                    rows={2}
-                                    fullWidth
-                                />
-
-                                <FormControlLabel
-                                    control={
-                                        <Checkbox
-                                            checked={customization?.isCompulsory || false}
-                                            onChange={(e) => handleIsCompulsoryChange(e.target.checked)}
-                                        />
-                                    }
-                                    label="Is Compulsory"
-                                />
-                            </Box>
+                            <TextField
+                                fullWidth
+                                value={customization?.label || ""}
+                                onChange={(e) => handleLabelChange(e.target.value)}
+                                placeholder="Enter label for this variant"
+                                size="small"
+                            />
+                            <Typography variant="caption" color="text.secondary">
+                                {`${100 - (customization?.label?.length || 0)} of 100 characters remaining`}
+                            </Typography>
                         </Box>
 
-                        <Divider sx={{ my: 2 }} />
+                        <Box sx={{width: "100%"}}>
+                            <Typography variant="subtitle2" gutterBottom>
+                                Instructions (Optional)
+                            </Typography>
+                            <TextField
+                                fullWidth
+                                multiline
+                                // rows={2}
+                                value={customization?.instructions || ""}
+                                onChange={(e) => handleInstructionsChange(e.target.value)}
+                                placeholder="Enter instructions for customers"
+                                size="small"
+                            />
+                            <Typography variant="caption" color="text.secondary">
+                                {`${200 - (customization?.instructions?.length || 0)} of 200 characters remaining`}
+                            </Typography>
+                        </Box>
+                    </Box>
+                    <FormControlLabel
+                        control={
+                            <Checkbox
+                                checked={customization?.isCompulsory || false}
+                                onChange={(e) => handleIsCompulsoryChange(e.target.checked)}
+                            />
+                        }
+                        label="Make this customization compulsory"
+                    />
+                </Box>
+            </Box>
 
+            {/* EXISTING VARIANT TABLE CODE - NO CHANGES */}
+            <Card variant="outlined">
+                {/*<CardHeader*/}
+                {/*    title={*/}
+                {/*        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>*/}
+                {/*            <IconButton*/}
+                {/*                onClick={() => setExpanded(!expanded)}*/}
+                {/*                size="small"*/}
+                {/*            >*/}
+                {/*                {expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}*/}
+                {/*            </IconButton>*/}
+
+                {/*            <TextField*/}
+                {/*                value={customization?.title || ""}*/}
+                {/*                onChange={(e) => handleTitleChange(e.target.value)}*/}
+                {/*                placeholder="Variant Name"*/}
+                {/*                size="small"*/}
+                {/*                sx={{ flex: 1 }}*/}
+                {/*            />*/}
+
+                {/*            <Box sx={{ display: 'flex', gap: 1 }}>*/}
+                {/*                <Tooltip title="Move Up">*/}
+                {/*                    <span>*/}
+                {/*                        <IconButton*/}
+                {/*                            onClick={handleMoveUp}*/}
+                {/*                            disabled={index === 0}*/}
+                {/*                            size="small"*/}
+                {/*                        >*/}
+                {/*                            <KeyboardArrowUpIcon />*/}
+                {/*                        </IconButton>*/}
+                {/*                    </span>*/}
+                {/*                </Tooltip>*/}
+
+                {/*                <Tooltip title="Move Down">*/}
+                {/*                    <span>*/}
+                {/*                        <IconButton*/}
+                {/*                            onClick={handleMoveDown}*/}
+                {/*                            disabled={index === customizationData.customizations.length - 1}*/}
+                {/*                            size="small"*/}
+                {/*                        >*/}
+                {/*                            <KeyboardArrowDownIcon />*/}
+                {/*                        </IconButton>*/}
+                {/*                    </span>*/}
+                {/*                </Tooltip>*/}
+
+                {/*                <Tooltip title="Remove Variant">*/}
+                {/*                    <IconButton*/}
+                {/*                        onClick={handleRemoveVariant}*/}
+                {/*                        color="error"*/}
+                {/*                        size="small"*/}
+                {/*                    >*/}
+                {/*                        <DeleteIcon />*/}
+                {/*                    </IconButton>*/}
+                {/*                </Tooltip>*/}
+                {/*            </Box>*/}
+                {/*        </Box>*/}
+                {/*    }*/}
+                {/*    sx={{*/}
+                {/*        '& .MuiCardHeader-content': {*/}
+                {/*            width: '100%'*/}
+                {/*        }*/}
+                {/*    }}*/}
+                {/*/>*/}
+
+                {/*<Collapse in={expanded}>*/}
+                    <CardContent>
                         <Typography variant="h6" gutterBottom>
                             Options List
                         </Typography>
+
+                        <Button
+                            variant="outlined"
+                            startIcon={<AddIcon />}
+                            onClick={handleOpenOptionsModal}
+                            sx={{ mb: 2 }}
+                        >
+                            Add/Edit Options
+                        </Button>
 
                         <TableContainer component={Paper} variant="outlined">
                             <Table size="small">
@@ -883,10 +1051,7 @@ const VariantCustomizationTable = ({
                                     <TableRow>
                                         <TableCell align="center"></TableCell>
                                         <TableCell align="center">Option Name</TableCell>
-
-                                        {/* Bulk Upload Column */}
                                         <TableCell align="center">Bulk Upload</TableCell>
-
                                         <TableCell align="center">Main Image 1</TableCell>
                                         <TableCell align="center">Main Image 2</TableCell>
                                         <TableCell align="center">Main Image 3</TableCell>
@@ -1054,8 +1219,117 @@ const VariantCustomizationTable = ({
                             Add Option
                         </Button>
                     </CardContent>
-                </Collapse>
+                {/*</Collapse>*/}
             </Card>
+
+            {/* Options Selection Modal */}
+            <Dialog
+                open={optionsModalOpen}
+                onClose={() => setOptionsModalOpen(false)}
+                maxWidth="md"
+                fullWidth
+            >
+                <DialogTitle>
+                    Select Options for {customization?.title}
+                    <Typography variant="body2" color="text.secondary">
+                        Choose which options to include in this customization
+                    </Typography>
+                </DialogTitle>
+                <DialogContent>
+                    <Box sx={{ mb: 2 }}>
+                        <Button
+                            variant="outlined"
+                            onClick={handleSelectAllOptions}
+                            sx={{ mb: 2 }}
+                        >
+                            {selectedOptions.length === availableOptions.length ? "Deselect All" : "Select All"}
+                        </Button>
+
+                        <List sx={{ maxHeight: 400, overflow: 'auto' }}>
+                            {availableOptions.map((option, index) => {
+                                const isSelected = selectedOptions.some(opt => opt.value === option.value);
+                                return (
+                                    <ListItem
+                                        key={index}
+                                        sx={{
+                                            border: "1px solid #ddd",
+                                            borderRadius: "4px",
+                                            marginBottom: 1,
+                                            cursor: "pointer",
+                                            backgroundColor: isSelected ? "#e3f2fd" : "transparent",
+                                            '&:hover': {
+                                                backgroundColor: isSelected ? "#bbdefb" : "#f5f5f5"
+                                            }
+                                        }}
+                                        onClick={() => handleOptionToggle(option)}
+                                    >
+                                        <Checkbox
+                                            checked={isSelected}
+                                            onChange={() => handleOptionToggle(option)}
+                                            style={{ marginRight: "8px" }}
+                                        />
+                                        <ListItemText
+                                            primary={option.value}
+                                            secondary={
+                                                <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                                                    {option.preview_image && (
+                                                        <Box sx={{
+                                                            width: 40,
+                                                            height: 40,
+                                                            borderRadius: '4px',
+                                                            overflow: 'hidden'
+                                                        }}>
+                                                            <img
+                                                                src={option.preview_image}
+                                                                alt="Preview"
+                                                                style={{
+                                                                    width: '100%',
+                                                                    height: '100%',
+                                                                    objectFit: 'cover'
+                                                                }}
+                                                            />
+                                                        </Box>
+                                                    )}
+                                                    {option.thumbnail && (
+                                                        <Box sx={{
+                                                            width: 40,
+                                                            height: 40,
+                                                            borderRadius: '4px',
+                                                            overflow: 'hidden'
+                                                        }}>
+                                                            <img
+                                                                src={option.thumbnail}
+                                                                alt="Thumbnail"
+                                                                style={{
+                                                                    width: '100%',
+                                                                    height: '100%',
+                                                                    objectFit: 'cover'
+                                                                }}
+                                                            />
+                                                        </Box>
+                                                    )}
+                                                </Box>
+                                            }
+                                        />
+                                    </ListItem>
+                                );
+                            })}
+                        </List>
+                    </Box>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setOptionsModalOpen(false)}>
+                        Cancel
+                    </Button>
+                    <Button
+                        variant="contained"
+                        onClick={handleApplyOptions}
+                        disabled={selectedOptions.length === 0}
+                    >
+                        Apply Options ({selectedOptions.length})
+                    </Button>
+                </DialogActions>
+            </Dialog>
 
             {/* Enhanced Crop Dialog */}
             <Dialog
@@ -1136,57 +1410,74 @@ const VariantCustomizationTable = ({
 
                     {/* Controls */}
                     <Box sx={{ mt: 2 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                            <Typography variant="body2" sx={{ minWidth: 80 }}>
-                                Scale: {zoom.toFixed(1)}x
-                            </Typography>
-                            <IconButton onClick={() => setZoom(prev => Math.max(prev - 0.1, 1))}>
-                                <ZoomOutIcon />
-                            </IconButton>
+                        <Box sx={{ mb: 2 }}>
+                            <Typography gutterBottom>Zoom</Typography>
                             <Slider
                                 value={zoom}
                                 min={1}
                                 max={3}
                                 step={0.1}
                                 onChange={(e, newValue) => setZoom(newValue)}
-                                sx={{ flex: 1 }}
+                                valueLabelDisplay="auto"
+                                valueLabelFormat={(value) => `${value.toFixed(1)}x`}
                             />
-                            <IconButton onClick={() => setZoom(prev => Math.min(prev + 0.1, 3))}>
-                                <ZoomInIcon />
-                            </IconButton>
                         </Box>
 
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <Typography variant="body2" sx={{ minWidth: 80 }}>
-                                Rotation: {rotation}°
-                            </Typography>
-                            <IconButton onClick={() => setRotation(prev => prev - 90)}>
-                                <RotateLeftIcon />
-                            </IconButton>
+                        <Box sx={{ mb: 2 }}>
+                            <Typography gutterBottom>Rotation</Typography>
                             <Slider
                                 value={rotation}
                                 min={0}
                                 max={360}
+                                step={1}
                                 onChange={(e, newValue) => setRotation(newValue)}
-                                sx={{ flex: 1 }}
+                                valueLabelDisplay="auto"
+                                valueLabelFormat={(value) => `${value}°`}
                             />
-                            <IconButton onClick={() => setRotation(prev => prev + 90)}>
-                                <RotateRightIcon />
-                            </IconButton>
                         </Box>
 
-                        <Box sx={{ mt: 2, display: 'flex', gap: 1, justifyContent: 'center' }}>
-                            <Typography variant="body2" color="text.secondary">
-                                Position: X: {Math.round(crop.x)}, Y: {Math.round(crop.y)}
-                            </Typography>
+                        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', flexWrap: 'wrap' }}>
+                            <Button
+                                variant="outlined"
+                                startIcon={<ZoomInIcon />}
+                                onClick={() => setZoom(Math.min(zoom + 0.1, 3))}
+                            >
+                                Zoom In
+                            </Button>
+                            <Button
+                                variant="outlined"
+                                startIcon={<ZoomOutIcon />}
+                                onClick={() => setZoom(Math.max(zoom - 0.1, 1))}
+                            >
+                                Zoom Out
+                            </Button>
+                            <Button
+                                variant="outlined"
+                                startIcon={<RotateLeftIcon />}
+                                onClick={() => setRotation((rotation - 90 + 360) % 360)}
+                            >
+                                Rotate Left
+                            </Button>
+                            <Button
+                                variant="outlined"
+                                startIcon={<RotateRightIcon />}
+                                onClick={() => setRotation((rotation + 90) % 360)}
+                            >
+                                Rotate Right
+                            </Button>
                         </Box>
                     </Box>
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={handleCropCancel} color="error" startIcon={<CloseIcon />}>
+                    <Button onClick={handleCropCancel} startIcon={<CloseIcon />}>
                         Cancel
                     </Button>
-                    <Button onClick={handleCropApply} color="success" startIcon={<CheckIcon />}>
+                    <Button
+                        onClick={handleCropApply}
+                        variant="contained"
+                        color="primary"
+                        startIcon={<CheckIcon />}
+                    >
                         Apply Changes
                     </Button>
                 </DialogActions>

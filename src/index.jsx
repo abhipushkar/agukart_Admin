@@ -1,6 +1,5 @@
-import { createRoot } from "react-dom/client";
+import {createRoot} from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
-// import "react-toastify/dist/ReactToastify.css";
 import * as serviceWorker from "./serviceWorker";
 import App from "./app/App";
 import "react-quill/dist/quill.snow.css";
