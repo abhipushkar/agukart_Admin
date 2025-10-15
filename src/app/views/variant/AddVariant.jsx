@@ -192,7 +192,7 @@ const AddVariant = () => {
         {
             id: 1,
             attributeValue: "",
-            sortOrder: "",
+            sortOrder: 1,
             status: false,
             _id: "",
             previewImage: null,
@@ -288,7 +288,14 @@ const AddVariant = () => {
             const newInputFields = [...inputFields];
             const [movedItem] = newInputFields.splice(sourceIndex, 1);
             newInputFields.splice(targetIndex, 0, movedItem);
-            setInputFields(newInputFields);
+
+            // Update sortOrder based on new position (1-based indexing)
+            const updatedFields = newInputFields.map((field, index) => ({
+                ...field,
+                sortOrder: index + 1
+            }));
+
+            setInputFields(updatedFields);
         }
 
         setDraggingIndex(null);
@@ -299,7 +306,7 @@ const AddVariant = () => {
         const newInputFields = inputFields.concat({
             id: Date.now(), // Use timestamp for unique ID
             attributeValue: "",
-            sortOrder: "",
+            sortOrder: inputFields.length + 1, // Auto-assign next sort order
             status: false,
             _id: "new",
             previewImage: null,
@@ -324,7 +331,7 @@ const AddVariant = () => {
         const newAttributes = attributes.map((attribute, index) => ({
             id: Date.now() + index, // Unique IDs
             attributeValue: attribute,
-            sortOrder: "",
+            sortOrder: inputFields.length + index + 1, // Continue from current length
             status: false,
             _id: "new",
             previewImage: null,
@@ -353,7 +360,14 @@ const AddVariant = () => {
         }
         const newInputFields = [...inputFields];
         newInputFields.splice(removeData?.i, 1);
-        setInputFields(newInputFields);
+
+        // Re-calculate sortOrder after removal
+        const updatedFields = newInputFields.map((field, index) => ({
+            ...field,
+            sortOrder: index + 1
+        }));
+
+        setInputFields(updatedFields);
     };
 
     const handleChangeInput = (index, event) => {
@@ -400,59 +414,22 @@ const AddVariant = () => {
     const addVariantHandler = async (values) => {
         let variant_attribute = [];
 
-        const sortedOrderMapping = inputFields
-            .slice()
-            .sort((a, b) => a.attributeValue.localeCompare(b.attributeValue))
-            .map((e, index) => ({
-                attributeValue: e.attributeValue,
-                sortOrder: index + 1
-            }));
+        // Use the current sortOrder from drag-and-drop position
+        const validFields = inputFields.filter(field => field.attributeValue.trim() !== "");
 
-        const updatedFields = inputFields.map((field) => {
-            const sortOrderObj = sortedOrderMapping.find(
-                (sortedField) => sortedField.attributeValue === field.attributeValue
-            );
-            return {
-                ...field,
-                sortOrder: sortOrderObj ? sortOrderObj.sortOrder : field.sortOrder
-            };
-        });
-
-        if (updatedFields.length === 1) {
-            if (!updatedFields[0].attributeValue) {
-                handleOpen("error", "Please Add at least one Variant Attribute");
-                return;
-            } else {
-                variant_attribute = updatedFields.map((e) => ({
-                    attr_name: e.attributeValue,
-                    sort_order: e.sortOrder,
-                    _id: "new",
-                    status: e.status,
-                    previewImage: e.previewImage,
-                    thumbnailImage: e.thumbnailImage
-                }));
-            }
-        } else {
-            if (!updatedFields[updatedFields.length - 1].attributeValue) {
-                variant_attribute = updatedFields.slice(0, -1).map((e) => ({
-                    attr_name: e.attributeValue,
-                    sort_order: e.sortOrder,
-                    _id: "new",
-                    status: e.status,
-                    previewImage: e.previewImage,
-                    thumbnailImage: e.thumbnailImage
-                }));
-            } else {
-                variant_attribute = updatedFields.map((e) => ({
-                    attr_name: e.attributeValue,
-                    sort_order: e.sortOrder,
-                    _id: "new",
-                    status: e.status,
-                    previewImage: e.previewImage,
-                    thumbnailImage: e.thumbnailImage
-                }));
-            }
+        if (validFields.length === 0) {
+            handleOpen("error", "Please Add at least one Variant Attribute");
+            return;
         }
+
+        variant_attribute = validFields.map((e) => ({
+            attr_name: e.attributeValue,
+            sort_order: e.sortOrder, // Use the drag-and-drop assigned sortOrder
+            _id: "new",
+            status: e.status,
+            previewImage: e.previewImage,
+            thumbnailImage: e.thumbnailImage
+        }));
 
         // Create FormData to handle file uploads
         const formData = new FormData();
@@ -521,25 +498,8 @@ const AddVariant = () => {
     };
 
     const editVariantHandler = async (values) => {
-        const sortedOrderMapping = inputFields
-            .slice()
-            .sort((a, b) => a.attributeValue.localeCompare(b.attributeValue))
-            .map((e, index) => ({
-                attributeValue: e.attributeValue,
-                sortOrder: index + 1
-            }));
-
-        const updatedInputFields = inputFields.map((field) => {
-            const sortOrderObj = sortedOrderMapping.find(
-                (sortedField) => sortedField.attributeValue === field.attributeValue
-            );
-            return {
-                ...field,
-                sortOrder: sortOrderObj ? sortOrderObj.sortOrder : field.sortOrder
-            };
-        });
-
-        const renamedInputFields = updatedInputFields.map(
+        // Use the current sortOrder from drag-and-drop position
+        const renamedInputFields = inputFields.map(
             ({
                  id,
                  attributeValue,
@@ -553,7 +513,7 @@ const AddVariant = () => {
                  ...rest
              }) => ({
                 attr_name: attributeValue,
-                sort_order: sortOrder,
+                sort_order: sortOrder, // Use the current sortOrder from drag-and-drop
                 status: status,
                 _id: _id,
                 previewImage: previewImage,
@@ -612,7 +572,7 @@ const AddVariant = () => {
             {
                 id: 1,
                 attributeValue: "",
-                sortOrder: "",
+                sortOrder: 1,
                 status: false,
                 previewImage: null,
                 thumbnailImage: null,
@@ -975,7 +935,6 @@ const AddVariant = () => {
                         <TextField
                             value={bulkInput}
                             onChange={(e) => setBulkInput(e.target.value)}
-                            // onKeyPress={handleBulkInputKeyPress}
                             placeholder="Enter attributes separated by commas (e.g., stone, color, size, material)"
                             fullWidth
                             multiline

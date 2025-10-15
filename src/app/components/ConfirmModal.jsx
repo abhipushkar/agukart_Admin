@@ -20,6 +20,7 @@ export default function ConfirmModal({
   open,
   handleClose,
   handleReset,
+    onConfirm,
   type,
   msg,
   handleRemoveFields,
@@ -32,7 +33,10 @@ export default function ConfirmModal({
 }) {
 
   const handleConfirm = () => {
-    if (type === "remove") {
+      if (onConfirm) {
+          onConfirm();
+      }
+    else if (type === "remove") {
       handleRemoveFields();
     } else if (type === "reset") {
       handleReset();
