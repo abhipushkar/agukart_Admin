@@ -134,6 +134,7 @@ const AddAttribute = () => {
             confirmModal.onConfirm();
         }
         closeConfirmModal();
+        navigate(ROUTE_CONSTANT.catalog.attribute.list);
     };
 
     const fetchCategories = async () => {
