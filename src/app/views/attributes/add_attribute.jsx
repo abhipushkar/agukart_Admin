@@ -134,7 +134,6 @@ const AddAttribute = () => {
             confirmModal.onConfirm();
         }
         closeConfirmModal();
-        navigate(ROUTE_CONSTANT.catalog.attribute.list);
     };
 
     const fetchCategories = async () => {
@@ -587,7 +586,7 @@ const AddAttribute = () => {
             }
         } catch (error) {
             console.error("Error saving attribute:", error);
-            showConfirmModal("error", "Error saving attribute. Please try again.");
+            showConfirmModal("error", error.response.data.message.includes("E11000 duplicate key error collection: ecommerce.attributelists index: name_1 dup key:") ? "This Attribute already created" : error.response.data.message);
         } finally {
             setLoading(false);
         }

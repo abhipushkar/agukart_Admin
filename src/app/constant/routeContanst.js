@@ -39,6 +39,11 @@ export const ROUTE_CONSTANT = {
             add: "/catalog/add-product/",
             parentProducts: "/catalog/add-parent-products"
         },
+        productNew: {
+            list: "/catalog/product-list-new",
+            add: "/catalog/add-product-new/",
+            parentProducts: "/catalog/add-parent-products-new"
+        },
         occasions: {
             list: "/catalog/occasions-list"
         },
