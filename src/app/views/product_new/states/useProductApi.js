@@ -380,7 +380,6 @@ export const useProductAPI = () => {
             combinations,
             customizationData,
             keys,
-            transformData
         } = state;
 
         const occassion = formData.productdetailsOccassion?.map((o) => o._id) || [];
@@ -448,7 +447,7 @@ export const useProductAPI = () => {
             variations_data: variationsData,
             tabs: formData.tabs,
             exchangePolicy: formData.exchangePolicy,
-            zoom: transformData,
+            zoom: formData.transformData,
             isCombination: combinations.length > 0
         };
 
@@ -492,11 +491,11 @@ export const useProductAPI = () => {
 
             // Validate combinations
             const combinationErrors = validateCombinations();
-            if (Object.keys(combinationErrors).length > 0) {
-                useProductFormStore.getState().setCombinationError(combinationErrors);
-                useProductFormStore.getState().setShowAll(true);
-                throw new Error("Please fix combination errors");
-            }
+            // if (Object.keys(combinationErrors).length > 0) {
+            //     useProductFormStore.getState().setCombinationError(combinationErrors);
+            //     useProductFormStore.getState().setShowAll(true);
+            //     throw new Error("Please fix combination errors");
+            // }
 
             // Build payload and form data
             const payload = buildProductPayload(isEdit, queryId);

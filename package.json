@@ -48,6 +48,7 @@
     "autosuggest-highlight": "^3.3.4",
     "axios": "^1.6.7",
     "caniuse-lite": "^1.0.30001717",
+    "ckeditor4-react": "^5.2.1",
     "clsx": "^2.1.0",
     "cropperjs": "^1.6.2",
     "datatables.net-dt": "^1.13.11",

@@ -33,10 +33,10 @@ const ImageGrid = ({ images, setImages, altText, setAltText }) => {
 
     return (
         <DndProvider backend={HTML5Backend}>
-            <Box sx={{ width: 400 }}>
+            <Box sx={{ width: "100%" }}>
                 <Grid container spacing={1}>
                     {images.map((image, index) => (
-                        <Grid item xs={4} key={image._id || index}>
+                        <Grid item xs={3} key={image._id || index}>
                             <ImageTile
                                 images={images}
                                 index={index}

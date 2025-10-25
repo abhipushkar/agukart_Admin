@@ -74,6 +74,7 @@ export const useProductFormStore = create(
                 offeringCanBe: "",
                 isGiftWrap: "",
                 reStockDate: null,
+                transformData: { scale: 1, x: 0, y: 0 },
                 fullfillmentChannel: "",
                 productionTime: "",
                 vendor: "",
@@ -126,7 +127,6 @@ export const useProductFormStore = create(
 
             // UI State
             showAll: false,
-            transformData: { scale: 1, x: 0, y: 0 },
             altText: [],
             keys: [],
 
@@ -155,11 +155,49 @@ export const useProductFormStore = create(
 
             setShowAll: (showAll) => set({ showAll }),
 
-            setTransformData: (transformData) => set({ transformData }),
+            setTransformData: (transformData) => set((state) => ({ formData: {...state.formData, transformData}})),
 
             setAltText: (altText) => set({ altText }),
 
             setKeys: (keys) => set({ keys }),
+
+            handleToggle: (combindex, index) => {
+                set((state) => ({
+                    combinations: state.combinations?.map((item, i) => i === combindex ? {
+                        ...item,
+                        combinations: item.combinations?.map((comb, j) => j === index ? {
+                            ...comb,
+                            isVisible: !comb.isVisible
+                        } : comb),
+                    } : item)
+                }));
+            },
+
+            handleCombChange: (e, combindex, index) => {
+                const { name, value } = e.target;
+                if (/^\d*$/.test(value) && value.length <= 7) {
+                    set((state) => ({
+                        combinations: state.combinations?.map((item, i) => i === combindex ? {
+                            ...item,
+                            combinations: item.combinations?.map((comb, j) => j === index ? { ...comb, [name]: value } : comb),
+                        } : item)
+                    }));
+                }
+            },
+
+            handleRowReorder: (combindex, sourceIndex, targetIndex) => {
+                set((state) => ({
+                    combinations: state.combinations?.map((comb, i) => {
+                        if (i === combindex) {
+                            const updatedCombinations = [...comb.combinations];
+                            const [movedItem] = updatedCombinations.splice(sourceIndex, 1);
+                            updatedCombinations.splice(targetIndex, 0, movedItem);
+                            return { ...comb, combinations: updatedCombinations };
+                        }
+                        return comb;
+                    })
+                }));
+            },
 
             // Initialize form with edit data
             initializeFormWithEditData: (editData) => {
@@ -235,6 +273,7 @@ export const useProductFormStore = create(
                         color: editData?.color || "",
                         offeringCanBe: editData?.can_offer || "",
                         isGiftWrap: editData?.gift_wrap || "",
+                        transformData: editData?.zoom || {scale: 1, x: 0, y: 0},
                         reStockDate: editData?.restock_date ? dayjs(editData.restock_date) : null,
                         productionTime: editData?.production_time || "",
                         vendor: editData?.vendor_id || "",
@@ -285,6 +324,7 @@ export const useProductFormStore = create(
                     packageWidth: "",
                     launchData: null,
                     releaseDate: null,
+                    transformData: {scale: 1, x: 0, y: 0},
                     brandId: "brandId",
                     taxRatio: "6",
                     images: [],
@@ -351,7 +391,6 @@ export const useProductFormStore = create(
                 },
                 combinationError: {},
                 showAll: false,
-                transformData: { scale: 1, x: 0, y: 0 },
                 altText: [],
                 keys: []
             }),

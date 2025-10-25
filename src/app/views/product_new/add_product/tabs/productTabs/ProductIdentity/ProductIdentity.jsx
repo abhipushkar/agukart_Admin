@@ -7,8 +7,8 @@ import {
     TextField,
     Typography,
     Button,
-    IconButton,
-    Grid
+    Grid,
+    Card
 } from "@mui/material";
 import { ApiService } from "app/services/ApiService";
 import { apiEndpoints } from "app/constant/apiEndpoints";
@@ -18,6 +18,9 @@ import { useProductFormStore } from "../../../../states/useAddProducts";
 import ProductTitleEditor from "./components/ProductTitleEditor";
 import ControlPointIcon from "@mui/icons-material/ControlPoint";
 import ImageGrid from "./components/images/ImageGrid";
+import CropImage from "./components/images/CropImage";
+import VideoGrid from "./components/videos/VideoGrid";
+import { v4 as uuidv4 } from "uuid";
 
 const ProductIdentity = ({ store, currentTab, tabIndex }) => {
     const {
@@ -27,18 +30,20 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
         setInputErrors,
         altText,
         setAltText,
-        transformData,
-        setTransformData
     } = useProductFormStore();
 
     const [brandlist, setBrandList] = useState([]);
     const [allCategory, setAllCategory] = useState([]);
     const [allVendors, setAllVendors] = useState([]);
     const [openEdit, setOpenEdit] = useState(false);
-    const inputFileRef = React.useRef(null);
+    const imageInputRef = React.useRef(null);
+    const videoInputRef = React.useRef(null);
 
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
     const designation_id = localStorage.getItem(localStorageKey.designation_id);
+
+    // Get primary image
+    const primaryImage = formData.images.find(img => img.isPrimary) || formData.images[0];
 
     // Fetch initial data
     useEffect(() => {
@@ -117,11 +122,88 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
     };
 
     // Image handling functions
-    const handleButtonClick = () => {
-        inputFileRef.current.click();
+    const handleImageButtonClick = () => {
+        imageInputRef.current.click();
+    };
+
+    const handleImageUpload = (event) => {
+        const files = Array.from(event.target.files);
+
+        if (formData.images.length + files.length > 15) {
+            handleOpen("error", "Maximum 15 images allowed");
+            return;
+        }
+
+        const newImages = files.map((file, index) => ({
+            src: URL.createObjectURL(file),
+            file: file,
+            _id: uuidv4(),
+            isPrimary: formData.images.length === 0 && index === 0,
+            sortOrder: formData.images.length + index + 1
+        }));
+
+        const updatedImages = [...formData.images, ...newImages];
+        const updatedAltText = [...altText, ...new Array(files.length).fill("")];
+
+        // Update sort orders for all images
+        updatedImages.forEach((img, idx) => {
+            if (img.file) {
+                img.file.sortOrder = idx + 1;
+            } else {
+                img.sortOrder = idx + 1;
+            }
+            img.isPrimary = idx === 0;
+        });
+
+        setFormData({ images: updatedImages });
+        setAltText(updatedAltText);
+
+        // Clear the file input
+        event.target.value = '';
+    };
+
+    // Video handling functions
+    const handleVideoButtonClick = () => {
+        videoInputRef.current.click();
+    };
+
+    const handleVideoUpload = (event) => {
+        const files = Array.from(event.target.files);
+
+        if (formData.videos.length + files.length > 2) {
+            handleOpen("error", "Maximum 2 videos allowed");
+            return;
+        }
+
+        const newVideos = files.map((file, index) => ({
+            src: URL.createObjectURL(file),
+            file: file,
+            _id: uuidv4(),
+            sortOrder: formData.videos.length + index + 1
+        }));
+
+        const updatedVideos = [...formData.videos, ...newVideos];
+
+        // Update sort orders for all videos
+        updatedVideos.forEach((video, idx) => {
+            if (video.file) {
+                video.file.sortOrder = idx + 1;
+            } else {
+                video.sortOrder = idx + 1;
+            }
+        });
+
+        setFormData({ videos: updatedVideos });
+
+        // Clear the file input
+        event.target.value = '';
     };
 
     const handleEditPopup = () => {
+        if (formData.images.length === 0) {
+            handleOpen("error", "Please upload images first");
+            return;
+        }
         setOpenEdit(true);
     };
 
@@ -132,6 +214,8 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
     const handleOpen = (type, message) => {
         // You can integrate with your notification system here
         console.log(`${type}: ${message}`);
+        // For now, we'll use alert but you can replace with your toast/notification system
+        alert(`${type}: ${message}`);
     };
 
     return (
@@ -394,7 +478,7 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                     Images
                     <span style={{ color: "red", marginLeft: "3px" }}>*</span>:
                 </Box>
-                <Box sx={{ width: "50%" }}>
+                <Box sx={{ width: "100%" }}>
                     {/* Image Upload Controls */}
                     <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
                         <Typography
@@ -406,18 +490,16 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                                 gap: "5px"
                             }}
                         >
-                            <div onClick={handleButtonClick}>
+                            <div onClick={handleImageButtonClick}>
                                 <ControlPointIcon />
                             </div>
-                            <div onClick={handleButtonClick}>Upload Multiple Files</div>
+                            <div onClick={handleImageButtonClick}>Upload Multiple Files</div>
                             <input
                                 multiple
                                 type="file"
                                 accept="image/*"
-                                onChange={(e) => {
-                                    // This will be handled by the ImageGrid component
-                                }}
-                                ref={inputFileRef}
+                                onChange={handleImageUpload}
+                                ref={imageInputRef}
                                 style={{ display: "none" }}
                             />
                         </Typography>
@@ -432,18 +514,102 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                                     background: "#b0b0b0",
                                 }
                             }}
+                            disabled={formData.images.length === 0}
                         >
                             Edit
                         </Button>
                     </Box>
 
-                    {/* Image Grid Preview */}
-                    <ImageGrid
-                        images={formData.images}
-                        setImages={(newImages) => setFormData({ images: newImages })}
-                        altText={altText}
-                        setAltText={setAltText}
-                    />
+                    {/* Image Count and Status */}
+                    <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
+                        {formData.images.length} / 15 images uploaded
+                        {formData.images.length > 0 && ` • First image is primary`}
+                    </Typography>
+
+                    {/* Primary Image Preview and Image Grid in same row */}
+                    {formData.images.length > 0 && (
+                        <Grid container spacing={2} sx={{ mb: 2 }}>
+                            {/* Image Grid - Left Side */}
+                            <Grid item xs={12} md={8}>
+                                <ImageGrid
+                                    images={formData.images}
+                                    setImages={(newImages) => setFormData({ images: newImages })}
+                                    altText={altText}
+                                    setAltText={setAltText}
+                                />
+                            </Grid>
+
+                            {/* Primary Image Preview - Right Side */}
+                            <Grid item xs={12} md={4}>
+                                <Card
+                                    sx={{
+                                        p: 2,
+                                        border: "2px solid",
+                                        borderColor: "primary.main",
+                                        borderRadius: "8px",
+                                        height: "fit-content"
+                                    }}
+                                >
+                                    <Typography
+                                        variant="subtitle2"
+                                        fontWeight="bold"
+                                        color="primary"
+                                        sx={{ mb: 1, textAlign: "center" }}
+                                    >
+                                        Primary Image Preview
+                                    </Typography>
+
+                                    {/* Zoomed Preview */}
+                                    <Box
+                                        sx={{
+                                            height: "100%",
+                                            aspectRatio: "1/1",
+                                            border: "2px solid grey",
+                                            borderRadius: "4px",
+                                            overflow: "hidden",
+                                            bgcolor: "#f5f5f5",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center"
+                                        }}
+                                    >
+                                        <img
+                                            src={primaryImage?.src}
+                                            alt="Primary preview"
+                                            style={{
+                                                transform: `translate3d(${formData.transformData?.x || 0}px, ${formData.transformData?.y || 0}px, 0) scale(${formData.transformData?.scale || 1})`,
+                                                transformOrigin: 'center center',
+                                                maxWidth: '100%',
+                                                maxHeight: '100%',
+                                                aspectRatio: "1/1",
+                                                objectFit: 'contain'
+                                            }}
+                                        />
+                                    </Box>
+
+                                    {/* Transform Data Info */}
+                                    <Box sx={{ mt: 1, textAlign: "center" }}>
+                                        <Typography variant="caption" color="textSecondary">
+                                            Scale: {(formData.transformData?.scale || 1).toFixed(1)}x
+                                        </Typography>
+                                        <Typography variant="caption" color="textSecondary" display="block">
+                                            Position: X:{formData.transformData?.x || 0}, Y:{formData.transformData?.y || 0}
+                                        </Typography>
+                                    </Box>
+                                </Card>
+                            </Grid>
+                        </Grid>
+                    )}
+
+                    {/* Show ImageGrid alone when no images */}
+                    {formData.images.length === 0 && (
+                        <ImageGrid
+                            images={formData.images}
+                            setImages={(newImages) => setFormData({ images: newImages })}
+                            altText={altText}
+                            setAltText={setAltText}
+                        />
+                    )}
 
                     {inputErrors.images && (
                         <Typography
@@ -459,20 +625,72 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                 </Box>
             </Box>
 
-             {/*Crop Image Modal*/}
-            {/*<CropImage*/}
-            {/*    openEdit={openEdit}*/}
-            {/*    handleEditClose={handleEditClose}*/}
-            {/*    imgs={formData.images}*/}
-            {/*    setImgs={(newImages) => setFormData({ images: newImages })}*/}
-            {/*    setFormData={setFormData}*/}
-            {/*    formData={formData}*/}
-            {/*    alts={altText}*/}
-            {/*    setAlts={setAltText}*/}
-            {/*    handleOpen={handleOpen}*/}
-            {/*    transformData={transformData}*/}
-            {/*    setTransformData={setTransformData}*/}
-            {/*/>*/}
+            {/* Videos Section */}
+            <Box
+                sx={{
+                    display: "flex",
+                    gap: "20px",
+                    alignItems: "flex-start",
+                    mt: 3
+                }}
+            >
+                <Box
+                    sx={{
+                        fontSize: "14px",
+                        fontWeight: 700,
+                        width: "12.7%",
+                        minWidth: "120px",
+                        mt: 1
+                    }}
+                >
+                    Videos:
+                </Box>
+                <Box sx={{ width: "50%" }}>
+                    {/* Video Upload Controls */}
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
+                        <Typography
+                            component="div"
+                            sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                cursor: "pointer",
+                                gap: "5px"
+                            }}
+                        >
+                            <div onClick={handleVideoButtonClick}>
+                                <ControlPointIcon />
+                            </div>
+                            <div onClick={handleVideoButtonClick}>Upload Video Files</div>
+                            <input
+                                multiple
+                                type="file"
+                                accept="video/*"
+                                onChange={handleVideoUpload}
+                                ref={videoInputRef}
+                                style={{ display: "none" }}
+                            />
+                        </Typography>
+                    </Box>
+
+                    {/* Video Count and Status */}
+                    <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
+                        {formData.videos.length} / 2 videos uploaded
+                    </Typography>
+
+                    {/* Video Grid Preview */}
+                    <VideoGrid
+                        videos={formData.videos}
+                        setVideos={(newVideos) => setFormData({ videos: newVideos })}
+                    />
+                </Box>
+            </Box>
+
+            {/* Crop Image Modal */}
+            <CropImage
+                openEdit={openEdit}
+                handleEditClose={handleEditClose}
+                handleOpen={handleOpen}
+            />
         </Box>
     );
 };

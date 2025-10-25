@@ -21,10 +21,13 @@ const ImageTile = ({
         imageContainer: {
             borderRadius: theme.shape.borderRadius,
             overflow: "hidden",
-            height: `${index === 0 ? "150px" : "100px"}`,
-            width: "100%",
+            height: "150px",
+            width: "150px",
             cursor: "move",
-            position: "relative"
+            border: "1px solid gray",
+            position: "relative",
+            aspectRatio: "1/1",
+            objectFit: "cover",
         }
     }));
     const classes = useStyles();
@@ -101,11 +104,10 @@ const ImageTile = ({
                         position: "relative"
                     }}
                 >
-                    <Avatar
+                    <img
                         alt={`uploaded-${index}`}
                         src={images[index]?.src}
-                        sx={{ width: 173.44,height:150,borderRadius: 2 }}
-                        variant="square"
+                        style={{ width: 150,height:150,borderRadius: 2, objectFit: "contain" }}
                     />
                     {index === 0 && (
                         <Typography
