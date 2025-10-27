@@ -162,41 +162,174 @@ export const useProductFormStore = create(
             setKeys: (keys) => set({ keys }),
 
             handleToggle: (combindex, index) => {
-                set((state) => ({
-                    combinations: state.combinations?.map((item, i) => i === combindex ? {
-                        ...item,
-                        combinations: item.combinations?.map((comb, j) => j === index ? {
-                            ...comb,
-                            isVisible: !comb.isVisible
-                        } : comb),
-                    } : item)
-                }));
+                const state = get();
+                const updatedCombinations = [...state.combinations];
+
+                const newCombinations = updatedCombinations.map((item, i) => {
+                    if (i === combindex) {
+                        const updatedCombos = [...item.combinations];
+                        const updatedCombo = { ...updatedCombos[index] };
+                        updatedCombo.isVisible = !updatedCombo.isVisible;
+                        updatedCombos[index] = updatedCombo;
+
+                        return {
+                            ...item,
+                            combinations: updatedCombos
+                        };
+                    }
+                    return item;
+                });
+
+                set({ combinations: newCombinations });
             },
 
             handleCombChange: (e, combindex, index) => {
                 const { name, value } = e.target;
                 if (/^\d*$/.test(value) && value.length <= 7) {
-                    set((state) => ({
-                        combinations: state.combinations?.map((item, i) => i === combindex ? {
-                            ...item,
-                            combinations: item.combinations?.map((comb, j) => j === index ? { ...comb, [name]: value } : comb),
-                        } : item)
-                    }));
+                    const state = get();
+                    const updatedCombinations = [...state.combinations];
+
+                    const newCombinations = updatedCombinations.map((item, i) => {
+                        if (i === combindex) {
+                            const updatedCombos = [...item.combinations];
+                            const updatedCombo = { ...updatedCombos[index] };
+                            updatedCombo[name] = value;
+                            updatedCombos[index] = updatedCombo;
+
+                            return {
+                                ...item,
+                                combinations: updatedCombos
+                            };
+                        }
+                        return item;
+                    });
+
+                    set({ combinations: newCombinations });
                 }
             },
 
             handleRowReorder: (combindex, sourceIndex, targetIndex) => {
-                set((state) => ({
-                    combinations: state.combinations?.map((comb, i) => {
-                        if (i === combindex) {
-                            const updatedCombinations = [...comb.combinations];
-                            const [movedItem] = updatedCombinations.splice(sourceIndex, 1);
-                            updatedCombinations.splice(targetIndex, 0, movedItem);
-                            return { ...comb, combinations: updatedCombinations };
+                const state = get();
+                const updatedCombinations = [...state.combinations];
+
+                const newCombinations = updatedCombinations.map((comb, i) => {
+                    if (i === combindex) {
+                        const updatedCombinations = [...comb.combinations];
+                        const [movedItem] = updatedCombinations.splice(sourceIndex, 1);
+                        updatedCombinations.splice(targetIndex, 0, movedItem);
+                        return { ...comb, combinations: updatedCombinations };
+                    }
+                    return comb;
+                });
+
+                set({ combinations: newCombinations });
+            },
+
+            // Image Handling Functions
+            handleImageUpload: (combindex, rowIndex, imageKey, event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const state = get();
+                const updatedCombinations = [...state.combinations];
+
+                const newCombinations = updatedCombinations.map((comb, i) => {
+                    if (i === combindex) {
+                        const updatedRowCombinations = [...comb.combinations];
+                        const updatedRow = { ...updatedRowCombinations[rowIndex] };
+
+                        if (imageKey.startsWith('main_images')) {
+                            const index = parseInt(imageKey.match(/\[(\d+)\]/)[1]);
+                            const mainImages = [...(updatedRow.main_images || [])];
+                            while (mainImages.length <= index) {
+                                mainImages.push(null);
+                            }
+                            mainImages[index] = file;
+                            updatedRow.main_images = mainImages;
+                        } else {
+                            updatedRow[imageKey] = file;
                         }
-                        return comb;
-                    })
-                }));
+
+                        updatedRowCombinations[rowIndex] = updatedRow;
+                        return {
+                            ...comb,
+                            combinations: updatedRowCombinations
+                        };
+                    }
+                    return comb;
+                });
+
+                set({ combinations: newCombinations });
+            },
+
+            handleImageRemove: (combindex, rowIndex, imageKey) => {
+                const state = get();
+                const updatedCombinations = [...state.combinations];
+
+                const newCombinations = updatedCombinations.map((comb, i) => {
+                    if (i === combindex) {
+                        const updatedRowCombinations = [...comb.combinations];
+                        const updatedRow = { ...updatedRowCombinations[rowIndex] };
+
+                        if (imageKey.startsWith('main_images')) {
+                            const index = parseInt(imageKey.match(/\[(\d+)\]/)[1]);
+                            const mainImages = [...(updatedRow.main_images || [])];
+                            if (mainImages[index]) {
+                                mainImages[index] = null;
+                                updatedRow.main_images = mainImages;
+                            }
+                        } else {
+                            updatedRow[imageKey] = null;
+                        }
+
+                        // Also remove any edit data for this image
+                        if (imageKey === 'main_images[0]') {
+                            updatedRow.edit_main_image = null;
+                            updatedRow.edit_main_image_data = null;
+                        } else if (imageKey === 'preview_image') {
+                            updatedRow.edit_preview_image = null;
+                            updatedRow.edit_preview_image_data = null;
+                        }
+
+                        updatedRowCombinations[rowIndex] = updatedRow;
+                        return {
+                            ...comb,
+                            combinations: updatedRowCombinations
+                        };
+                    }
+                    return comb;
+                });
+
+                set({ combinations: newCombinations });
+            },
+
+            handleEditImage: (combindex, rowIndex, imageType, editedImage, imageIndex, editData) => {
+                const state = get();
+                const updatedCombinations = [...state.combinations];
+
+                const newCombinations = updatedCombinations.map((comb, i) => {
+                    if (i === combindex) {
+                        const updatedRowCombinations = [...comb.combinations];
+                        const updatedRow = { ...updatedRowCombinations[rowIndex] };
+
+                        if (imageType === 'main_images' && imageIndex === 0) {
+                            updatedRow.edit_main_image = editedImage;
+                            updatedRow.edit_main_image_data = editData;
+                        } else if (imageType === 'preview_image') {
+                            updatedRow.edit_preview_image = editedImage;
+                            updatedRow.edit_preview_image_data = editData;
+                        }
+
+                        updatedRowCombinations[rowIndex] = updatedRow;
+                        return {
+                            ...comb,
+                            combinations: updatedRowCombinations
+                        };
+                    }
+                    return comb;
+                });
+
+                set({ combinations: newCombinations });
             },
 
             // Initialize form with edit data
@@ -289,7 +422,7 @@ export const useProductFormStore = create(
                     keys: editData?.search_terms || [],
                     altText: editData?.altText || []
                 });
-                },
+            },
 
             // Reset form to initial state
             resetForm: () => set({

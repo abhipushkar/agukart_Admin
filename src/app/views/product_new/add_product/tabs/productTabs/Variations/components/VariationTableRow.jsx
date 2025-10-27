@@ -3,6 +3,8 @@ import TableRow from "@mui/material/TableRow";
 import TableCell from "@mui/material/TableCell";
 import { Box, Button, Checkbox, Switch, IconButton } from "@mui/material";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
+import { useProductFormStore } from "../../../../../states/useAddProducts";
+import ImageCell, { BulkUploadCell } from "./imageComponents/ImageCell";
 
 const DraggableTableRow = ({
                                children,
@@ -75,20 +77,27 @@ const DraggableTableRow = ({
 const VariationTableRow = ({
                                comb,
                                combindex,
-                               formValues,
-                               variationsData,
-                               combinationError,
-                               showAll,
-                               setShowAll,
-                               handleToggle,
-                               handleCombChange,
-                               onRowReorder
+                               visibleColumns,
                            }) => {
+    const {
+        formValues,
+        variationsData,
+        combinationError,
+        showAll,
+        setShowAll,
+        handleToggle,
+        handleCombChange,
+        handleImageUpload,
+        handleImageRemove,
+        handleEditImage,
+        handleRowReorder
+    } = useProductFormStore();
+
     const [draggingIndex, setDraggingIndex] = useState(null);
     const [dragOverIndex, setDragOverIndex] = useState(null);
 
     const handleSeeMore = () => {
-        setShowAll((prev) => !prev);
+        setShowAll(!showAll);
     };
 
     const itemsToShow = showAll ? comb.combinations : comb.combinations.slice(0, 5);
@@ -115,11 +124,49 @@ const VariationTableRow = ({
     const handleDrop = (e, targetIndex) => {
         e.preventDefault();
         const sourceIndex = parseInt(e.dataTransfer.getData('text/plain'));
-        if (sourceIndex !== targetIndex && onRowReorder) {
-            onRowReorder(combindex, sourceIndex, targetIndex);
+        if (sourceIndex !== targetIndex && handleRowReorder) {
+            handleRowReorder(combindex, sourceIndex, targetIndex);
         }
         setDraggingIndex(null);
         setDragOverIndex(null);
+    };
+
+    // Calculate total number of columns for colspan
+    const getTotalVisibleColumns = () => {
+        let count = 0;
+        if (visibleColumns.drag) count++;
+        if (visibleColumns.select) count++;
+        if (visibleColumns.attribute1 && comb.combinations[0]?.value1) count++;
+        if (visibleColumns.attribute2 && comb.combinations[0]?.value2) count++;
+        if (visibleColumns.multipleUpload) count++;
+        if (visibleColumns.mainImage1) count++;
+        if (visibleColumns.mainImage2) count++;
+        if (visibleColumns.mainImage3) count++;
+        if (visibleColumns.preview) count++;
+        if (visibleColumns.thumbnail) count++;
+        if (visibleColumns.price && (variationsData.length >= 2 ? formValues?.prices === comb.variant_name : true) && formValues?.isCheckedPrice) count++;
+        if (visibleColumns.quantity && (variationsData.length >= 2 ? formValues?.quantities === comb.variant_name : true) && formValues?.isCheckedQuantity) count++;
+        if (visibleColumns.visible) count++;
+        return count;
+    };
+
+    // Handle bulk image upload
+    const handleBulkImageUpload = (combindex, rowIndex, event) => {
+        const files = Array.from(event.target.files);
+        if (files.length === 0) return;
+
+        // Upload first 3 images to main_images[0], main_images[1], main_images[2]
+        files.slice(0, 3).forEach((file, index) => {
+            const imageKey = `main_images[${index}]`;
+            handleImageUpload(combindex, rowIndex, imageKey, { target: { files: [file] } });
+        });
+    };
+
+    // Check if image is editable
+    const isImageEditable = (imageType, imageIndex) => {
+        if (imageType === "preview_image") return true;
+        if (imageType === "main_images" && imageIndex === 0) return true;
+        return false;
     };
 
     return (
@@ -135,62 +182,135 @@ const VariationTableRow = ({
                     isDragging={draggingIndex === index}
                     isDragOver={dragOverIndex === index}
                 >
-                    <TableCell align="center">
-                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <IconButton
-                                className="drag-handle"
-                                size="small"
-                                sx={{
-                                    cursor: 'grab',
-                                    '&:active': {
-                                        cursor: 'grabbing',
-                                    }
-                                }}
-                            >
-                                <DragIndicatorIcon />
-                            </IconButton>
-                        </Box>
-                    </TableCell>
-                    <TableCell align="center">
-                        <Checkbox size="small" />
-                    </TableCell>
+                    {/* Drag Handle Column */}
+                    {visibleColumns.drag && (
+                        <TableCell align="center">
+                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <IconButton
+                                    className="drag-handle"
+                                    size="small"
+                                    sx={{
+                                        cursor: 'grab',
+                                        '&:active': {
+                                            cursor: 'grabbing',
+                                        }
+                                    }}
+                                >
+                                    <DragIndicatorIcon />
+                                </IconButton>
+                            </Box>
+                        </TableCell>
+                    )}
 
-                    {item?.value1 && <TableCell align="center">{item?.value1}</TableCell>}
-                    {item?.value2 && <TableCell align="center">{item?.value2}</TableCell>}
+                    {/* Attribute 1 Column */}
+                    {visibleColumns.attribute1 && item?.value1 && (
+                        <TableCell align="center">{item?.value1}</TableCell>
+                    )}
 
-                    {/* Image Upload Cells */}
-                    <TableCell align="center">
-                        <Button variant="outlined" size="small" sx={{ fontSize: '12px' }}>
-                            Upload
-                        </Button>
-                    </TableCell>
-                    <TableCell align="center">
-                        <Button variant="outlined" size="small" sx={{ fontSize: '12px' }}>
-                            Upload
-                        </Button>
-                    </TableCell>
-                    <TableCell align="center">
-                        <Button variant="outlined" size="small" sx={{ fontSize: '12px' }}>
-                            Upload
-                        </Button>
-                    </TableCell>
-                    <TableCell align="center">
-                        <Button variant="outlined" size="small" sx={{ fontSize: '12px' }}>
-                            Upload
-                        </Button>
-                    </TableCell>
-                    <TableCell align="center">
-                        <Button variant="outlined" size="small" sx={{ fontSize: '12px' }}>
-                            Upload
-                        </Button>
-                    </TableCell>
-                    <TableCell align="center">
-                        <Button variant="outlined" size="small" sx={{ fontSize: '12px' }}>
-                            Upload
-                        </Button>
-                    </TableCell>
+                    {/* Attribute 2 Column */}
+                    {visibleColumns.attribute2 && item?.value2 && (
+                        <TableCell align="center">{item?.value2}</TableCell>
+                    )}
 
-                    {(variationsData.length >= 2 ? formValues?.prices === comb.variant_name : true) &&
+                    {/* Bulk Upload Column */}
+                    {visibleColumns.multipleUpload && (
+                        <TableCell align="center">
+                            <BulkUploadCell
+                                item={item}
+                                index={index}
+                                combindex={combindex}
+                                onBulkImageUpload={handleBulkImageUpload}
+                            />
+                        </TableCell>
+                    )}
+
+                    {/* Main Image 1 Column */}
+                    {visibleColumns.mainImage1 && (
+                        <TableCell align="center">
+                            <ImageCell
+                                item={item}
+                                index={index}
+                                imageType="main_images"
+                                imageIndex={0}
+                                editData={item.edit_main_image_data || null}
+                                combindex={combindex}
+                                onImageUpload={handleImageUpload}
+                                onImageRemove={handleImageRemove}
+                                onImageEdit={handleEditImage}
+                                isEditable={isImageEditable("main_images", 0)}
+                            />
+                        </TableCell>
+                    )}
+
+                    {/* Main Image 2 Column */}
+                    {visibleColumns.mainImage2 && (
+                        <TableCell align="center">
+                            <ImageCell
+                                item={item}
+                                index={index}
+                                imageType="main_images"
+                                imageIndex={1}
+                                combindex={combindex}
+                                onImageUpload={handleImageUpload}
+                                onImageRemove={handleImageRemove}
+                                onImageEdit={handleEditImage}
+                                isEditable={false}
+                            />
+                        </TableCell>
+                    )}
+
+                    {/* Main Image 3 Column */}
+                    {visibleColumns.mainImage3 && (
+                        <TableCell align="center">
+                            <ImageCell
+                                item={item}
+                                index={index}
+                                imageType="main_images"
+                                imageIndex={2}
+                                combindex={combindex}
+                                onImageUpload={handleImageUpload}
+                                onImageRemove={handleImageRemove}
+                                onImageEdit={handleEditImage}
+                                isEditable={false}
+                            />
+                        </TableCell>
+                    )}
+
+                    {/* Preview Image Column */}
+                    {visibleColumns.preview && (
+                        <TableCell align="center">
+                            <ImageCell
+                                item={item}
+                                index={index}
+                                imageType="preview_image"
+                                editData={item.edit_preview_image_data || null}
+                                combindex={combindex}
+                                onImageUpload={handleImageUpload}
+                                onImageRemove={handleImageRemove}
+                                onImageEdit={handleEditImage}
+                                isEditable={isImageEditable("preview_image", null)}
+                            />
+                        </TableCell>
+                    )}
+
+                    {/* Thumbnail Column */}
+                    {visibleColumns.thumbnail && (
+                        <TableCell align="center">
+                            <ImageCell
+                                item={item}
+                                index={index}
+                                imageType="thumbnail"
+                                combindex={combindex}
+                                onImageUpload={handleImageUpload}
+                                onImageRemove={handleImageRemove}
+                                onImageEdit={handleEditImage}
+                                isEditable={false}
+                            />
+                        </TableCell>
+                    )}
+
+                    {/* Price Column */}
+                    {visibleColumns.price && (variationsData.length >= 2 ? formValues?.prices === comb.variant_name : true) &&
                         formValues?.isCheckedPrice && (
                             <TableCell align="center">
                                 <input
@@ -217,7 +337,8 @@ const VariationTableRow = ({
                             </TableCell>
                         )}
 
-                    {(variationsData.length >= 2 ? formValues?.quantities === comb.variant_name : true) &&
+                    {/* Quantity Column */}
+                    {visibleColumns.quantity && (variationsData.length >= 2 ? formValues?.quantities === comb.variant_name : true) &&
                         formValues?.isCheckedQuantity && (
                             <TableCell align="center">
                                 <input
@@ -244,19 +365,23 @@ const VariationTableRow = ({
                             </TableCell>
                         )}
 
-                    <TableCell align="center">
-                        <Switch
-                            checked={item.isVisible || false}
-                            onChange={() => handleToggle(combindex, index)}
-                            size="small"
-                        />
-                    </TableCell>
+                    {/* Visible Column */}
+                    {visibleColumns.visible && (
+                        <TableCell align="center">
+                            <Switch
+                                checked={item.isVisible || false}
+                                onChange={() => handleToggle(combindex, index)}
+                                size="small"
+                            />
+                        </TableCell>
+                    )}
                 </DraggableTableRow>
             ))}
 
+            {/* See More/Less Button Row */}
             {comb.combinations.length > 5 && (
                 <TableRow>
-                    <TableCell colSpan={11} align="center" sx={{ py: 2 }}>
+                    <TableCell colSpan={getTotalVisibleColumns()} align="center" sx={{ py: 2 }}>
                         <Button
                             onClick={handleSeeMore}
                             variant="outlined"

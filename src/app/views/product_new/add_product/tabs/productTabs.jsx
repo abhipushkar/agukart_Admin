@@ -48,6 +48,8 @@ export default function ProductTabs({
         setCurrentTab(newValue);
     }
 
+    console.log(store.formData, store.combinations);
+
     // Enhanced tab component that passes store
     const renderTabComponent = (TabComponent, index) => {
         const tabProps = {

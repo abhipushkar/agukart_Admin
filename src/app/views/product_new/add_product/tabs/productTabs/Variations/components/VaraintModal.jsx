@@ -16,7 +16,11 @@ import {
     ListItemSecondaryAction,
     Autocomplete,
     Chip,
-    CircularProgress
+    CircularProgress,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
@@ -66,20 +70,16 @@ const VariantModal = ({ show, handleCloseVariant }) => {
     const [varientName, setVarientName] = useState([]);
     const [loading, setLoading] = useState(false);
 
+    // Custom variant states
+    const [customVariantDialogOpen, setCustomVariantDialogOpen] = useState(false);
+    const [customVariantName, setCustomVariantName] = useState("");
+    const [customVariantOptions, setCustomVariantOptions] = useState([""]);
+    const [customVariants, setCustomVariants] = useState([]);
+
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
 
-    // Normalize variations data to handle both API formats
-    const normalizeVariationsData = useCallback((data) => {
-        if (!data) return [];
-
-        return data.map(item => ({
-            name: item.name,
-            values: Array.isArray(item.values) ? item.values : []
-        }));
-    }, []);
-
-    // Get current normalized variations data
-    const currentVariationsData = normalizeVariationsData(variationsData);
+    // Combine predefined variants with custom variants
+    const allVariants = [...varientName, ...customVariants];
 
     // Fetch variations when category changes
     const getCategoryData = async () => {
@@ -106,7 +106,8 @@ const VariantModal = ({ show, handleCloseVariant }) => {
 
     // Fixed generateNameCombinations without setState calls
     const generateNameCombinations = useCallback(() => {
-        const names = currentVariationsData.map(item => item.name);
+        const currentData = variationsData || [];
+        const names = currentData.map(item => item.name);
         const combinations = [...names];
         for (let i = 0; i < names.length; i++) {
             for (let j = i + 1; j < names.length; j++) {
@@ -114,11 +115,12 @@ const VariantModal = ({ show, handleCloseVariant }) => {
             }
         }
         return combinations;
-    }, [currentVariationsData]);
+    }, [variationsData]);
 
     // Update name combinations only when variations data changes
     useEffect(() => {
-        if (currentVariationsData.length > 1) {
+        const currentData = variationsData || [];
+        if (currentData.length > 1) {
             const newCombinations = generateNameCombinations();
             setNameCombinations(newCombinations);
 
@@ -133,10 +135,83 @@ const VariantModal = ({ show, handleCloseVariant }) => {
         } else {
             setNameCombinations([]);
         }
-    }, [currentVariationsData, generateNameCombinations, formValues?.prices, formValues?.quantities]);
+    }, [variationsData, generateNameCombinations, formValues?.prices, formValues?.quantities]);
+
+    // Custom Variant Dialog Functions
+    const handleOpenCustomVariantDialog = () => {
+        setCustomVariantDialogOpen(true);
+        setCustomVariantName("");
+        setCustomVariantOptions([""]);
+    };
+
+    const handleCloseCustomVariantDialog = () => {
+        setCustomVariantDialogOpen(false);
+        setCustomVariantName("");
+        setCustomVariantOptions([""]);
+    };
+
+    const handleAddOption = () => {
+        setCustomVariantOptions([...customVariantOptions, ""]);
+    };
+
+    const handleRemoveOption = (index) => {
+        if (customVariantOptions.length > 1) {
+            const newOptions = customVariantOptions.filter((_, i) => i !== index);
+            setCustomVariantOptions(newOptions);
+        }
+    };
+
+    const handleOptionChange = (index, value) => {
+        const newOptions = [...customVariantOptions];
+        newOptions[index] = value;
+        setCustomVariantOptions(newOptions);
+    };
+
+    const handleSaveCustomVariant = () => {
+        if (!customVariantName.trim()) {
+            alert("Please enter a variant name");
+            return;
+        }
+
+        const validOptions = customVariantOptions.filter(opt => opt.trim() !== "");
+        if (validOptions.length < 2) {
+            alert("Please add at least 2 options");
+            return;
+        }
+
+        // Create custom variant object
+        const newCustomVariant = {
+            variant_name: customVariantName.trim(),
+            variant_attribute: validOptions.map((option) => ({
+                attribute_value: option.trim(),
+                main_images: [null, null, null],
+                preview_image: null,
+                thumbnail: null
+            })),
+            isCustom: true
+        };
+
+        // Add to custom variants list
+        setCustomVariants(prev => [...prev, newCustomVariant]);
+
+        // Close dialog and reset
+        handleCloseCustomVariantDialog();
+
+        // Auto-select the newly created variant
+        setSelectedVariations([...selectedVariations, newCustomVariant.variant_name]);
+        setSelectedVariant(newCustomVariant.variant_name);
+
+        // Set attribute options for the new variant
+        setAttrOptions(validOptions);
+        setAttrValues({
+            name: newCustomVariant.variant_name,
+            values: [],
+        });
+    };
 
     const handleTagHandler = (event, newValue) => {
-        if (newValue === `Add All Options (${attrOptions?.length})`) {
+        console.log(newValue[0], newValue.some(value => value === `Add All Options (${attrOptions?.length})`), [`Add All Options (${attrOptions?.length})`])
+        if (newValue.some(value => value === `Add All Options (${attrOptions?.length})`)) {
             setAttrValues((prev) => ({
                 ...prev,
                 values: [...attrOptions],
@@ -183,13 +258,16 @@ const VariantModal = ({ show, handleCloseVariant }) => {
             values: attrValues.values
         };
 
+        // Use the raw variationsData from store instead of normalized version
+        const currentData = variationsData || [];
+
         if (isEdit) {
-            const updatedData = currentVariationsData.map((item) =>
+            const updatedData = currentData.map((item) =>
                 item.name === attrValues.name ? normalizedAttrValues : item
             );
             setVariationsData(updatedData);
         } else {
-            const newData = [...currentVariationsData, normalizedAttrValues];
+            const newData = [...currentData, normalizedAttrValues];
             setVariationsData(newData);
         }
 
@@ -201,11 +279,11 @@ const VariantModal = ({ show, handleCloseVariant }) => {
     };
 
     const handleDeleteVariation = (selectedVariantName) => {
-        const updatedData = currentVariationsData.filter(variation => variation.name !== selectedVariantName);
+        const currentData = variationsData || [];
+        const updatedData = currentData.filter(variation => variation.name !== selectedVariantName);
         setVariationsData(updatedData);
-
-        setSelectedVariations(prevSelectedVariations =>
-            (prevSelectedVariations || []).filter(variation => variation !== selectedVariantName)
+        setSelectedVariations(
+            (selectedVariations || []).filter(variation => variation !== selectedVariantName)
         );
 
         setSelectedVariant("");
@@ -283,7 +361,9 @@ const VariantModal = ({ show, handleCloseVariant }) => {
     };
 
     const handleGenerate = async () => {
-        if (currentVariationsData.length === 0) {
+        const currentData = variationsData || [];
+
+        if (currentData.length === 0) {
             console.log("No variations data to generate");
             return;
         }
@@ -291,25 +371,25 @@ const VariantModal = ({ show, handleCloseVariant }) => {
         let data = [];
 
         // Handle single variation
-        if (currentVariationsData.length === 1) {
-            const result = generateCombinations(currentVariationsData, varientName);
+        if (currentData.length === 1) {
+            const result = generateCombinations(currentData, allVariants);
             data.push({
-                variant_name: currentVariationsData[0]?.name,
+                variant_name: currentData[0]?.name,
                 combinations: result,
             });
         }
         // Handle multiple variations with price/quantity settings
         else {
-            const existsPrice = currentVariationsData.find(variation => variation.name === formValues?.prices);
-            const existsQuantity = currentVariationsData.find(variation => variation.name === formValues?.quantities);
+            const existsPrice = currentData.find(variation => variation.name === formValues?.prices);
+            const existsQuantity = currentData.find(variation => variation.name === formValues?.quantities);
 
             if ((formValues?.isCheckedPrice || formValues?.isCheckedQuantity) && (formValues?.prices || formValues?.quantities)) {
                 if (existsPrice && existsQuantity) {
                     // Both price and quantity variations exist
                     if (formValues?.prices === formValues?.quantities) {
                         // Same variation for both price and quantity
-                        const variationData = currentVariationsData.filter((item) => item.name === formValues?.prices);
-                        let result = generateCombinations(variationData, varientName);
+                        const variationData = currentData.filter((item) => item.name === formValues?.prices);
+                        let result = generateCombinations(variationData, allVariants);
                         data.push({
                             variant_name: formValues?.prices,
                             combinations: result
@@ -317,16 +397,16 @@ const VariantModal = ({ show, handleCloseVariant }) => {
                     } else {
                         // Different variations for price and quantity
                         if (formValues?.isCheckedPrice) {
-                            const priceVariation = currentVariationsData.filter((item) => item.name === formValues?.prices);
-                            let result = generateCombinations(priceVariation, varientName);
+                            const priceVariation = currentData.filter((item) => item.name === formValues?.prices);
+                            let result = generateCombinations(priceVariation, allVariants);
                             data.push({
                                 variant_name: formValues?.prices,
                                 combinations: result
                             });
                         }
                         if (formValues?.isCheckedQuantity) {
-                            const quantityVariation = currentVariationsData.filter((item) => item.name === formValues?.quantities);
-                            let result = generateCombinations(quantityVariation, varientName);
+                            const quantityVariation = currentData.filter((item) => item.name === formValues?.quantities);
+                            let result = generateCombinations(quantityVariation, allVariants);
                             data.push({
                                 variant_name: formValues?.quantities,
                                 combinations: result
@@ -336,8 +416,8 @@ const VariantModal = ({ show, handleCloseVariant }) => {
                 }
             } else {
                 // No specific price/quantity settings, generate all variations
-                for (const item of currentVariationsData) {
-                    let result = generateCombinations([item], varientName);
+                for (const item of currentData) {
+                    let result = generateCombinations([item], allVariants);
                     data.push({
                         variant_name: item?.name,
                         combinations: result,
@@ -349,22 +429,24 @@ const VariantModal = ({ show, handleCloseVariant }) => {
         console.log("Generated combinations:", data);
         setCombinations(data);
 
-        // Update form data with selected variations
-        const parentMainIds = currentVariationsData
+        // Update form data with selected variations - Only include predefined variants
+        const parentMainIds = currentData
             .map(variation => {
-                const variant = varientName.find((item) => item.variant_name === variation.name);
-                return variant?.id;
+                const variant = allVariants.find((item) => item.variant_name === variation.name);
+                // Only include predefined variants (those with IDs), exclude custom variants
+                return variant?.id && !variant.isCustom ? variant.id : null;
             })
             .filter(Boolean);
 
-        const allIds = currentVariationsData
+        const allIds = currentData
             .flatMap((variation) => {
-                const variant = varientName.find((item) => item.variant_name === variation.name);
+                const variant = allVariants.find((item) => item.variant_name === variation.name);
                 const safeValues = Array.isArray(variation.values) ? variation.values : [];
 
                 return safeValues.map((value) => {
                     const attributeData = variant?.variant_attribute?.find((attr) => attr.attribute_value === value);
-                    return attributeData?._id;
+                    // Only include predefined attributes (those with _id), exclude custom attributes
+                    return attributeData?._id && !variant.isCustom ? attributeData._id : null;
                 });
             })
             .filter(Boolean);
@@ -380,11 +462,11 @@ const VariantModal = ({ show, handleCloseVariant }) => {
 
     useEffect(() => {
         if (selectedVariant) {
-            const data = varientName.filter((item) => item?.variant_name === selectedVariant);
+            const data = allVariants.filter((item) => item?.variant_name === selectedVariant);
             const options = data[0]?.variant_attribute?.map((item) => item?.attribute_value) || [];
             setAttrOptions(options);
         }
-    }, [selectedVariant, varientName]);
+    }, [selectedVariant, allVariants]);
 
     const handleEditVariation = (item) => {
         setSelectedVariant(item?.name);
@@ -394,276 +476,360 @@ const VariantModal = ({ show, handleCloseVariant }) => {
     };
 
     const handleVariantSelect = (variantName) => {
-        setSelectedVariations(prev => Array.from(new Set([...(prev || []), variantName])));
+        setSelectedVariations(Array.from(new Set([...(selectedVariations || []), variantName])));
         setSelectedVariant(variantName);
         setAttrValues(prev => ({ ...prev, name: variantName, values: [] }));
     };
 
     return (
-        <Modal
-            open={show}
-            onClose={(e, reason) => {
-                if (reason !== "backdropClick") {
-                    handleCloseVariant();
-                }
-            }}
-            aria-labelledby="modal-modal-title"
-            aria-describedby="modal-modal-description"
-        >
-            <Box sx={modalStyle} onClick={(e) => e.stopPropagation()}>
-                {!showVariantList ? (
-                    <>
-                        <Typography id="modal-modal-title" fontWeight={500} variant="h5" mb={2}>
-                            Manage Variations
-                        </Typography>
+        <>
+            <Modal
+                open={show}
+                onClose={(e, reason) => {
+                    if (reason !== "backdropClick") {
+                        handleCloseVariant();
+                    }
+                }}
+                aria-labelledby="modal-modal-title"
+                aria-describedby="modal-modal-description"
+            >
+                <Box sx={modalStyle} onClick={(e) => e.stopPropagation()}>
+                    {!showVariantList ? (
+                        <>
+                            <Typography id="modal-modal-title" fontWeight={500} variant="h5" mb={2}>
+                                Manage Variations
+                            </Typography>
 
-                        {loading ? (
-                            <Box display="flex" justifyContent="center" py={4}>
-                                <CircularProgress />
-                            </Box>
-                        ) : (
-                            <>
-                                {currentVariationsData.length > 0 ? (
-                                    <Box>
-                                        {currentVariationsData.map((item, i) => (
-                                            <Card key={i} sx={{ marginBottom: '16px', border: '1px solid #e0e0e0', padding: '16px' }}>
-                                                <Typography fontWeight={500}>{item?.name}</Typography>
-                                                <Typography variant="body2" color="textSecondary">
-                                                    {item?.values?.length || 0} options
-                                                </Typography>
-                                                <Box mt={1} display="flex" justifyContent="space-between" alignItems="center">
-                                                    <Box>
-                                                        {Array.isArray(item?.values) && item.values.map((data, valueIndex) => (
-                                                            <Chip
-                                                                key={valueIndex}
-                                                                label={data}
+                            {loading ? (
+                                <Box display="flex" justifyContent="center" py={4}>
+                                    <CircularProgress />
+                                </Box>
+                            ) : (
+                                <>
+                                    {variationsData && variationsData.length > 0 ? (
+                                        <Box>
+                                            {(variationsData || []).map((item, i) => (
+                                                <Card key={i} sx={{ marginBottom: '16px', border: '1px solid #e0e0e0', padding: '16px' }}>
+                                                    <Typography fontWeight={500}>{item?.name}</Typography>
+                                                    <Typography variant="body2" color="textSecondary">
+                                                        {item?.values?.length || 0} options
+                                                    </Typography>
+                                                    <Box mt={1} display="flex" justifyContent="space-between" alignItems="center">
+                                                        <Box>
+                                                            {Array.isArray(item?.values) && item.values.map((data, valueIndex) => (
+                                                                <Chip
+                                                                    key={valueIndex}
+                                                                    label={data}
+                                                                    size="small"
+                                                                    sx={{ m: 0.5 }}
+                                                                />
+                                                            ))}
+                                                        </Box>
+                                                        <Box display="flex">
+                                                            <IconButton
                                                                 size="small"
-                                                                sx={{ m: 0.5 }}
-                                                            />
+                                                                onClick={() => handleEditVariation(item)}
+                                                            >
+                                                                <EditIcon />
+                                                            </IconButton>
+                                                            <IconButton
+                                                                size="small"
+                                                                onClick={() => handleDeleteVariation(item?.name)}
+                                                            >
+                                                                <DeleteIcon />
+                                                            </IconButton>
+                                                        </Box>
+                                                    </Box>
+                                                </Card>
+                                            ))}
+                                        </Box>
+                                    ) : (
+                                        <Box textAlign={"center"} py={3}>
+                                            <BeenhereIcon sx={{ fontSize: '55px', color: 'text.secondary', mb: 2 }} />
+                                            <Typography variant="h6" fontWeight={500} textAlign="center" gutterBottom>
+                                                You don't have any variations
+                                            </Typography>
+                                            <Typography textAlign="center" color="textSecondary">
+                                                Use variations if your item is offered in different <br /> colours, size, materials, etc.
+                                            </Typography>
+                                        </Box>
+                                    )}
+
+                                    {(variationsData || []).length < 2 && (
+                                        <Button
+                                            variant="outlined"
+                                            startIcon={<AddIcon />}
+                                            onClick={() => setShowVariantList(true)}
+                                            sx={{ mt: 2 }}
+                                            disabled={!allVariants || allVariants.length === 0}
+                                        >
+                                            Add a Variation
+                                        </Button>
+                                    )}
+
+                                    {(variationsData || []).length > 0 && (
+                                        <Box py={2} sx={{ borderTop: '1px solid #e0e0e0', mt: 2 }}>
+                                            <Box display="flex" alignItems="center" mb={2}>
+                                                <Switch
+                                                    name="isCheckedPrice"
+                                                    checked={formValues?.isCheckedPrice || false}
+                                                    onChange={handleChange}
+                                                />
+                                                <Typography>Prices vary for each</Typography>
+                                            </Box>
+                                            {formValues?.isCheckedPrice && (variationsData || []).length > 1 && (
+                                                <FormControl fullWidth sx={{ mb: 2 }}>
+                                                    <TextField
+                                                        select
+                                                        label="Select Variation for Prices"
+                                                        value={formValues?.prices || ""}
+                                                        name="prices"
+                                                        onChange={handleChange}
+                                                        size="small"
+                                                    >
+                                                        {nameCombinations?.map((item, index) => (
+                                                            <MenuItem key={index} value={item}>
+                                                                {item}
+                                                            </MenuItem>
                                                         ))}
-                                                    </Box>
-                                                    <Box display="flex">
-                                                        <IconButton
-                                                            size="small"
-                                                            onClick={() => handleEditVariation(item)}
-                                                        >
-                                                            <EditIcon />
-                                                        </IconButton>
-                                                        <IconButton
-                                                            size="small"
-                                                            onClick={() => handleDeleteVariation(item?.name)}
-                                                        >
-                                                            <DeleteIcon />
-                                                        </IconButton>
-                                                    </Box>
-                                                </Box>
-                                            </Card>
+                                                    </TextField>
+                                                </FormControl>
+                                            )}
+
+                                            <Box display="flex" alignItems="center" mb={2}>
+                                                <Switch
+                                                    name="isCheckedQuantity"
+                                                    checked={formValues?.isCheckedQuantity || false}
+                                                    onChange={handleChange}
+                                                />
+                                                <Typography>Quantities vary</Typography>
+                                            </Box>
+                                            {formValues?.isCheckedQuantity && (variationsData || []).length > 1 && (
+                                                <FormControl fullWidth>
+                                                    <TextField
+                                                        select
+                                                        label="Select Variation for Quantities"
+                                                        value={formValues?.quantities || ""}
+                                                        name="quantities"
+                                                        onChange={handleChange}
+                                                        size="small"
+                                                    >
+                                                        {nameCombinations?.map((item, index) => (
+                                                            <MenuItem key={index} value={item}>
+                                                                {item}
+                                                            </MenuItem>
+                                                        ))}
+                                                    </TextField>
+                                                </FormControl>
+                                            )}
+                                        </Box>
+                                    )}
+
+                                    <Box display="flex" justifyContent="space-between" mt={4}>
+                                        <Button onClick={handleApplyCancel} variant="outlined">
+                                            Cancel
+                                        </Button>
+                                        <Button
+                                            variant="contained"
+                                            onClick={handleGenerate}
+                                            disabled={(variationsData || []).length === 0}
+                                        >
+                                            Apply
+                                        </Button>
+                                    </Box>
+                                </>
+                            )}
+                        </>
+                    ) : (
+                        <>
+                            {!selectedVariant ? (
+                                <>
+                                    <Typography variant="h5" gutterBottom>
+                                        What type of variation is it?
+                                    </Typography>
+                                    <Typography color="textSecondary" mb={3}>
+                                        You can add up to 2 variations. Use the variation types listed here for peak discoverability.
+                                    </Typography>
+                                    <Box my={2}>
+                                        {allVariants?.map((item, index) => (
+                                            <Button
+                                                key={index}
+                                                variant="outlined"
+                                                sx={{
+                                                    m: 0.5,
+                                                    borderRadius: '20px',
+                                                    textTransform: 'none'
+                                                }}
+                                                onClick={() => handleVariantSelect(item?.variant_name)}
+                                                disabled={(selectedVariations || []).includes(item?.variant_name)}
+                                                startIcon={(selectedVariations || []).includes(item?.variant_name) ? <CheckIcon /> : null}
+                                            >
+                                                {item?.variant_name}
+                                            </Button>
                                         ))}
                                     </Box>
-                                ) : (
-                                    <Box textAlign={"center"} py={3}>
-                                        <BeenhereIcon sx={{ fontSize: '55px', color: 'text.secondary', mb: 2 }} />
-                                        <Typography variant="h6" fontWeight={500} textAlign="center" gutterBottom>
-                                            You don't have any variations
-                                        </Typography>
-                                        <Typography textAlign="center" color="textSecondary">
-                                            Use variations if your item is offered in different <br /> colours, size, materials, etc.
-                                        </Typography>
+                                    <Box my={2}>
+                                        <Button
+                                            variant="outlined"
+                                            onClick={handleOpenCustomVariantDialog}
+                                            sx={{
+                                                borderColor: '#1976d2',
+                                                color: '#1976d2',
+                                                '&:hover': {
+                                                    borderColor: '#1565c0',
+                                                    backgroundColor: 'rgba(25, 118, 210, 0.04)'
+                                                }
+                                            }}
+                                        >
+                                            <AddIcon sx={{ mr: 1 }} />
+                                            Add Custom Variant
+                                        </Button>
                                     </Box>
-                                )}
-
-                                {currentVariationsData.length < 2 && (
-                                    <Button
-                                        variant="outlined"
-                                        startIcon={<AddIcon />}
-                                        onClick={() => setShowVariantList(true)}
-                                        sx={{ mt: 2 }}
-                                        disabled={!varientName || varientName.length === 0}
-                                    >
-                                        Add a Variation
-                                    </Button>
-                                )}
-
-                                {currentVariationsData.length > 0 && (
-                                    <Box py={2} sx={{ borderTop: '1px solid #e0e0e0', mt: 2 }}>
-                                        <Box display="flex" alignItems="center" mb={2}>
-                                            <Switch
-                                                name="isCheckedPrice"
-                                                checked={formValues?.isCheckedPrice || false}
-                                                onChange={handleChange}
-                                            />
-                                            <Typography>Prices vary for each</Typography>
-                                        </Box>
-                                        {formValues?.isCheckedPrice && currentVariationsData.length > 1 && (
-                                            <FormControl fullWidth sx={{ mb: 2 }}>
-                                                <TextField
-                                                    select
-                                                    label="Select Variation for Prices"
-                                                    value={formValues?.prices || ""}
-                                                    name="prices"
-                                                    onChange={handleChange}
-                                                    size="small"
-                                                >
-                                                    {nameCombinations?.map((item, index) => (
-                                                        <MenuItem key={index} value={item}>
-                                                            {item}
-                                                        </MenuItem>
-                                                    ))}
-                                                </TextField>
-                                            </FormControl>
-                                        )}
-
-                                        <Box display="flex" alignItems="center" mb={2}>
-                                            <Switch
-                                                name="isCheckedQuantity"
-                                                checked={formValues?.isCheckedQuantity || false}
-                                                onChange={handleChange}
-                                            />
-                                            <Typography>Quantities vary</Typography>
-                                        </Box>
-                                        {formValues?.isCheckedQuantity && currentVariationsData.length > 1 && (
-                                            <FormControl fullWidth>
-                                                <TextField
-                                                    select
-                                                    label="Select Variation for Quantities"
-                                                    value={formValues?.quantities || ""}
-                                                    name="quantities"
-                                                    onChange={handleChange}
-                                                    size="small"
-                                                >
-                                                    {nameCombinations?.map((item, index) => (
-                                                        <MenuItem key={index} value={item}>
-                                                            {item}
-                                                        </MenuItem>
-                                                    ))}
-                                                </TextField>
-                                            </FormControl>
-                                        )}
-                                    </Box>
-                                )}
-
-                                <Box display="flex" justifyContent="space-between" mt={4}>
-                                    <Button onClick={handleApplyCancel} variant="outlined">
+                                    <Button onClick={handleCancel} sx={{ mt: 2 }}>
                                         Cancel
                                     </Button>
-                                    <Button
-                                        variant="contained"
-                                        onClick={handleGenerate}
-                                        disabled={currentVariationsData.length === 0}
-                                    >
-                                        Apply
-                                    </Button>
-                                </Box>
-                            </>
-                        )}
-                    </>
-                ) : (
-                    <>
-                        {!selectedVariant ? (
-                            <>
-                                <Typography variant="h5" gutterBottom>
-                                    What type of variation is it?
-                                </Typography>
-                                <Typography color="textSecondary" mb={3}>
-                                    You can add up to 2 variations. Use the variation types listed here for peak discoverability.
-                                </Typography>
-                                <Box my={2}>
-                                    {varientName?.map((item, index) => (
-                                        <Button
-                                            key={index}
-                                            variant="outlined"
-                                            sx={{
-                                                m: 0.5,
-                                                borderRadius: '20px',
-                                                textTransform: 'none'
-                                            }}
-                                            onClick={() => handleVariantSelect(item?.variant_name)}
-                                            disabled={(selectedVariations || []).includes(item?.variant_name)}
-                                            startIcon={(selectedVariations || []).includes(item?.variant_name) ? <CheckIcon /> : null}
-                                        >
-                                            {item?.variant_name}
-                                        </Button>
-                                    ))}
-                                </Box>
-                                <Button onClick={handleCancel} sx={{ mt: 2 }}>
-                                    Cancel
-                                </Button>
-                            </>
-                        ) : (
-                            <>
-                                <Typography variant="h5" gutterBottom>
-                                    {selectedVariant}
-                                </Typography>
-                                <Typography variant="body2" color="textSecondary" mb={2}>
-                                    Variation
-                                </Typography>
-                                <Typography variant="h6" mb={1}>
-                                    Options {(attrValues?.values || []).length}
-                                </Typography>
-                                <Typography color="textSecondary" mb={3}>
-                                    Buyers can choose from the following options.
-                                </Typography>
+                                </>
+                            ) : (
+                                <>
+                                    <Typography variant="h5" gutterBottom>
+                                        {selectedVariant}
+                                    </Typography>
+                                    <Typography variant="body2" color="textSecondary" mb={2}>
+                                        Variation
+                                    </Typography>
+                                    <Typography variant="h6" mb={1}>
+                                        Options {(attrValues?.values || []).length}
+                                    </Typography>
+                                    <Typography color="textSecondary" mb={3}>
+                                        Buyers can choose from the following options.
+                                    </Typography>
 
-                                <Autocomplete
-                                    multiple
-                                    options={[...(attrOptions || []), `Add All Options (${attrOptions?.length || 0})`]}
-                                    getOptionLabel={(option) => option}
-                                    value={[]}
-                                    onChange={handleTagHandler}
-                                    renderInput={(params) => (
-                                        <TextField
-                                            {...params}
-                                            label="Enter an option..."
-                                            placeholder="Enter an option..."
-                                        />
-                                    )}
-                                    sx={{ mb: 2 }}
-                                />
-
-                                <List>
-                                    {(attrValues?.values || []).map((option, index) => (
-                                        <ListItem
-                                            key={index}
-                                            sx={{
-                                                border: "1px solid #e0e0e0",
-                                                borderRadius: "4px",
-                                                marginBottom: "8px",
-                                            }}
-                                            secondaryAction={
-                                                <IconButton
-                                                    edge="end"
-                                                    onClick={() => handleTagDelete(option)}
+                                    <Autocomplete
+                                        multiple
+                                        id="dropdown-with-list"
+                                        disableCloseOnSelect
+                                        options={[...(attrOptions || []), `Add All Options (${attrOptions?.length || 0})`]}
+                                        getOptionLabel={(option) => option}
+                                        value={attrValues.values || []}
+                                        onChange={handleTagHandler}
+                                        renderInput={(params) => (
+                                            <TextField
+                                                {...params}
+                                                label="Enter an option..."
+                                                placeholder="Enter an option..."
+                                            />
+                                        )}
+                                        renderOption={(props, option) => {
+                                            const isSelected = attrValues.values.includes(option);
+                                            return (
+                                                <ListItem
+                                                    {...props}
+                                                    sx={{
+                                                        backgroundColor: isSelected ? "rgba(0, 123, 255, 0.2)" : "inherit",
+                                                        "&:hover": {
+                                                            backgroundColor: "rgba(0, 123, 255, 0.1)",
+                                                        },
+                                                    }}
                                                 >
-                                                    <DeleteIcon />
-                                                </IconButton>
-                                            }
-                                        >
-                                            <ListItemText primary={option} />
-                                        </ListItem>
-                                    ))}
-                                </List>
+                                                    <ListItemText primary={option} />
+                                                </ListItem>
+                                            );
+                                        }}
+                                        sx={{ mb: 2 }}
+                                    />
 
-                                <Box display="flex" justifyContent="space-between" mt={4}>
-                                    <Button
-                                        onClick={() => handleDeleteVariation(selectedVariant)}
-                                        color="error"
-                                    >
-                                        Delete
-                                    </Button>
-                                    <Button
-                                        variant="contained"
-                                        onClick={handleDone}
-                                        disabled={!attrValues?.values || attrValues.values.length === 0}
-                                    >
-                                        Done
-                                    </Button>
-                                </Box>
-                            </>
-                        )}
-                    </>
-                )}
-            </Box>
-        </Modal>
+                                    <List>
+                                        {(attrValues?.values || []).map((option, index) => (
+                                            <ListItem
+                                                key={index}
+                                                sx={{
+                                                    border: "1px solid #e0e0e0",
+                                                    borderRadius: "4px",
+                                                    marginBottom: "8px",
+                                                }}
+                                                secondaryAction={
+                                                    <IconButton
+                                                        edge="end"
+                                                        onClick={() => handleTagDelete(option)}
+                                                    >
+                                                        <DeleteIcon />
+                                                    </IconButton>
+                                                }
+                                            >
+                                                <ListItemText primary={option} />
+                                            </ListItem>
+                                        ))}
+                                    </List>
+
+                                    <Box display="flex" justifyContent="space-between" mt={4}>
+                                        <Button
+                                            onClick={() => handleDeleteVariation(selectedVariant)}
+                                            color="error"
+                                        >
+                                            Delete
+                                        </Button>
+                                        <Button
+                                            variant="contained"
+                                            onClick={handleDone}
+                                            disabled={!attrValues?.values || attrValues.values.length === 0}
+                                        >
+                                            Done
+                                        </Button>
+                                    </Box>
+                                </>
+                            )}
+                        </>
+                    )}
+                </Box>
+            </Modal>
+
+            {/* Custom Variant Dialog */}
+            <Dialog open={customVariantDialogOpen} onClose={handleCloseCustomVariantDialog} maxWidth="sm" fullWidth>
+                <DialogTitle>Add Custom Variant</DialogTitle>
+                <DialogContent>
+                    <TextField
+                        autoFocus
+                        margin="dense"
+                        label="Variant Name"
+                        type="text"
+                        fullWidth
+                        variant="outlined"
+                        value={customVariantName}
+                        onChange={(e) => setCustomVariantName(e.target.value)}
+                        sx={{ mb: 2 }}
+                    />
+                    <Typography variant="subtitle1" gutterBottom>
+                        Options (at least 2 required):
+                    </Typography>
+                    {customVariantOptions.map((option, index) => (
+                        <Box key={index} display="flex" alignItems="center" mb={1}>
+                            <TextField
+                                fullWidth
+                                variant="outlined"
+                                placeholder={`Option ${index + 1}`}
+                                value={option}
+                                onChange={(e) => handleOptionChange(index, e.target.value)}
+                                sx={{ mr: 1 }}
+                            />
+                            {customVariantOptions.length > 1 && (
+                                <IconButton onClick={() => handleRemoveOption(index)} color="error">
+                                    <DeleteIcon />
+                                </IconButton>
+                            )}
+                        </Box>
+                    ))}
+                    <Button onClick={handleAddOption} startIcon={<AddIcon />} sx={{ mt: 1 }}>
+                        Add Option
+                    </Button>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseCustomVariantDialog}>Cancel</Button>
+                    <Button onClick={handleSaveCustomVariant} variant="contained">
+                        Save Variant
+                    </Button>
+                </DialogActions>
+            </Dialog>
+        </>
     );
 };
 

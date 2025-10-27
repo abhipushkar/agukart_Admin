@@ -119,41 +119,10 @@ const ProductVariations = () => {
 
                     {/* Variations Content */}
                     {combinations?.length > 0 ? (
-                        <VariationsTable />
+                        <VariationsTable setShowVariantModal={setShowVariantModal} />
                     ) : (
                         <EmptyVariationsState onAddVariation={handleOpenVariant} />
                     )}
-                </Box>
-            </Box>
-
-            {/* Action Buttons */}
-            <Box
-                sx={{
-                    display: "flex",
-                    gap: "20px",
-                    alignItems: "center",
-                    justifyContent: "flex-end",
-                    mt: 3,
-                    pt: 2,
-                    borderTop: '1px solid #e0e0e0'
-                }}
-            >
-                <Box sx={{ width: "15%", minWidth: "120px" }}></Box>
-                <Box sx={{ width: "100%", display: "flex", gap: 2, justifyContent: "flex-end" }}>
-                    <Button
-                        variant="outlined"
-                        disabled={draftLoading}
-                    >
-                        Save As Draft
-                    </Button>
-                    <Button
-                        variant="contained"
-                        color="primary"
-                        onClick={handleNext}
-                        sx={{ minWidth: '100px' }}
-                    >
-                        Next
-                    </Button>
                 </Box>
             </Box>
 
