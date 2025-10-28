@@ -9,6 +9,27 @@ export const useProductFormStore = create(
             setLoading: (loading) => set({ loading }),
             setDraftLoading: (draftLoading) => set({ draftLoading }),
 
+            brandList: [],
+            setBrandList: (brandList => set((state) => ({brandList}))),
+
+            allCategory: [],
+            setAllCategory: (allCategory) => set((state) => ({allCategory})),
+
+            allVendors: [],
+            setAllVendors: (allVendors) => set((state) => ({allVendors})),
+
+            varientName: [],
+
+            setVarientName: (varientName) => set((state) => ({
+                varientName: varientName
+            })),
+
+            shippingTemplateData: [],
+            setShippingTemplateData: (shippingTemplateData) => set((state) => ({shippingTemplateData})),
+
+            exchangePolicy: [],
+            setExchangePolicy: (exchangePolicy) => set((state) => ({exchangePolicy})),
+
             // Form Data (main state)
             formData: {
                 productTitle: "",
@@ -80,8 +101,15 @@ export const useProductFormStore = create(
                 vendor: "",
                 isCombination: "false",
                 tabs: [],
-                exchangePolicy: ""
+                exchangePolicy: "",
+                dynamicFields: {},
             },
+
+            dynamicFields: [],
+
+            setDynamicField: (dynamicFields) => set((state) => (
+                {dynamicFields: dynamicFields}
+            )),
 
             // Form Values for variations
             formValues: {

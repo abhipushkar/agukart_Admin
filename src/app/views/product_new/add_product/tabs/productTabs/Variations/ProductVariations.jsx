@@ -96,7 +96,7 @@ const ProductVariations = () => {
                         color="textSecondary"
                         sx={{ mb: 2 }}
                     >
-                        Manage product variations like sizes, colors, materials, etc. Add up to 2 variation types.
+                        Manage product variations like sizes, colors, materials, etc. Add up to 3 variation types.
                     </Typography>
 
                     {/* Add Variations Button */}
@@ -105,14 +105,13 @@ const ProductVariations = () => {
                             variant="outlined"
                             startIcon={<AddIcon />}
                             onClick={handleOpenVariant}
-                            disabled={variationsData?.length >= 2}
                             sx={{ minWidth: '160px' }}
                         >
-                            Add Variations ({variationsData?.length || 0}/2)
+                            Add Variations ({variationsData?.length || 0}/3)
                         </Button>
-                        {variationsData?.length >= 2 && (
+                        {variationsData?.length >= 3 && (
                             <Typography variant="caption" color="textSecondary" sx={{ ml: 2 }}>
-                                Maximum 2 variation types allowed
+                                Maximum 3 variation types allowed
                             </Typography>
                         )}
                     </Box>

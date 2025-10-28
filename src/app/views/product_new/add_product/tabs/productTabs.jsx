@@ -4,7 +4,8 @@ import Tab from "@mui/material/Tab";
 import * as React from "react";
 import { Box } from "@mui/material";
 import PropTypes from "prop-types";
-import {useProductFormStore} from "../../states/useAddProducts";
+import { useProductFormStore } from "../../states/useAddProducts";
+import useTabsList from "./tabsList";
 
 function TabPanel(props) {
     const { children, value, index, ...other } = props;
@@ -36,19 +37,17 @@ function a11yProps(index) {
 }
 
 export default function ProductTabs({
-                                        tabsList = [],
                                         tabsComponents = [],
                                         currentTab,
                                         setCurrentTab,
                                         ...props
                                     }) {
     const store = useProductFormStore();
+    const tabsList = useTabsList();
 
     function handleTabChanges(event, newValue) {
         setCurrentTab(newValue);
     }
-
-    console.log(store.formData, store.combinations);
 
     // Enhanced tab component that passes store
     const renderTabComponent = (TabComponent, index) => {
@@ -62,6 +61,15 @@ export default function ProductTabs({
         return <TabComponent {...tabProps} />;
     };
 
+    // Filter tabs components based on available tabs
+    const filteredTabsComponents = tabsComponents.filter((component, index) => {
+        const componentName = component.name || "";
+        if (componentName.includes("Customization") || componentName.includes("Customisations")) {
+            return store.formData.customization === "Yes";
+        }
+        return true;
+    });
+
     return (
         <Box>
             <Tabs value={currentTab} onChange={handleTabChanges}>
@@ -73,7 +81,7 @@ export default function ProductTabs({
                     />
                 ))}
             </Tabs>
-            {tabsComponents.map((TabComponent, index) => (
+            {filteredTabsComponents.map((TabComponent, index) => (
                 <TabPanel key={index} index={index} value={currentTab}>
                     {renderTabComponent(TabComponent, index)}
                 </TabPanel>

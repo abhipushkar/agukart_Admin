@@ -51,8 +51,8 @@ const VariationsTable = ({setShowVariantModal}) => {
         mainImage3: true,
         preview: true,
         thumbnail: true,
-        price: true,
-        quantity: true,
+        price: formValues.isCheckedPrice,
+        quantity: formValues.isCheckedQuantity,
         visible: true
     });
 
@@ -202,19 +202,19 @@ const VariationsTable = ({setShowVariantModal}) => {
                                 >
                                     Columns
                                 </Button>
-                                <IconButton
-                                    onClick={() => handleEdit(comb)}
-                                    color="primary"
-                                    size="small"
-                                    sx={{
-                                        backgroundColor: 'white',
-                                        '&:hover': {
-                                            backgroundColor: '#f0f0f0'
-                                        }
-                                    }}
-                                >
-                                    <EditIcon fontSize="small" />
-                                </IconButton>
+                                {/*<IconButton*/}
+                                {/*    onClick={() => handleEdit(comb)}*/}
+                                {/*    color="primary"*/}
+                                {/*    size="small"*/}
+                                {/*    sx={{*/}
+                                {/*        backgroundColor: 'white',*/}
+                                {/*        '&:hover': {*/}
+                                {/*            backgroundColor: '#f0f0f0'*/}
+                                {/*        }*/}
+                                {/*    }}*/}
+                                {/*>*/}
+                                {/*    <EditIcon fontSize="small" />*/}
+                                {/*</IconButton>*/}
                             </Box>
                         </Box>
 
@@ -263,10 +263,10 @@ const VariationsTable = ({setShowVariantModal}) => {
                         </Popover>
 
                         {/* Variations Table */}
-                        <TableContainer component={Paper} sx={{ border: '1px solid #e0e0e0' }}>
-                            <Table>
+                        <TableContainer component={Paper} sx={{ border: '1px solid #e0e0e0', width: "100%" }}>
+                            <Table width={"100%"}>
                                 <TableHead>
-                                    <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+                                    <TableRow sx={{ backgroundColor: '#f5f5f5', width: "100%" }}>
                                         {visibleColumns.drag && (
                                             <TableCell align="center" sx={{ wordBreak: "keep-all", fontWeight: 600, py: 2 }}>
                                                 Drag
@@ -312,12 +312,12 @@ const VariationsTable = ({setShowVariantModal}) => {
                                                 Thumbnail
                                             </TableCell>
                                         )}
-                                        {visibleColumns.price && (variationsData.length >= 2 ? formValues?.prices === comb.variant_name : true) && formValues?.isCheckedPrice && (
+                                        {(variationsData.length >= 2 ? formValues?.prices === comb.variant_name : true) && formValues?.isCheckedPrice && (
                                             <TableCell align="center" sx={{ wordBreak: "keep-all", fontWeight: 600, py: 2 }}>
                                                 Price
                                             </TableCell>
                                         )}
-                                        {visibleColumns.quantity && (variationsData.length >= 2 ? formValues?.quantities === comb.variant_name : true) && formValues?.isCheckedQuantity && (
+                                        {(variationsData.length >= 2 ? formValues?.quantities === comb.variant_name : true) && formValues?.isCheckedQuantity && (
                                             <TableCell align="center" sx={{ wordBreak: "keep-all", fontWeight: 600, py: 2 }}>
                                                 Quantity
                                             </TableCell>

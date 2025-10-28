@@ -169,6 +169,9 @@ const VariationTableRow = ({
         return false;
     };
 
+    console.log(visibleColumns.price, (variationsData.length >= 2 ? formValues?.prices === comb.variant_name : true),
+        formValues?.isCheckedPrice)
+
     return (
         <>
             {itemsToShow?.map((item, index) => (
@@ -310,7 +313,7 @@ const VariationTableRow = ({
                     )}
 
                     {/* Price Column */}
-                    {visibleColumns.price && (variationsData.length >= 2 ? formValues?.prices === comb.variant_name : true) &&
+                    {(variationsData.length >= 2 ? formValues?.prices === comb.variant_name : true) &&
                         formValues?.isCheckedPrice && (
                             <TableCell align="center">
                                 <input
@@ -338,7 +341,7 @@ const VariationTableRow = ({
                         )}
 
                     {/* Quantity Column */}
-                    {visibleColumns.quantity && (variationsData.length >= 2 ? formValues?.quantities === comb.variant_name : true) &&
+                    {(variationsData.length >= 2 ? formValues?.quantities === comb.variant_name : true) &&
                         formValues?.isCheckedQuantity && (
                             <TableCell align="center">
                                 <input

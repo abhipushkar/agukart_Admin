@@ -28,10 +28,12 @@ export default function AddProductNew() {
         initializeFormWithEditData,
         validateForm,
         setInputErrors,
-        setAllCategory,
         setBrandList,
         setAllVendors,
-        inputErrors
+        setAllCategory,
+        setExchangePolicy,
+        setShippingTemplateData,
+        inputErrors,
     } = useProductFormStore();
 
     const {
@@ -39,7 +41,7 @@ export default function AddProductNew() {
         saveDraft,
         fetchEditProductData,
         loading,
-        draftLoading
+        draftLoading,
     } = useProductAPI();
 
     const [open, setOpen] = useState(false);
@@ -47,6 +49,7 @@ export default function AddProductNew() {
     const [msg, setMsg] = useState(null);
 
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
+    const designation_id = localStorage.getItem(localStorageKey.designation_id);
 
     // Fetch edit product data if query parameters exist
     useEffect(() => {
@@ -156,6 +159,90 @@ export default function AddProductNew() {
         }
     };
 
+    const getVendorList = async () => {
+        try {
+            const res = await ApiService.get(apiEndpoints.getVendorsList, auth_key);
+            if (res?.status === 200) {
+                setAllVendors(res?.data?.data);
+            }
+        } catch (error) {
+            console.error("Error fetching vendors:", error);
+        }
+    };
+
+    const getBrandList = async () => {
+        try {
+            const res = await ApiService.get(apiEndpoints.getBrand, auth_key);
+            if (res.status === 200) {
+                setBrandList(res?.data?.brand);
+            }
+        } catch (error) {
+            console.error("Error fetching brands:", error);
+        }
+    };
+
+    const getChildCategory = async () => {
+        try {
+            const res = await ApiService.get(apiEndpoints.getChildCategory, auth_key);
+            if (res.status === 200) {
+                setAllCategory(res?.data?.data);
+            }
+        } catch (error) {
+            console.error("Error fetching categories:", error);
+        }
+    };
+
+    useEffect(() => {
+        const fetchInitialData = async () => {
+            try {
+                await Promise.all([
+                    getBrandList(),
+                    getChildCategory(),
+                    designation_id === "2" ? getVendorList() : Promise.resolve()
+                ]);
+            } catch (error) {
+                console.error("Error fetching initial data:", error);
+            }
+        };
+
+        fetchInitialData();
+    }, [designation_id]);
+
+    const getAllShippingTemplates = async () => {
+        try {
+            const res = await ApiService.get(apiEndpoints.getAllShippingTemplates, auth_key);
+            if (res.status === 200) {
+                setShippingTemplateData(res?.data?.template || []);
+            }
+        } catch (error) {
+            console.log("Error fetching shipping templates:", error);
+        }
+    };
+
+    const getExchangePolicy = async () => {
+        try {
+            const payload = {
+                vendor_id: formData?.vendor
+            };
+            const res = await ApiService.post(apiEndpoints.getAllExchangePolicy, payload, auth_key);
+            if (res.status === 200) {
+                setExchangePolicy(res?.data?.policies || []);
+            }
+        } catch (error) {
+            console.log("Error fetching exchange policies:", error);
+        }
+    };
+
+    useEffect(() => {
+        getAllShippingTemplates();
+    }, []);
+
+    useEffect(() => {
+        if (formData.vendor) {
+            getExchangePolicy();
+        }
+    }, [formData.vendor]);
+
     return (
         <Container maxWidth={"100%"} >
             <Box sx={{ py: 2.5, my: 3 }} component={Paper}>
@@ -223,13 +310,13 @@ export default function AddProductNew() {
                         >
                             {draftLoading ? "Saving..." : "Save as Draft"}
                         </Button>
-                        <Button
-                            variant="outlined"
-                            onClick={handleReset}
-                            disabled={loading || draftLoading}
-                        >
-                            Reset
-                        </Button>
+                        {/*<Button*/}
+                        {/*    variant="outlined"*/}
+                        {/*    onClick={handleReset}*/}
+                        {/*    disabled={loading || draftLoading}*/}
+                        {/*>*/}
+                        {/*    Reset*/}
+                        {/*</Button>*/}
                         <Button
                             variant="contained"
                             onClick={handleSubmit}

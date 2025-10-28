@@ -56,6 +56,7 @@ export const apiEndpoints = {
   changeStatusVariantCategory: "change-status-variant-category",
   changeStatusVariantProduct: "change-status-variant-product",
   GetVariantCategories: "get-variant-by-category",
+  GetAttributesCategories: "get-attributeList-by-category",
   getChildCategory: "get-child-category",
   getAllActiveVarient: "get-all-active-variants",
   AddParentProduct: "add-parent-product",

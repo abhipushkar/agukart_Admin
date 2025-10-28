@@ -8,7 +8,7 @@ import {
     Typography,
     Button,
     Grid,
-    Card
+    Card, FormLabel, RadioGroup, FormControlLabel, Radio
 } from "@mui/material";
 import { ApiService } from "app/services/ApiService";
 import { apiEndpoints } from "app/constant/apiEndpoints";
@@ -30,11 +30,13 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
         setInputErrors,
         altText,
         setAltText,
+        setVarientName,
+        setDynamicField,
+        brandList,
+        allCategory,
+        allVendors,
     } = useProductFormStore();
 
-    const [brandlist, setBrandList] = useState([]);
-    const [allCategory, setAllCategory] = useState([]);
-    const [allVendors, setAllVendors] = useState([]);
     const [openEdit, setOpenEdit] = useState(false);
     const imageInputRef = React.useRef(null);
     const videoInputRef = React.useRef(null);
@@ -44,56 +46,6 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
 
     // Get primary image
     const primaryImage = formData.images.find(img => img.isPrimary) || formData.images[0];
-
-    // Fetch initial data
-    useEffect(() => {
-        const fetchInitialData = async () => {
-            try {
-                await Promise.all([
-                    getBrandList(),
-                    getChildCategory(),
-                    designation_id === "2" ? getVendorList() : Promise.resolve()
-                ]);
-            } catch (error) {
-                console.error("Error fetching initial data:", error);
-            }
-        };
-
-        fetchInitialData();
-    }, [designation_id]);
-
-    const getBrandList = async () => {
-        try {
-            const res = await ApiService.get(apiEndpoints.getBrand, auth_key);
-            if (res.status === 200) {
-                setBrandList(res?.data?.brand);
-            }
-        } catch (error) {
-            console.error("Error fetching brands:", error);
-        }
-    };
-
-    const getVendorList = async () => {
-        try {
-            const res = await ApiService.get(apiEndpoints.getVendorsList, auth_key);
-            if (res?.status === 200) {
-                setAllVendors(res?.data?.data);
-            }
-        } catch (error) {
-            console.error("Error fetching vendors:", error);
-        }
-    };
-
-    const getChildCategory = async () => {
-        try {
-            const res = await ApiService.get(apiEndpoints.getChildCategory, auth_key);
-            if (res.status === 200) {
-                setAllCategory(res?.data?.data);
-            }
-        } catch (error) {
-            console.error("Error fetching categories:", error);
-        }
-    };
 
     const handleFieldChange = (field, value) => {
         setFormData({ [field]: value });
@@ -206,6 +158,39 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
         }
         setOpenEdit(true);
     };
+
+    // Fetch variations when category changes
+    const getCategoryData = async () => {
+        if (formData?.subCategory) {
+            try {
+                const res = await ApiService.get(`${apiEndpoints.GetVariantCategories}/${formData?.subCategory}`, auth_key);
+                if (res.status === 200) {
+                    setVarientName(res?.data?.parent || []);
+                }
+            } catch (error) {
+                console.error("Error fetching variants:", error);
+            }
+        }
+    };
+
+    const fetchDynamicFields = async () => {
+        try {
+            const res = await ApiService.get(`${apiEndpoints.GetAttributesCategories}/${formData?.subCategory}`, auth_key);
+            if (res.status === 200) {
+                setDynamicField(res?.data?.attributeLists || []);
+            } else {
+                setDynamicField([]);
+            }
+        } catch (error) {
+            setDynamicField([]);
+            console.error("Error fetching dynamic fields:", error);
+        }
+    };
+
+    useEffect(() => {
+            getCategoryData();
+            fetchDynamicFields();
+    }, [formData?.subCategory]);
 
     const handleEditClose = () => {
         setOpenEdit(false);
@@ -392,7 +377,7 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                 <Box sx={{ width: "50%" }}>
                     <FormControl fullWidth>
                         <Autocomplete
-                            options={brandlist}
+                            options={brandList}
                             getOptionLabel={(option) => option.title}
                             renderInput={(params) => (
                                 <TextField
@@ -405,7 +390,7 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                                     }}
                                 />
                             )}
-                            value={brandlist.find((item) => item._id === formData.brandName) || null}
+                            value={brandList.find((item) => item._id === formData.brandName) || null}
                             onChange={(event, newValue) => handleBrandChange(newValue)}
                             isOptionEqualToValue={(option, value) => option._id === value._id}
                         />

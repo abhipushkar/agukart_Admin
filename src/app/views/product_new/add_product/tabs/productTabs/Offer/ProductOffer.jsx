@@ -26,11 +26,10 @@ const ProductOffer = () => {
         inputErrors,
         setInputErrors,
         loading,
-        draftLoading
+        draftLoading,
+        shippingTemplateData,
+        exchangePolicy,
     } = useProductFormStore();
-
-    const [shippingTemplateData, setShippingTemplateData] = useState([]);
-    const [exchangePolicy, setExchangePolicy] = useState([]);
 
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
 
@@ -56,42 +55,6 @@ const ProductOffer = () => {
     const handleReStockChange = (newDate) => {
         handleFieldChange('reStockDate', newDate);
     };
-
-    // API calls
-    const getAllShippingTemplates = async () => {
-        try {
-            const res = await ApiService.get(apiEndpoints.getAllShippingTemplates, auth_key);
-            if (res.status === 200) {
-                setShippingTemplateData(res?.data?.template || []);
-            }
-        } catch (error) {
-            console.log("Error fetching shipping templates:", error);
-        }
-    };
-
-    const getExchangePolicy = async () => {
-        try {
-            const payload = {
-                vendor_id: formData?.vendor
-            };
-            const res = await ApiService.post(apiEndpoints.getAllExchangePolicy, payload, auth_key);
-            if (res.status === 200) {
-                setExchangePolicy(res?.data?.policies || []);
-            }
-        } catch (error) {
-            console.log("Error fetching exchange policies:", error);
-        }
-    };
-
-    useEffect(() => {
-        getAllShippingTemplates();
-    }, []);
-
-    useEffect(() => {
-        if (formData.vendor) {
-            getExchangePolicy();
-        }
-    }, [formData.vendor]);
 
     return (
         <Box
