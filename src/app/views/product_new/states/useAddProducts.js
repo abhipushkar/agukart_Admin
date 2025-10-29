@@ -440,7 +440,8 @@ export const useProductFormStore = create(
                         vendor: editData?.vendor_id || "",
                         isCombination: editData?.isCombination?.toString() || "false",
                         tabs: editData?.tabs || [],
-                        exchangePolicy: editData?.exchangePolicy || ""
+                        exchangePolicy: editData?.exchangePolicy || "",
+                        dynamicFields: editData?.dynamicFields || {},
                     },
                     formValues,
                     variationsData,

@@ -109,6 +109,14 @@ export const useProductAPI = () => {
         // 2) Append ALL combination data (not just files) - only non-empty values
         combinations.forEach((variant, vIndex) => {
             console.log("Edited Data", variant);
+
+            if (variant.variant_name) {
+                fData.append(
+                    `combinationData[${vIndex}][variant_name]`,
+                    variant.variant_name
+                );
+            }
+
             // Skip empty variants
             if (!variant || !variant.combinations || variant.combinations.length === 0) {
                 return;
@@ -448,7 +456,8 @@ export const useProductAPI = () => {
             tabs: formData.tabs,
             exchangePolicy: formData.exchangePolicy,
             zoom: formData.transformData,
-            isCombination: combinations.length > 0
+            isCombination: combinations.length > 0,
+            dynamicFields: formData.dynamicFields,
         };
 
         return payload;

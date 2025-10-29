@@ -108,11 +108,10 @@ const VariantModal = ({show, handleCloseVariant}) => {
 
             // Set initial form values only if they're empty
             if (!formValues?.prices && !formValues?.quantities && newCombinations.length > 0) {
-                setFormValues(prev => ({
-                    ...prev,
+                setFormValues({
                     prices: newCombinations[0],
                     quantities: newCombinations[0]
-                }));
+                });
             }
         } else {
             setNameCombinations([]);
@@ -160,7 +159,11 @@ const VariantModal = ({show, handleCloseVariant}) => {
                         combination.main_images :
                         (attributeData?.main_images || [null, null, null]),
                     preview_image: combination.preview_image || attributeData?.preview_image || null,
-                    thumbnail: combination.thumbnail || attributeData?.thumbnail || null
+                    thumbnail: combination.thumbnail || attributeData?.thumbnail || null,
+                    edit_main_image: combination.edit_main_image || attributeData?.edit_main_image || null,
+                    edit_preview_image: combination.edit_preview_image || attributeData?.edit_preview_image || null,
+                    edit_main_image_data: combination.edit_main_image_data || {},
+                    edit_preview_image_data: combination.edit_preview_image_data || {},
                 };
             }
 
@@ -244,6 +247,10 @@ const VariantModal = ({show, handleCloseVariant}) => {
                             main_images: existingData.main_images || newCombination.main_images,
                             preview_image: existingData.preview_image || newCombination.preview_image,
                             thumbnail: existingData.thumbnail || newCombination.thumbnail,
+                            edit_main_image: existingData.edit_main_image || attributeData?.edit_main_image || null,
+                            edit_preview_image: existingData.edit_preview_image || attributeData?.edit_preview_image || null,
+                            edit_main_image_data: existingData.edit_main_image_data || {},
+                            edit_preview_image_data: existingData.edit_preview_image_data || {},
                             price: existingData.price || newCombination.price,
                             qty: existingData.qty || newCombination.qty,
                             isVisible: existingData.isVisible !== undefined ? existingData.isVisible : newCombination.isVisible,
@@ -291,6 +298,10 @@ const VariantModal = ({show, handleCloseVariant}) => {
                             main_images: existingData.main_images || newCombination.main_images,
                             preview_image: existingData.preview_image || newCombination.preview_image,
                             thumbnail: existingData.thumbnail || newCombination.thumbnail,
+                            edit_main_image: existingData.edit_main_image || attributeData?.edit_main_image || null,
+                            edit_preview_image: existingData.edit_preview_image || attributeData?.edit_preview_image || null,
+                            edit_main_image_data: existingData.edit_main_image_data || {},
+                            edit_preview_image_data: existingData.edit_preview_image_data || {},
                             price: existingData.price || newCombination.price,
                             qty: existingData.qty || newCombination.qty,
                             isVisible: existingData.isVisible !== undefined ? existingData.isVisible : newCombination.isVisible,
@@ -622,11 +633,10 @@ const VariantModal = ({show, handleCloseVariant}) => {
             })
             .filter(Boolean);
 
-        setFormData((prev) => ({
-            ...prev,
-            ParentMainId: Array.from(new Set([...(prev.ParentMainId || []), ...parentMainIds])),
-            varientName: Array.from(new Set([...(prev.varientName || []), ...allIds]))
-        }));
+        setFormData({
+            ParentMainId: Array.from(new Set([...(formData.ParentMainId || []), ...parentMainIds])),
+            varientName: Array.from(new Set([...(formData.varientName || []), ...allIds]))
+        });
 
         handleCloseVariant();
     };
