@@ -118,19 +118,34 @@ const VariantModal = ({show, handleCloseVariant}) => {
         }
     }, [variationsData, generateNameCombinations, formValues?.prices, formValues?.quantities]);
 
-    // Helper function to find existing combination data
+    // FIXED: Helper function to find existing combination data that handles combined variants
     const findExistingCombinationData = (newCombination, existingCombinations) => {
         if (!existingCombinations || existingCombinations.length === 0) return null;
 
-        return existingCombinations.find(existing => {
-            // Match combinations based on their values
-            const newValues = newCombination.combValues || [];
+        const newCombValues = newCombination.combValues || [];
+
+        // Try exact match first (for single variants and unchanged combinations)
+        const exactMatch = existingCombinations.find(existing => {
             const existingValues = existing.combValues || [];
-
-            if (newValues.length !== existingValues.length) return false;
-
-            return newValues.every(value => existingValues.includes(value));
+            if (newCombValues.length !== existingValues.length) return false;
+            return newCombValues.every(value => existingValues.includes(value));
         });
+
+        if (exactMatch) return exactMatch;
+
+        // If no exact match and we have combined variants, be more conservative
+        // Only match if ALL values from the existing combination are present in the new combination
+        if (newCombValues.length > 1) {
+            return existingCombinations.find(existing => {
+                const existingValues = existing.combValues || [];
+
+                // Only match if ALL existing values are present in the new combination
+                // This prevents over-matching where we take images from unrelated combinations
+                return existingValues.every(value => newCombValues.includes(value));
+            });
+        }
+
+        return null;
     };
 
     // Function to update image source for specific combinations
@@ -178,7 +193,7 @@ const VariantModal = ({show, handleCloseVariant}) => {
         }
 
         return combinationsData.map(variantGroup => {
-            const { variant_name, combinations } = variantGroup;
+            const {variant_name, combinations} = variantGroup;
 
             const updatedCombinations = combinations.map(combination => {
                 // Check if this combination belongs to a price variation
@@ -205,12 +220,12 @@ const VariantModal = ({show, handleCloseVariant}) => {
         });
     };
 
-    // Enhanced combination generation that preserves existing images
+    // Enhanced combination generation that preserves existing images - KEEP THIS AS IT'S WORKING
     const generateCombinations = (data, variantData, existingCombinations = []) => {
         if (!data || data.length === 0) return [];
 
         const allCombinations = data.reduce((acc, variation, index) => {
-            const { name, values } = variation;
+            const {name, values} = variation;
             const safeValues = Array.isArray(values) ? values : values ? [values] : [];
 
             if (acc.length === 0) {
@@ -316,6 +331,77 @@ const VariantModal = ({show, handleCloseVariant}) => {
         }, []);
 
         return allCombinations || [];
+    };
+
+    // FIXED: Function to handle combined variant generation
+    const handleCombinedVariants = (variantNames, currentData, allVariants, existingCombinations, imageSource = null) => {
+        const selectedVariationData = currentData.filter(variation =>
+            variantNames.includes(variation.name)
+        );
+
+        if (selectedVariationData.length === 0) return [];
+
+        // Get ALL existing combinations for proper image preservation
+        const allExistingCombinations = existingCombinations.flatMap(group => group.combinations || []);
+
+        let combinedResult = generateCombinations(selectedVariationData, allVariants, allExistingCombinations);
+
+        // Apply image source if specified - BUT DON'T OVERRIDE EXISTING IMAGES
+        if (imageSource) {
+            combinedResult = combinedResult.map(combination => {
+                // Check if this combination already has images
+                const hasExistingImages = combination.main_images?.some(img => img) ||
+                    combination.preview_image ||
+                    combination.thumbnail;
+
+                // If combination already has images, don't override them
+                if (hasExistingImages) {
+                    return combination;
+                }
+
+                const sourceVariantInfo = allVariants.find(v => v.variant_name === imageSource);
+                if (!sourceVariantInfo) return combination;
+
+                // Find the attribute value in this combination for the source variant
+                let attributeValue = null;
+
+                // Iterate through all possible name/value pairs to find the source variant
+                for (let i = 1; i <= 3; i++) {
+                    const nameKey = `name${i}`;
+                    const valueKey = `value${i}`;
+
+                    if (combination[nameKey] === imageSource) {
+                        attributeValue = combination[valueKey];
+                        break;
+                    }
+                }
+
+                if (attributeValue) {
+                    const attributeData = sourceVariantInfo.variant_attribute.find(
+                        attr => attr.attribute_value === attributeValue
+                    );
+
+                    // ONLY apply variant images if we found the attribute data
+                    if (attributeData) {
+                        return {
+                            ...combination,
+                            main_images: attributeData.main_images || [null, null, null],
+                            preview_image: attributeData.preview_image || null,
+                            thumbnail: attributeData.thumbnail || null,
+                            edit_main_image: attributeData.edit_main_image || null,
+                            edit_preview_image: attributeData.edit_preview_image || null,
+                        };
+                    }
+                }
+
+                return combination;
+            });
+        }
+
+        return [{
+            variant_name: variantNames.join(" and "),
+            combinations: combinedResult
+        }];
     };
 
     // Custom Variant Dialog Functions
@@ -481,7 +567,7 @@ const VariantModal = ({show, handleCloseVariant}) => {
             // Check if this is a combined variation (contains "and")
             if (value && value.includes("and")) {
                 // Store the pending form values and open image source dialog
-                setPendingFormValues({ name, value });
+                setPendingFormValues({name, value});
 
                 // Extract variant names from the combined value
                 const variantNames = value.split("and").map(v => v.trim());
@@ -497,6 +583,7 @@ const VariantModal = ({show, handleCloseVariant}) => {
         }
     };
 
+    // UPDATED: handleGenerate function with proper combined variant handling
     const handleGenerate = async () => {
         const currentData = variationsData || [];
         const existingCombinationsData = combinations || [];
@@ -507,83 +594,138 @@ const VariantModal = ({show, handleCloseVariant}) => {
         }
 
         let data = [];
-        const existsPrice = currentData.find(variation => variation.name === formValues?.prices);
-        const existsQuantity = currentData.find(variation => variation.name === formValues?.quantities);
 
         // Get image source preferences
+        console.log("PendingFormValues", formValues);
         const priceImageSource = formValues?.pricesImageSource;
         const quantityImageSource = formValues?.quantitiesImageSource;
 
+        // Get ALL existing combinations for proper image preservation
+        const allExistingCombinations = existingCombinationsData.flatMap(group => group.combinations || []);
+
+        console.log("All Existing Combinations ", allExistingCombinations);
+
         // Handle the case when price/quantity variations are enabled
         if ((formValues?.isCheckedPrice || formValues?.isCheckedQuantity) && (formValues?.prices || formValues?.quantities)) {
-            if (existsPrice && existsQuantity) {
-                // Both selected variations exist in the data - generate ALL variations
-                for (const item of currentData) {
-                    let result = generateCombinations([item], allVariants, existingCombinationsData.flatMap(c => c.combinations || []));
 
-                    data.push({
-                        variant_name: item?.name,
-                        combinations: result,
-                    });
-                }
-            } else {
-                // Handle complex cases when variations don't directly match
+            // Check if we have combined variants
+            const isPriceCombined = formValues?.prices?.includes("and");
+            const isQuantityCombined = formValues?.quantities?.includes("and");
+
+            if (isPriceCombined || isQuantityCombined) {
+                // Handle combined variants
+
                 if (formValues?.prices === formValues?.quantities && formValues.isCheckedPrice && formValues.isCheckedQuantity) {
-                    const variants = formValues?.prices.split("and").map(price => price.trim());
-                    const variationData = currentData.filter((item) => variants.includes(item.name));
+                    // Same combined variant for both price and quantity
+                    const variantNames = formValues?.prices.split("and").map(v => v.trim());
 
-                    // Use selected image source for this combined variation
-                    let result = generateCombinations(variationData, allVariants, existingCombinationsData.flatMap(c => c.combinations || []));
+                    // Generate combined variant
+                    const combinedData = handleCombinedVariants(
+                        variantNames,
+                        currentData,
+                        allVariants,
+                        existingCombinationsData,
+                        priceImageSource || quantityImageSource
+                    );
+                    data.push(...combinedData);
 
-                    // Apply image source if specified
-                    if (priceImageSource) {
-                        result = updateCombinationImageSource(result, priceImageSource, allVariants);
-                    }
-
-                    data.push({
-                        variant_name: formValues?.prices || formValues?.quantities,
-                        combinations: result
-                    });
-
-                    // Handle remaining variations - don't exclude them
-                    if (currentData.length > variants.length) {
-                        let remainingVariationData = currentData.filter((item) => !variants.includes(item.name));
-                        for (const item of remainingVariationData) {
-                            let remainingResult = generateCombinations([item], allVariants, existingCombinationsData.flatMap(c => c.combinations || []));
-                            data.push({
-                                variant_name: item?.name,
-                                combinations: remainingResult,
-                            });
-                        }
+                    // Handle remaining individual variations
+                    const remainingVariations = currentData.filter(item => !variantNames.includes(item.name));
+                    for (const item of remainingVariations) {
+                        let result = generateCombinations([item], allVariants, allExistingCombinations);
+                        data.push({
+                            variant_name: item?.name,
+                            combinations: result,
+                        });
                     }
                 } else {
-                    // Different variations for price and quantity - Generate ALL variations
-                    if (formValues?.prices === existsPrice?.name) {
-                        // Generate ALL variations
-                        for (const item of currentData) {
-                            let result = generateCombinations([item], allVariants, existingCombinationsData.flatMap(c => c.combinations || []));
+                    // Different combined variants for price and quantity
+                    const processedVariants = new Set();
 
-                            data.push({
-                                variant_name: item?.name,
-                                combinations: result,
-                            });
-                        }
-                    } else if (formValues?.prices?.includes("and") && formValues?.quantities?.includes("and")) {
-                        // Both are combined variations (e.g., "Color and Size")
-                        // Generate ALL variations
-                        for (const item of currentData) {
-                            let result = generateCombinations([item], allVariants, existingCombinationsData.flatMap(c => c.combinations || []));
+                    // Process price combined variant
+                    if (isPriceCombined && formValues.isCheckedPrice) {
+                        const priceVariantNames = formValues?.prices.split("and").map(v => v.trim());
+                        const priceCombinedData = handleCombinedVariants(
+                            priceVariantNames,
+                            currentData,
+                            allVariants,
+                            existingCombinationsData,
+                            priceImageSource
+                        );
+                        data.push(...priceCombinedData);
 
-                            data.push({
-                                variant_name: item?.name,
-                                combinations: result,
-                            });
+                        // Mark these variants as processed
+                        priceVariantNames.forEach(v => processedVariants.add(v));
+                    }
+
+                    // Process quantity combined variant
+                    if (isQuantityCombined && formValues.isCheckedQuantity) {
+                        const quantityVariantNames = formValues?.quantities.split("and").map(v => v.trim());
+                        const quantityCombinedData = handleCombinedVariants(
+                            quantityVariantNames,
+                            currentData,
+                            allVariants,
+                            existingCombinationsData,
+                            quantityImageSource
+                        );
+                        data.push(...quantityCombinedData);
+
+                        // Mark these variants as processed
+                        quantityVariantNames.forEach(v => processedVariants.add(v));
+                    }
+
+                    // Handle individual variations that are not part of any combined variant
+                    const individualVariations = currentData.filter(item => !processedVariants.has(item.name));
+
+                    for (const item of individualVariations) {
+                        let result = generateCombinations([item], allVariants, allExistingCombinations);
+                        data.push({
+                            variant_name: item?.name,
+                            combinations: result,
+                        });
+                    }
+                }
+            } else {
+                // Handle single variants (existing logic that's working)
+                const existsPrice = currentData.find(variation => variation.name === formValues?.prices);
+                const existsQuantity = currentData.find(variation => variation.name === formValues?.quantities);
+
+                if (existsPrice && existsQuantity) {
+                    // Both selected variations exist in the data - generate ALL variations
+                    for (const item of currentData) {
+                        let result = generateCombinations([item], allVariants, allExistingCombinations);
+                        data.push({
+                            variant_name: item?.name,
+                            combinations: result,
+                        });
+                    }
+                } else {
+                    // Handle cases when variations don't directly match
+                    if (formValues?.prices === formValues?.quantities && formValues.isCheckedPrice && formValues.isCheckedQuantity) {
+                        const variantName = formValues?.prices;
+                        const variationData = currentData.filter((item) => item.name === variantName);
+
+                        let result = generateCombinations(variationData, allVariants, allExistingCombinations);
+                        data.push({
+                            variant_name: variantName,
+                            combinations: result
+                        });
+
+                        // Handle remaining variations
+                        if (currentData.length > 1) {
+                            let remainingVariationData = currentData.filter((item) => item.name !== variantName);
+                            for (const item of remainingVariationData) {
+                                let remainingResult = generateCombinations([item], allVariants, allExistingCombinations);
+                                data.push({
+                                    variant_name: item?.name,
+                                    combinations: remainingResult,
+                                });
+                            }
                         }
                     } else {
                         // Mixed cases - Generate ALL variations
                         for (const item of currentData) {
-                            let result = generateCombinations([item], allVariants, existingCombinationsData.flatMap(c => c.combinations || []));
-
+                            let result = generateCombinations([item], allVariants, allExistingCombinations);
                             data.push({
                                 variant_name: item?.name,
                                 combinations: result,
@@ -595,7 +737,7 @@ const VariantModal = ({show, handleCloseVariant}) => {
         } else {
             // No price/quantity variations enabled - generate all variations normally
             for (const item of currentData) {
-                let result = generateCombinations([item], allVariants, existingCombinationsData.flatMap(c => c.combinations || []));
+                let result = generateCombinations([item], allVariants, allExistingCombinations);
                 data.push({
                     variant_name: item?.name,
                     combinations: result,
@@ -1020,7 +1162,7 @@ const VariantModal = ({show, handleCloseVariant}) => {
                     <Typography variant="body2" gutterBottom>
                         Which variation should provide the images for "{pendingFormValues?.value}" combinations?
                     </Typography>
-                    <FormControl fullWidth sx={{ mt: 2 }}>
+                    <FormControl fullWidth sx={{mt: 2}}>
                         <TextField
                             select
                             label="Image Source Variation"
@@ -1043,9 +1185,13 @@ const VariantModal = ({show, handleCloseVariant}) => {
                     }}>Cancel</Button>
                     <Button
                         onClick={() => {
+                            console.log("PendingFormValues", pendingFormValues);
                             if (pendingFormValues) {
+
                                 // Store the image source preference AND update the form value
                                 const imageSourceKey = `${pendingFormValues.name}ImageSource`;
+
+                                console.log("PendingFormValues", {[imageSourceKey]: selectedImageSource});
 
                                 // Use Zustand's setFormValues correctly - it replaces the entire object
                                 setFormValues({
@@ -1053,9 +1199,11 @@ const VariantModal = ({show, handleCloseVariant}) => {
                                     [pendingFormValues.name]: pendingFormValues.value,
                                     [imageSourceKey]: selectedImageSource
                                 });
+
                             }
                             setImageSourceDialogOpen(false);
                             setPendingFormValues(null);
+
                         }}
                         variant="contained"
                     >
