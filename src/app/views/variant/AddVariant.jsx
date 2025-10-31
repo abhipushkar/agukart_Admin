@@ -39,11 +39,14 @@ import {apiEndpoints} from "app/constant/apiEndpoints";
 import {useNavigate, useSearchParams} from "react-router-dom";
 import {ROUTE_CONSTANT} from "app/constant/routeContanst";
 import {useEffect} from "react";
-import {EditTwoTone, Close} from "@mui/icons-material";
+import {EditTwoTone, Close, Delete, Visibility} from "@mui/icons-material";
 import {Fragment} from "react";
 import ConfirmModal from "app/components/ConfirmModal";
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
+import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 
 const VisuallyHiddenInput = styled("input")({
     clip: "rect(0 0 0 0)",
@@ -56,6 +59,25 @@ const VisuallyHiddenInput = styled("input")({
     whiteSpace: "nowrap",
     width: 1,
 });
+
+// React Quill modules configuration
+const quillModules = {
+    toolbar: [
+        [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+        ['bold', 'italic', 'underline', 'strike'],
+        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+        [{ 'indent': '-1'}, { 'indent': '+1' }],
+        ['link', 'image'],
+        ['clean']
+    ],
+};
+
+const quillFormats = [
+    'header',
+    'bold', 'italic', 'underline', 'strike',
+    'list', 'bullet', 'indent',
+    'link', 'image'
+];
 
 // Custom Tooltip component for images
 const ImageTooltip = ({ imageUrl, onImageChange, onImageRemove, children }) => {
@@ -210,6 +232,15 @@ const AddVariant = () => {
     const [bulkInput, setBulkInput] = useState("");
     const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
 
+    // Guide fields state
+    const [guideFields, setGuideFields] = useState({
+        guide_name: "",
+        guide_file: null,
+        guide_type: "",
+        guide_file_url: "",
+        guide_description: ""
+    });
+
     const [deleteValue, setDeleteValue] = useState([]);
     const [open, setOpen] = React.useState(false);
     const [type, setType] = useState("");
@@ -258,6 +289,80 @@ const AddVariant = () => {
             .required("Name is required")
             .min(2, "Name is too short - should be 2 chars minimum")
     });
+
+    // Check if file is an image
+    const isImageFile = (file) => {
+        if (!file) return false;
+        const fileName = typeof file === 'string' ? file : file.name;
+        const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg'];
+        return imageExtensions.some(ext => fileName.toLowerCase().endsWith(ext));
+    };
+
+    // Create object URL for preview
+    const createObjectURL = (file) => {
+        if (typeof file === 'string') {
+            return file; // Already a URL string
+        }
+        return URL.createObjectURL(file);
+    };
+
+    // Handle guide file upload
+    const handleGuideFileUpload = (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        setGuideFields(prev => ({
+            ...prev,
+            guide_file: file,
+            guide_file_url: URL.createObjectURL(file),
+            guide_type: isImageFile(file) ? 'image' : 'document',
+            guide_name: prev.guide_name || file.name
+        }));
+    };
+
+    // Handle guide name change
+    const handleGuideNameChange = (value) => {
+        setGuideFields(prev => ({
+            ...prev,
+            guide_name: value
+        }));
+    };
+
+    // Handle guide description change
+    const handleGuideDescriptionChange = (value) => {
+        setGuideFields(prev => ({
+            ...prev,
+            guide_description: value
+        }));
+    };
+
+    // Handle guide file remove
+    const handleGuideFileRemove = () => {
+        setGuideFields(prev => ({
+            ...prev,
+            guide_file: null,
+            guide_file_url: "",
+            guide_type: ""
+        }));
+    };
+
+    // Handle opening guide file in new tab
+    const handleOpenGuideFile = () => {
+        if (!guideFields.guide_file) return;
+
+        let fileUrl;
+
+        if (typeof guideFields.guide_file === 'string') {
+            // If it's already a URL string
+            fileUrl = guideFields.guide_file;
+        } else {
+            // If it's a File object, create object URL
+            fileUrl = URL.createObjectURL(guideFields.guide_file);
+        }
+
+        // Open in new tab
+        window.open(fileUrl, '_blank');
+    };
 
     // Drag and drop handlers
     const handleDragStart = (e, sourceIndex) => {
@@ -436,6 +541,14 @@ const AddVariant = () => {
         formData.append("variant_name", values.name);
         formData.append("_id", "new");
 
+        // Add guide fields to form data
+        formData.append("guide_name", guideFields.guide_name || "");
+        formData.append("guide_type", guideFields.guide_type || "");
+        formData.append("guide_description", guideFields.guide_description || "");
+        if (guideFields.guide_file) {
+            formData.append("guide_file", guideFields.guide_file);
+        }
+
         variant_attribute.forEach((attr, index) => {
             formData.append(`variant_attr[${index}][attr_name]`, attr.attr_name);
             formData.append(`variant_attr[${index}][sort_order]`, attr.sort_order);
@@ -490,6 +603,15 @@ const AddVariant = () => {
                     };
                 });
                 setInputFields(variantAttr);
+
+                // Set guide fields from edit data
+                setGuideFields({
+                    guide_name: res.data.variant.guide_name || "",
+                    guide_file: res.data.variant.guide_file || null,
+                    guide_type: res.data.variant.guide_type || "",
+                    guide_file_url: res.data.variant.guide_file || "",
+                    guide_description: res.data.variant.guide_description || ""
+                });
             }
         } catch (error) {
             console.log(error);
@@ -527,6 +649,14 @@ const AddVariant = () => {
         formData.append("variant_name", values.name);
         formData.append("_id", editData._id);
         formData.append("deletedAttrIds", JSON.stringify(deleteValue));
+
+        // Add guide fields to form data
+        formData.append("guide_name", guideFields.guide_name || "");
+        formData.append("guide_type", guideFields.guide_type || "");
+        formData.append("guide_description", guideFields.guide_description || "");
+        if (guideFields.guide_file) {
+            formData.append("guide_file", guideFields.guide_file);
+        }
 
         renamedInputFields.forEach((attr, index) => {
             formData.append(`variant_attr[${index}][attr_name]`, attr.attr_name);
@@ -581,6 +711,13 @@ const AddVariant = () => {
             }
         ]);
         setBulkInput("");
+        setGuideFields({
+            guide_name: "",
+            guide_file: null,
+            guide_type: "",
+            guide_file_url: "",
+            guide_description: ""
+        });
     };
 
     return (
@@ -659,6 +796,149 @@ const AddVariant = () => {
                                             helperText={touched.name && errors.name}
                                         />
                                     </Stack>
+
+                                    {/* Guide Information Section - Outside the table */}
+                                    <Box sx={{ p: "16px", backgroundColor: '#f0f8ff', borderRadius: 1, border: '1px solid #e1f5fe', mx: "16px", mb: "16px" }}>
+                                        <Typography variant="subtitle1" fontWeight={600} mb={2}>
+                                            Guide Information
+                                        </Typography>
+
+                                        {/* Guide Name and File Upload Row */}
+                                        <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', mb: 2 }}>
+                                            {/* Guide Name Input */}
+                                            <Box sx={{ flex: 1 }}>
+                                                <Typography variant="body2" fontWeight={500} mb={1}>
+                                                    Guide Name
+                                                </Typography>
+                                                <TextField
+                                                    type="text"
+                                                    value={guideFields.guide_name || ""}
+                                                    onChange={(e) => handleGuideNameChange(e.target.value)}
+                                                    placeholder="Enter guide name"
+                                                    fullWidth
+                                                    size="small"
+                                                />
+                                            </Box>
+
+                                            {/* Guide File Upload and Preview */}
+                                            <Box sx={{ flex: 1 }}>
+                                                <Typography variant="body2" fontWeight={500} mb={1}>
+                                                    Guide File
+                                                </Typography>
+                                                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                                                    {guideFields.guide_file ? (
+                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                                            {/* File Preview */}
+                                                            <Box
+                                                                sx={{
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: 1,
+                                                                    cursor: 'pointer',
+                                                                    padding: 1,
+                                                                    borderRadius: 1,
+                                                                    border: '1px solid #e0e0e0',
+                                                                    backgroundColor: 'white',
+                                                                    '&:hover': {
+                                                                        backgroundColor: '#f5f5f5'
+                                                                    }
+                                                                }}
+                                                                onClick={handleOpenGuideFile}
+                                                                title="Click to open in new tab"
+                                                            >
+                                                                {isImageFile(guideFields.guide_file) ? (
+                                                                    // Image Preview
+                                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                                        <img
+                                                                            src={guideFields.guide_file_url}
+                                                                            alt="Guide preview"
+                                                                            style={{
+                                                                                width: '40px',
+                                                                                height: '40px',
+                                                                                objectFit: 'cover',
+                                                                                borderRadius: '4px'
+                                                                            }}
+                                                                        />
+                                                                        <Typography variant="body2" color="primary">
+                                                                            {guideFields.guide_name || (typeof guideFields.guide_file === 'string' ? 'Guide Image' : guideFields.guide_file.name)}
+                                                                        </Typography>
+                                                                        <Visibility color="primary" fontSize="small" />
+                                                                    </Box>
+                                                                ) : (
+                                                                    // Document Preview
+                                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                                        <InsertDriveFileIcon color="primary" fontSize="small" />
+                                                                        <Typography variant="body2" color="primary">
+                                                                            {guideFields.guide_name || (typeof guideFields.guide_file === 'string' ? 'Guide File' : guideFields.guide_file.name)}
+                                                                        </Typography>
+                                                                        <Visibility color="primary" fontSize="small" />
+                                                                    </Box>
+                                                                )}
+                                                            </Box>
+
+                                                            {/* Remove Button */}
+                                                            <IconButton
+                                                                size="small"
+                                                                color="error"
+                                                                onClick={handleGuideFileRemove}
+                                                                title="Remove guide file"
+                                                            >
+                                                                <Delete fontSize="small" />
+                                                            </IconButton>
+                                                        </Box>
+                                                    ) : (
+                                                        <Button
+                                                            variant="outlined"
+                                                            component="label"
+                                                            size="small"
+                                                        >
+                                                            Upload Guide File
+                                                            <VisuallyHiddenInput
+                                                                type="file"
+                                                                onChange={handleGuideFileUpload}
+                                                                accept=".pdf,.doc,.docx,.txt,.xlsx,.xls,.jpg,.jpeg,.png,.gif,.bmp,.webp,.svg"
+                                                            />
+                                                        </Button>
+                                                    )}
+                                                </Box>
+                                                <Typography variant="caption" color="textSecondary" sx={{ mt: 0.5, display: 'block' }}>
+                                                    Supported formats: PDF, DOC, DOCX, TXT, XLSX, XLS, JPG, JPEG, PNG, GIF, BMP, WEBP, SVG
+                                                </Typography>
+                                            </Box>
+                                        </Box>
+
+                                        {/* Guide Description - React Quill Editor */}
+                                        <Box>
+                                            <Typography variant="body2" fontWeight={500} mb={1}>
+                                                Guide Description
+                                            </Typography>
+                                            <Box sx={{
+                                                border: '1px solid #e0e0e0',
+                                                borderRadius: '4px',
+                                                '& .ql-container': {
+                                                    border: 'none',
+                                                    borderRadius: '0 0 4px 4px'
+                                                },
+                                                '& .ql-toolbar': {
+                                                    border: 'none',
+                                                    borderBottom: '1px solid #e0e0e0',
+                                                    borderRadius: '4px 4px 0 0'
+                                                }
+                                            }}>
+                                                <ReactQuill
+                                                    value={guideFields.guide_description}
+                                                    onChange={handleGuideDescriptionChange}
+                                                    modules={quillModules}
+                                                    formats={quillFormats}
+                                                    placeholder="Enter guide description..."
+                                                    style={{
+                                                        height: '200px',
+                                                        marginBottom: '50px' // Space for toolbar
+                                                    }}
+                                                />
+                                            </Box>
+                                        </Box>
+                                    </Box>
 
                                     <Box sx={{p: "16px"}}>
                                         <Typography variant="h6" sx={{mb: 2}}>

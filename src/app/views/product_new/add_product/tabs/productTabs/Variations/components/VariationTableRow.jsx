@@ -169,9 +169,6 @@ const VariationTableRow = ({
         return false;
     };
 
-    console.log(visibleColumns.price, (variationsData.length >= 2 ? formValues?.prices === comb.variant_name : true),
-        formValues?.isCheckedPrice)
-
     return (
         <>
             {itemsToShow?.map((item, index) => (

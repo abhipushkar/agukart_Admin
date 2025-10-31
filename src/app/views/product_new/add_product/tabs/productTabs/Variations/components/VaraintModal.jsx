@@ -681,6 +681,13 @@ const VariantModal = ({show, handleCloseVariant}) => {
                         let result = generateCombinations([item], allVariants, allExistingCombinations);
                         data.push({
                             variant_name: item?.name,
+                            guide: [
+                                {
+                                    guide_name: selectedVariations.find((variant) => variant.variant_name === item?.name).guide_name || null,
+                                    guide_file: selectedVariations.find((variant) => variant.variant_name === item?.name).guide_file || null,
+                                    guide_description: selectedVariations.find((variant) => variant.variant_name === item?.name).guide_description || null,
+                                    guide_type: selectedVariations.find((variant) => variant.variant_name === item?.name).guide_type || null,
+                                }],
                             combinations: result,
                         });
                     }

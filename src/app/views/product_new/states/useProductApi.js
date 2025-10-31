@@ -16,7 +16,7 @@ export const useProductAPI = () => {
     const designation_id = localStorage.getItem(localStorageKey.designation_id);
     const vendorId = localStorage.getItem(localStorageKey.vendorId);
 
-    // ---------------- helper to build FormData ----------------
+// ---------------- helper to build FormData ----------------
     const buildProductFormData = (payload, combinations, customizationData) => {
         const fData = new FormData();
 
@@ -115,6 +115,46 @@ export const useProductAPI = () => {
                     `combinationData[${vIndex}][variant_name]`,
                     variant.variant_name
                 );
+            }
+
+            // Append guide array data - NEW STRUCTURE
+            if (variant.guide && Array.isArray(variant.guide) && variant.guide.length > 0) {
+                variant.guide.forEach((guide, gIndex) => {
+                    // Append guide fields
+                    if (guide.guide_name) {
+                        fData.append(
+                            `combinationData[${vIndex}][guide][${gIndex}][guide_name]`,
+                            guide.guide_name
+                        );
+                    }
+
+                    if (guide.guide_description) {
+                        fData.append(
+                            `combinationData[${vIndex}][guide][${gIndex}][guide_description]`,
+                            guide.guide_description
+                        );
+                    }
+
+                    if (guide.guide_type) {
+                        fData.append(
+                            `combinationData[${vIndex}][guide][${gIndex}][guide_type]`,
+                            guide.guide_type
+                        );
+                    }
+
+                    // Handle guide file
+                    if (guide.guide_file instanceof File) {
+                        fData.append(
+                            `combinationData[${vIndex}][guide][${gIndex}][guide_file]`,
+                            guide.guide_file
+                        );
+                    } else if (typeof guide.guide_file === "string") {
+                        fData.append(
+                            `combinationData[${vIndex}][guide][${gIndex}][guide_file]`,
+                            guide.guide_file
+                        );
+                    }
+                });
             }
 
             // Skip empty variants
