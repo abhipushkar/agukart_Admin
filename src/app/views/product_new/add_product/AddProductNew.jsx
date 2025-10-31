@@ -51,6 +51,11 @@ export default function AddProductNew() {
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
     const designation_id = localStorage.getItem(localStorageKey.designation_id);
 
+    useEffect(() => {
+        resetForm();
+        localStorage.removeItem("product-form-storage");
+    }, []);
+
     // Fetch edit product data if query parameters exist
     useEffect(() => {
         const fetchEditProductData = async () => {
