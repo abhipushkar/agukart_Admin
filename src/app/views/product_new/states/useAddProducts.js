@@ -129,6 +129,7 @@ export const useProductFormStore = create(
             customizationData: {
                 label: "",
                 instructions: "",
+                isExpanded: false,
                 customizations: []
             },
 

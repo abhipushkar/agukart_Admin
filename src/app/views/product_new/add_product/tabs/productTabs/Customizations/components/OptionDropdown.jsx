@@ -1,4 +1,3 @@
-// components/OptionDropdown.jsx
 import React, { useState, useRef } from 'react';
 import {
     Box,
@@ -22,7 +21,8 @@ import {
     Tooltip,
     Switch,
     Slider,
-    Chip, Card, CardContent
+    Chip, Card, CardContent,
+    Divider
 } from "@mui/material";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
@@ -40,10 +40,15 @@ import RotateLeftIcon from "@mui/icons-material/RotateLeft";
 import RotateRightIcon from "@mui/icons-material/RotateRight";
 import CheckIcon from "@mui/icons-material/Check";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
+import EditIcon from "@mui/icons-material/Edit";
 import { styled } from "@mui/material/styles";
 import Cropper from 'react-easy-crop';
 import { getCroppedImg } from './cropUtil';
 import {useProductFormStore} from "../../../../../states/useAddProducts";
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 
 const VisuallyHiddenInput = styled("input")({
     clip: "rect(0 0 0 0)",
@@ -56,6 +61,25 @@ const VisuallyHiddenInput = styled("input")({
     whiteSpace: "nowrap",
     width: 1,
 });
+
+// React Quill modules configuration
+const quillModules = {
+    toolbar: [
+        [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+        ['bold', 'italic', 'underline', 'strike'],
+        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+        [{ 'indent': '-1'}, { 'indent': '+1' }],
+        ['link', 'image'],
+        ['clean']
+    ],
+};
+
+const quillFormats = [
+    'header',
+    'bold', 'italic', 'underline', 'strike',
+    'list', 'bullet', 'indent',
+    'link', 'image'
+];
 
 // Draggable Table Row Component
 const DraggableTableRow = ({
@@ -152,6 +176,16 @@ const OptionDropdown = ({ index }) => {
     const [rotation, setRotation] = useState(0);
     const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
 
+    // Guide dialog state
+    const [guideDialogOpen, setGuideDialogOpen] = useState(false);
+    const [currentGuide, setCurrentGuide] = useState({
+        guide_name: "",
+        guide_file: null,
+        guide_description: "",
+        guide_type: "",
+        guide_file_url: ""
+    });
+
     // Drag and drop state
     const [draggingIndex, setDraggingIndex] = useState(null);
     const [dragOverIndex, setDragOverIndex] = useState(null);
@@ -169,6 +203,115 @@ const OptionDropdown = ({ index }) => {
             ...customizationData,
             customizations: updatedCustomizations
         });
+    };
+
+    // Check if file is an image
+    const isImageFile = (file) => {
+        if (!file) return false;
+        const fileName = typeof file === 'string' ? file : file.name;
+        const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg'];
+        return imageExtensions.some(ext => fileName.toLowerCase().endsWith(ext));
+    };
+
+    // Create object URL for preview
+    const createObjectURL = (file) => {
+        if (typeof file === 'string') {
+            return file; // Already a URL string
+        }
+        return URL.createObjectURL(file);
+    };
+
+    // Guide functions
+    const handleOpenGuideDialog = () => {
+        const customization = customizationData.customizations[index];
+        if (customization.guide) {
+            setCurrentGuide({
+                ...customization.guide,
+                guide_file_url: customization.guide.guide_file ? createObjectURL(customization.guide.guide_file) : ""
+            });
+        } else {
+            setCurrentGuide({
+                guide_name: "",
+                guide_file: null,
+                guide_description: "",
+                guide_type: "",
+                guide_file_url: ""
+            });
+        }
+        setGuideDialogOpen(true);
+    };
+
+    const handleCloseGuideDialog = () => {
+        setGuideDialogOpen(false);
+        setCurrentGuide({
+            guide_name: "",
+            guide_file: null,
+            guide_description: "",
+            guide_type: "",
+            guide_file_url: ""
+        });
+    };
+
+    const handleGuideFileUpload = (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        setCurrentGuide(prev => ({
+            ...prev,
+            guide_file: file,
+            guide_file_url: URL.createObjectURL(file),
+            guide_type: isImageFile(file) ? 'image' : 'document',
+            guide_name: prev.guide_name || file.name
+        }));
+    };
+
+    const handleGuideNameChange = (value) => {
+        setCurrentGuide(prev => ({
+            ...prev,
+            guide_name: value
+        }));
+    };
+
+    const handleGuideDescriptionChange = (value) => {
+        setCurrentGuide(prev => ({
+            ...prev,
+            guide_description: value
+        }));
+    };
+
+    const handleGuideFileRemove = () => {
+        setCurrentGuide(prev => ({
+            ...prev,
+            guide_file: null,
+            guide_file_url: "",
+            guide_type: ""
+        }));
+    };
+
+    const handleSaveGuide = () => {
+        const updatedCustomizations = customizationData.customizations.map((item, idx) =>
+            idx === index ? { ...item, guide: currentGuide } : item
+        );
+
+        setCustomizationData({
+            ...customizationData,
+            customizations: updatedCustomizations
+        });
+        handleCloseGuideDialog();
+    };
+
+    const handleOpenGuideFile = () => {
+        if (!currentGuide.guide_file) return;
+
+        let fileUrl;
+
+        if (typeof currentGuide.guide_file === 'string') {
+            fileUrl = currentGuide.guide_file;
+        } else {
+            fileUrl = URL.createObjectURL(currentGuide.guide_file);
+        }
+
+        window.open(fileUrl, '_blank');
     };
 
     const handleCheckboxChange = (checked) => {
@@ -872,6 +1015,107 @@ const OptionDropdown = ({ index }) => {
         return summary.length > 0 ? summary.join(', ') : 'Custom crop applied';
     };
 
+    // Render guide preview section
+    const renderGuidePreview = () => {
+        const guide = customization.guide;
+        if (!guide) return null;
+
+        const isImage = isImageFile(guide.guide_file);
+        const fileUrl = guide.guide_file_url || (guide.guide_file ? createObjectURL(guide.guide_file) : null);
+
+        return (
+            <Box sx={{ mb: 2, p: 2, backgroundColor: '#f0f8ff', borderRadius: 1, border: '1px solid #e1f5fe' }}>
+                {/*<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>*/}
+                {/*    <Typography variant="subtitle2" fontWeight={600}>*/}
+                {/*        Guide Information*/}
+                {/*    </Typography>*/}
+                {/*    <Button*/}
+                {/*        size="small"*/}
+                {/*        startIcon={<EditIcon />}*/}
+                {/*        onClick={handleOpenGuideDialog}*/}
+                {/*    >*/}
+                {/*        Edit Guide*/}
+                {/*    </Button>*/}
+                {/*</Box>*/}
+
+                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                    {guide.guide_name && (
+                        <Typography variant="body2">
+                            <strong>Name:</strong> {guide.guide_name}
+                        </Typography>
+                    )}
+
+                    {guide.guide_file && (
+                        <Box
+                            sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 1,
+                                cursor: 'pointer',
+                                padding: 1,
+                                borderRadius: 1,
+                                border: '1px solid #e0e0e0',
+                                backgroundColor: 'white',
+                                '&:hover': {
+                                    backgroundColor: '#f5f5f5'
+                                }
+                            }}
+                            onClick={handleOpenGuideFile}
+                            title="Click to open in new tab"
+                        >
+                            {isImage ? (
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <img
+                                        src={fileUrl}
+                                        alt="Guide preview"
+                                        style={{
+                                            width: '30px',
+                                            height: '30px',
+                                            objectFit: 'cover',
+                                            borderRadius: '4px'
+                                        }}
+                                    />
+                                    <Typography variant="body2" color="primary">
+                                        {guide.guide_name || 'Guide Image'}
+                                    </Typography>
+                                    <VisibilityIcon color="primary" fontSize="small" />
+                                </Box>
+                            ) : (
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <InsertDriveFileIcon color="primary" fontSize="small" />
+                                    <Typography variant="body2" color="primary">
+                                        {guide.guide_name || 'Guide File'}
+                                    </Typography>
+                                    <VisibilityIcon color="primary" fontSize="small" />
+                                </Box>
+                            )}
+                        </Box>
+                    )}
+                </Box>
+
+                {guide.guide_description && (
+                    <Box sx={{ mt: 1 }}>
+                        <Typography variant="body2">
+                            <strong>Description:</strong>
+                        </Typography>
+                        <Box
+                            sx={{
+                                mt: 0.5,
+                                p: 1,
+                                backgroundColor: 'white',
+                                borderRadius: 1,
+                                border: '1px solid #e0e0e0',
+                                fontSize: '14px',
+                                lineHeight: '1.4'
+                            }}
+                            dangerouslySetInnerHTML={{ __html: guide.guide_description }}
+                        />
+                    </Box>
+                )}
+            </Box>
+        );
+    };
+
     return (
         <Box>
             <Box sx={{ mb: 3, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
@@ -924,6 +1168,31 @@ const OptionDropdown = ({ index }) => {
                         }
                         label="Make this customization compulsory"
                     />
+                </Box>
+
+                {/* Guide Section */}
+                <Box sx={{ mt: 2 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                        <Typography variant="subtitle2" fontWeight={600}>
+                            Guide
+                        </Typography>
+                        <Button
+                            size="small"
+                            variant="outlined"
+                            startIcon={<EditIcon />}
+                            onClick={handleOpenGuideDialog}
+                        >
+                            {customization.guide.guide_name ? 'Edit Guide' : 'Add Guide'}
+                        </Button>
+                    </Box>
+
+                    {customization.guide ? (
+                        renderGuidePreview()
+                    ) : (
+                        <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                            No guide added. Click "Add Guide" to add guide information.
+                        </Typography>
+                    )}
                 </Box>
             </Box>
 
@@ -1175,6 +1444,164 @@ const OptionDropdown = ({ index }) => {
                 </CardContent>
             </Card>
 
+            {/* Guide Dialog */}
+            <Dialog
+                open={guideDialogOpen}
+                onClose={handleCloseGuideDialog}
+                maxWidth="md"
+                fullWidth
+            >
+                <DialogTitle>
+                    {customization.guide ? 'Edit Guide' : 'Add Guide'}
+                </DialogTitle>
+                <DialogContent>
+                    <Box sx={{ mt: 2 }}>
+                        {/* Guide Name Input */}
+                        <Box sx={{ mb: 2 }}>
+                            <Typography variant="body2" fontWeight={500} mb={1}>
+                                Guide Name
+                            </Typography>
+                            <TextField
+                                type="text"
+                                value={currentGuide.guide_name || ""}
+                                onChange={(e) => handleGuideNameChange(e.target.value)}
+                                placeholder="Enter guide name"
+                                fullWidth
+                                size="small"
+                            />
+                        </Box>
+
+                        {/* Guide File Upload and Preview */}
+                        <Box sx={{ mb: 2 }}>
+                            <Typography variant="body2" fontWeight={500} mb={1}>
+                                Guide File
+                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                                {currentGuide.guide_file ? (
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                        {/* File Preview */}
+                                        <Box
+                                            sx={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 1,
+                                                cursor: 'pointer',
+                                                padding: 1,
+                                                borderRadius: 1,
+                                                border: '1px solid #e0e0e0',
+                                                backgroundColor: 'white',
+                                                '&:hover': {
+                                                    backgroundColor: '#f5f5f5'
+                                                }
+                                            }}
+                                            onClick={handleOpenGuideFile}
+                                            title="Click to open in new tab"
+                                        >
+                                            {isImageFile(currentGuide.guide_file) ? (
+                                                // Image Preview
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                    <img
+                                                        src={currentGuide.guide_file_url}
+                                                        alt="Guide preview"
+                                                        style={{
+                                                            width: '40px',
+                                                            height: '40px',
+                                                            objectFit: 'cover',
+                                                            borderRadius: '4px'
+                                                        }}
+                                                    />
+                                                    <Typography variant="body2" color="primary">
+                                                        {currentGuide.guide_name || (typeof currentGuide.guide_file === 'string' ? 'Guide Image' : currentGuide.guide_file.name)}
+                                                    </Typography>
+                                                    <VisibilityIcon color="primary" fontSize="small" />
+                                                </Box>
+                                            ) : (
+                                                // Document Preview
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                    <InsertDriveFileIcon color="primary" fontSize="small" />
+                                                    <Typography variant="body2" color="primary">
+                                                        {currentGuide.guide_name || (typeof currentGuide.guide_file === 'string' ? 'Guide File' : currentGuide.guide_file.name)}
+                                                    </Typography>
+                                                    <VisibilityIcon color="primary" fontSize="small" />
+                                                </Box>
+                                            )}
+                                        </Box>
+
+                                        {/* Remove Button */}
+                                        <IconButton
+                                            size="small"
+                                            color="error"
+                                            onClick={handleGuideFileRemove}
+                                            title="Remove guide file"
+                                        >
+                                            <DeleteIcon fontSize="small" />
+                                        </IconButton>
+                                    </Box>
+                                ) : (
+                                    <Button
+                                        variant="outlined"
+                                        component="label"
+                                        size="small"
+                                    >
+                                        Upload Guide File
+                                        <VisuallyHiddenInput
+                                            type="file"
+                                            onChange={handleGuideFileUpload}
+                                            accept=".pdf,.doc,.docx,.txt,.xlsx,.xls,.jpg,.jpeg,.png,.gif,.bmp,.webp,.svg"
+                                        />
+                                    </Button>
+                                )}
+                            </Box>
+                            <Typography variant="caption" color="textSecondary" sx={{ mt: 0.5, display: 'block' }}>
+                                Supported formats: PDF, DOC, DOCX, TXT, XLSX, XLS, JPG, JPEG, PNG, GIF, BMP, WEBP, SVG
+                            </Typography>
+                        </Box>
+
+                        {/* Guide Description - React Quill Editor */}
+                        <Box>
+                            <Typography variant="body2" fontWeight={500} mb={1}>
+                                Guide Description
+                            </Typography>
+                            <Box sx={{
+                                border: '1px solid #e0e0e0',
+                                borderRadius: '4px',
+                                '& .ql-container': {
+                                    border: 'none',
+                                    borderRadius: '0 0 4px 4px'
+                                },
+                                '& .ql-toolbar': {
+                                    border: 'none',
+                                    borderBottom: '1px solid #e0e0e0',
+                                    borderRadius: '4px 4px 0 0'
+                                }
+                            }}>
+                                <ReactQuill
+                                    value={currentGuide.guide_description}
+                                    onChange={handleGuideDescriptionChange}
+                                    modules={quillModules}
+                                    formats={quillFormats}
+                                    placeholder="Enter guide description..."
+                                    style={{
+                                        height: '200px',
+                                        marginBottom: '50px'
+                                    }}
+                                />
+                            </Box>
+                        </Box>
+                    </Box>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseGuideDialog}>
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={handleSaveGuide}
+                        variant="contained"
+                    >
+                        Save Guide
+                    </Button>
+                </DialogActions>
+            </Dialog>
 
             {/* Enhanced Crop Dialog */}
             <Dialog

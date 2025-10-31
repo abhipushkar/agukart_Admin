@@ -147,7 +147,7 @@ export default function ProductDetails() {
                             size="small"
                             variant="outlined"
                             color="primary"
-                            sx={{ cursor: 'pointer' }}
+                            sx={{cursor: 'pointer'}}
                             onClick={() => setIsSearchFocused(true)}
                         />
                     )}
@@ -398,7 +398,7 @@ export default function ProductDetails() {
                 <Box sx={{display: "flex", gap: "20px", mb: 3}}>
                     <Box sx={{fontSize: "14px", fontWeight: 700, width: "12.8%", display: "flex", textWrap: "wrap"}}>
                         Customizations
-                        <span style={{color: "red", fontSize: "15px", margin: "0 3px"}}>*</span>:
+
                     </Box>
                     <Box sx={{width: "87.2%"}}>
                         <FormControl>
@@ -422,7 +422,7 @@ export default function ProductDetails() {
                 <Box sx={{display: "flex", gap: "20px", mb: 3}}>
                     <Box sx={{fontSize: "14px", fontWeight: 700, width: "12.8%", display: "flex", textWrap: "wrap"}}>
                         Popular Gifts
-                        <span style={{color: "red", fontSize: "15px", margin: "0 3px"}}>*</span>:
+
                     </Box>
                     <Box sx={{width: "87.2%"}}>
                         <FormControl>
@@ -446,7 +446,7 @@ export default function ProductDetails() {
                 <Box sx={{display: "flex", gap: "20px", mb: 3}}>
                     <Box sx={{fontSize: "14px", fontWeight: 700, width: "12.8%", display: "flex", textWrap: "wrap"}}>
                         Is the best selling product
-                        <span style={{color: "red", fontSize: "15px", margin: "0 3px"}}>*</span>:
+
                     </Box>
                     <Box sx={{width: "87.2%"}}>
                         <FormControl>
@@ -486,9 +486,9 @@ export default function ProductDetails() {
                                     mt: field.type === "Compound" ? 1 : 0
                                 }}>
                                     {field.name}
-                                    {field.viewOnProductPage && (
-                                        <span style={{color: "red", fontSize: "15px", margin: "0 3px"}}>*</span>
-                                    )}
+                                    {/*{field.viewOnProductPage && (*/}
+                                    {/*    <span style={{color: "red", fontSize: "15px", margin: "0 3px"}}>*</span>*/}
+                                    {/*)}*/}
                                     :
                                 </Box>
                                 <Box sx={{width: "85%"}}>
@@ -506,7 +506,7 @@ export default function ProductDetails() {
                 <Box sx={{display: "flex", gap: "20px", mb: 3}}>
                     <Box sx={{fontSize: "14px", fontWeight: 700, width: "15%", display: "flex", textWrap: "wrap"}}>
                         Launch Date
-                        <span style={{color: "red", fontSize: "15px", margin: "0 3px"}}>*</span>:
+
                     </Box>
                     <Box sx={{width: "25%"}}>
                         <LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -529,7 +529,7 @@ export default function ProductDetails() {
                 <Box sx={{display: "flex", gap: "20px", mb: 3}}>
                     <Box sx={{fontSize: "14px", fontWeight: 700, width: "15%", display: "flex", textWrap: "wrap"}}>
                         Release Date
-                        <span style={{color: "red", fontSize: "15px", margin: "0 3px"}}>*</span>:
+
                     </Box>
                     <Box sx={{width: "25%"}}>
                         <LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -552,7 +552,7 @@ export default function ProductDetails() {
                 <Box sx={{display: "flex", gap: "20px", position: "relative", mb: 3}}>
                     <Box sx={{fontSize: "14px", fontWeight: 700, width: "15%", display: "flex", textWrap: "wrap"}}>
                         Search Terms
-                        <span style={{color: "red", fontSize: "15px", margin: "0 3px"}}>*</span>:
+
                     </Box>
                     <Box sx={{width: "85%"}}>
                         <Autocomplete

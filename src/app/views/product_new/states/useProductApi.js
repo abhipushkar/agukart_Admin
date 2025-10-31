@@ -1,10 +1,10 @@
 // hooks/useProductAPI.js
-import { ApiService } from "app/services/ApiService";
-import { apiEndpoints } from "app/constant/apiEndpoints";
-import { localStorageKey } from "app/constant/localStorageKey";
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { ROUTE_CONSTANT } from "app/constant/routeContanst";
+import {ApiService} from "app/services/ApiService";
+import {apiEndpoints} from "app/constant/apiEndpoints";
+import {localStorageKey} from "app/constant/localStorageKey";
+import {useState} from "react";
+import {useNavigate} from "react-router-dom";
+import {ROUTE_CONSTANT} from "app/constant/routeContanst";
 import {useProductFormStore} from "./useAddProducts";
 
 export const useProductAPI = () => {
@@ -296,6 +296,7 @@ export const useProductAPI = () => {
             // Append basic customization fields
             fData.append(`customizationData[label]`, customizationData.label || '');
             fData.append(`customizationData[instructions]`, customizationData.instructions || '');
+            fData.append(`customizationData[isExpanded]`, customizationData.isExpanded || '');
 
             customizationData.customizations.forEach((customization, cIndex) => {
                 // Append basic customization fields
@@ -303,7 +304,25 @@ export const useProductAPI = () => {
                 fData.append(`customizationData[customizations][${cIndex}][label]`, customization.label || '');
                 fData.append(`customizationData[customizations][${cIndex}][instructions]`, customization.instructions || '');
                 fData.append(`customizationData[customizations][${cIndex}][isCompulsory]`, customization.isCompulsory ? 'true' : 'false');
-                fData.append(`customizationData[customizations][${cIndex}][isVariant]`, customization.isVariant ? 'true' : 'false');
+                fData.append(`customizationData[customizations][${cIndex}][isVariant]`, customization.isVariant === true || customization.isVariant === "true" ? 'true' : 'false');
+
+                // ADDED: Append guide data for customization
+                if (customization.guide) {
+                    if (customization.guide.guide_name) {
+                        fData.append(`customizationData[customizations][${cIndex}][guide][guide_name]`, customization.guide.guide_name);
+                    }
+                    if (customization.guide.guide_description) {
+                        fData.append(`customizationData[customizations][${cIndex}][guide][guide_description]`, customization.guide.guide_description);
+                    }
+                    if (customization.guide.guide_type) {
+                        fData.append(`customizationData[customizations][${cIndex}][guide][guide_type]`, customization.guide.guide_type);
+                    }
+                    if (customization.guide.guide_file instanceof File) {
+                        fData.append(`customizationData[customizations][${cIndex}][guide][guide_file]`, customization.guide.guide_file);
+                    } else if (typeof customization.guide.guide_file === "string") {
+                        fData.append(`customizationData[customizations][${cIndex}][guide][guide_file]`, customization.guide.guide_file);
+                    }
+                }
 
                 // Handle text customization specific fields
                 if (customization.placeholder !== undefined) {
@@ -506,7 +525,7 @@ export const useProductAPI = () => {
     // Validate combinations
     const validateCombinations = () => {
         const state = useProductFormStore.getState();
-        const { variationsData, formValues, combinations } = state;
+        const {variationsData, formValues, combinations} = state;
 
         const errors = {};
         combinations.forEach((variant) => {
@@ -539,7 +558,7 @@ export const useProductAPI = () => {
             setLoading(true);
 
             // Validate combinations
-            const combinationErrors = validateCombinations();
+            // const combinationErrors = validateCombinations();
             // if (Object.keys(combinationErrors).length > 0) {
             //     useProductFormStore.getState().setCombinationError(combinationErrors);
             //     useProductFormStore.getState().setShowAll(true);
@@ -558,9 +577,9 @@ export const useProductAPI = () => {
             if (res?.status === 200) {
                 // Handle image upload for new products
                 if (!isEdit) {
-                    await handleUploadImage(res?.data?.product?._id);
+                    await handleUploadImage(queryId);
                 } else {
-                    await handleUploadImage2(res?.data?.product?._id);
+                    await handleUploadImage2(queryId);
                 }
 
                 return res;
@@ -629,7 +648,7 @@ export const useProductAPI = () => {
 
     const handleUploadImage2 = async (id) => {
         const state = useProductFormStore.getState();
-        const { images, deleteIconData, altText } = state.formData;
+        const {images, deleteIconData, altText} = state.formData;
 
         const filterImagesData = images.filter((img) => img.file);
         const sortImagesData = images.filter((img) => !img.file);
@@ -662,9 +681,9 @@ export const useProductAPI = () => {
             appendArrayToFormData("newImgSortArray[]", newSortArray);
             appendArrayToFormData("existimageSortOrder[]", sortedArray);
 
-            altText.forEach((text) => fData.append("altText", text));
+            altText?.forEach((text) => fData.append("altText", text));
 
-            if (deleteIconData.length > 0) {
+            if (deleteIconData && deleteIconData.length > 0) {
                 deleteIconData.forEach((item) => fData.append("deleteImgArr[]", item));
             }
 
@@ -705,7 +724,7 @@ export const useProductAPI = () => {
 
     const editVideoHandler = async (id) => {
         const state = useProductFormStore.getState();
-        const { videos, deletedVideos } = state.formData;
+        const {videos, deletedVideos} = state.formData;
 
         const filterVideoData = videos.filter((res) => res.file);
         const videoArr = filterVideoData?.map((e) => e.file);
@@ -728,13 +747,13 @@ export const useProductAPI = () => {
 
             fData.append("id", id);
 
-            if (deletedVideos.length > 0) {
+            if (deletedVideos && deletedVideos.length > 0) {
                 uniqueSetVideoarr.forEach((item) => {
                     fData.append("deleteVidArr[]", item);
                 });
             }
 
-            if (filterVideoData.length === 0 && deletedVideos.length == 0) {
+            if (filterVideoData.length === 0 && deletedVideos && deletedVideos.length == 0) {
                 navigate(ROUTE_CONSTANT.catalog.product.list);
                 return true;
             } else {

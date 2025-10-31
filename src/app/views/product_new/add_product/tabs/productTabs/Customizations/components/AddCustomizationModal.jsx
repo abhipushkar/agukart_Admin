@@ -121,6 +121,8 @@ const AddCustomizationModal = () => {
                         instructions: "",
                         isCompulsory: false,
                         isVariant: false,
+                        guide: {
+                        },
                         optionList: [
                             {
                                 optionName: "",

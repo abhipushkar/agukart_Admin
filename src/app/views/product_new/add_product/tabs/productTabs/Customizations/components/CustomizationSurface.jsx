@@ -7,7 +7,7 @@ import {
     Box,
     TextField,
     Button,
-    Typography
+    Typography, Checkbox, FormControlLabel
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CreateIcon from "@mui/icons-material/Create";
@@ -39,6 +39,13 @@ const CustomizationSurface = () => {
             [field]: value
         });
     };
+
+    const handleBoxChange = (checked) => {
+        setCustomizationData({
+            ...customizationData,
+            isExpanded: checked
+        })
+    }
 
     return (
         <Accordion defaultExpanded>
@@ -110,6 +117,19 @@ const CustomizationSurface = () => {
                                     {`You Have ${200 - (customizationData?.instructions?.length || 0)} of 200 characters remaining`}
                                 </Box>
                             </Box>
+
+                            <FormControlLabel
+                                control={
+                                    <Checkbox
+                                        checked={customizationData?.isExpanded}
+                                        onChange={(e) => handleBoxChange(e.target.checked)}
+                                    />
+                                }
+                                label="Want to show this customization Expanded?"
+                                sx={{
+                                    my: 2
+                                }}
+                            />
                         </Box>
 
                         <Box sx={{ width: "30%" }}>
