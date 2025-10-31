@@ -1,10 +1,12 @@
+// ProductIdentity/components/ImageTile.jsx
 import React from "react";
 import { useRef } from "react";
 import { toast } from "react-toastify";
 import { v4 as uuidv4 } from "uuid";
 import { useDrag, useDrop } from "react-dnd";
-import { Avatar, Typography } from "@mui/material";
+import { Avatar, Typography, IconButton } from "@mui/material";
 import { makeStyles } from "@material-ui/core/styles";
+import CloseIcon from "@mui/icons-material/Close";
 
 const ImageTile = ({
                        images,
@@ -15,7 +17,8 @@ const ImageTile = ({
                        setChooseImg,
                        moveImage,
                        setAltText,
-                       handleOpen
+                       handleOpen,
+                       onRemoveImage
                    }) => {
     const useStyles = makeStyles((theme) => ({
         imageContainer: {
@@ -64,6 +67,12 @@ const ImageTile = ({
         ]);
     };
 
+    const handleRemove = () => {
+        if (images[index]?._id) {
+            onRemoveImage(images[index]._id);
+        }
+    };
+
     const [{ isDragging }, drag] = useDrag({
         type: "image",
         item: { index },
@@ -104,6 +113,29 @@ const ImageTile = ({
                         position: "relative"
                     }}
                 >
+                    {/* Remove button */}
+                    <IconButton
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemove();
+                        }}
+                        sx={{
+                            position: "absolute",
+                            top: "2px",
+                            right: "2px",
+                            backgroundColor: "rgba(255, 255, 255, 0.8)",
+                            padding: "2px",
+                            zIndex: 10,
+                            '&:hover': {
+                                backgroundColor: "rgba(255, 0, 0, 0.8)",
+                                color: "white"
+                            }
+                        }}
+                        size="small"
+                    >
+                        <CloseIcon sx={{ fontSize: "14px" }} />
+                    </IconButton>
+
                     <img
                         alt={`uploaded-${index}`}
                         src={images[index]?.src}
@@ -119,8 +151,9 @@ const ImageTile = ({
                                 padding: "2px 7px",
                                 position: "absolute",
                                 top: "5px",
-                                right: "5px",
-                                fontSize: "11px"
+                                left: "5px",
+                                fontSize: "11px",
+                                zIndex: 5
                             }}
                         >
                             Primary

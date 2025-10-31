@@ -577,9 +577,9 @@ export const useProductAPI = () => {
             if (res?.status === 200) {
                 // Handle image upload for new products
                 if (!isEdit) {
-                    await handleUploadImage(queryId);
+                    await handleUploadImage(queryId || "new");
                 } else {
-                    await handleUploadImage2(queryId);
+                    await handleUploadImage2(queryId || "new");
                 }
 
                 return res;
@@ -605,9 +605,9 @@ export const useProductAPI = () => {
 
             if (res?.status === 200) {
                 if (queryId) {
-                    await handleUploadImage2(res?.data?.product?._id);
+                    await handleUploadImage2(queryId || "new");
                 } else {
-                    await handleUploadImage(res?.data?.product?._id);
+                    await handleUploadImage(queryId || "new");
                 }
 
                 return res;

@@ -114,6 +114,32 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
         event.target.value = '';
     };
 
+    // Image removal function
+    const handleRemoveImage = (imageId) => {
+        const imageIndex = formData.images.findIndex(img => img._id === imageId);
+
+        if (imageIndex === -1) return;
+
+        // Create new arrays without the removed image
+        const updatedImages = formData.images.filter(img => img._id !== imageId);
+        const updatedAltText = altText.filter((_, index) => index !== imageIndex);
+
+        // Update sort orders and primary image
+        updatedImages.forEach((img, idx) => {
+            if (img.file) {
+                img.file.sortOrder = idx + 1;
+            } else {
+                img.sortOrder = idx + 1;
+            }
+            img.isPrimary = idx === 0;
+        });
+
+        setFormData({ images: updatedImages });
+        setAltText(updatedAltText);
+
+        // handleOpen("success", "Image removed successfully");
+    };
+
     // Video handling functions
     const handleVideoButtonClick = () => {
         videoInputRef.current.click();
@@ -149,6 +175,23 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
 
         // Clear the file input
         event.target.value = '';
+    };
+
+    // Video removal function
+    const handleRemoveVideo = (videoId) => {
+        const updatedVideos = formData.videos.filter(video => video._id !== videoId);
+
+        // Update sort orders
+        updatedVideos.forEach((video, idx) => {
+            if (video.file) {
+                video.file.sortOrder = idx + 1;
+            } else {
+                video.sortOrder = idx + 1;
+            }
+        });
+
+        setFormData({ videos: updatedVideos });
+        // handleOpen("success", "Video removed successfully");
     };
 
     const handleEditPopup = () => {
@@ -188,8 +231,8 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
     };
 
     useEffect(() => {
-            getCategoryData();
-            fetchDynamicFields();
+        getCategoryData();
+        fetchDynamicFields();
     }, [formData?.subCategory]);
 
     const handleEditClose = () => {
@@ -522,6 +565,7 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                                     setImages={(newImages) => setFormData({ images: newImages })}
                                     altText={altText}
                                     setAltText={setAltText}
+                                    onRemoveImage={handleRemoveImage}
                                 />
                             </Grid>
 
@@ -594,6 +638,7 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                             setImages={(newImages) => setFormData({ images: newImages })}
                             altText={altText}
                             setAltText={setAltText}
+                            onRemoveImage={handleRemoveImage}
                         />
                     )}
 
@@ -667,6 +712,7 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                     <VideoGrid
                         videos={formData.videos}
                         setVideos={(newVideos) => setFormData({ videos: newVideos })}
+                        onRemoveVideo={handleRemoveVideo}
                     />
                 </Box>
             </Box>

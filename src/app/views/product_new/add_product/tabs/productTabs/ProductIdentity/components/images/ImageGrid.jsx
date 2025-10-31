@@ -5,7 +5,7 @@ import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import ImageTile from "./ImageTile";
 
-const ImageGrid = ({ images, setImages, altText, setAltText }) => {
+const ImageGrid = ({ images, setImages, altText, setAltText, onRemoveImage }) => {
     const moveImage = (dragIndex, hoverIndex) => {
         const draggedImage = images[dragIndex];
         const newImages = [...images];
@@ -31,6 +31,10 @@ const ImageGrid = ({ images, setImages, altText, setAltText }) => {
         setAltText(newAltText);
     };
 
+    const handleRemoveImage = (imageId) => {
+        onRemoveImage(imageId);
+    };
+
     return (
         <DndProvider backend={HTML5Backend}>
             <Box sx={{ width: "100%" }}>
@@ -48,6 +52,7 @@ const ImageGrid = ({ images, setImages, altText, setAltText }) => {
                                 setAltText={setAltText}
                                 handleOpen={() => {}} // Not needed in this context
                                 isPreview={true}
+                                onRemoveImage={handleRemoveImage}
                             />
                         </Grid>
                     ))}
