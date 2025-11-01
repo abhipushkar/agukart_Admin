@@ -8,7 +8,7 @@ import {
     Typography,
     Button,
     Grid,
-    Card, FormLabel, RadioGroup, FormControlLabel, Radio
+    Card
 } from "@mui/material";
 import { ApiService } from "app/services/ApiService";
 import { apiEndpoints } from "app/constant/apiEndpoints";
@@ -99,11 +99,7 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
 
         // Update sort orders for all images
         updatedImages.forEach((img, idx) => {
-            if (img.file) {
-                img.file.sortOrder = idx + 1;
-            } else {
-                img.sortOrder = idx + 1;
-            }
+            img.sortOrder = idx + 1;
             img.isPrimary = idx === 0;
         });
 
@@ -114,30 +110,21 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
         event.target.value = '';
     };
 
-    // Image removal function
-    const handleRemoveImage = (imageId) => {
-        const imageIndex = formData.images.findIndex(img => img._id === imageId);
-
-        if (imageIndex === -1) return;
-
+    // SIMPLE Image removal function - just remove by index
+    const handleRemoveImage = (imageIndex) => {
         // Create new arrays without the removed image
-        const updatedImages = formData.images.filter(img => img._id !== imageId);
+        const updatedImages = formData.images.filter((_, index) => index !== imageIndex);
         const updatedAltText = altText.filter((_, index) => index !== imageIndex);
 
         // Update sort orders and primary image
         updatedImages.forEach((img, idx) => {
-            if (img.file) {
-                img.file.sortOrder = idx + 1;
-            } else {
-                img.sortOrder = idx + 1;
-            }
+            img.sortOrder = idx + 1;
             img.isPrimary = idx === 0;
         });
 
         setFormData({ images: updatedImages });
         setAltText(updatedAltText);
 
-        // handleOpen("success", "Image removed successfully");
     };
 
     // Video handling functions
@@ -164,11 +151,7 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
 
         // Update sort orders for all videos
         updatedVideos.forEach((video, idx) => {
-            if (video.file) {
-                video.file.sortOrder = idx + 1;
-            } else {
-                video.sortOrder = idx + 1;
-            }
+            video.sortOrder = idx + 1;
         });
 
         setFormData({ videos: updatedVideos });
@@ -183,15 +166,10 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
 
         // Update sort orders
         updatedVideos.forEach((video, idx) => {
-            if (video.file) {
-                video.file.sortOrder = idx + 1;
-            } else {
-                video.sortOrder = idx + 1;
-            }
+            video.sortOrder = idx + 1;
         });
 
         setFormData({ videos: updatedVideos });
-        // handleOpen("success", "Video removed successfully");
     };
 
     const handleEditPopup = () => {
@@ -240,9 +218,7 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
     };
 
     const handleOpen = (type, message) => {
-        // You can integrate with your notification system here
         console.log(`${type}: ${message}`);
-        // For now, we'll use alert but you can replace with your toast/notification system
         alert(`${type}: ${message}`);
     };
 
