@@ -174,6 +174,7 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
 
     const handleEditPopup = () => {
         if (formData.images.length === 0) {
+
             handleOpen("error", "Please upload images first");
             return;
         }
