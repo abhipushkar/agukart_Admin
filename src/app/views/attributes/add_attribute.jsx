@@ -33,7 +33,11 @@ import {
     Card,
     CardContent,
     CardHeader,
-    Collapse
+    Collapse,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions
 } from "@mui/material";
 import {
     Delete as DeleteIcon,
@@ -101,6 +105,11 @@ const AddAttribute = () => {
         onConfirm: null
     });
 
+    // Bulk values state
+    const [bulkValuesInput, setBulkValuesInput] = useState("");
+    const [bulkValuesDialogOpen, setBulkValuesDialogOpen] = useState(false);
+    const [currentBulkValuesContext, setCurrentBulkValuesContext] = useState(null); // 'main' or subAttrId
+
     const attributeId = searchParams.get("id");
 
     useEffect(() => {
@@ -134,6 +143,72 @@ const AddAttribute = () => {
             confirmModal.onConfirm();
         }
         closeConfirmModal();
+    };
+
+    // Bulk values functions
+    const handleOpenBulkValuesDialog = (context = 'main') => {
+        setCurrentBulkValuesContext(context);
+        setBulkValuesDialogOpen(true);
+    };
+
+    const handleCloseBulkValuesDialog = () => {
+        setBulkValuesDialogOpen(false);
+        setBulkValuesInput("");
+        setCurrentBulkValuesContext(null);
+    };
+
+    const handleBulkAddValues = () => {
+        if (!bulkValuesInput.trim()) return;
+
+        // Split by comma and trim each value
+        const values = bulkValuesInput.split(',')
+            .map(val => val.trim())
+            .filter(val => val.length > 0);
+
+        if (values.length === 0) return;
+
+        if (currentBulkValuesContext === 'main') {
+            // Add to main attribute values
+            const newSortOrder = attributeValues.length > 0
+                ? Math.max(...attributeValues.map(v => v.sortOrder)) + 1
+                : 1;
+
+            const newValues = values.map((value, index) => ({
+                id: `temp-${Date.now()}-${attributeValues.length + index}`,
+                value: value,
+                sortOrder: newSortOrder + index,
+                status: true
+            }));
+
+            setAttributeValues(prev => [...prev, ...newValues]);
+        } else {
+            // Add to sub-attribute values
+            const subAttrId = currentBulkValuesContext;
+            setSubAttributes(prevAttributes =>
+                prevAttributes.map(attr => {
+                    if (attr.id === subAttrId) {
+                        const newSortOrder = attr.values.length > 0
+                            ? Math.max(...attr.values.map(v => v.sortOrder)) + 1
+                            : 1;
+
+                        const newValues = values.map((value, index) => ({
+                            id: `temp-${Date.now()}-${attr.values.length + index}`,
+                            value: value,
+                            sortOrder: newSortOrder + index,
+                            status: true
+                        }));
+
+                        return {
+                            ...attr,
+                            values: [...attr.values, ...newValues]
+                        };
+                    }
+                    return attr;
+                })
+            );
+        }
+
+        handleCloseBulkValuesDialog();
     };
 
     const fetchCategories = async () => {
@@ -751,6 +826,27 @@ const AddAttribute = () => {
                                             Add the possible values that users can choose from when they encounter this attribute.
                                             You can drag and drop to reorder the values.
                                         </Alert>
+
+                                        {/* Add Multiple Values Button Group */}
+                                        <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
+                                            <Button
+                                                onClick={handleAddValue}
+                                                variant="outlined"
+                                                startIcon={<AddIcon />}
+                                            >
+                                                Add Single Value
+                                            </Button>
+
+                                            <Button
+                                                onClick={() => handleOpenBulkValuesDialog('main')}
+                                                variant="outlined"
+                                                color="secondary"
+                                                startIcon={<AddIcon />}
+                                            >
+                                                Add Multiple Values
+                                            </Button>
+                                        </Box>
+
                                         <TableContainer sx={{paddingX: 2}} component={Paper} variant="outlined">
                                             <Table size="small">
                                                 <TableHead>
@@ -832,14 +928,6 @@ const AddAttribute = () => {
                                                 </Droppable>
                                             </Table>
                                         </TableContainer>
-                                        <Button
-                                            onClick={handleAddValue}
-                                            variant="outlined"
-                                            startIcon={<AddIcon />}
-                                            sx={{ mt: 2 }}
-                                        >
-                                            Add Value
-                                        </Button>
                                     </Grid>
                                 )}
 
@@ -943,6 +1031,29 @@ const AddAttribute = () => {
                                                                                     <Alert severity="info" sx={{ mb: 2 }}>
                                                                                         You can drag and drop to reorder the values.
                                                                                     </Alert>
+
+                                                                                    {/* Add Multiple Values Button Group for Sub-Attributes */}
+                                                                                    <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
+                                                                                        <Button
+                                                                                            onClick={() => handleAddSubAttributeValue(subAttr.id)}
+                                                                                            variant="outlined"
+                                                                                            startIcon={<AddIcon />}
+                                                                                            size="small"
+                                                                                        >
+                                                                                            Add Single Value
+                                                                                        </Button>
+
+                                                                                        <Button
+                                                                                            onClick={() => handleOpenBulkValuesDialog(subAttr.id)}
+                                                                                            variant="outlined"
+                                                                                            color="secondary"
+                                                                                            startIcon={<AddIcon />}
+                                                                                            size="small"
+                                                                                        >
+                                                                                            Add Multiple Values
+                                                                                        </Button>
+                                                                                    </Box>
+
                                                                                     <TableContainer component={Paper} variant="outlined" sx={{ mb: 2, paddingX: 2 }}>
                                                                                         <Table size="small">
                                                                                             <TableHead>
@@ -1024,14 +1135,6 @@ const AddAttribute = () => {
                                                                                             </Droppable>
                                                                                         </Table>
                                                                                     </TableContainer>
-                                                                                    <Button
-                                                                                        onClick={() => handleAddSubAttributeValue(subAttr.id)}
-                                                                                        variant="outlined"
-                                                                                        startIcon={<AddIcon />}
-                                                                                        size="small"
-                                                                                    >
-                                                                                        Add Value
-                                                                                    </Button>
                                                                                 </>
                                                                             )}
                                                                             {subAttr.type !== "Dropdown" && (
@@ -1126,6 +1229,67 @@ const AddAttribute = () => {
                     </DragDropContext>
                 </Box>
             </Box>
+
+            {/* Bulk Add Values Dialog */}
+            <Dialog
+                open={bulkValuesDialogOpen}
+                onClose={handleCloseBulkValuesDialog}
+                maxWidth="md"
+                fullWidth
+            >
+                <DialogTitle>
+                    Add Multiple Values
+                </DialogTitle>
+                <DialogContent>
+                    <Box sx={{ mt: 2 }}>
+                        <Typography variant="body1" sx={{ mb: 2 }}>
+                            Enter values separated by commas. Each value will be added as a separate option.
+                        </Typography>
+
+                        <TextField
+                            value={bulkValuesInput}
+                            onChange={(e) => setBulkValuesInput(e.target.value)}
+                            placeholder="Enter values separated by commas (e.g., Red, Blue, Green, Large, Medium, Small)"
+                            fullWidth
+                            multiline
+                            rows={4}
+                            autoFocus
+                        />
+
+                        {bulkValuesInput && (
+                            <Box sx={{ mt: 2, p: 2, backgroundColor: '#f5f5f5', borderRadius: 1 }}>
+                                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                                    Preview - Will add {bulkValuesInput.split(',').filter(val => val.trim()).length} values:
+                                </Typography>
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                                    {bulkValuesInput.split(',').map((val, index) => (
+                                        val.trim() && (
+                                            <Chip
+                                                key={index}
+                                                label={val.trim()}
+                                                size="small"
+                                                variant="outlined"
+                                            />
+                                        )
+                                    ))}
+                                </Box>
+                            </Box>
+                        )}
+                    </Box>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseBulkValuesDialog}>
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={handleBulkAddValues}
+                        variant="contained"
+                        disabled={!bulkValuesInput.trim()}
+                    >
+                        Add Values
+                    </Button>
+                </DialogActions>
+            </Dialog>
 
             {/* Confirm Modal */}
             <ConfirmModal
