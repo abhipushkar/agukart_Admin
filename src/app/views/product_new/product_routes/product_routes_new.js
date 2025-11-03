@@ -7,8 +7,8 @@ export const productsRoutesNew = [
     { name: "addProduct", path: ROUTE_CONSTANT.catalog.productNew.add, element: <AddProductNew /> },
     // {
     //     name: "parentProductList",
-    //     path: ROUTE_CONSTANT.catalog.product.parentProducts,
-    //     element: <ParentProducts />
+    //     path: ROUTE_CONSTANT.catalog.productNew.parentProducts,
+    //     element: <AddParentProduct />
     // }
 ];
 

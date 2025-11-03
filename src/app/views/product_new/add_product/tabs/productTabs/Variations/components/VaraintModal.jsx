@@ -238,6 +238,7 @@ const VariantModal = ({show, handleCloseVariant}) => {
                         [`value${index + 1}`]: value,
                         [`name${index + 1}`]: name,
                         combValues: [value],
+                        combIds: [(attributeData?._id || "")],
                         price: "",
                         qty: "",
                         isVisible: true,
@@ -289,6 +290,7 @@ const VariantModal = ({show, handleCloseVariant}) => {
                         [`value${index + 1}`]: value,
                         [`name${index + 1}`]: name,
                         combValues: [...(combination.combValues || []), value],
+                        combIds: [...(combination.combIds || []), (attributeData?._id || "")],
                         price: "",
                         qty: "",
                         isVisible: true,
@@ -548,6 +550,17 @@ const VariantModal = ({show, handleCloseVariant}) => {
         const currentData = variationsData || [];
         const updatedData = currentData.filter(variation => variation.name !== selectedVariantName);
         setVariationsData(updatedData);
+
+        const variant = allVariants.find((item) => item.variant_name === selectedVariantName);
+        const parentMainName = variant?.variant_name;
+        const allAttributeValues = variant?.variant_attribute?.map((attr) => attr.attribute_value) || [];
+        const allIds = variant?.variant_attribute.map((attr) => attr._id);
+
+        setFormData({
+            ParentMainId: formData.ParentMainId.filter((id) => id !== variant._id),
+            varientName: formData.varientName.filter((id) => !allIds.includes(id)),
+        });
+
         setSelectedVariations(
             (selectedVariations || []).filter(variation => variation !== selectedVariantName)
         );
@@ -574,6 +587,14 @@ const VariantModal = ({show, handleCloseVariant}) => {
                 setImageSourceOptions(variantNames);
                 setSelectedImageSource(variantNames[0]); // Default to first variant
                 setImageSourceDialogOpen(true);
+                if(name === "prices") {
+                    console.log("Pricies", name);
+                    setFormData({salePrice: 0})
+                }
+
+                if(name === "quantities") {
+                    setFormData({quantity: 0})
+                }
             } else {
                 // Single variation, update directly - use Zustand's setFormValues correctly
                 setFormValues({[name]: value});
@@ -588,10 +609,10 @@ const VariantModal = ({show, handleCloseVariant}) => {
         const currentData = variationsData || [];
         const existingCombinationsData = combinations || [];
 
-        if (currentData.length === 0) {
-            console.log("No variations data to generate");
-            return;
-        }
+        // if (currentData.length === 0) {
+        //     console.log("No variations data to generate");
+        //     return;
+        // }
 
         let data = [];
 
@@ -962,7 +983,7 @@ const VariantModal = ({show, handleCloseVariant}) => {
                                     <Button
                                         variant="contained"
                                         onClick={handleGenerate}
-                                        disabled={(variationsData || []).length === 0}
+                                        // disabled={(variationsData || []).length === 0}
                                     >
                                         Apply
                                     </Button>

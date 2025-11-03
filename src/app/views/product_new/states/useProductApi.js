@@ -174,7 +174,7 @@ export const useProductAPI = () => {
                     if (
                         fieldVal === null ||
                         fieldVal === undefined ||
-                        fieldVal === "" ||
+                        // fieldVal === "" ||
                         fieldVal === "null" ||
                         fieldVal === "undefined" ||
                         fieldKey === "main_images" ||

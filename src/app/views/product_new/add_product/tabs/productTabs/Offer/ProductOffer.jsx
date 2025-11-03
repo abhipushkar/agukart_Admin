@@ -23,6 +23,7 @@ const ProductOffer = () => {
     const {
         formData,
         setFormData,
+        formValues,
         inputErrors,
         setInputErrors,
         loading,
@@ -42,6 +43,16 @@ const ProductOffer = () => {
             setInputErrors({ [field]: "" });
         }
     };
+
+    useEffect(() => {
+        if(formValues.isCheckedPrice) {
+            setFormData({salePrice: 0});
+        }
+
+        if(formValues.isCheckedQuantity) {
+            setFormData({quantity: 0});
+        }
+    }, [formValues]);
 
     // Date handlers
     const handleSaleStartDateChange = (newDate) => {
@@ -212,9 +223,10 @@ const ProductOffer = () => {
                             error={!!inputErrors.salePrice}
                             value={formData.salePrice}
                             onChange={(e) => handleFieldChange('salePrice', e.target.value)}
+                            disabled={formValues.isCheckedPrice}
                             onBlur={() => {
                                 if (!formData.salePrice) {
-                                    setInputErrors(prev => ({ ...prev, salePrice: "Sale Price is Required" }));
+                                    setInputErrors({salePrice: "Sale Price is Required" });
                                 }
                             }}
                             id="sale-price"
@@ -263,6 +275,7 @@ const ProductOffer = () => {
                             helperText={inputErrors.quantity}
                             value={formData.quantity}
                             onChange={(e) => handleFieldChange('quantity', e.target.value)}
+                            disabled={formValues.isCheckedQuantity}
                             onBlur={() => {
                                 if (!formData.quantity) {
                                     setInputErrors(prev => ({ ...prev, quantity: "Quantity is Required" }));

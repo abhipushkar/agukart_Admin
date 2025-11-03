@@ -36,6 +36,7 @@ export const useProductFormStore = create(
                 productType: "productType",
                 subCategory: "",
                 variations: [],
+                parentProduct: null,
                 brandName: "",
                 productDescription: "",
                 bulletPoints: "",
@@ -304,20 +305,20 @@ export const useProductFormStore = create(
                             const index = parseInt(imageKey.match(/\[(\d+)\]/)[1]);
                             const mainImages = [...(updatedRow.main_images || [])];
                             if (mainImages[index]) {
-                                mainImages[index] = null;
+                                mainImages[index] = "";
                                 updatedRow.main_images = mainImages;
                             }
                         } else {
-                            updatedRow[imageKey] = null;
+                            updatedRow[imageKey] = "";
                         }
 
                         // Also remove any edit data for this image
                         if (imageKey === 'main_images[0]') {
-                            updatedRow.edit_main_image = null;
-                            updatedRow.edit_main_image_data = null;
+                            updatedRow.edit_main_image = "";
+                            updatedRow.edit_main_image_data = "";
                         } else if (imageKey === 'preview_image') {
-                            updatedRow.edit_preview_image = null;
-                            updatedRow.edit_preview_image_data = null;
+                            updatedRow.edit_preview_image = "";
+                            updatedRow.edit_preview_image_data = "";
                         }
 
                         updatedRowCombinations[rowIndex] = updatedRow;
@@ -384,6 +385,7 @@ export const useProductFormStore = create(
                         productTitle: editData?.product_title || "",
                         productType: editData?.product_type || "productType",
                         subCategory: editData?.category || "",
+                        parentProduct: editData.parent_id,
                         variations: editData?.variant_attribute_id || [],
                         brandName: editData?.brand_id || "",
                         productDescription: editData?.description || "",

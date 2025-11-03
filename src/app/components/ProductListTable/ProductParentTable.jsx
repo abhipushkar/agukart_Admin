@@ -6,7 +6,7 @@ import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Paper from "@mui/material/Paper";
-import { Box, InputAdornment, OutlinedInput, TextField } from "@mui/material";
+import { Box, InputAdornment, OutlinedInput, TextField, Typography, CircularProgress } from "@mui/material";
 import InputLabel from "@mui/material/InputLabel";
 import MenuItem from "@mui/material/MenuItem";
 import FormControl from "@mui/material/FormControl";
@@ -24,524 +24,452 @@ import { result } from "lodash";
 import dayjs from "dayjs";
 import { DatePicker } from "@mui/x-date-pickers";
 import { toast } from "react-toastify";
+
 export default function ProductParentTable({
-  combinations,
-  formdataaaaa,
-  setSellerSku,
-  sellerSky,
-  variantArrValues,
-  setVariantArrValue,
-  setIsconponentLoader
-}) {
-  console.log("aaaaaaaasssssssssssssssssitemitem", formdataaaaa, combinations);
-  const [sellerSkyValues, setSellerSkyValues] = React.useState(
-    sellerSky ? sellerSky : Array(combinations.length).fill("")
-  );
-  const [debouneValue, setDebounceValue] = useState("");
-  const [skuIndex, setSkuIndex] = useState(0);
-  const [debounceData, setDebounceData] = useState(null);
+                                               combinations,
+                                               formdataaaaa,
+                                               setSellerSku,
+                                               sellerSky,
+                                               variantArrValues,
+                                               setVariantArrValue,
+                                               setIsconponentLoader,
+                                               skuErrors,
+                                               setSkuErrors,
+                                               loadingSkus,
+                                               setLoadingSkus,
+                                               parentVariants
+                                           }) {
+    console.log("ProductParentTable combinations:", combinations);
+    const [sellerSkyValues, setSellerSkyValues] = React.useState(
+        sellerSky ? sellerSky : Array(combinations.length).fill("")
+    );
 
-  console.log("debouneValuedebouneValue", debouneValue);
+    const auth_key = localStorage.getItem(localStorageKey.auth_key);
 
-  const handleSellerSkuChange = (index, event) => {
-    const newSellerSkyValues = [...sellerSkyValues];
-    newSellerSkyValues[index] = event.target.value;
-    setSellerSkyValues(newSellerSkyValues);
-    setSellerSku(newSellerSkyValues);
-    setSkuIndex(index);
-  };
+    // Enhanced variant conflict validation
+    const validateChildProductVariants = (childProductData, parentVariants) => {
+        if (!childProductData?.variants_used || !parentVariants?.length) return null;
 
-  // useEffect(() => {
-  //   const handler = setTimeout(() => {
-  //     setDebounceValue(sellerSkyValues[skuIndex]);
-  //   }, 500);
+        const parentVariantNames = parentVariants.map(v => v.variant_name);
+        const childVariantNames = childProductData.variants_used.map(v => v.variant_name);
 
-  //   return () => {
-  //     clearTimeout(handler);
-  //   };
-  // }, [sellerSkyValues[skuIndex]]);
+        const conflictingVariants = parentVariantNames.filter(parentVariant =>
+            childVariantNames.includes(parentVariant)
+        );
 
-  const auth_key = localStorage.getItem(localStorageKey.auth_key);
-  useEffect(() => {
-    if (debouneValue) {
-      const getProductDetail = async () => {
+        if (conflictingVariants.length > 0) {
+            return `Child product already uses variants: ${conflictingVariants.join(', ')}. Please select different variants.`;
+        }
+
+        return null;
+    };
+
+    // Enhanced SKU validation with variant conflict detection
+    const validateSkuAndVariants = async (sku, index) => {
+        if (!sku) {
+            setSkuErrors(prev => ({ ...prev, [index]: "" }));
+            return;
+        }
+
         try {
-          setIsconponentLoader(true);
-          let url = apiEndpoints.getProductBySku + `/${debouneValue}`;
-          const res = await ApiService.get(url, auth_key);
-          console.log(res, "getProductDetail res ponse");
-          if (res.status === 200) {
-            let obj = res.data.data;
-            let sale_start_date = dayjs(obj.sale_start_date);
-            let sale_end_date = dayjs(obj.sale_end_date);
+            setLoadingSkus(prev => ({ ...prev, [index]: true }));
 
-            const newInputsFields = [...variantArrValues];
-            newInputsFields[skuIndex] = { ...obj,_id:obj?.product_id,sale_start_date, sale_end_date };
-            setVariantArrValue(newInputsFields);
-          }
+            let url = apiEndpoints.getProductBySku + `/${sku}`;
+            const res = await ApiService.get(url, auth_key);
+
+            if (res.status === 200) {
+                let obj = res.data.data;
+
+                // Check for variant conflicts
+                const variantError = validateChildProductVariants(obj, parentVariants);
+                if (variantError) {
+                    setSkuErrors(prev => ({ ...prev, [index]: variantError }));
+                    return;
+                }
+
+                setSkuErrors(prev => ({ ...prev, [index]: "" }));
+
+                // Update the variant values with the fetched data
+                let sale_start_date = obj.sale_start_date ? dayjs(obj.sale_start_date) : "";
+                let sale_end_date = obj.sale_end_date ? dayjs(obj.sale_end_date) : "";
+
+                const newInputsFields = [...variantArrValues];
+                newInputsFields[index] = {
+                    ...newInputsFields[index],
+                    ...obj,
+                    _id: obj?.product_id,
+                    sale_start_date,
+                    sale_end_date
+                };
+                setVariantArrValue(newInputsFields);
+            }
         } catch (error) {
-          setIsconponentLoader(false);
-          console.log(error);
-          if (error) {
-            const newInputsFields = [...variantArrValues];
-            newInputsFields[skuIndex] = {
-              _id: "",
-              product_id:"",
-              sale_price: "",
-              price: "",
-              sale_start_date: "",
-              sale_end_date: "",
-              qty: ""
-            };
-            setVariantArrValue(newInputsFields);
-          }
+            console.log(error);
+            if (error.response?.status === 404) {
+                setSkuErrors(prev => ({ ...prev, [index]: "SKU not found" }));
+            } else {
+                setSkuErrors(prev => ({ ...prev, [index]: "Error validating SKU" }));
+            }
         } finally {
-          setIsconponentLoader(false);
+            setLoadingSkus(prev => ({ ...prev, [index]: false }));
         }
-      };
-      getProductDetail();
-    }
-  }, [debouneValue]);
+    };
 
-  console.log({ sellerSkyValues });
+    // Enhanced SKU change handler
+    const handleSellerSkuChange = async (index, event) => {
+        const value = event.target.value;
 
-  const handleVariantForm = (e, index) => {
-    if (e.target.name === "qty") {
-      if (/^\d*$/.test(e.target.value)) {
-        const newInputsFields = [...variantArrValues];
-        newInputsFields[index][e.target.name] = e.target.value;
-        setVariantArrValue(newInputsFields);
-      }
-      return;
-    }
+        const newSellerSkyValues = [...sellerSkyValues];
+        newSellerSkyValues[index] = value;
+        setSellerSkyValues(newSellerSkyValues);
+        setSellerSku(newSellerSkyValues);
 
-    if (e.target.name === "price") {
-      if (/^\d*$/.test(e.target.value)) {
-        const newInputsFields = [...variantArrValues];
-        newInputsFields[index][e.target.name] = e.target.value;
-        setVariantArrValue(newInputsFields);
-      }
-      return;
-    }
+        // Clear previous error
+        setSkuErrors(prev => ({ ...prev, [index]: "" }));
 
-    if (e.target.name === "sale_price") {
-      if (/^\d*$/.test(e.target.value)) {
-        const newInputsFields = [...variantArrValues];
-        newInputsFields[index][e.target.name] = e.target.value;
-        setVariantArrValue(newInputsFields);
-      }
-      return;
-    }
-    const newInputsFields = [...variantArrValues];
-    newInputsFields[index][e.target.name] = e.target.value;
-    setVariantArrValue(newInputsFields);
-  };
+        // Validate SKU and variants
+        await validateSkuAndVariants(value, index);
+    };
 
-  useEffect(() => {
-    let arr = [...variantArrValues];
-
-    let length = combinations.length - arr.length;
-    if (length >= 1) {
-      setVariantArrValue((prv) => {
-        const result = Array(length)
-          .fill(null)
-          .map((_, index) => {
-            return {
-              _id: "",
-              product_id:"",
-              sale_price: "",
-              price: "",
-              sale_start_date: "",
-              sale_end_date: ""
-            };
-          });
-        return [...prv, ...result];
-      });
-    }
-
-    if (combinations.length === arr.length) {
-      setVariantArrValue((prv) => prv);
-    }
-
-    if (combinations.length < arr.length) {
-      length = arr.length - combinations.length;
-      setVariantArrValue((prv) => {
-        let newArr = [...prv];
-        for (let i = 1; i <= length; i++) {
-          newArr.pop();
+    const handleVariantForm = (e, index) => {
+        if (e.target.name === "qty") {
+            if (/^\d*$/.test(e.target.value)) {
+                const newInputsFields = [...variantArrValues];
+                newInputsFields[index][e.target.name] = e.target.value;
+                setVariantArrValue(newInputsFields);
+            }
+            return;
         }
-        return newArr;
-      });
-    }
-  }, [combinations.length]);
 
-  const dateHandler = (e, name, index) => {
-    if (name === "sale_end_date") {
-      const newInputsFields = [...variantArrValues];
-      if (
-        newInputsFields[index]?.sale_start_date &&
-        e &&
-        dayjs(e).isBefore(newInputsFields[index]?.sale_start_date)
-      ) {
-        toast.error("End Sale Date should be after Start Sale Date");
-        newInputsFields[index][name] = null;
-        return;
-      }
-    }
-    const newInputsFields = [...variantArrValues];
-    newInputsFields[index][name] = e;
-    setVariantArrValue(newInputsFields);
-  };
+        if (e.target.name === "price") {
+            if (/^\d*$/.test(e.target.value)) {
+                const newInputsFields = [...variantArrValues];
+                newInputsFields[index][e.target.name] = e.target.value;
+                setVariantArrValue(newInputsFields);
+            }
+            return;
+        }
 
-  return (
-    <TableContainer component={Paper}>
-      <Table sx={{ minWidth: 650 }} aria-label="simple table">
-        <TableHead>
-          <TableRow>
-            {formdataaaaa?.map((item) => {
-              return (
-                <>
-                  <TableCell
-                    key={item}
-                    align="center"
-                    sx={{
-                      width: "230px"
-                    }}
-                  >
-                    {item}
-                  </TableCell>
-                </>
-              );
-            })}
-            {/* <TableCell
-              align="center"
-              sx={{
-                width: "230px"
-              }}
-            >
-              Gemstone Type
-            </TableCell> */}
-            {/* <TableCell
-              align="center"
-              sx={{
-                width: "230px"
-              }}
-            >
-              Ring Size
-            </TableCell> */}
-            <TableCell
-              align="center"
-              sx={{
-                width: "230px"
-              }}
-            >
-              Seller SKU
-            </TableCell>
-            <TableCell
-              align="center"
-              sx={{
-                width: "230px"
-              }}
-            >
-              Quantity
-            </TableCell>
-            {/* <TableCell
-              align="center"
-              sx={{
-                width: "230px"
-              }}
-            >
-              Images
-            </TableCell> */}
-            {/* <TableCell
-              align="center"
-              sx={{
-                width: "230px"
-              }}
-            >
-              Condition
-            </TableCell> */}
-            {/* <TableCell
-              align="center"
-              sx={{
-                width: "230px"
-              }}
-            >
-              Your Price
-            </TableCell> */}
+        if (e.target.name === "sale_price") {
+            if (/^\d*$/.test(e.target.value)) {
+                const newInputsFields = [...variantArrValues];
+                newInputsFields[index][e.target.name] = e.target.value;
+                setVariantArrValue(newInputsFields);
+            }
+            return;
+        }
+        const newInputsFields = [...variantArrValues];
+        newInputsFields[index][e.target.name] = e.target.value;
+        setVariantArrValue(newInputsFields);
+    };
 
-            <TableCell
-              align="center"
-              sx={{
-                width: "230px"
-              }}
-            >
-              Sale Price
-            </TableCell>
-            {/* <TableCell
-              align="center"
-              sx={{
-                width: "230px"
-              }}
-            >
-              Sale Start Date
-            </TableCell> */}
-            {/* <TableCell
-              align="center"
-              sx={{
-                width: "230px"
-              }}
-            >
-              Sale End Date
-            </TableCell> */}
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {combinations.map((item, index) => {
-            console.log("wrereretsyditemitem", item);
-            return (
-              <>
-                <TableRow sx={{ "&:last-child td, &:last-child th": { border: 0 } }} key={index}>
-                  {/* <TableCell align="center" component="th" scope="row">
-                    {item?.key1}
-                  </TableCell> */}
-                  {formdataaaaa?.map((iddd, iindexx) => {
-                    const dynamicKey = `key${iindexx + 1}`;
+    // FIXED: Better array synchronization
+    useEffect(() => {
+        let arr = [...variantArrValues];
+        let length = combinations.length - arr.length;
 
-                    // console.log("dynamicKeydynamicKey", item[dynamicKey]?.value);
+        if (length > 0) {
+            // Add missing items
+            const newItems = Array(length).fill(null).map((_, index) => ({
+                _id: "",
+                product_id: "",
+                sale_price: "",
+                price: "",
+                sale_start_date: "",
+                sale_end_date: "",
+                qty: ""
+            }));
+            setVariantArrValue(prev => [...prev, ...newItems]);
 
-                    // console.log("dynamicKeydynamicKeydynamicKey", dynamicKey);
+            // Also update sellerSky array
+            const newSellerSky = [...sellerSky];
+            newSellerSky.push(...Array(length).fill(""));
+            setSellerSku(newSellerSky);
+            setSellerSkyValues(newSellerSky);
+        } else if (length < 0) {
+            // Remove extra items
+            setVariantArrValue(prev => prev.slice(0, combinations.length));
 
-                    return (
-                      <>
-                        <TableCell align="center" component="th" scope="row">
-                          {/* {`${"key"}${iindexx + 1}`} */}
-                          {item[dynamicKey]?.value}
-                          {/* {item[dynamicKey].value} */}
-                          {/* {"key"${iindexx + 1}} */}
-                        </TableCell>
-                      </>
-                    );
-                  })}
-                  {/* <TableCell
-                    align="center"
-                    sx={{
-                      width: "230px"
-                    }}
-                  >
-                    jsjss
-                  </TableCell> */}
-                  {/* <TableCell
-                    align="center"
-                    sx={{
-                      width: "230px"
-                    }}
-                  >
-                    jsjss
-                  </TableCell> */}
-                  <TableCell
-                    align="center"
-                    sx={{
-                      width: "230px"
-                    }}
-                  >
-                    {/* <input
-                      type="text"
-                      value={sellerSkyValues[index]}
-                      onChange={(e) => handleSellerSkuChange(index, e)}
-                      onFocus={() => setSkuIndex(index)}
-                      onBlur={(e) => setDebounceValue(sellerSkyValues[index])}
-                      style={{
-                        height: "30px",
-                        width: "100px",
-                        border: "2px solid green"
-                      }}
-                    /> */}
+            // Also update sellerSky array
+            const newSellerSky = [...sellerSky];
+            newSellerSky.splice(combinations.length);
+            setSellerSku(newSellerSky);
+            setSellerSkyValues(newSellerSky);
+        }
+    }, [combinations.length]);
 
-                    <FormControl fullWidth sx={{ m: 1 }} size="small">
-                      <TextField
-                        size="small"
-                        value={sellerSkyValues[index]}
-                        onChange={(e) => handleSellerSkuChange(index, e)}
-                        onFocus={() => setSkuIndex(index)}
-                        onBlur={(e) => setDebounceValue(sellerSkyValues[index])}
-                        id="outlined-adornment-quantity"
-                        placeholder="Seller SKU"
-                      />
-                    </FormControl>
-                  </TableCell>
+    const dateHandler = (e, name, index) => {
+        if (name === "sale_end_date") {
+            const newInputsFields = [...variantArrValues];
+            if (
+                newInputsFields[index]?.sale_start_date &&
+                e &&
+                dayjs(e).isBefore(newInputsFields[index]?.sale_start_date)
+            ) {
+                toast.error("End Sale Date should be after Start Sale Date");
+                newInputsFields[index][name] = null;
+                return;
+            }
+        }
+        const newInputsFields = [...variantArrValues];
+        newInputsFields[index][name] = e;
+        setVariantArrValue(newInputsFields);
+    };
 
-                  <TableCell
-                    align="center"
-                    sx={{
-                      width: "230px"
-                    }}
-                  >
-                    <FormControl fullWidth sx={{ m: 1 }} size="small">
-                      <TextField
-                        size="small"
-                        name="qty"
-                        value={variantArrValues[index]?.qty}
-                        onChange={(e) => {
-                          handleVariantForm(e, index);
-                        }}
-                        id="outlined-adornment-quantity"
-                        placeholder="Quantity"
-                      />
-                    </FormControl>
-                  </TableCell>
+    return (
+        <Box sx={{ marginTop: '20px' }}>
+            <Typography variant="h6" gutterBottom>
+                Variant Combinations
+            </Typography>
+            <TableContainer component={Paper}>
+                <Table sx={{ minWidth: 650 }} aria-label="simple table">
+                    <TableHead>
+                        <TableRow>
+                            {formdataaaaa?.map((item) => {
+                                return (
+                                    <TableCell
+                                        key={item}
+                                        align="center"
+                                        sx={{
+                                            width: "230px"
+                                        }}
+                                    >
+                                        {item}
+                                    </TableCell>
+                                );
+                            })}
+                            <TableCell
+                                align="center"
+                                sx={{
+                                    width: "230px"
+                                }}
+                            >
+                                Seller SKU *
+                            </TableCell>
+                            <TableCell
+                                align="center"
+                                sx={{
+                                    width: "230px"
+                                }}
+                            >
+                                Quantity *
+                            </TableCell>
+                            <TableCell
+                                align="center"
+                                sx={{
+                                    width: "230px"
+                                }}
+                            >
+                                Sale Price *
+                            </TableCell>
+                            <TableCell
+                                align="center"
+                                sx={{
+                                    width: "230px"
+                                }}
+                            >
+                                Price
+                            </TableCell>
+                            <TableCell
+                                align="center"
+                                sx={{
+                                    width: "230px"
+                                }}
+                            >
+                                Sale Start Date
+                            </TableCell>
+                            <TableCell
+                                align="center"
+                                sx={{
+                                    width: "230px"
+                                }}
+                            >
+                                Sale End Date
+                            </TableCell>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
+                        {combinations.map((item, index) => {
+                            return (
+                                <TableRow sx={{ "&:last-child td, &:last-child th": { border: 0 } }} key={index}>
+                                    {formdataaaaa?.map((iddd, iindexx) => {
+                                        const dynamicKey = `key${iindexx + 1}`;
+                                        return (
+                                            <TableCell key={iindexx} align="center" component="th" scope="row">
+                                                {item[dynamicKey]?.value}
+                                            </TableCell>
+                                        );
+                                    })}
 
-                  {/* <TableCell
-                    align="center"
-                    sx={{
-                      width: "230px"
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: "5px"
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          height: "40px",
-                          width: "40px",
-                          border: "2px dotted darkblue",
-                          display: "flex",
-                          flexDirection: "column",
-                          justifyContent: "center",
-                          alignItems: "center"
-                        }}
-                      >
-                        <AddAPhotoIcon />
-                      </Box>
-                      <Box>Add Image</Box>
-                    </Box>
-                  </TableCell> */}
-                  {/* <TableCell
-                    align="center"
-                    sx={{
-                      width: "230px"
-                    }}
-                  >
-                    <Box sx={{ minWidth: 120 }}>
-                      <FormControl fullWidth size="small">
-                        <InputLabel id="demo-simple-select-label">Age</InputLabel>
-                        <Select
-                          labelId="demo-simple-select-label"
-                          id="demo-simple-select"
-                          value={age}
-                          label="Age"
-                          onChange={handleChange}
-                        >
-                          <MenuItem value={10}>Ten</MenuItem>
-                          <MenuItem value={20}>Twenty</MenuItem>
-                          <MenuItem value={30}>Thirty</MenuItem>
-                        </Select>
-                      </FormControl>
-                    </Box>
-                  </TableCell> */}
-                  {/* <TableCell
-                    align="center"
-                    sx={{
-                      width: "230px"
-                    }}
-                  >
-                    <FormControl fullWidth sx={{ m: 1 }} size="small">
-                      <TextField
-                        size="small"
-                        name="price"
-                        value={variantArrValues[index]?.price}
-                        onChange={(e) => {
-                          handleVariantForm(e, index);
-                        }}
-                        id="outlined-adornment-amount"
-                        placeholder="Amount"
-                      />
-                    </FormControl>
-                  </TableCell> */}
-                  <TableCell
-                    align="center"
-                    sx={{
-                      width: "230px"
-                    }}
-                  >
-                    <FormControl fullWidth sx={{ m: 1 }} size="small">
-                      <TextField
-                        size="small"
-                        type="text"
-                        name="sale_price"
-                        onChange={(e) => {
-                          handleVariantForm(e, index);
-                        }}
-                        value={variantArrValues[index]?.sale_price}
-                        id="outlined-adornment-quantity"
-                        placeholder="Sale Price"
-                      />
-                    </FormControl>
-                  </TableCell>
-                  {/* <TableCell
-                    align="center"
-                    sx={{
-                      width: "230px"
-                    }}
-                  >
-                    <LocalizationProvider dateAdapter={AdapterDayjs}>
-                      <DemoContainer
-                        components={["DateField"]}
-                        sx={{
-                          paddingTop: "0",
-                          justifyContent: "center"
-                        }}
-                      >
-                        <DatePicker
-                          label="Select Date"
-                          value={
-                            variantArrValues[index]?.sale_start_date
-                              ? variantArrValues[index]?.sale_start_date
-                              : null
-                          }
-                          onChange={(e) => dateHandler(e, "sale_start_date", index)}
-                        />
-                      </DemoContainer>
-                    </LocalizationProvider>
-                  </TableCell> */}
+                                    {/* Seller SKU with enhanced validation */}
+                                    <TableCell
+                                        align="center"
+                                        sx={{
+                                            width: "230px"
+                                        }}
+                                    >
+                                        <FormControl fullWidth sx={{ m: 1 }} size="small">
+                                            <TextField
+                                                size="small"
+                                                value={sellerSkyValues[index] || ""}
+                                                onChange={(e) => handleSellerSkuChange(index, e)}
+                                                error={!!skuErrors[index]}
+                                                helperText={skuErrors[index]}
+                                                id="outlined-adornment-quantity"
+                                                placeholder="Seller SKU"
+                                                InputProps={{
+                                                    endAdornment: loadingSkus[index] ? (
+                                                        <InputAdornment position="end">
+                                                            <CircularProgress size={20} />
+                                                        </InputAdornment>
+                                                    ) : null
+                                                }}
+                                            />
+                                        </FormControl>
+                                    </TableCell>
 
-                  {/* <TableCell
-                    align="center"
-                    sx={{
-                      width: "230px"
-                    }}
-                  >
-                    <LocalizationProvider dateAdapter={AdapterDayjs}>
-                      <DemoContainer
-                        components={["DateField"]}
-                        sx={{
-                          paddingTop: "0",
-                          justifyContent: "center"
-                        }}
-                      >
-                        <DatePicker
-                          label="Select Date"
-                          value={
-                            variantArrValues[index]?.sale_end_date
-                              ? variantArrValues[index]?.sale_end_date
-                              : null
-                          }
-                          onChange={(e) => dateHandler(e, "sale_end_date", index)}
-                        />
-                      </DemoContainer>
-                    </LocalizationProvider>
-                  </TableCell> */}
-                </TableRow>
-              </>
-            );
-          })}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  );
+                                    {/* Quantity */}
+                                    <TableCell
+                                        align="center"
+                                        sx={{
+                                            width: "230px"
+                                        }}
+                                    >
+                                        <FormControl fullWidth sx={{ m: 1 }} size="small">
+                                            <TextField
+                                                size="small"
+                                                name="qty"
+                                                value={variantArrValues[index]?.qty || ""}
+                                                onChange={(e) => {
+                                                    handleVariantForm(e, index);
+                                                }}
+                                                id="outlined-adornment-quantity"
+                                                placeholder="Quantity"
+                                                required
+                                                error={!variantArrValues[index]?.qty}
+                                            />
+                                        </FormControl>
+                                    </TableCell>
+
+                                    {/* Sale Price */}
+                                    <TableCell
+                                        align="center"
+                                        sx={{
+                                            width: "230px"
+                                        }}
+                                    >
+                                        <FormControl fullWidth sx={{ m: 1 }} size="small">
+                                            <TextField
+                                                size="small"
+                                                type="text"
+                                                name="sale_price"
+                                                onChange={(e) => {
+                                                    handleVariantForm(e, index);
+                                                }}
+                                                value={variantArrValues[index]?.sale_price || ""}
+                                                id="outlined-adornment-quantity"
+                                                placeholder="Sale Price"
+                                                required
+                                                error={!variantArrValues[index]?.sale_price}
+                                            />
+                                        </FormControl>
+                                    </TableCell>
+
+                                    {/* Regular Price */}
+                                    <TableCell
+                                        align="center"
+                                        sx={{
+                                            width: "230px"
+                                        }}
+                                    >
+                                        <FormControl fullWidth sx={{ m: 1 }} size="small">
+                                            <TextField
+                                                size="small"
+                                                name="price"
+                                                value={variantArrValues[index]?.price || ""}
+                                                onChange={(e) => {
+                                                    handleVariantForm(e, index);
+                                                }}
+                                                id="outlined-adornment-amount"
+                                                placeholder="Price"
+                                            />
+                                        </FormControl>
+                                    </TableCell>
+
+                                    {/* Sale Start Date */}
+                                    <TableCell
+                                        align="center"
+                                        sx={{
+                                            width: "230px"
+                                        }}
+                                    >
+                                        <LocalizationProvider dateAdapter={AdapterDayjs}>
+                                            <DemoContainer
+                                                components={["DateField"]}
+                                                sx={{
+                                                    paddingTop: "0",
+                                                    justifyContent: "center"
+                                                }}
+                                            >
+                                                <DatePicker
+                                                    label="Start Date"
+                                                    value={
+                                                        variantArrValues[index]?.sale_start_date
+                                                            ? variantArrValues[index]?.sale_start_date
+                                                            : null
+                                                    }
+                                                    onChange={(e) => dateHandler(e, "sale_start_date", index)}
+                                                    slotProps={{ textField: { size: 'small' } }}
+                                                />
+                                            </DemoContainer>
+                                        </LocalizationProvider>
+                                    </TableCell>
+
+                                    {/* Sale End Date */}
+                                    <TableCell
+                                        align="center"
+                                        sx={{
+                                            width: "230px"
+                                        }}
+                                    >
+                                        <LocalizationProvider dateAdapter={AdapterDayjs}>
+                                            <DemoContainer
+                                                components={["DateField"]}
+                                                sx={{
+                                                    paddingTop: "0",
+                                                    justifyContent: "center"
+                                                }}
+                                            >
+                                                <DatePicker
+                                                    label="End Date"
+                                                    value={
+                                                        variantArrValues[index]?.sale_end_date
+                                                            ? variantArrValues[index]?.sale_end_date
+                                                            : null
+                                                    }
+                                                    onChange={(e) => dateHandler(e, "sale_end_date", index)}
+                                                    slotProps={{ textField: { size: 'small' } }}
+                                                />
+                                            </DemoContainer>
+                                        </LocalizationProvider>
+                                    </TableCell>
+                                </TableRow>
+                            );
+                        })}
+                    </TableBody>
+                </Table>
+            </TableContainer>
+
+            {/* Global validation message */}
+            {Object.values(skuErrors).some(error => error) && (
+                <Typography
+                    color="error"
+                    variant="body2"
+                    sx={{ mt: 1, p: 1, backgroundColor: '#ffebee', borderRadius: 1 }}
+                >
+                    Please resolve SKU validation errors before submitting
+                </Typography>
+            )}
+        </Box>
+    );
 }
