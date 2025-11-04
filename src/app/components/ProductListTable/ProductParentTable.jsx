@@ -15,7 +15,7 @@ import { DemoContainer } from "@mui/x-date-pickers/internals/demo";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { DateField } from "@mui/x-date-pickers/DateField";
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useEffect } from "react";
 import { ApiService } from "app/services/ApiService";
 import { apiEndpoints } from "app/constant/apiEndpoints";
@@ -46,6 +46,16 @@ export default function ProductParentTable({
 
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
 
+    // Debounce timers reference
+    const debounceTimers = useRef({});
+
+    // Initialize sellerSkyValues when sellerSky changes
+    useEffect(() => {
+        if (sellerSky && sellerSky.length > 0) {
+            setSellerSkyValues([...sellerSky]);
+        }
+    }, [sellerSky]);
+
     // Enhanced variant conflict validation
     const validateChildProductVariants = (childProductData, parentVariants) => {
         if (!childProductData?.variants_used || !parentVariants?.length) return null;
@@ -64,10 +74,24 @@ export default function ProductParentTable({
         return null;
     };
 
-    // Enhanced SKU validation with variant conflict detection
+    // FIXED: Enhanced SKU validation - only updates the specific index without clearing other fields
     const validateSkuAndVariants = async (sku, index) => {
         if (!sku) {
             setSkuErrors(prev => ({ ...prev, [index]: "" }));
+
+            // Clear only the specific row data when SKU is empty
+            const newInputsFields = [...variantArrValues];
+            newInputsFields[index] = {
+                ...newInputsFields[index], // Preserve existing data
+                _id: "",
+                product_id: "",
+                price: "",
+                sale_price: "",
+                qty: "",
+                sale_start_date: "",
+                sale_end_date: ""
+            };
+            setVariantArrValue(newInputsFields);
             return;
         }
 
@@ -89,17 +113,21 @@ export default function ProductParentTable({
 
                 setSkuErrors(prev => ({ ...prev, [index]: "" }));
 
-                // Update the variant values with the fetched data
+                // FIXED: Only update the specific fields from API response, preserve existing manual entries
                 let sale_start_date = obj.sale_start_date ? dayjs(obj.sale_start_date) : "";
                 let sale_end_date = obj.sale_end_date ? dayjs(obj.sale_end_date) : "";
 
                 const newInputsFields = [...variantArrValues];
                 newInputsFields[index] = {
-                    ...newInputsFields[index],
-                    ...obj,
-                    _id: obj?.product_id,
-                    sale_start_date,
-                    sale_end_date
+                    ...newInputsFields[index], // Preserve existing manually entered data
+                    _id: obj?.product_id || newInputsFields[index]?._id || "",
+                    product_id: obj?.product_id || newInputsFields[index]?.product_id || "",
+                    // Only update price/sale_price/qty if they are empty or from API
+                    price: obj.price !== undefined && obj.price !== null ? obj.price : (newInputsFields[index]?.price || ""),
+                    sale_price: obj.sale_price !== undefined && obj.sale_price !== null ? obj.sale_price : (newInputsFields[index]?.sale_price || ""),
+                    qty: obj.qty !== undefined && obj.qty !== null ? obj.qty : (newInputsFields[index]?.qty || ""),
+                    sale_start_date: sale_start_date || newInputsFields[index]?.sale_start_date || "",
+                    sale_end_date: sale_end_date || newInputsFields[index]?.sale_end_date || ""
                 };
                 setVariantArrValue(newInputsFields);
             }
@@ -107,6 +135,21 @@ export default function ProductParentTable({
             console.log(error);
             if (error.response?.status === 404) {
                 setSkuErrors(prev => ({ ...prev, [index]: "SKU not found" }));
+
+                // Clear only the specific row data when SKU is not found
+                const newInputsFields = [...variantArrValues];
+                newInputsFields[index] = {
+                    ...newInputsFields[index], // Preserve existing data
+                    _id: "",
+                    product_id: "",
+                    // Don't clear price/sale_price/qty as they might be manually entered
+                    price: newInputsFields[index]?.price || "",
+                    sale_price: newInputsFields[index]?.sale_price || "",
+                    qty: newInputsFields[index]?.qty || "",
+                    sale_start_date: newInputsFields[index]?.sale_start_date || "",
+                    sale_end_date: newInputsFields[index]?.sale_end_date || ""
+                };
+                setVariantArrValue(newInputsFields);
             } else {
                 setSkuErrors(prev => ({ ...prev, [index]: "Error validating SKU" }));
             }
@@ -115,7 +158,20 @@ export default function ProductParentTable({
         }
     };
 
-    // Enhanced SKU change handler
+    // Debounced SKU validation function
+    const debouncedValidateSku = useCallback((sku, index) => {
+        // Clear existing timer for this index
+        if (debounceTimers.current[index]) {
+            clearTimeout(debounceTimers.current[index]);
+        }
+
+        // Set new timer
+        debounceTimers.current[index] = setTimeout(() => {
+            validateSkuAndVariants(sku, index);
+        }, 500); // 500ms debounce
+    }, [variantArrValues]); // Add dependency to ensure latest state is used
+
+    // Enhanced SKU change handler with debounce
     const handleSellerSkuChange = async (index, event) => {
         const value = event.target.value;
 
@@ -124,79 +180,76 @@ export default function ProductParentTable({
         setSellerSkyValues(newSellerSkyValues);
         setSellerSku(newSellerSkyValues);
 
-        // Clear previous error
+        // Clear previous error immediately
         setSkuErrors(prev => ({ ...prev, [index]: "" }));
 
-        // Validate SKU and variants
-        await validateSkuAndVariants(value, index);
+        // Debounce the SKU validation
+        debouncedValidateSku(value, index);
     };
 
     const handleVariantForm = (e, index) => {
-        if (e.target.name === "qty") {
-            if (/^\d*$/.test(e.target.value)) {
+        const fieldName = e.target.name;
+        const value = e.target.value;
+
+        // Validation for numeric fields
+        if (fieldName === "qty" || fieldName === "price" || fieldName === "sale_price") {
+            if (/^\d*\.?\d*$/.test(value) || value === "") {
                 const newInputsFields = [...variantArrValues];
-                newInputsFields[index][e.target.name] = e.target.value;
+                newInputsFields[index] = {
+                    ...newInputsFields[index],
+                    [fieldName]: value
+                };
                 setVariantArrValue(newInputsFields);
             }
             return;
         }
 
-        if (e.target.name === "price") {
-            if (/^\d*$/.test(e.target.value)) {
-                const newInputsFields = [...variantArrValues];
-                newInputsFields[index][e.target.name] = e.target.value;
-                setVariantArrValue(newInputsFields);
-            }
-            return;
-        }
-
-        if (e.target.name === "sale_price") {
-            if (/^\d*$/.test(e.target.value)) {
-                const newInputsFields = [...variantArrValues];
-                newInputsFields[index][e.target.name] = e.target.value;
-                setVariantArrValue(newInputsFields);
-            }
-            return;
-        }
+        // For other fields
         const newInputsFields = [...variantArrValues];
-        newInputsFields[index][e.target.name] = e.target.value;
+        newInputsFields[index] = {
+            ...newInputsFields[index],
+            [fieldName]: value
+        };
         setVariantArrValue(newInputsFields);
     };
 
-    // FIXED: Better array synchronization
+    // Initialize variantArrValues when combinations change
     useEffect(() => {
-        let arr = [...variantArrValues];
-        let length = combinations.length - arr.length;
+        if (combinations.length > 0 && variantArrValues.length !== combinations.length) {
+            const newVariantArrValues = [...variantArrValues];
 
-        if (length > 0) {
-            // Add missing items
-            const newItems = Array(length).fill(null).map((_, index) => ({
-                _id: "",
-                product_id: "",
-                sale_price: "",
-                price: "",
-                sale_start_date: "",
-                sale_end_date: "",
-                qty: ""
-            }));
-            setVariantArrValue(prev => [...prev, ...newItems]);
+            // Add new empty objects for new combinations
+            if (combinations.length > variantArrValues.length) {
+                const itemsToAdd = combinations.length - variantArrValues.length;
+                for (let i = 0; i < itemsToAdd; i++) {
+                    newVariantArrValues.push({
+                        _id: "",
+                        product_id: "",
+                        sale_price: "",
+                        price: "",
+                        sale_start_date: "",
+                        sale_end_date: "",
+                        qty: ""
+                    });
+                }
+            }
+            // Remove extra items if combinations decreased
+            else if (combinations.length < variantArrValues.length) {
+                newVariantArrValues.splice(combinations.length);
+            }
 
-            // Also update sellerSky array
-            const newSellerSky = [...sellerSky];
-            newSellerSky.push(...Array(length).fill(""));
-            setSellerSku(newSellerSky);
-            setSellerSkyValues(newSellerSky);
-        } else if (length < 0) {
-            // Remove extra items
-            setVariantArrValue(prev => prev.slice(0, combinations.length));
-
-            // Also update sellerSky array
-            const newSellerSky = [...sellerSky];
-            newSellerSky.splice(combinations.length);
-            setSellerSku(newSellerSky);
-            setSellerSkyValues(newSellerSky);
+            setVariantArrValue(newVariantArrValues);
         }
     }, [combinations.length]);
+
+    // Cleanup timers on unmount
+    useEffect(() => {
+        return () => {
+            Object.values(debounceTimers.current).forEach(timer => {
+                clearTimeout(timer);
+            });
+        };
+    }, []);
 
     const dateHandler = (e, name, index) => {
         if (name === "sale_end_date") {
@@ -212,7 +265,10 @@ export default function ProductParentTable({
             }
         }
         const newInputsFields = [...variantArrValues];
-        newInputsFields[index][name] = e;
+        newInputsFields[index] = {
+            ...newInputsFields[index],
+            [name]: e
+        };
         setVariantArrValue(newInputsFields);
     };
 
@@ -290,6 +346,8 @@ export default function ProductParentTable({
                     </TableHead>
                     <TableBody>
                         {combinations.map((item, index) => {
+                            const currentVariantData = variantArrValues[index] || {};
+
                             return (
                                 <TableRow sx={{ "&:last-child td, &:last-child th": { border: 0 } }} key={index}>
                                     {formdataaaaa?.map((iddd, iindexx) => {
@@ -301,7 +359,7 @@ export default function ProductParentTable({
                                         );
                                     })}
 
-                                    {/* Seller SKU with enhanced validation */}
+                                    {/* Seller SKU with enhanced validation and debounce */}
                                     <TableCell
                                         align="center"
                                         sx={{
@@ -339,14 +397,14 @@ export default function ProductParentTable({
                                             <TextField
                                                 size="small"
                                                 name="qty"
-                                                value={variantArrValues[index]?.qty || ""}
+                                                value={currentVariantData.qty || ""}
                                                 onChange={(e) => {
                                                     handleVariantForm(e, index);
                                                 }}
                                                 id="outlined-adornment-quantity"
                                                 placeholder="Quantity"
                                                 required
-                                                error={!variantArrValues[index]?.qty}
+                                                error={!currentVariantData.qty}
                                             />
                                         </FormControl>
                                     </TableCell>
@@ -366,11 +424,11 @@ export default function ProductParentTable({
                                                 onChange={(e) => {
                                                     handleVariantForm(e, index);
                                                 }}
-                                                value={variantArrValues[index]?.sale_price || ""}
+                                                value={currentVariantData.sale_price || ""}
                                                 id="outlined-adornment-quantity"
                                                 placeholder="Sale Price"
                                                 required
-                                                error={!variantArrValues[index]?.sale_price}
+                                                error={!currentVariantData.sale_price}
                                             />
                                         </FormControl>
                                     </TableCell>
@@ -386,7 +444,7 @@ export default function ProductParentTable({
                                             <TextField
                                                 size="small"
                                                 name="price"
-                                                value={variantArrValues[index]?.price || ""}
+                                                value={currentVariantData.price || ""}
                                                 onChange={(e) => {
                                                     handleVariantForm(e, index);
                                                 }}
@@ -414,8 +472,8 @@ export default function ProductParentTable({
                                                 <DatePicker
                                                     label="Start Date"
                                                     value={
-                                                        variantArrValues[index]?.sale_start_date
-                                                            ? variantArrValues[index]?.sale_start_date
+                                                        currentVariantData.sale_start_date
+                                                            ? currentVariantData.sale_start_date
                                                             : null
                                                     }
                                                     onChange={(e) => dateHandler(e, "sale_start_date", index)}
@@ -443,8 +501,8 @@ export default function ProductParentTable({
                                                 <DatePicker
                                                     label="End Date"
                                                     value={
-                                                        variantArrValues[index]?.sale_end_date
-                                                            ? variantArrValues[index]?.sale_end_date
+                                                        currentVariantData.sale_end_date
+                                                            ? currentVariantData.sale_end_date
                                                             : null
                                                     }
                                                     onChange={(e) => dateHandler(e, "sale_end_date", index)}

@@ -13,8 +13,8 @@ export const useProductAPI = () => {
     const navigate = useNavigate();
 
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
-    const designation_id = localStorage.getItem(localStorageKey.designation_id);
-    const vendorId = localStorage.getItem(localStorageKey.vendorId);
+    // const designation_id = localStorage.getItem(localStorageKey.designation_id);
+    // const vendorId = localStorage.getItem(localStorageKey.vendorId);
 
 // ---------------- helper to build FormData ----------------
     const buildProductFormData = (payload, combinations, customizationData) => {
@@ -445,7 +445,7 @@ export const useProductAPI = () => {
             formValues,
             variationsData,
             combinations,
-            customizationData,
+            // customizationData,
             keys,
         } = state;
 
@@ -557,6 +557,8 @@ export const useProductAPI = () => {
         try {
             setLoading(true);
 
+            console.log("In Submit Product", queryId);
+
             // Validate combinations
             // const combinationErrors = validateCombinations();
             // if (Object.keys(combinationErrors).length > 0) {
@@ -575,11 +577,10 @@ export const useProductAPI = () => {
             const res = await ApiService.postImage(endpoint, fData, auth_key);
 
             if (res?.status === 200) {
-                // Handle image upload for new products
                 if (!isEdit) {
-                    await handleUploadImage(queryId || "new");
+                    await handleUploadImage(queryId || res?.data.product._id || "new");
                 } else {
-                    await handleUploadImage2(queryId || "new");
+                    await handleUploadImage2(queryId || res?.data.product._id || "new");
                 }
 
                 return res;
@@ -658,17 +659,17 @@ export const useProductAPI = () => {
             sortOrder: img.sortOrder,
         }));
 
-        const deleteArr = deleteIconData
-            ?.map((item) => {
-                if (typeof item === "string") {
-                    const arrsplit = item.split("product/");
-                    return arrsplit[1];
-                }
-                return null;
-            })
-            .filter(Boolean);
+        // const deleteArr = deleteIconData
+        //     ?.map((item) => {
+        //         if (typeof item === "string") {
+        //             const arrsplit = item.split("product/");
+        //             return arrsplit[1];
+        //         }
+        //         return null;
+        //     })
+        //     .filter(Boolean);
 
-        const uniqueSetarr = [...new Set(deleteArr)];
+        // const uniqueSetarr = [...new Set(deleteArr)];
 
         try {
             const fData = new FormData();
@@ -753,7 +754,7 @@ export const useProductAPI = () => {
                 });
             }
 
-            if (filterVideoData.length === 0 && deletedVideos && deletedVideos.length == 0) {
+            if (filterVideoData.length === 0 && deletedVideos && deletedVideos.length === 0) {
                 navigate(ROUTE_CONSTANT.catalog.product.list);
                 return true;
             } else {

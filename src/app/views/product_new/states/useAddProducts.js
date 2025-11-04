@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import dayjs from 'dayjs';
-import brandList from "../../Brand/BrandList";
 
 export const useProductFormStore = create(
     persist(

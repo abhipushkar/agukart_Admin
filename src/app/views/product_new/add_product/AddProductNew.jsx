@@ -147,6 +147,8 @@ export default function AddProductNew() {
             return;
         }
 
+        console.log("In Handle Submit", queryId);
+
         try {
             await submitProduct(!!queryId, queryId);
             handleOpen("success", "Product submitted successfully!");
