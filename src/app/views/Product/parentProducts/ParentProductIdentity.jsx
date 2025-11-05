@@ -74,6 +74,7 @@ const ParentProductIdentity = ({ productId }) => {
     const [sellerSky, setSellerSku] = React.useState([]);
 
     const [combinationMap, setCombinationMap] = useState(new Map());
+    const [usedSkus, setUsedSkus] = useState(new Set()); // Track used SKUs
 
     const [inputErrors, setInputErrors] = React.useState({
         productTitle: "",
@@ -339,6 +340,20 @@ const ParentProductIdentity = ({ productId }) => {
         return null;
     };
 
+    // NEW: Check for duplicate SKUs
+    const checkForDuplicateSkus = (sku, index) => {
+        if (!sku) return null;
+
+        const trimmedSku = trimValue(sku);
+        const otherSkus = sellerSky.filter((_, i) => i !== index).map(sku => trimValue(sku));
+
+        if (otherSkus.includes(trimmedSku)) {
+            return "This SKU is already used in another variant combination";
+        }
+
+        return null;
+    };
+
     const validateForm = () => {
         const errors = {};
 
@@ -349,6 +364,7 @@ const ParentProductIdentity = ({ productId }) => {
         if (Object.keys(formData.Innervariations).length === 0) errors.innervariation = "Please Select At least one Innervariations Variant";
         if (images.length === 0) errors.parentImage = "Images Is Required";
 
+        // Check for SKU errors
         const hasSkuErrors = Object.values(skuErrors).some(error => error);
         if (hasSkuErrors) {
             toast.error("Please fix SKU validation errors before submitting");
@@ -414,10 +430,18 @@ const ParentProductIdentity = ({ productId }) => {
 
         function validateProductArray(combine) {
             return combine.every((product, index) => {
-                const isValid = product.sale_price && product.qty && product.comb && product.sku_code;
+                // For existing products (with product_id), only SKU is required
+                // For new products, all fields are required
+                const isExistingProduct = product.product_id && product.product_id !== "";
+                const isValid = isExistingProduct
+                    ? product.sku_code
+                    : product.sale_price && product.qty && product.comb && product.sku_code;
 
                 if (!isValid) {
-                    toast.error(`All fields are mandatory for variant combination ${index + 1}`);
+                    const message = isExistingProduct
+                        ? `SKU is mandatory for variant combination ${index + 1}`
+                        : `All fields are mandatory for variant combination ${index + 1}`;
+                    toast.error(message);
                 }
                 return isValid;
             });
@@ -569,7 +593,9 @@ const ParentProductIdentity = ({ productId }) => {
                                 sale_start_date,
                                 price: obj.price || "",
                                 sale_price: obj.sale_price || "",
-                                qty: obj.qty || ""
+                                qty: obj.qty || "",
+                                // Add flag to indicate if this is an existing product
+                                isExistingProduct: true
                             };
                         }
                         return {
@@ -1188,6 +1214,7 @@ const ParentProductIdentity = ({ productId }) => {
                                 loadingSkus={loadingSkus}
                                 setLoadingSkus={setLoadingSkus}
                                 parentVariants={formData.variantData}
+                                checkForDuplicateSkus={checkForDuplicateSkus}
                             />
                         ) : (
                             <></>

@@ -412,7 +412,7 @@ const AddVariant = () => {
             id: Date.now(), // Use timestamp for unique ID
             attributeValue: "",
             sortOrder: inputFields.length + 1, // Auto-assign next sort order
-            status: false,
+            status: true,
             _id: "new",
             previewImage: null,
             thumbnailImage: null,

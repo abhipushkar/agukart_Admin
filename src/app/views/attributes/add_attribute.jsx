@@ -827,26 +827,6 @@ const AddAttribute = () => {
                                             You can drag and drop to reorder the values.
                                         </Alert>
 
-                                        {/* Add Multiple Values Button Group */}
-                                        <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
-                                            <Button
-                                                onClick={handleAddValue}
-                                                variant="outlined"
-                                                startIcon={<AddIcon />}
-                                            >
-                                                Add Single Value
-                                            </Button>
-
-                                            <Button
-                                                onClick={() => handleOpenBulkValuesDialog('main')}
-                                                variant="outlined"
-                                                color="secondary"
-                                                startIcon={<AddIcon />}
-                                            >
-                                                Add Multiple Values
-                                            </Button>
-                                        </Box>
-
                                         <TableContainer sx={{paddingX: 2}} component={Paper} variant="outlined">
                                             <Table size="small">
                                                 <TableHead>
@@ -928,6 +908,27 @@ const AddAttribute = () => {
                                                 </Droppable>
                                             </Table>
                                         </TableContainer>
+
+
+                                        {/* Add Multiple Values Button Group */}
+                                        <Box sx={{ display: 'flex', gap: 2, mt: 2, flexWrap: 'wrap' }}>
+                                            <Button
+                                                onClick={handleAddValue}
+                                                variant="outlined"
+                                                startIcon={<AddIcon />}
+                                            >
+                                                Add Single Value
+                                            </Button>
+
+                                            <Button
+                                                onClick={() => handleOpenBulkValuesDialog('main')}
+                                                variant="outlined"
+                                                // color="secondary"
+                                                startIcon={<AddIcon />}
+                                            >
+                                                Add Multiple Values
+                                            </Button>
+                                        </Box>
                                     </Grid>
                                 )}
 

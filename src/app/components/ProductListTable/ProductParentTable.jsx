@@ -36,7 +36,8 @@ export default function ProductParentTable({
                                                setSkuErrors,
                                                loadingSkus,
                                                setLoadingSkus,
-                                               parentVariants
+                                               parentVariants,
+                                               checkForDuplicateSkus
                                            }) {
     const [sellerSkyValues, setSellerSkyValues] = React.useState(
         sellerSky ? sellerSky : Array(combinations.length).fill("")
@@ -79,6 +80,28 @@ export default function ProductParentTable({
     const validateSkuAndVariants = async (sku, index) => {
         const trimmedSku = trimValue(sku);
 
+        // Check for duplicate SKUs first
+        const duplicateError = checkForDuplicateSkus(trimmedSku, index);
+        if (duplicateError) {
+            setSkuErrors(prev => ({ ...prev, [index]: duplicateError }));
+
+            // Clear the product data if it's a duplicate SKU
+            const newInputsFields = [...variantArrValues];
+            newInputsFields[index] = {
+                ...newInputsFields[index],
+                _id: "",
+                product_id: "",
+                price: "",
+                sale_price: "",
+                qty: "",
+                sale_start_date: "",
+                sale_end_date: "",
+                isExistingProduct: false
+            };
+            setVariantArrValue(newInputsFields);
+            return;
+        }
+
         if (!trimmedSku) {
             setSkuErrors(prev => ({ ...prev, [index]: "" }));
 
@@ -91,7 +114,8 @@ export default function ProductParentTable({
                 sale_price: "",
                 qty: "",
                 sale_start_date: "",
-                sale_end_date: ""
+                sale_end_date: "",
+                isExistingProduct: false
             };
             setVariantArrValue(newInputsFields);
             return;
@@ -126,7 +150,9 @@ export default function ProductParentTable({
                     sale_price: obj.sale_price !== undefined && obj.sale_price !== null ? obj.sale_price : (newInputsFields[index]?.sale_price || ""),
                     qty: obj.qty !== undefined && obj.qty !== null ? obj.qty : (newInputsFields[index]?.qty || ""),
                     sale_start_date: sale_start_date || newInputsFields[index]?.sale_start_date || "",
-                    sale_end_date: sale_end_date || newInputsFields[index]?.sale_end_date || ""
+                    sale_end_date: sale_end_date || newInputsFields[index]?.sale_end_date || "",
+                    // Mark as existing product if we got valid data from API
+                    isExistingProduct: true
                 };
                 setVariantArrValue(newInputsFields);
             }
@@ -143,7 +169,8 @@ export default function ProductParentTable({
                     sale_price: newInputsFields[index]?.sale_price || "",
                     qty: newInputsFields[index]?.qty || "",
                     sale_start_date: newInputsFields[index]?.sale_start_date || "",
-                    sale_end_date: newInputsFields[index]?.sale_end_date || ""
+                    sale_end_date: newInputsFields[index]?.sale_end_date || "",
+                    isExistingProduct: false
                 };
                 setVariantArrValue(newInputsFields);
             } else {
@@ -219,7 +246,8 @@ export default function ProductParentTable({
                         price: "",
                         sale_start_date: "",
                         sale_end_date: "",
-                        qty: ""
+                        qty: "",
+                        isExistingProduct: false
                     });
                 }
             } else if (combinations.length < variantArrValues.length) {
@@ -259,6 +287,13 @@ export default function ProductParentTable({
         setVariantArrValue(newInputsFields);
     };
 
+    // Helper function to check if fields should be disabled
+    const shouldDisableFields = (variantData) => {
+        return variantData.isExistingProduct &&
+            (variantData.sale_price === 0 || variantData.sale_price === "0") &&
+            (variantData.qty === 0 || variantData.qty === "0");
+    };
+
     return (
         <Box sx={{ marginTop: '20px' }}>
             <Typography variant="h6" gutterBottom>
@@ -295,7 +330,7 @@ export default function ProductParentTable({
                                     width: "230px"
                                 }}
                             >
-                                Quantity *
+                                Quantity
                             </TableCell>
                             <TableCell
                                 align="center"
@@ -303,37 +338,16 @@ export default function ProductParentTable({
                                     width: "230px"
                                 }}
                             >
-                                Sale Price *
+                                Sale Price
                             </TableCell>
-                            <TableCell
-                                align="center"
-                                sx={{
-                                    width: "230px"
-                                }}
-                            >
-                                Price
-                            </TableCell>
-                            <TableCell
-                                align="center"
-                                sx={{
-                                    width: "230px"
-                                }}
-                            >
-                                Sale Start Date
-                            </TableCell>
-                            <TableCell
-                                align="center"
-                                sx={{
-                                    width: "230px"
-                                }}
-                            >
-                                Sale End Date
-                            </TableCell>
+                            {/* Remove Price, Sale Start Date, and Sale End Date columns */}
                         </TableRow>
                     </TableHead>
                     <TableBody>
                         {combinations.map((item, index) => {
                             const currentVariantData = variantArrValues[index] || {};
+                            const isExistingProduct = currentVariantData.isExistingProduct;
+                            const disableFields = shouldDisableFields(currentVariantData);
 
                             return (
                                 <TableRow sx={{ "&:last-child td, &:last-child th": { border: 0 } }} key={index}>
@@ -388,8 +402,10 @@ export default function ProductParentTable({
                                                 }}
                                                 id="outlined-adornment-quantity"
                                                 placeholder="Quantity"
-                                                required
-                                                error={!currentVariantData.qty}
+                                                disabled={disableFields || currentVariantData.qty === "0"}
+                                                // Remove required attribute for existing products
+                                                required={!isExistingProduct}
+                                                error={!isExistingProduct && !currentVariantData.qty}
                                             />
                                         </FormControl>
                                     </TableCell>
@@ -411,87 +427,15 @@ export default function ProductParentTable({
                                                 value={currentVariantData.sale_price || ""}
                                                 id="outlined-adornment-quantity"
                                                 placeholder="Sale Price"
-                                                required
-                                                error={!currentVariantData.sale_price}
+                                                disabled={disableFields || currentVariantData.sale_price === "0"}
+                                                // Remove required attribute for existing products
+                                                required={!isExistingProduct}
+                                                error={!isExistingProduct && !currentVariantData.sale_price}
                                             />
                                         </FormControl>
                                     </TableCell>
 
-                                    <TableCell
-                                        align="center"
-                                        sx={{
-                                            width: "230px"
-                                        }}
-                                    >
-                                        <FormControl fullWidth sx={{ m: 1 }} size="small">
-                                            <TextField
-                                                size="small"
-                                                name="price"
-                                                value={currentVariantData.price || ""}
-                                                onChange={(e) => {
-                                                    handleVariantForm(e, index);
-                                                }}
-                                                id="outlined-adornment-amount"
-                                                placeholder="Price"
-                                            />
-                                        </FormControl>
-                                    </TableCell>
-
-                                    <TableCell
-                                        align="center"
-                                        sx={{
-                                            width: "230px"
-                                        }}
-                                    >
-                                        <LocalizationProvider dateAdapter={AdapterDayjs}>
-                                            <DemoContainer
-                                                components={["DateField"]}
-                                                sx={{
-                                                    paddingTop: "0",
-                                                    justifyContent: "center"
-                                                }}
-                                            >
-                                                <DatePicker
-                                                    label="Start Date"
-                                                    value={
-                                                        currentVariantData.sale_start_date
-                                                            ? currentVariantData.sale_start_date
-                                                            : null
-                                                    }
-                                                    onChange={(e) => dateHandler(e, "sale_start_date", index)}
-                                                    slotProps={{ textField: { size: 'small' } }}
-                                                />
-                                            </DemoContainer>
-                                        </LocalizationProvider>
-                                    </TableCell>
-
-                                    <TableCell
-                                        align="center"
-                                        sx={{
-                                            width: "230px"
-                                        }}
-                                    >
-                                        <LocalizationProvider dateAdapter={AdapterDayjs}>
-                                            <DemoContainer
-                                                components={["DateField"]}
-                                                sx={{
-                                                    paddingTop: "0",
-                                                    justifyContent: "center"
-                                                }}
-                                            >
-                                                <DatePicker
-                                                    label="End Date"
-                                                    value={
-                                                        currentVariantData.sale_end_date
-                                                            ? currentVariantData.sale_end_date
-                                                            : null
-                                                    }
-                                                    onChange={(e) => dateHandler(e, "sale_end_date", index)}
-                                                    slotProps={{ textField: { size: 'small' } }}
-                                                />
-                                            </DemoContainer>
-                                        </LocalizationProvider>
-                                    </TableCell>
+                                    {/* Remove Price, Sale Start Date, and Sale End Date columns */}
                                 </TableRow>
                             );
                         })}
