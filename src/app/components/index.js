@@ -13,3 +13,4 @@ export { default as MatxProgressBar } from "./MatxProgressBar";
 export { default as MatxLayout } from "./MatxLayout/MatxLayout";
 export { default as ConfirmationDialog } from "./ConfirmationDialog";
 export { default as MatxVerticalNav } from "./MatxVerticalNav/MatxVerticalNav";
+export { default as ConfirmModal } from "./ConfirmModal";

@@ -20,16 +20,17 @@ export const vendorNavigations = [
         path: ROUTE_CONSTANT.orders.orderPage
     },
     {
+        name: "Product",
+        iconText: "product",
+        path: ROUTE_CONSTANT.catalog.product.list
+    },
+    {
         name: "Catalog",
         icon: "book",
         children: [
             {name: "Category", iconText: "CT", path: ROUTE_CONSTANT.catalog.category.list},
             {name: "Admin Category", iconText: "CT", path: ROUTE_CONSTANT.catalog.adminCategory.list},
-            {
-                name: "Product",
-                iconText: "product",
-                path: ROUTE_CONSTANT.catalog.product.list
-            },
+
             {
                 name: "Brand",
                 iconText: "book",
@@ -302,7 +303,11 @@ export const navigations = [
         icon: "slideshow",
         path: ROUTE_CONSTANT.slider.list
     },
-
+    {
+        name: "Product",
+        iconText: "product",
+        path: ROUTE_CONSTANT.catalog.product.list
+    },
     {
         name: "Catalog",
         icon: "book",
@@ -323,11 +328,6 @@ export const navigations = [
                 name: "Attributes",
                 iconText: "event",
                 path: ROUTE_CONSTANT.catalog.attribute.list,
-            },
-            {
-                name: "Product",
-                iconText: "product",
-                path: ROUTE_CONSTANT.catalog.product.list
             },
             {
                 name: "Occasions",

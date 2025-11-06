@@ -264,7 +264,7 @@ export default function AddProductNew() {
                 <Divider />
                 <Box sx={{ ml: "16px", mt: "16px" }}>
                     <Button
-                        onClick={() => navigate(ROUTE_CONSTANT.catalog.productNew.list)}
+                        onClick={() => navigate(ROUTE_CONSTANT.catalog.product.list)}
                         startIcon={<AppsIcon />}
                         variant="contained"
                     >

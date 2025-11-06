@@ -686,6 +686,7 @@ const ProductList = () => {
         {/* new design work  */}
         <>
           <DataTable
+              statusFilter={statusFilter}
             setProductList={filterProducts.length > 0 ? setFilterProducts : setGetAllProductList}
             productList={filterProducts.length > 0 ? (rowsPerPage > 0 ? filterProducts.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage) : filterProducts) : (rowsPerPage > 0 ? getallProductList.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage) : getallProductList)}
             personName={personName}

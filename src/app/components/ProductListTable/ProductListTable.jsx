@@ -31,6 +31,8 @@ import { IconButton } from "@mui/material";
 import { REACT_APP_WEB_URL } from "config";
 
 export default function ProductListTable({
+    statusFilter,
+  categ,
   productList,
   personName,
   getAllProductList,
@@ -742,7 +744,7 @@ export default function ProductListTable({
                                     )}
                                     {row?.type === "product"
                                       ? row?.status
-                                      : `${row?.type} (${row.productData?.length})`}
+                                      : `${row?.type} ${statusFilter !== "all" ? row?.childCountData[0]?.count :  ""}(${row.productData?.length})`}
                                   </>
                                 </Box>
                               </TableCell>

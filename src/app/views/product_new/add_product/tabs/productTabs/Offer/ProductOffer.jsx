@@ -103,6 +103,7 @@ const ProductOffer = () => {
                             fullWidth
                             label="Product Tax Code"
                             name="ProductTaxCode"
+                            disabled
                         />
                     </FormControl>
                 </Box>
@@ -290,95 +291,95 @@ const ProductOffer = () => {
             </Box>
 
             {/* Sale Start Date */}
-            <Box
-                sx={{
-                    display: "flex",
-                    gap: "20px",
-                    alignItems: "center",
-                }}
-            >
-                <Box
-                    sx={{
-                        fontSize: "14px",
-                        fontWeight: 700,
-                        width: "12.7%",
-                        minWidth: "120px"
-                    }}
-                >
-                    Sale Start Date:
-                </Box>
-                <Box sx={{ width: "50%" }}>
-                    <LocalizationProvider dateAdapter={AdapterDayjs}>
-                        <DatePicker
-                            label="Select Start Date"
-                            value={formData.saleStartDate}
-                            onChange={handleSaleStartDateChange}
-                            slotProps={{ textField: { fullWidth: true } }}
-                        />
-                    </LocalizationProvider>
-                </Box>
-            </Box>
+            {/*<Box*/}
+            {/*    sx={{*/}
+            {/*        display: "flex",*/}
+            {/*        gap: "20px",*/}
+            {/*        alignItems: "center",*/}
+            {/*    }}*/}
+            {/*>*/}
+            {/*    <Box*/}
+            {/*        sx={{*/}
+            {/*            fontSize: "14px",*/}
+            {/*            fontWeight: 700,*/}
+            {/*            width: "12.7%",*/}
+            {/*            minWidth: "120px"*/}
+            {/*        }}*/}
+            {/*    >*/}
+            {/*        Sale Start Date:*/}
+            {/*    </Box>*/}
+            {/*    <Box sx={{ width: "50%" }}>*/}
+            {/*        <LocalizationProvider dateAdapter={AdapterDayjs}>*/}
+            {/*            <DatePicker*/}
+            {/*                label="Select Start Date"*/}
+            {/*                value={formData.saleStartDate}*/}
+            {/*                onChange={handleSaleStartDateChange}*/}
+            {/*                slotProps={{ textField: { fullWidth: true } }}*/}
+            {/*            />*/}
+            {/*        </LocalizationProvider>*/}
+            {/*    </Box>*/}
+            {/*</Box>*/}
 
             {/* Sale End Date */}
-            <Box
-                sx={{
-                    display: "flex",
-                    gap: "20px",
-                    alignItems: "center"
-                }}
-            >
-                <Box
-                    sx={{
-                        fontSize: "14px",
-                        fontWeight: 700,
-                        width: "12.7%",
-                        minWidth: "120px"
-                    }}
-                >
-                    Sale End Date:
-                </Box>
-                <Box sx={{ width: "50%" }}>
-                    <LocalizationProvider dateAdapter={AdapterDayjs}>
-                        <DatePicker
-                            label="Select End Date"
-                            value={formData.saleEndDate}
-                            onChange={handleSaleEndDateChange}
-                            slotProps={{ textField: { fullWidth: true } }}
-                        />
-                    </LocalizationProvider>
-                </Box>
-            </Box>
+            {/*<Box*/}
+            {/*    sx={{*/}
+            {/*        display: "flex",*/}
+            {/*        gap: "20px",*/}
+            {/*        alignItems: "center"*/}
+            {/*    }}*/}
+            {/*>*/}
+            {/*    <Box*/}
+            {/*        sx={{*/}
+            {/*            fontSize: "14px",*/}
+            {/*            fontWeight: 700,*/}
+            {/*            width: "12.7%",*/}
+            {/*            minWidth: "120px"*/}
+            {/*        }}*/}
+            {/*    >*/}
+            {/*        Sale End Date:*/}
+            {/*    </Box>*/}
+            {/*    <Box sx={{ width: "50%" }}>*/}
+            {/*        <LocalizationProvider dateAdapter={AdapterDayjs}>*/}
+            {/*            <DatePicker*/}
+            {/*                label="Select End Date"*/}
+            {/*                value={formData.saleEndDate}*/}
+            {/*                onChange={handleSaleEndDateChange}*/}
+            {/*                slotProps={{ textField: { fullWidth: true } }}*/}
+            {/*            />*/}
+            {/*        </LocalizationProvider>*/}
+            {/*    </Box>*/}
+            {/*</Box>*/}
 
             {/* Max Order Quantity */}
-            <Box
-                sx={{
-                    display: "flex",
-                    gap: "20px",
-                    alignItems: "center"
-                }}
-            >
-                <Box
-                    sx={{
-                        fontSize: "14px",
-                        fontWeight: 700,
-                        width: "12.7%",
-                        minWidth: "120px"
-                    }}
-                >
-                    Max Order Quantity:
-                </Box>
-                <Box sx={{ width: "50%" }}>
-                    <FormControl fullWidth>
-                        <TextField
-                            value={formData.maxOrderQuantity}
-                            onChange={(e) => handleFieldChange('maxOrderQuantity', e.target.value)}
-                            fullWidth
-                            label="Max Order Quantity"
-                            name="maxOrderQuantity"
-                        />
-                    </FormControl>
-                </Box>
-            </Box>
+            {/*<Box*/}
+            {/*    sx={{*/}
+            {/*        display: "flex",*/}
+            {/*        gap: "20px",*/}
+            {/*        alignItems: "center"*/}
+            {/*    }}*/}
+            {/*>*/}
+            {/*    <Box*/}
+            {/*        sx={{*/}
+            {/*            fontSize: "14px",*/}
+            {/*            fontWeight: 700,*/}
+            {/*            width: "12.7%",*/}
+            {/*            minWidth: "120px"*/}
+            {/*        }}*/}
+            {/*    >*/}
+            {/*        Max Order Quantity:*/}
+            {/*    </Box>*/}
+            {/*    <Box sx={{ width: "50%" }}>*/}
+            {/*        <FormControl fullWidth>*/}
+            {/*            <TextField*/}
+            {/*                value={formData.maxOrderQuantity}*/}
+            {/*                onChange={(e) => handleFieldChange('maxOrderQuantity', e.target.value)}*/}
+            {/*                fullWidth*/}
+            {/*                label="Max Order Quantity"*/}
+            {/*                name="maxOrderQuantity"*/}
+            {/*            />*/}
+            {/*        </FormControl>*/}
+            {/*    </Box>*/}
+            {/*</Box>*/}
 
             {/* Production Time */}
             <Box
@@ -406,111 +407,112 @@ const ProductOffer = () => {
                             fullWidth
                             label="Production Time"
                             name="productionTime"
+                            disabled
                         />
                     </FormControl>
                 </Box>
             </Box>
 
             {/* Color */}
-            <Box
-                sx={{
-                    display: "flex",
-                    gap: "20px",
-                    alignItems: "center"
-                }}
-            >
-                <Box
-                    sx={{
-                        fontSize: "14px",
-                        fontWeight: 700,
-                        width: "12.7%",
-                        minWidth: "120px"
-                    }}
-                >
-                    Color:
-                </Box>
-                <Box sx={{ width: "50%" }}>
-                    <FormControl fullWidth>
-                        <TextField
-                            value={formData.color}
-                            onChange={(e) => handleFieldChange('color', e.target.value)}
-                            fullWidth
-                            label="Color"
-                            name="color"
-                        />
-                    </FormControl>
-                </Box>
-            </Box>
+            {/*<Box*/}
+            {/*    sx={{*/}
+            {/*        display: "flex",*/}
+            {/*        gap: "20px",*/}
+            {/*        alignItems: "center"*/}
+            {/*    }}*/}
+            {/*>*/}
+            {/*    <Box*/}
+            {/*        sx={{*/}
+            {/*            fontSize: "14px",*/}
+            {/*            fontWeight: 700,*/}
+            {/*            width: "12.7%",*/}
+            {/*            minWidth: "120px"*/}
+            {/*        }}*/}
+            {/*    >*/}
+            {/*        Color:*/}
+            {/*    </Box>*/}
+            {/*    <Box sx={{ width: "50%" }}>*/}
+            {/*        <FormControl fullWidth>*/}
+            {/*            <TextField*/}
+            {/*                value={formData.color}*/}
+            {/*                onChange={(e) => handleFieldChange('color', e.target.value)}*/}
+            {/*                fullWidth*/}
+            {/*                label="Color"*/}
+            {/*                name="color"*/}
+            {/*            />*/}
+            {/*        </FormControl>*/}
+            {/*    </Box>*/}
+            {/*</Box>*/}
 
             {/* Offering Can Be */}
-            <Box
-                sx={{
-                    display: "flex",
-                    gap: "20px",
-                    alignItems: "center"
-                }}
-            >
-                <Box
-                    sx={{
-                        fontSize: "14px",
-                        fontWeight: 700,
-                        width: "12.7%",
-                        minWidth: "120px"
-                    }}
-                >
-                    Offering Can Be:
-                </Box>
-                <Box sx={{ width: "50%" }}>
-                    <FormControl fullWidth>
-                        <TextField
-                            value={formData.offeringCanBe}
-                            onChange={(e) => handleFieldChange('offeringCanBe', e.target.value)}
-                            select
-                            label="Offering"
-                            name="offeringCanBe"
-                        >
-                            <MenuItem value="gift">Gift</MenuItem>
-                            <MenuItem value="premium">Premium</MenuItem>
-                            <MenuItem value="standard">Standard</MenuItem>
-                            <MenuItem value="custom">Custom</MenuItem>
-                        </TextField>
-                    </FormControl>
-                </Box>
-            </Box>
+            {/*<Box*/}
+            {/*    sx={{*/}
+            {/*        display: "flex",*/}
+            {/*        gap: "20px",*/}
+            {/*        alignItems: "center"*/}
+            {/*    }}*/}
+            {/*>*/}
+            {/*    <Box*/}
+            {/*        sx={{*/}
+            {/*            fontSize: "14px",*/}
+            {/*            fontWeight: 700,*/}
+            {/*            width: "12.7%",*/}
+            {/*            minWidth: "120px"*/}
+            {/*        }}*/}
+            {/*    >*/}
+            {/*        Offering Can Be:*/}
+            {/*    </Box>*/}
+            {/*    <Box sx={{ width: "50%" }}>*/}
+            {/*        <FormControl fullWidth>*/}
+            {/*            <TextField*/}
+            {/*                value={formData.offeringCanBe}*/}
+            {/*                onChange={(e) => handleFieldChange('offeringCanBe', e.target.value)}*/}
+            {/*                select*/}
+            {/*                label="Offering"*/}
+            {/*                name="offeringCanBe"*/}
+            {/*            >*/}
+            {/*                <MenuItem value="gift">Gift</MenuItem>*/}
+            {/*                <MenuItem value="premium">Premium</MenuItem>*/}
+            {/*                <MenuItem value="standard">Standard</MenuItem>*/}
+            {/*                <MenuItem value="custom">Custom</MenuItem>*/}
+            {/*            </TextField>*/}
+            {/*        </FormControl>*/}
+            {/*    </Box>*/}
+            {/*</Box>*/}
 
             {/* Is Gift Wrap Available */}
-            <Box
-                sx={{
-                    display: "flex",
-                    gap: "20px",
-                    alignItems: "center"
-                }}
-            >
-                <Box
-                    sx={{
-                        fontSize: "14px",
-                        fontWeight: 700,
-                        width: "12.7%",
-                        minWidth: "120px"
-                    }}
-                >
-                    Is Gift Wrap Available:
-                </Box>
-                <Box sx={{ width: "50%" }}>
-                    <FormControl fullWidth>
-                        <TextField
-                            value={formData.isGiftWrap}
-                            onChange={(e) => handleFieldChange('isGiftWrap', e.target.value)}
-                            select
-                            label="Gift Wrap"
-                            name="isGiftWrap"
-                        >
-                            <MenuItem value="yes">Yes</MenuItem>
-                            <MenuItem value="no">No</MenuItem>
-                        </TextField>
-                    </FormControl>
-                </Box>
-            </Box>
+            {/*<Box*/}
+            {/*    sx={{*/}
+            {/*        display: "flex",*/}
+            {/*        gap: "20px",*/}
+            {/*        alignItems: "center"*/}
+            {/*    }}*/}
+            {/*>*/}
+            {/*    <Box*/}
+            {/*        sx={{*/}
+            {/*            fontSize: "14px",*/}
+            {/*            fontWeight: 700,*/}
+            {/*            width: "12.7%",*/}
+            {/*            minWidth: "120px"*/}
+            {/*        }}*/}
+            {/*    >*/}
+            {/*        Is Gift Wrap Available:*/}
+            {/*    </Box>*/}
+            {/*    <Box sx={{ width: "50%" }}>*/}
+            {/*        <FormControl fullWidth>*/}
+            {/*            <TextField*/}
+            {/*                value={formData.isGiftWrap}*/}
+            {/*                onChange={(e) => handleFieldChange('isGiftWrap', e.target.value)}*/}
+            {/*                select*/}
+            {/*                label="Gift Wrap"*/}
+            {/*                name="isGiftWrap"*/}
+            {/*            >*/}
+            {/*                <MenuItem value="yes">Yes</MenuItem>*/}
+            {/*                <MenuItem value="no">No</MenuItem>*/}
+            {/*            </TextField>*/}
+            {/*        </FormControl>*/}
+            {/*    </Box>*/}
+            {/*</Box>*/}
 
             {/* Restock Date */}
             <Box
@@ -537,6 +539,7 @@ const ProductOffer = () => {
                             value={formData.reStockDate}
                             onChange={handleReStockChange}
                             slotProps={{ textField: { fullWidth: true } }}
+                            disabled
                         />
                     </LocalizationProvider>
                 </Box>
