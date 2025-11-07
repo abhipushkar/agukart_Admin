@@ -23,9 +23,7 @@ import {
 import {
     KeyboardArrowRight,
     KeyboardArrowDown,
-    Favorite,
-    FavoriteBorder,
-    ArrowDropDown
+    ArrowDropDown, Star, StarOutline
 } from '@mui/icons-material';
 import {REACT_APP_WEB_URL} from 'config';
 import {ROUTE_CONSTANT} from 'app/constant/routeContanst';
@@ -133,7 +131,8 @@ const CommonSettingsColumn = ({product, isProduct, onFieldChange, onBadgeChange,
             {/* Sale Price */}
             {!filters.hiddenColumns.includes('Sale Price') && (
                 <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5}}>
-                    <Typography variant="body2" sx={{fontWeight: 'bold', textWrap: "noWrap", minWidth: '50px', fontSize: '0.7rem'}}>
+                    <Typography variant="body2"
+                                sx={{fontWeight: 'bold', textWrap: "noWrap", minWidth: '50px', fontSize: '0.7rem'}}>
                         Sale Price:
                     </Typography>
                     <TextField
@@ -148,9 +147,10 @@ const CommonSettingsColumn = ({product, isProduct, onFieldChange, onBadgeChange,
             )}
 
             {/* Sort Order */}
-            {!filters.hiddenColumns.includes('Sort Order') && (
+            { !filters.hiddenColumns.includes('Sort Order') && (
                 <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5}}>
-                    <Typography variant="body2" sx={{fontWeight: 'bold', textWrap: "noWrap", minWidth: '50px', fontSize: '0.7rem'}}>
+                    <Typography variant="body2"
+                                sx={{fontWeight: 'bold', textWrap: "noWrap", minWidth: '50px', fontSize: '0.7rem'}}>
                         Sort Order:
                     </Typography>
                     <TextField
@@ -167,8 +167,9 @@ const CommonSettingsColumn = ({product, isProduct, onFieldChange, onBadgeChange,
             {/* Badge */}
             {!filters.hiddenColumns.includes('Badge') && (
                 <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5}}>
-                    <Typography variant="body2" sx={{fontWeight: 'bold', textWrap: "noWrap", minWidth: '50px', fontSize: '0.7rem'}}>
-                        Badge:
+                    <Typography variant="body2"
+                                sx={{fontWeight: 'bold', textWrap: "noWrap", minWidth: '50px', fontSize: '0.7rem'}}>
+                        Image Badge:
                     </Typography>
                     <FormControl size="small" sx={{minWidth: '120px'}} disabled={actionLoading}>
                         <Select
@@ -293,9 +294,8 @@ const ProductRow = ({product, index}) => {
         <>
             <TableRow
                 sx={{
-                    cursor: 'pointer',
+                    cursor: actionLoading ? "none" : 'pointer',
                     backgroundColor: isExpanded ? alpha('#f5f5f5', 0.5) : 'transparent',
-                    opacity: actionLoading ? 0.6 : 1,
                     pointerEvents: actionLoading ? 'none' : 'auto'
                 }}
             >
@@ -338,12 +338,12 @@ const ProductRow = ({product, index}) => {
                         <Box sx={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5}}>
                             <IconButton
                                 size="small"
-                                color={product.featured ? "error" : "default"}
+                                color={product.featured ? "info" : "default"}
                                 onClick={handleToggleFeatured}
                                 disabled={actionLoading}
                                 sx={{padding: '2px'}}
                             >
-                                {product.featured ? <Favorite fontSize="small"/> : <FavoriteBorder fontSize="small"/>}
+                                {product.featured ? <Star fontSize="small"/> : <StarOutline fontSize="small"/>}
                             </IconButton>
                         </Box>
                     </TableCell>
@@ -392,8 +392,32 @@ const ProductRow = ({product, index}) => {
 
                 {/* Product Information - Only show if at least one sub-column is visible */}
                 {showProductInfoColumn && (
-                    <TableCell sx={{padding: '4px 8px', minWidth: '150px'}} align="center">
+                    <TableCell sx={{padding: '4px 20px', minWidth: '150px'}} align="center">
                         <Box sx={{display: 'flex', flexDirection: 'column', gap: 0.5}}>
+                            {/* Product Title */}
+                            {!filters.hiddenColumns.includes('Product Title') && (
+                                <Box sx={{display: 'flex', alignItems: 'flex-start', gap: 0.5}}>
+                                    <a
+                                        href={`${REACT_APP_WEB_URL}/products?id=${product._id}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{
+                                            color: 'inherit',
+                                            textDecoration: 'underline',
+                                            textAlign: "left",
+                                            cursor: 'pointer',
+                                            fontSize: '0.75rem',
+                                            lineHeight: '1.2',
+                                            wordBreak: 'break-word', // This will break at word boundaries
+                                            overflowWrap: 'break-word', // This will break long words
+                                            whiteSpace: 'normal' // Allow text to wrap normally
+                                        }}
+                                    >
+                                        {getProductTitle()}
+                                    </a>
+                                </Box>
+                            )}
+
                             {/* Product ID */}
                             {!filters.hiddenColumns.includes('Product Id') && (
                                 <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5}}>
@@ -421,30 +445,6 @@ const ProductRow = ({product, index}) => {
                                     <Typography variant="body2" sx={{fontSize: '0.75rem'}}>
                                         {capitalizeFirstLetter(isProduct ? product.sku_code : product.seller_sku)}
                                     </Typography>
-                                </Box>
-                            )}
-
-                            {/* Product Title */}
-                            {!filters.hiddenColumns.includes('Product Title') && (
-                                <Box sx={{display: 'flex', alignItems: 'flex-start', gap: 0.5}}>
-                                    <Typography variant="body2"
-                                                sx={{fontWeight: 'bold', minWidth: '45px', fontSize: '0.7rem'}}>
-                                        Title:
-                                    </Typography>
-                                    <a
-                                        href={`${REACT_APP_WEB_URL}/products?id=${product._id}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        style={{
-                                            color: 'inherit',
-                                            textDecoration: 'underline',
-                                            cursor: 'pointer',
-                                            fontSize: '0.75rem',
-                                            lineHeight: '1.2'
-                                        }}
-                                    >
-                                        {getProductTitle()}
-                                    </a>
                                 </Box>
                             )}
                         </Box>
@@ -523,35 +523,34 @@ const ProductRow = ({product, index}) => {
                             open={Boolean(actionAnchorEl)}
                             onClose={() => setActionAnchorEl(null)}
                         >
-                            <MenuItem sx={{fontSize: '0.8rem'}}>
-                                <a
-                                    href={
-                                        product.type === 'variations'
-                                            ? `${ROUTE_CONSTANT.catalog.product.parentProducts}?id=${product._id}`
-                                            : `${ROUTE_CONSTANT.catalog.product.add}?id=${product._id}`
-                                    }
-                                    className="w-full h-full block"
-                                    style={{textDecoration: 'none', color: 'inherit'}}
-                                >
+                            <a href={
+                                product.type === 'variations'
+                                    ? `${ROUTE_CONSTANT.catalog.product.parentProducts}?id=${product._id}`
+                                    : `${ROUTE_CONSTANT.catalog.product.add}?id=${product._id}`
+                            }
+                               className="w-full h-full block"
+                               style={{textDecoration: 'none', color: 'inherit'}}>
+                                <MenuItem sx={{fontSize: '0.8rem'}}>
                                     Edit
-                                </a>
-                            </MenuItem>
-                            <MenuItem sx={{fontSize: '0.8rem'}}>
-                                <a
-                                    href={`${ROUTE_CONSTANT.catalog.product.add}?_id=${product._id}`}
-                                    className="w-full h-full block"
-                                    style={{textDecoration: 'none', color: 'inherit'}}
-                                >
+                                </MenuItem>
+                            </a>
+                            <a
+                                href={`${ROUTE_CONSTANT.catalog.product.add}?_id=${product._id}&listing=copy`}
+                                className="w-full h-full block"
+                                style={{textDecoration: 'none', color: 'inherit'}}
+                            >
+                                <MenuItem sx={{fontSize: '0.8rem'}}>
                                     Copy Listing
-                                </a>
-                            </MenuItem>
+                                </MenuItem>
+                            </a>
+
                             <MenuItem onClick={handleDelete} sx={{fontSize: '0.8rem'}}>Delete</MenuItem>
                         </Menu>
                     </Box>
                 </TableCell>
             </TableRow>
 
-            {/* Expanded variations */}
+            {/* Expanded variations - Now properly indented as child rows */}
             {isExpanded && hasVariations && product.productData.map((variation) => (
                 <VariationRow
                     key={variation._id}
@@ -563,7 +562,7 @@ const ProductRow = ({product, index}) => {
     );
 };
 
-// Variation Row Component
+// Variation Row Component - Updated with child row styling
 const VariationRow = ({variation, parentProduct}) => {
     const {
         actionLoading,
@@ -656,9 +655,23 @@ const VariationRow = ({variation, parentProduct}) => {
     return (
         <TableRow
             sx={{
-                backgroundColor: '#fafafa',
-                opacity: actionLoading ? 0.6 : 1,
-                pointerEvents: actionLoading ? 'none' : 'auto'
+                backgroundColor: '#f8f8f8',
+                cursor: actionLoading ? "none" : "auto",
+                pointerEvents: actionLoading ? 'none' : 'auto',
+                // Child row styling with indentation
+                '& td:first-of-type': {
+                    paddingLeft: '40px', // Indent child rows
+                    position: 'relative',
+                    '&::before': {
+                        content: '"↳"',
+                        position: 'absolute',
+                        left: '20px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        color: '#666',
+                        fontSize: '0.8rem'
+                    }
+                }
             }}
         >
             <TableCell sx={{width: '60px', minWidth: '60px', maxWidth: '60px', padding: '4px'}}>
@@ -683,12 +696,12 @@ const VariationRow = ({variation, parentProduct}) => {
                     <Box sx={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5}}>
                         <IconButton
                             size="small"
-                            color={variation.featured ? "error" : "default"}
+                            color={variation.featured ? "info" : "default"}
                             onClick={handleToggleFeatured}
                             disabled={actionLoading}
                             sx={{padding: '2px'}}
                         >
-                            {variation.featured ? <Favorite fontSize="small"/> : <FavoriteBorder fontSize="small"/>}
+                            {variation.featured ? <Star fontSize="small"/> : <StarOutline fontSize="small"/>}
                         </IconButton>
                     </Box>
                 </TableCell>
@@ -737,6 +750,29 @@ const VariationRow = ({variation, parentProduct}) => {
             {showProductInfoColumn && (
                 <TableCell sx={{padding: '4px 8px', minWidth: '150px'}} align="center">
                     <Box sx={{display: 'flex', flexDirection: 'column', gap: 0.5}}>
+                        {/* Product Title */}
+                        {!filters.hiddenColumns.includes('Product Title') && (
+                            <Box sx={{display: 'flex', alignItems: 'flex-start', gap: 0.5}}>
+                                <a
+                                    href={`${REACT_APP_WEB_URL}/products?id=${variation._id}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{
+                                        color: 'inherit',
+                                        textDecoration: 'underline',
+                                        cursor: 'pointer',
+                                        fontSize: '0.75rem',
+                                        lineHeight: '1.2',
+                                        wordBreak: 'break-word', // This will break at word boundaries
+                                        overflowWrap: 'break-word', // This will break long words
+                                        whiteSpace: 'normal' // Allow text to wrap normally
+                                    }}
+                                >
+                                    {getProductTitle()}
+                                </a>
+                            </Box>
+                        )}
+
                         {/* Product ID */}
                         {!filters.hiddenColumns.includes('Product Id') && (
                             <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5}}>
@@ -761,30 +797,6 @@ const VariationRow = ({variation, parentProduct}) => {
                                 <Typography variant="body2" sx={{fontSize: '0.75rem'}}>
                                     {capitalizeFirstLetter(variation.sku_code)}
                                 </Typography>
-                            </Box>
-                        )}
-
-                        {/* Product Title */}
-                        {!filters.hiddenColumns.includes('Product Title') && (
-                            <Box sx={{display: 'flex', alignItems: 'flex-start', gap: 0.5}}>
-                                <Typography variant="body2"
-                                            sx={{fontWeight: 'bold', minWidth: '45px', fontSize: '0.7rem'}}>
-                                    Title:
-                                </Typography>
-                                <a
-                                    href={`${REACT_APP_WEB_URL}/products?id=${variation._id}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    style={{
-                                        color: 'inherit',
-                                        textDecoration: 'underline',
-                                        cursor: 'pointer',
-                                        fontSize: '0.75rem',
-                                        lineHeight: '1.2'
-                                    }}
-                                >
-                                    {getProductTitle()}
-                                </a>
                             </Box>
                         )}
                     </Box>
@@ -860,24 +872,27 @@ const VariationRow = ({variation, parentProduct}) => {
                         open={Boolean(actionAnchorEl)}
                         onClose={() => setActionAnchorEl(null)}
                     >
-                        <MenuItem sx={{fontSize: '0.8rem'}}>
-                            <a
-                                href={`${ROUTE_CONSTANT.catalog.product.add}?id=${variation._id}`}
-                                className="w-full h-full block"
-                                style={{textDecoration: 'none', color: 'inherit'}}
-                            >
+                        <a
+                            href={`${ROUTE_CONSTANT.catalog.product.add}?id=${variation._id}`}
+                            className="w-full h-full block"
+                            style={{textDecoration: 'none', color: 'inherit'}}
+                        >
+                            <MenuItem sx={{fontSize: '0.8rem'}}>
+
                                 Edit
-                            </a>
-                        </MenuItem>
-                        <MenuItem sx={{fontSize: '0.8rem'}}>
-                            <a
-                                href={`${ROUTE_CONSTANT.catalog.product.add}?_id=${variation._id}`}
-                                className="w-full h-full block"
-                                style={{textDecoration: 'none', color: 'inherit'}}
-                            >
+                            </MenuItem>
+                        </a>
+                        <a
+                            href={`${ROUTE_CONSTANT.catalog.product.add}?_id=${variation._id}&listing=copy`}
+                            className="w-full h-full block"
+                            style={{textDecoration: 'none', color: 'inherit'}}
+                        >
+                            <MenuItem sx={{fontSize: '0.8rem'}}>
+
                                 Copy Listing
-                            </a>
-                        </MenuItem>
+                            </MenuItem>
+                        </a>
+
                         <MenuItem onClick={handleDelete} sx={{fontSize: '0.8rem'}}>Delete</MenuItem>
                     </Menu>
                 </Box>
@@ -909,7 +924,7 @@ const ProductTableNew = () => {
     const columnHeaders = [
         {key: 'checkbox', label: '', align: 'center', fixed: true, width: '60px'},
         {key: 'Status', label: 'Status', align: 'center', hideable: true, fixed: true, width: "100px"},
-        {key: 'Featured', label: 'Featured', align: 'center', hideable: true, fixed: true, width: "100px"},
+        {key: 'Featured', label: 'Featured', align: 'center', hideable: true, fixed: true, width: "60px"},
         {key: 'Image', label: 'Images', align: 'center', hideable: true, fixed: true, width: '200px'},
         {
             key: 'ProductInfo',
@@ -927,7 +942,7 @@ const ProductTableNew = () => {
             conditional: showCommonSettingsColumn
         },
         {key: 'Performance', label: 'Performance Stats', align: 'center', fixed: true, width: '300px'},
-        {key: 'Action', label: 'Action', align: 'center', fixed: false}
+        {key: 'Action', label: 'Action', align: 'center', fixed: true, width: "100px"},
     ];
 
     if (loading) {
@@ -950,7 +965,7 @@ const ProductTableNew = () => {
             component={Paper}
             sx={{
                 position: 'relative',
-                opacity: actionLoading ? 0.9 : 1,
+                cursor: actionLoading ? "none" : "auto",
                 pointerEvents: actionLoading ? 'none' : 'auto'
             }}
         >
@@ -962,11 +977,8 @@ const ProductTableNew = () => {
                         left: 0,
                         right: 0,
                         bottom: 0,
-                        backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        zIndex: 10
+                        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                        zIndex: 10,
                     }}
                 >
                     <CircularProgress/>

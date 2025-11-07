@@ -362,12 +362,14 @@ export const useProductFormStore = create(
             },
 
             // Initialize form with edit data
-            initializeFormWithEditData: (editData) => {
-                const imageObjects = editData?.image?.map((image) => ({
+            initializeFormWithEditData: (editData, isCopied = false) => {
+                console.log("IS COPIED:", editData.sellerSku, editData.seller_sku);
+
+                const imageObjects = isCopied ? [] : editData?.image?.map((image) => ({
                     src: `${editData.imageBaseUrl}${image}`
                 })) || [];
 
-                const videoObjects = editData?.videos?.map((video) => ({
+                const videoObjects = isCopied ? [] : editData?.videos?.map((video) => ({
                     src: `${editData.videoBaseUrl}${video}`
                 })) || [];
 
@@ -424,7 +426,7 @@ export const useProductFormStore = create(
                         productweight: editData?.shipping_weight_unit || "",
                         packageweight: editData?.package_weight_unit || "",
                         productunitValue: editData?.display_dimension_unit || "",
-                        sellerSku: editData?.sku_code || "",
+                        sellerSku: isCopied ? "" : editData?.seller_sku || editData?.sku_code || "",
                         ProductTaxCode: editData?.tax_code || "",
                         shipingTemplates: editData?.shipping_templates || "",
                         yourPrice: editData?.price || "",

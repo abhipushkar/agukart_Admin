@@ -643,11 +643,9 @@ const ProductList = () => {
               <FormControlLabel value="inactive" control={<Radio />} label="Inactive" />
               <FormControlLabel value="sold-out" control={<Radio />} label="Sold Out" />
               <FormControlLabel value="draft" control={<Radio />} label="Draft" />
-              {
-                designation_id == "2" && (
+
                   <FormControlLabel value="delete" control={<Radio />} label="Delete" />
-                )
-              }
+
             </RadioGroup>
           </div>
 

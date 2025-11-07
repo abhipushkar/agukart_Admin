@@ -20,6 +20,7 @@ export default function AddProductNew() {
     const [searchParams] = useSearchParams();
     const queryId = searchParams.get("id");
     const copyQueryId = searchParams.get("_id");
+    const isCopied = searchParams.get("listing") === "copy";
     const [currentTab, setCurrentTab] = useState(0);
 
     const {
@@ -64,7 +65,8 @@ export default function AddProductNew() {
                     const editapiUrl = `${apiEndpoints.EditProduct}/${copyQueryId || queryId}`;
                     const res = await ApiService.get(editapiUrl, auth_key);
                     if (res?.status === 200) {
-                        initializeFormWithEditData(res?.data?.productData);
+                        console.log("IS COPIED", isCopied);
+                        initializeFormWithEditData(res?.data?.productData, isCopied);
                     }
                 } catch (error) {
                     handleOpen("error", error);
@@ -146,8 +148,6 @@ export default function AddProductNew() {
             handleOpen("error", "Please fix all validation errors before submitting.");
             return;
         }
-
-        console.log("In Handle Submit", queryId);
 
         try {
             await submitProduct(!!queryId, queryId);
