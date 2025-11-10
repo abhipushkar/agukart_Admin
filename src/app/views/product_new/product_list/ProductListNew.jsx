@@ -40,7 +40,7 @@ import Switch from "@mui/material/Switch";
 
 const IOSSwitch = styled((props) => (
     <Switch focusVisibleClassName=".Mui-focusVisible" disableRipple {...props} />
-))(({ theme }) => ({
+))(({theme}) => ({
     width: 42,
     height: 26,
     padding: 0,
@@ -169,7 +169,7 @@ const ProductListNew = () => {
 
     // Get available actions based on current filter status and selected products
     const getAvailableActions = () => {
-        const { status } = filters;
+        const {status} = filters;
         const selectedStatuses = getSelectedProductsStatus();
 
         // If no products selected, return empty array
@@ -250,8 +250,7 @@ const ProductListNew = () => {
                     {key: 'inactive', label: 'Inactive'}
                 ];
             case 'deleteByAdmin':
-                return [
-                ];
+                return [];
             default:
                 return [
                     {key: 'active', label: 'Active'},
@@ -365,18 +364,93 @@ const ProductListNew = () => {
         setFilters({hiddenColumns: value});
     };
 
-    // Export products
+    // Export in chunks for large datasets
     const handleExport = () => {
-        const exportData = products
-            .filter(product => product.type === 'product')
-            .map(product => product)
-            .concat(
-                products
-                    .filter(product => product.type === 'variations')
-                    .flatMap(product => product.productData.map(item => item))
-            );
+        const CHUNK_SIZE = 1000; // Export 1000 records at a time
 
-        exportToExcel(exportData, 'Products.xlsx');
+        try {
+            const allProducts = products
+                .filter(product => product.type === 'product')
+                .map(product => sanitizeProductData(product))
+                .concat(
+                    products
+                        .filter(product => product.type === 'variations')
+                        .flatMap(product => product.productData.map(item => sanitizeProductData(item)))
+                );
+
+            // If dataset is large, warn user
+            if (allProducts.length > CHUNK_SIZE) {
+                toast.warning(`Exporting ${allProducts.length} products. This may take a while.`);
+            }
+
+            // Export in chunks if needed
+            for (let i = 0; i < allProducts.length; i += CHUNK_SIZE) {
+                const chunk = allProducts.slice(i, i + CHUNK_SIZE);
+                const fileName = i === 0 ? 'Products.xlsx' : `Products_Part_${i / CHUNK_SIZE + 1}.xlsx`;
+                exportToExcel(chunk, fileName);
+            }
+
+            if (allProducts.length > CHUNK_SIZE) {
+                toast.success(`Exported ${allProducts.length} products in multiple files.`);
+            } else {
+                toast.success(`Exported ${allProducts.length} products successfully.`);
+            }
+
+        } catch (error) {
+            console.error('Export error:', error);
+            toast.error('Failed to export products. Please try again with fewer records.');
+        }
+    };
+
+    const sanitizeProductData = (product) => {
+        const sanitized = { ...product };
+
+        // Truncate long text fields to avoid Excel cell limits
+        const textFields = [
+            'description',
+            'product_title',
+            'title',
+            'long_description',
+            'specifications',
+            'features'
+        ];
+
+        textFields.forEach(field => {
+            if (sanitized[field] && typeof sanitized[field] === 'string' && sanitized[field].length > 32700) {
+                // Truncate to 32700 characters and add ellipsis
+                sanitized[field] = sanitized[field].substring(0, 32700) + '... [truncated]';
+            }
+        });
+
+        // Handle nested objects that might contain long text
+        if (sanitized.productData && Array.isArray(sanitized.productData)) {
+            sanitized.productData = sanitized.productData.map(variation =>
+                typeof variation === 'object' ? sanitizeProductData(variation) : variation
+            );
+        }
+
+        // Remove any fields that are too complex for Excel
+        delete sanitized.images; // Remove image arrays
+        delete sanitized.variants; // Remove complex variant structures
+        delete sanitized.combinations; // Remove combination data
+
+        // Convert any remaining objects to strings if they're too complex
+        Object.keys(sanitized).forEach(key => {
+            if (typeof sanitized[key] === 'object' && sanitized[key] !== null) {
+                try {
+                    const stringified = JSON.stringify(sanitized[key]);
+                    if (stringified.length > 32700) {
+                        sanitized[key] = '[Complex Object - too large for Excel]';
+                    } else {
+                        sanitized[key] = stringified;
+                    }
+                } catch {
+                    sanitized[key] = '[Unserializable Object]';
+                }
+            }
+        });
+
+        return sanitized;
     };
 
     const isAllSelected = selection.productIds.length > 0 &&
@@ -519,7 +593,8 @@ const ProductListNew = () => {
                             <FormControlLabel value="sold-out" control={<Radio/>} label="Sold Out"/>
                             <FormControlLabel value="draft" control={<Radio/>} label="Draft"/>
                             <FormControlLabel value="delete" control={<Radio/>} label="Deleted"/>
-                            { localStorage.getItem(localStorageKey.designation_id) === "2" && (<FormControlLabel value="deleteByAdmin" control={<Radio/>} label="Deleted By Admin"/>)}
+                            {localStorage.getItem(localStorageKey.designation_id) === "2" && (
+                                <FormControlLabel value="deleteByAdmin" control={<Radio/>} label="Deleted By Admin"/>)}
                         </RadioGroup>
                     </Box>
 
@@ -528,7 +603,9 @@ const ProductListNew = () => {
                         alignItems: "center",
                         justifyContent: "center",
                     }}>
-                        <FormControlLabel value={showFeaturedOnly} onChange={event => setShowFeaturedOnly(event.target.checked)} control={<IOSSwitch sx={{ m: 1 }} />} label={"Show only Featured"} />
+                        <FormControlLabel value={showFeaturedOnly}
+                                          onChange={event => setShowFeaturedOnly(event.target.checked)}
+                                          control={<IOSSwitch sx={{m: 1}}/>} label={"Show only Featured"}/>
                     </FormControl>
 
                     {/* Column Preferences */}

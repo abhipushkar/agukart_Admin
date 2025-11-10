@@ -374,7 +374,7 @@ const ProductRow = ({product, index}) => {
                                 </IconButton>
                             )}
                             <Typography variant="body2" sx={{fontSize: '0.75rem'}}>
-                                {isProduct ? product.status : `${product.type} (${product.productData?.length || 0})`}
+                                {isProduct ? product.status : `${product.type} \n${product.totalChildCount}(${product.productData?.length || 0})`}
                             </Typography>
                         </Box>
                     </TableCell>

@@ -1,329 +1,608 @@
 // stores/parentProductStore.js
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { ApiService } from "app/services/ApiService";
-import { apiEndpoints } from "app/constant/apiEndpoints";
-import { localStorageKey } from "app/constant/localStorageKey";
-import { toast } from "react-toastify";
-import dayjs from "dayjs";
-import { v4 as uuidv4 } from "uuid";
-import {ROUTE_CONSTANT} from "../../../constant/routeContanst";
+import { devtools } from 'zustand/middleware';
+import { ApiService } from 'app/services/ApiService';
+import { apiEndpoints } from 'app/constant/apiEndpoints';
+import { localStorageKey } from 'app/constant/localStorageKey';
+import { ROUTE_CONSTANT } from 'app/constant/routeContanst';
+import { toast } from 'react-toastify';
+import dayjs from 'dayjs';
+import { v4 as uuidv4 } from 'uuid';
 
-export const useParentProductStore = create(
-    persist(
-        (set, get) => ({
-            // Form Data
-            formData: {
-                productTitle: "",
-                description: "",
-                subCategory: "",
-                sellerSku: "",
-                Innervariations: {},
-                variantData: [],
-                variant_id: [],
-                variant_name: [],
-                images: []
-            },
+const auth_key = localStorage.getItem(localStorageKey.auth_key);
 
-            // State variables
-            inputFields: [{ id: 1, attributeValue: "", sortOrder: "", status: false }],
-            selectedBrand: "",
-            brandlist: [],
-            allCategory: [],
-            selectedCatLable: "Select Category",
-            showVariant: false,
-            varintList: [],
-            varientAttribute: [],
-            images: [],
-            isCoponentLoader: false,
-            issubmitLoader: false,
-            variantArrValues: [],
-            skuErrors: {},
-            loadingSkus: {},
-            sellerSky: [],
-            combinationMap: new Map(),
-            usedSkus: new Set(),
+export const useParentProductStore = create(devtools((set, get) => ({
+    // Form state
+    formData: {
+        productTitle: "",
+        description: "",
+        subCategory: "",
+        sellerSku: "",
+        Innervariations: {},
+        variantData: [],
+        variant_id: [],
+        variant_name: [],
+        images: []
+    },
 
-            // Input Errors
-            inputErrors: {
-                productTitle: "",
-                variations: "",
-                brandname: "",
-                subCategory: "",
-                description: "",
-                sellerSku: "",
-                innervariation: "",
-                parentImage: ""
-            },
+    // UI state
+    inputFields: [{ id: 1, attributeValue: "", sortOrder: "", status: false }],
+    selectedBrand: "",
+    brandlist: [],
+    allCategory: [],
+    selectedCatLable: "Select Category",
+    showVariant: false,
+    varintList: [],
+    varientAttribute: [],
+    images: [],
+    isCoponentLoader: false,
+    issubmitLoader: false,
+    variantArrValues: [],
+    skuErrors: {},
+    loadingSkus: {},
+    sellerSky: [],
+    combinationMap: new Map(),
+    usedSkus: new Set(),
+    inputErrors: {
+        productTitle: "",
+        variations: "",
+        brandname: "",
+        subCategory: "",
+        description: "",
+        sellerSku: "",
+        innervariation: "",
+        parentImage: ""
+    },
+    modalState: {
+        open: false,
+        type: "",
+        route: null,
+        msg: null
+    },
+    parentId: "",
+    imgName: "",
 
-            // Modal state
-            modal: {
-                open: false,
-                type: "",
-                route: null,
-                msg: null
-            },
+    // Actions
+    setFormData: (updates) => set((state) => ({
+        formData: { ...state.formData, ...updates }
+    })),
 
-            // Actions
-            setFormData: (newFormData) => set({ formData: newFormData }),
-            updateFormData: (updates) => set(state => ({
-                formData: { ...state.formData, ...updates }
-            })),
+    setInputErrors: (errors) => set((state) => ({
+        inputErrors: { ...state.inputErrors, ...errors }
+    })),
 
-            setInputFields: (inputFields) => set({ inputFields }),
-            setSelectedBrand: (selectedBrand) => set({ selectedBrand }),
-            setBrandList: (brandlist) => set({ brandlist }),
-            setAllCategory: (allCategory) => set({ allCategory }),
-            setSelectedCatLable: (selectedCatLable) => set({ selectedCatLable }),
-            setShowVariant: (showVariant) => set({ showVariant }),
-            setVariantList: (varintList) => set({ varintList }),
-            setVarientAttribute: (varientAttribute) => set({ varientAttribute }),
-            setImages: (images) => set({ images }),
-            setIsComponentLoader: (isCoponentLoader) => set({ isCoponentLoader }),
-            setSubmitLoader: (issubmitLoader) => set({ issubmitLoader }),
-            setVariantArrValue: (variantArrValues) => set({ variantArrValues }),
-            setSkuErrors: (skuErrors) => set({ skuErrors }),
-            setLoadingSkus: (loadingSkus) => set({ loadingSkus }),
-            setSellerSku: (sellerSky) => set({ sellerSky }),
-            setCombinationMap: (combinationMap) => set({ combinationMap }),
-            setUsedSkus: (usedSkus) => set({ usedSkus }),
+    setImages: (images) => set({ images }),
 
-            setInputErrors: (inputErrors) => set({ inputErrors }),
-            updateInputErrors: (updates) => set(state => ({
-                inputErrors: { ...state.inputErrors, ...updates }
-            })),
+    setVariantArrValue: (values) => set({ variantArrValues: values }),
 
-            // Modal actions
-            setModal: (modal) => set({ modal }),
-            openModal: (type, msg) => set({
-                modal: {
-                    open: true,
-                    type,
-                    msg: msg?.message || msg,
-                    route: msg?.response?.status === 401 ? ROUTE_CONSTANT.login : null
-                }
-            }),
-            closeModal: () => set(state => ({
-                modal: { ...state.modal, open: false }
-            })),
+    setSellerSku: (skus) => set({ sellerSky: skus }),
 
-            // Helper functions
-            trimValue: (value) => {
-                if (typeof value === 'string') {
-                    return value.trim();
-                }
-                return value;
-            },
+    setSkuErrors: (errors) => set((state) => ({
+        skuErrors: { ...state.skuErrors, ...errors }
+    })),
 
-            formDataHandler: (e) => {
-                const trimmedValue = get().trimValue(e.target.value);
-                get().updateFormData({ [e.target.name]: trimmedValue });
-            },
+    setLoadingSkus: (loading) => set((state) => ({
+        loadingSkus: { ...state.loadingSkus, ...loading }
+    })),
 
-            // API Actions
-            getBrandList: async () => {
-                const auth_key = localStorage.getItem(localStorageKey.auth_key);
-                try {
-                    const res = await ApiService.get(apiEndpoints.getBrand, auth_key);
-                    if (res.status === 200) {
-                        set({ brandlist: res?.data?.brand });
-                    }
-                } catch (error) {
-                    get().handleApiError(error, "Failed to load brands");
-                }
-            },
+    setCombinationMap: (map) => set({ combinationMap: map }),
 
-            getVaraintList: async () => {
-                const auth_key = localStorage.getItem(localStorageKey.auth_key);
-                try {
-                    const typeParam = "type=Product";
-                    const urlWithParam = `${apiEndpoints.getAllActiveVarient}?${typeParam}`;
-                    const res = await ApiService.get(urlWithParam, auth_key);
-                    if (res.status === 200) {
-                        set({ varintList: res?.data?.parent });
-                    }
-                } catch (error) {
-                    get().handleApiError(error, "Failed to load variants");
-                }
-            },
+    setModalState: (updates) => set((state) => ({
+        modalState: { ...state.modalState, ...updates }
+    })),
 
-            getChildCategory: async () => {
-                const auth_key = localStorage.getItem(localStorageKey.auth_key);
-                try {
-                    const res = await ApiService.get(apiEndpoints.getChildCategory, auth_key);
-                    if (res.status === 200) {
-                        set({ allCategory: res?.data?.data });
-                    }
-                } catch (error) {
-                    get().handleApiError(error, "Failed to load categories");
-                }
-            },
+    setVarientAttribute: (attributes) => set({ varientAttribute: attributes }),
 
-            handleApiError: (error, customMessage = null) => {
-                console.error("API Error:", error);
+    setParentId: (id) => set({ parentId: id }),
 
-                if (error?.response?.status === 401) {
-                    get().openModal("error", {
-                        message: "Session expired. Please login again.",
-                        response: { status: 401 }
-                    });
-                } else if (error?.response?.data?.message) {
-                    get().openModal("error", error.response.data);
-                } else {
-                    get().openModal("error", {
-                        message: customMessage || "Something went wrong. Please try again."
-                    });
-                }
-            },
+    setIsComponentLoader: (loading) => set({ isCoponentLoader: loading }),
 
-            // Variation handlers
-            varintHandler: (event, value) => {
-                const variant_id = value.map((option) => option.id);
-                const variant_name = value.map((option) => option.variant_name);
+    setIsSubmitLoader: (loading) => set({ issubmitLoader: loading }),
 
-                set(state => ({
-                    formData: {
-                        ...state.formData,
-                        variantData: value,
-                        variant_id,
-                        variant_name
-                    },
-                    inputErrors: { ...state.inputErrors, variations: "" }
-                }));
-            },
+    setVarintList: (list) => set({ varintList: list }),
 
-            generateCombinationKey: (combination) => {
-                return Object.keys(combination)
-                    .sort()
-                    .map(key => combination[key]._id)
-                    .join('_');
-            },
+    setAllCategory: (categories) => set({ allCategory: categories }),
 
-            generateCombinations: (innervariations) => {
-                let combinations = [];
-                const variationKeys = Object.keys(innervariations);
-                const variations = variationKeys.map((key) => innervariations[key]);
+    // Helper functions
+    trimValue: (value) => {
+        if (typeof value === 'string') return value.trim();
+        return value;
+    },
 
-                function combine(attributes, index, currentCombination) {
-                    if (index === attributes.length) {
-                        combinations.push({ ...currentCombination });
-                        return;
-                    }
+    trimObjectValues: (obj) => {
+        if (!obj || typeof obj !== 'object') return obj;
+        const trimmedObj = {};
+        Object.keys(obj).forEach(key => {
+            if (typeof obj[key] === 'string') {
+                trimmedObj[key] = obj[key].trim();
+            } else {
+                trimmedObj[key] = obj[key];
+            }
+        });
+        return trimmedObj;
+    },
 
-                    const sortedAttributes = [...attributes[index]].sort((a, b) =>
-                        a.attribute_value.localeCompare(b.attribute_value)
-                    );
+    trimArrayValues: (array) => {
+        if (!Array.isArray(array)) return array;
+        return array.map(item => {
+            if (typeof item === 'string') {
+                return item.trim();
+            } else if (typeof item === 'object' && item !== null) {
+                return get().trimObjectValues(item);
+            }
+            return item;
+        });
+    },
 
-                    sortedAttributes.forEach((attribute) => {
-                        const key = `key${index + 1}`;
-                        currentCombination[key] = {
-                            value: attribute.attribute_value,
-                            _id: attribute._id,
-                            variant_name: variationKeys[index]
-                        };
-                        combine(attributes, index + 1, currentCombination);
-                    });
-                }
+    // Combination functions
+    generateCombinationKey: (combination) => {
+        return Object.keys(combination)
+            .sort()
+            .map(key => combination[key]._id)
+            .join('_');
+    },
 
-                combine(variations, 0, {});
-                return combinations;
-            },
+    generateCombinations: (innervariations) => {
+        let combinations = [];
+        const variationKeys = Object.keys(innervariations);
+        const variations = variationKeys.map((key) => innervariations[key]);
 
-            InnervariationsHandle: (variantId) => (event, newValue) => {
-                const state = get();
-                const updatedInnervariations = {
-                    ...state.formData.Innervariations,
-                    [variantId]: newValue
+        function combine(attributes, index, currentCombination) {
+            if (index === attributes.length) {
+                combinations.push({ ...currentCombination });
+                return;
+            }
+
+            const sortedAttributes = [...attributes[index]].sort((a, b) =>
+                a.attribute_value.localeCompare(b.attribute_value)
+            );
+
+            sortedAttributes.forEach((attribute) => {
+                const key = `key${index + 1}`;
+                currentCombination[key] = {
+                    value: attribute.attribute_value,
+                    _id: attribute._id,
+                    variant_name: variationKeys[index]
                 };
+                combine(attributes, index + 1, currentCombination);
+            });
+        }
 
-                const newCombinations = state.generateCombinations(updatedInnervariations);
+        combine(variations, 0, {});
+        return combinations;
+    },
 
-                const { preservedVariantData, preservedSellerSky } = state.preserveCombinationData(
-                    newCombinations,
-                    state.combinationMap,
-                    state.variantArrValues,
-                    state.sellerSky
-                );
+    preserveCombinationData: (newCombinations, currentVariantData, currentSellerSky) => {
+        const { combinationMap, generateCombinationKey } = get();
+        const preservedVariantData = [];
+        const preservedSellerSky = [];
 
-                const newMap = new Map();
-                newCombinations.forEach((comb, index) => {
-                    const key = state.generateCombinationKey(comb);
-                    newMap.set(key, index);
+        newCombinations.forEach((newComb, newIndex) => {
+            const combKey = generateCombinationKey(newComb);
+            const existingIndex = combinationMap.get(combKey);
+
+            if (existingIndex !== undefined && currentVariantData[existingIndex]) {
+                preservedVariantData[newIndex] = { ...currentVariantData[existingIndex] };
+                preservedSellerSky[newIndex] = currentSellerSky[existingIndex] || "";
+            } else {
+                preservedVariantData[newIndex] = {
+                    _id: "",
+                    product_id: "",
+                    sale_price: "",
+                    price: "",
+                    sale_start_date: "",
+                    sale_end_date: "",
+                    qty: "",
+                    isExistingProduct: false
+                };
+                preservedSellerSky[newIndex] = "";
+            }
+        });
+
+        return { preservedVariantData, preservedSellerSky };
+    },
+
+    updateCombinationMap: (combinations) => {
+        const newMap = new Map();
+        combinations.forEach((comb, index) => {
+            const key = get().generateCombinationKey(comb);
+            newMap.set(key, index);
+        });
+        set({ combinationMap: newMap });
+    },
+
+    // Validation functions
+    validateChildProductVariants: (childProductData, parentVariants) => {
+        if (!childProductData?.variants_used || !parentVariants?.length) return null;
+
+        const parentVariantNames = parentVariants.map(v => v.variant_name);
+        const childVariantNames = childProductData.variants_used.map(v => v.variant_name);
+
+        const conflictingVariants = parentVariantNames.filter(parentVariant =>
+            childVariantNames.includes(parentVariant)
+        );
+
+        if (conflictingVariants.length > 0) {
+            return `Child product already uses variants: ${conflictingVariants.join(', ')}. Please select different variants.`;
+        }
+
+        return null;
+    },
+
+    checkForDuplicateSkus: (sku, index) => {
+        const { sellerSky, trimValue } = get();
+        if (!sku) return null;
+
+        const trimmedSku = trimValue(sku);
+        const otherSkus = sellerSky.filter((_, i) => i !== index).map(sku => trimValue(sku));
+
+        if (otherSkus.includes(trimmedSku)) {
+            return "This SKU is already used in another variant combination";
+        }
+
+        return null;
+    },
+
+    // API actions
+    getBrandList: async () => {
+        try {
+            const res = await ApiService.get(apiEndpoints.getBrand, auth_key);
+            if (res.status === 200) {
+                set({ brandlist: res?.data?.brand });
+            }
+        } catch (error) {
+            get().handleApiError(error, "Failed to load brands");
+        }
+    },
+
+    getVaraintList: async () => {
+        try {
+            const typeParam = "type=Product";
+            const urlWithParam = `${apiEndpoints.getAllActiveVarient}?${typeParam}`;
+            const res = await ApiService.get(urlWithParam, auth_key);
+            if (res.status === 200) {
+                set({ varintList: res?.data?.parent });
+            }
+        } catch (error) {
+            get().handleApiError(error, "Failed to load variants");
+        }
+    },
+
+    getChildCategory: async () => {
+        try {
+            const res = await ApiService.get(apiEndpoints.getChildCategory, auth_key);
+            if (res.status === 200) {
+                set({ allCategory: res?.data?.data });
+            }
+        } catch (error) {
+            get().handleApiError(error, "Failed to load categories");
+        }
+    },
+
+    getParentProductDetail: async (productId) => {
+        const {
+            setFormData,
+            setParentId,
+            setVarientAttribute,
+            setVariantArrValue,
+            setSellerSku,
+            setCombinationMap,
+            setSkuErrors,
+            validateChildProductVariants,
+            handleApiError,
+            generateCombinations,
+            updateCombinationMap
+        } = get();
+
+        try {
+            const res = await ApiService.get(
+                `${apiEndpoints.getParentProductDetail}/${productId}`,
+                auth_key
+            );
+
+            if (res?.status === 200) {
+                const resData = res?.data?.data;
+
+                setFormData({
+                    productTitle: resData?.product_title || "",
+                    description: resData?.description || "",
+                    sellerSku: resData?.seller_sku || "",
+                    images: [{ src: `${res?.data?.base_url}${resData?.image}` }],
+                    variant_id: resData?.variant_id?.map((option) => option?._id) || [],
+                    variant_name: resData?.variant_id?.map((option) => option?.variant_name) || [],
+                    subCategory: resData?.sub_category || ""
                 });
 
-                set({
-                    formData: { ...state.formData, Innervariations: updatedInnervariations },
-                    variantArrValues: preservedVariantData,
-                    sellerSky: preservedSellerSky,
-                    combinationMap: newMap,
-                    inputErrors: { ...state.inputErrors, innervariation: "" }
-                });
-            },
+                setParentId(resData?._id);
+                setVarientAttribute(resData?.variant_attribute_id?.map((option) => option._id) || []);
 
-            preserveCombinationData: (newCombinations, combinationMap, currentVariantData, currentSellerSky) => {
-                const preservedVariantData = [];
-                const preservedSellerSky = [];
+                // Handle SKU data fetching
+                if (resData?.sku && resData?.sku.length > 0) {
+                    const arr = resData.sku.map(async (sku, i) => {
+                        if (!sku) {
+                            return {
+                                _id: "",
+                                product_id: "",
+                                sale_price: "",
+                                price: "",
+                                sale_start_date: "",
+                                sale_end_date: "",
+                                qty: "",
+                                isExistingProduct: false
+                            };
+                        }
 
-                newCombinations.forEach((newComb, newIndex) => {
-                    const combKey = get().generateCombinationKey(newComb);
-                    const existingIndex = combinationMap.get(combKey);
+                        let url = apiEndpoints.getProductBySku + `/${sku}`;
+                        const res = await ApiService.get(url, auth_key);
 
-                    if (existingIndex !== undefined && currentVariantData[existingIndex]) {
-                        preservedVariantData[newIndex] = { ...currentVariantData[existingIndex] };
-                        preservedSellerSky[newIndex] = currentSellerSky[existingIndex] || "";
-                    } else {
-                        preservedVariantData[newIndex] = {
+                        if (res.status === 200) {
+                            let obj = res.data.data;
+                            let sale_start_date = obj.sale_start_date ? dayjs(obj.sale_start_date) : "";
+                            let sale_end_date = obj.sale_end_date ? dayjs(obj.sale_end_date) : "";
+
+                            const variantError = validateChildProductVariants(obj, resData?.variant_id);
+
+                            if (variantError) {
+                                setSkuErrors({ [i]: variantError });
+                            }
+
+                            return {
+                                ...obj,
+                                _id: obj.product_id,
+                                sale_end_date,
+                                sale_start_date,
+                                price: obj.price || "",
+                                sale_price: obj.sale_price || "",
+                                qty: obj.qty || "",
+                                isExistingProduct: true
+                            };
+                        }
+                        return {
                             _id: "",
                             product_id: "",
                             sale_price: "",
                             price: "",
                             sale_start_date: "",
                             sale_end_date: "",
-                            qty: ""
+                            qty: "",
+                            isExistingProduct: false
                         };
-                        preservedSellerSky[newIndex] = "";
+                    });
+
+                    Promise.all(arr).then((results) => {
+                        setVariantArrValue(results);
+                        setSellerSku(resData.sku);
+
+                        if (resData?.combinations) {
+                            const initialMap = new Map();
+                            resData.combinations.forEach((comb, index) => {
+                                if (comb.comb) {
+                                    initialMap.set(comb.comb.replace(/,/g, '_'), index);
+                                }
+                            });
+                            setCombinationMap(initialMap);
+                        }
+                    });
+                }
+
+                // Generate combinations for existing data
+                if (resData?.variant_id && resData?.variant_attribute_id) {
+                    const variantData = resData.variant_id.reduce((acc, item) => {
+                        if (item?.variant_attribute) {
+                            const filteredAttributes = item.variant_attribute.filter((variant) =>
+                                resData.variant_attribute_id.some(attr => attr._id === variant._id)
+                            );
+                            if (filteredAttributes.length > 0) {
+                                acc[item.variant_name] = filteredAttributes;
+                            }
+                        }
+                        return acc;
+                    }, {});
+
+                    setFormData({ Innervariations: variantData });
+                    const initialCombinations = generateCombinations(variantData);
+                    updateCombinationMap(initialCombinations);
+                }
+            }
+        } catch (error) {
+            handleApiError(error, "Failed to load product details");
+        }
+    },
+
+    handleApiError: (error, customMessage = null) => {
+        console.error("API Error:", error);
+
+        if (error?.response?.status === 401) {
+            get().handleOpen("error", {
+                message: "Session expired. Please login again.",
+                response: { status: 401 }
+            });
+        } else if (error?.response?.data?.message) {
+            get().handleOpen("error", error.response.data);
+        } else {
+            get().handleOpen("error", {
+                message: customMessage || "Something went wrong. Please try again."
+            });
+        }
+    },
+
+    handleOpen: (type, msg) => {
+        const message = msg?.message || msg;
+        set({
+            modalState: {
+                open: true,
+                type,
+                msg: message,
+                route: msg?.response?.status === 401 ? ROUTE_CONSTANT.login : null
+            }
+        });
+    },
+
+    handleClose: () => {
+        const { modalState } = get();
+        set({ modalState: { ...modalState, open: false } });
+
+        if (modalState.route) {
+            // Navigate would be handled by the component
+            window.location.href = modalState.route;
+        }
+    },
+
+    // Form submission
+    parentsubmitHandle: async (productId) => {
+        const {
+            formData,
+            variantArrValues,
+            sellerSky,
+            skuErrors,
+            varientAttribute,
+            setInputErrors,
+            setIsSubmitLoader,
+            handleOpen,
+            generateCombinations,
+            trimValue,
+            trimArrayValues,
+            handleApiError
+        } = get();
+
+        // Validation logic
+        const errors = {};
+        if (!trimValue(formData.productTitle)) errors.productTitle = "Product Title is Required";
+        if (!trimValue(formData.description)) errors.description = "Description is Required";
+        if (!trimValue(formData.sellerSku)) errors.sellerSku = "Seller Sku is Required";
+        if (formData.variantData.length === 0) errors.variations = "Please Select At least one Variant";
+        if (Object.keys(formData.Innervariations).length === 0) errors.innervariation = "Please Select At least one Innervariations Variant";
+        if (get().images.length === 0) errors.parentImage = "Images Is Required";
+
+        setInputErrors(errors);
+
+        if (Object.keys(errors).length > 0) {
+            toast.error("Please fill all required fields");
+            return;
+        }
+
+        // SKU validation check
+        const hasSkuErrors = Object.values(skuErrors).some(error => error);
+        if (hasSkuErrors) {
+            toast.error("Please fix SKU validation errors before submitting");
+            return;
+        }
+
+        const currentCombinations = generateCombinations(formData.Innervariations);
+
+        const combine = currentCombinations.map((combination, index) => {
+            const comb = Object.keys(combination)
+                .map((key) => combination[key]._id)
+                .join(",");
+
+            const variantData = variantArrValues[index] || {};
+
+            return {
+                ...variantData,
+                comb: comb,
+                sku_code: sellerSky[index] ? trimValue(sellerSky[index]) : ""
+            };
+        });
+
+        // Validate product array
+        const validateProductArray = (combine) => {
+            return combine.every((product, index) => {
+                const isExistingProduct = product.product_id && product.product_id !== "";
+                const isValid = isExistingProduct
+                    ? product.sku_code
+                    : product.sale_price && product.qty && product.comb && product.sku_code;
+
+                if (!isValid) {
+                    const message = isExistingProduct
+                        ? `SKU is mandatory for variant combination ${index + 1}`
+                        : `All fields are mandatory for variant combination ${index + 1}`;
+                    toast.error(message);
+                }
+                return isValid;
+            });
+        };
+
+        const check = validateProductArray(combine);
+        if (!check) return;
+
+        // API call logic
+        const param = {
+            _id: productId ? productId : "new",
+            product_title: trimValue(formData.productTitle),
+            description: trimValue(formData.description),
+            seller_sku: trimValue(formData.sellerSku),
+            variant_id: formData.variant_id,
+            variant_attribute_id: varientAttribute,
+            combinations: trimArrayValues(combine),
+            sub_category: formData?.subCategory || "",
+            sku: trimArrayValues(sellerSky)
+        };
+
+        try {
+            setIsSubmitLoader(true);
+            const urlWithParam = `${apiEndpoints.AddParentProduct}`;
+            const ImagesurlWithParam = `${apiEndpoints.ParentImagesAddParentProduct}`;
+            const res = await ApiService.post(urlWithParam, param, auth_key);
+
+            if (res.status === 200) {
+                // Handle image upload
+                const { images, parentId } = get();
+                if (images?.[0]?.file) {
+                    const formData = new FormData();
+                    formData.append("_id", productId ? productId : res?.data?.parent_product._id);
+                    formData.append(
+                        "file",
+                        productId
+                            ? images?.[0]?.file
+                                ? images?.[0]?.file
+                                : images?.[0]?.src
+                            : images?.[0]?.file
+                    );
+                    await ApiService.postImage(ImagesurlWithParam, formData, auth_key);
+                }
+
+                // Reset form
+                set({
+                    formData: {
+                        productTitle: "",
+                        description: "",
+                        subCategory: "",
+                        sellerSku: "",
+                        Innervariations: {},
+                        variantData: [],
+                        variant_id: [],
+                        variant_name: [],
+                        images: []
+                    },
+                    images: [],
+                    variantArrValues: [],
+                    sellerSky: [],
+                    modalState: {
+                        open: true,
+                        type: "success",
+                        msg: res?.data,
+                        route: ROUTE_CONSTANT.catalog.product.list
                     }
                 });
-
-                return { preservedVariantData, preservedSellerSky };
-            },
-
-            // Reset store
-            resetStore: () => set({
-                formData: {
-                    productTitle: "",
-                    description: "",
-                    subCategory: "",
-                    sellerSku: "",
-                    Innervariations: {},
-                    variantData: [],
-                    variant_id: [],
-                    variant_name: [],
-                    images: []
-                },
-                images: [],
-                variantArrValues: [],
-                sellerSky: [],
-                combinationMap: new Map(),
-                inputErrors: {
-                    productTitle: "",
-                    variations: "",
-                    brandname: "",
-                    subCategory: "",
-                    description: "",
-                    sellerSku: "",
-                    innervariation: "",
-                    parentImage: ""
-                }
-            })
-        }),
-        {
-            name: 'parent-product-store',
-            partialize: (state) => ({
-                // Only persist what's necessary
-                formData: state.formData,
-                images: state.images
-            })
+            }
+        } catch (error) {
+            handleApiError(error, "Failed to save product");
+        } finally {
+            setIsSubmitLoader(false);
         }
-    )
-);
+    },
+
+    // Initialize data
+    initializeData: async (productId) => {
+        await Promise.all([
+            get().getBrandList(),
+            get().getVaraintList(),
+            get().getChildCategory()
+        ]);
+
+        if (productId) {
+            await get().getParentProductDetail(productId);
+        }
+    }
+})));
+
