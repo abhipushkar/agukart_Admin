@@ -1,16 +1,16 @@
 // AddProductNew.jsx
-import { Box, Button, Divider, Paper, Stack, Typography, CircularProgress } from "@mui/material";
+import {Box, Button, Divider, Paper, Stack, Typography, CircularProgress} from "@mui/material";
 import AppsIcon from "@mui/icons-material/Apps";
-import { ROUTE_CONSTANT } from "../../../constant/routeContanst";
-import React, { useState, useEffect } from "react";
+import {ROUTE_CONSTANT} from "../../../constant/routeContanst";
+import React, {useState, useEffect} from "react";
 import Container from "@mui/material/Container";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import {useNavigate, useSearchParams} from "react-router-dom";
 import ProductTabs from "./tabs/productTabs";
 import tabsList from "./tabs/tabsList";
 import tabsComponents from "./tabs/productTabs/tabsComponents";
-import { ApiService } from "app/services/ApiService";
-import { apiEndpoints } from "app/constant/apiEndpoints";
-import { localStorageKey } from "app/constant/localStorageKey";
+import {ApiService} from "app/services/ApiService";
+import {apiEndpoints} from "app/constant/apiEndpoints";
+import {localStorageKey} from "app/constant/localStorageKey";
 import ConfirmModal from "app/components/ConfirmModal";
 import {useProductFormStore} from "../states/useAddProducts";
 import useProductAPI from "../states/useProductApi";
@@ -35,14 +35,15 @@ export default function AddProductNew() {
         setExchangePolicy,
         setShippingTemplateData,
         inputErrors,
+        loading,
+        draftLoading,
+        loadingProductData,
+        setLoadingProductData,
     } = useProductFormStore();
 
     const {
         submitProduct,
         saveDraft,
-        fetchEditProductData,
-        loading,
-        draftLoading,
     } = useProductAPI();
 
     const [open, setOpen] = useState(false);
@@ -201,6 +202,7 @@ export default function AddProductNew() {
 
     useEffect(() => {
         const fetchInitialData = async () => {
+            setLoadingProductData(true);
             try {
                 await Promise.all([
                     getBrandList(),
@@ -209,6 +211,8 @@ export default function AddProductNew() {
                 ]);
             } catch (error) {
                 console.error("Error fetching initial data:", error);
+            } finally {
+                setLoadingProductData(false)
             }
         };
 
@@ -251,46 +255,54 @@ export default function AddProductNew() {
     }, [formData.vendor]);
 
     return (
-        <Container maxWidth={"100%"} >
-            <Box sx={{ py: 2.5, my: 3 }} component={Paper}>
-                <Stack sx={{ ml: "16px", mb: "12px" }} gap={1} direction={"row"}>
+        <Container maxWidth={"100%"}>
+            <Box sx={{py: 2.5, my: 3}} component={Paper}>
+                <Stack sx={{ml: "16px", mb: "12px"}} gap={1} direction={"row"}>
                     <Box>
-                        <AppsIcon />
+                        <AppsIcon/>
                     </Box>
                     <Box>
-                        <Typography sx={{ fontWeight: "600", fontSize: "18px" }}>Go To</Typography>
+                        <Typography sx={{fontWeight: "600", fontSize: "18px"}}>Go To</Typography>
                     </Box>
                 </Stack>
-                <Divider />
-                <Box sx={{ ml: "16px", mt: "16px" }}>
+                <Divider/>
+                <Box sx={{ml: "16px", mt: "16px"}}>
                     <Button
                         onClick={() => navigate(ROUTE_CONSTANT.catalog.product.list)}
-                        startIcon={<AppsIcon />}
+                        startIcon={<AppsIcon/>}
                         variant="contained"
                     >
                         Product List
                     </Button>
                 </Box>
             </Box>
-            <Box sx={{ py: 2.5 }} component={Paper}>
-                <Stack sx={{ ml: "16px", mb: "12px" }} gap={1} direction={"row"}>
+            <Box sx={{py: 2.5}} component={Paper}>
+                <Stack sx={{ml: "16px", mb: "12px"}} gap={1} direction={"row"}>
                     <Box>
-                        <AppsIcon />
+                        <AppsIcon/>
                     </Box>
                     <Box>
-                        <Typography sx={{ fontWeight: "600", fontSize: "18px" }}>Add Product</Typography>
+                        <Typography sx={{fontWeight: "600", fontSize: "18px"}}>Add Product</Typography>
                     </Box>
                 </Stack>
-                <Divider />
-                <ProductTabs
-                    tabsList={tabsList}
-                    tabsComponents={tabsComponents}
-                    currentTab={currentTab}
-                    setCurrentTab={setCurrentTab}
-                />
-                <Box sx={{ p: 3, display: 'flex', gap: 2, justifyContent: 'space-between' }}>
+                <Divider/>
+                {loadingProductData ?
+                    (<Box sx={{
+                        width: "100%",
+                        height: "100%",
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        p: 5,
+                    }}><CircularProgress/></Box>) : (<ProductTabs
+                        tabsList={tabsList}
+                        tabsComponents={tabsComponents}
+                        currentTab={currentTab}
+                        setCurrentTab={setCurrentTab}
+                    />)}
+                <Box sx={{p: 3, display: 'flex', gap: 2, justifyContent: 'space-between'}}>
                     {/* Left side - Navigation buttons */}
-                    <Box sx={{ display: 'flex', gap: 2 }}>
+                    <Box sx={{display: 'flex', gap: 2}}>
                         <Button
                             variant="outlined"
                             onClick={handlePrevious}
@@ -308,12 +320,12 @@ export default function AddProductNew() {
                     </Box>
 
                     {/* Right side - Action buttons */}
-                    <Box sx={{ display: 'flex', gap: 2 }}>
+                    <Box sx={{display: 'flex', gap: 2}}>
                         <Button
                             variant="contained"
                             onClick={handleSaveDraft}
                             disabled={draftLoading}
-                            startIcon={draftLoading ? <CircularProgress size={16} /> : null}
+                            startIcon={draftLoading ? <CircularProgress size={16}/> : null}
                         >
                             {draftLoading ? "Saving..." : "Save as Draft"}
                         </Button>
@@ -328,14 +340,14 @@ export default function AddProductNew() {
                             variant="contained"
                             onClick={handleSubmit}
                             disabled={loading}
-                            startIcon={loading ? <CircularProgress size={16} /> : null}
+                            startIcon={loading ? <CircularProgress size={16}/> : null}
                         >
                             {loading ? "Saving..." : "Save Product"}
                         </Button>
                     </Box>
                 </Box>
             </Box>
-            <ConfirmModal open={open} handleClose={handleClose} type={type} msg={msg} />
+            <ConfirmModal open={open} handleClose={handleClose} type={type} msg={msg}/>
         </Container>
     );
 }

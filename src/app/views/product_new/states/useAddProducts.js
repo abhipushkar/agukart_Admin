@@ -5,8 +5,14 @@ import dayjs from 'dayjs';
 export const useProductFormStore = create(
     persist(
         (set, get) => ({
+            loading: false,
+            draftLoading: false,
+
+            loadingProductData: false,
+
             setLoading: (loading) => set({ loading }),
             setDraftLoading: (draftLoading) => set({ draftLoading }),
+            setLoadingProductData: (loadingProductData) => set({ loadingProductData }),
 
             brandList: [],
             setBrandList: (brandList => set((state) => ({brandList}))),

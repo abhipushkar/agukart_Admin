@@ -3,6 +3,9 @@ import {ApiService} from 'app/services/ApiService';
 import {apiEndpoints} from 'app/constant/apiEndpoints';
 import {localStorageKey} from 'app/constant/localStorageKey';
 
+// Default hidden columns - Image Badge is hidden by default
+const DEFAULT_HIDDEN_COLUMNS = ['Image Badge'];
+
 export const useProductStore = create((set, get) => ({
     // State
     products: [],
@@ -18,7 +21,7 @@ export const useProductStore = create((set, get) => ({
         search: '',
         status: 'all',
         category: '',
-        hiddenColumns: JSON.parse(localStorage.getItem(localStorageKey.productTable)) || []
+        hiddenColumns: JSON.parse(localStorage.getItem(localStorageKey.productTable)) || DEFAULT_HIDDEN_COLUMNS
     },
     selection: {
         productIds: [],
@@ -27,6 +30,12 @@ export const useProductStore = create((set, get) => ({
         totalVariationCount: 0
     },
     expandedRows: new Set(),
+
+    showFeaturedOnly: false,
+
+    setShowFeaturedOnly: (value) => {
+        set({showFeaturedOnly: value});
+    },
 
     // Actions
     setLoading: (loading) => set({loading}),
@@ -42,6 +51,7 @@ export const useProductStore = create((set, get) => ({
         }
     },
 
+    // ... rest of the store remains the same
     setPagination: (pagination) => set(state => ({
         pagination: {...state.pagination, ...pagination}
     })),
@@ -348,6 +358,19 @@ export const useProductStore = create((set, get) => ({
                 totalVariationCount: allVariationIds.length
             }
         });
+    },
+
+    deleteProductByAdmin: async (id) => {
+        try {
+            set(_ => ({actionLoading: true}));
+            const auth_key = localStorage.getItem(localStorageKey.auth_key);
+            await ApiService.put(`${apiEndpoints.deleteByAdmin}/${id}`, {}, auth_key);
+            await get().fetchProducts();
+        } catch (e) {
+            console.error('Error in deleteByAdmin:', e);
+        } finally {
+            set(_ => ({actionLoading: false}))
+        }
     },
 
     deselectAll: () => set({

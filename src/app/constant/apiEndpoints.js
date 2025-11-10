@@ -110,6 +110,7 @@ export const apiEndpoints = {
   getVendorsList: "getAllActiveVendor",
   getOrderInvoice: "getOrderInvoice",
   changeAllStatusProduct: "change-status-product",
+    deleteByAdmin: "deleted-by-admin",
   getRatingByType: "getRatingByType",
   getAllVendorProduct: "getAllVendorProduct",
   changeRatingStatus: "changeRatingStatus",

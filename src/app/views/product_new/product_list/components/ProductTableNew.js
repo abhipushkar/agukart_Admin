@@ -1,4 +1,4 @@
-import React, {useState, useCallback} from 'react';
+import React, {useState, useCallback, useRef} from 'react';
 import {
     Table,
     TableBody,
@@ -18,7 +18,7 @@ import {
     CircularProgress,
     Typography,
     alpha,
-    Menu
+    Menu, RadioGroup, FormControlLabel, Radio
 } from '@mui/material';
 import {
     KeyboardArrowRight,
@@ -29,6 +29,7 @@ import {REACT_APP_WEB_URL} from 'config';
 import {ROUTE_CONSTANT} from 'app/constant/routeContanst';
 import {toast} from 'react-toastify';
 import {useProductStore} from "../../states/useProductStore";
+import debounce from 'lodash.debounce';
 
 // Stats Sub-table Component
 const StatsSubTable = () => (
@@ -79,10 +80,11 @@ const StatsSubTable = () => (
                     <TableCell
                         sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', width: '50%'}}>
                         -
-                    </TableCell><TableCell
-                    sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', width: '50%'}}>
-                    -
-                </TableCell>
+                    </TableCell>
+                    <TableCell
+                        sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', width: '50%'}}>
+                        -
+                    </TableCell>
                 </TableRow>
                 <TableRow>
                     <TableCell
@@ -91,27 +93,53 @@ const StatsSubTable = () => (
                     </TableCell>
                     <TableCell sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem'}}>
                         -
+                    </TableCell>
+                    <TableCell sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem'}}>
+                        -
+                    </TableCell>
+                </TableRow>
+                <TableRow>
+                    <TableCell
+                        sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', fontWeight: 'bold'}}>
+                        Now in Cart
+                    </TableCell>
+                    <TableCell sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem'}}>
+                        -
                     </TableCell><TableCell sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem'}}>
                     -
                 </TableCell>
-                </TableRow><TableRow>
-                <TableCell
-                    sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', fontWeight: 'bold'}}>
-                    Now in Cart
-                </TableCell>
-                <TableCell sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem'}}>
-                    -
-                </TableCell><TableCell sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem'}}>
-                -
-            </TableCell>
-            </TableRow>
+                </TableRow>
+                <TableRow>
+                    <TableCell
+                        sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', fontWeight: 'bold'}}>
+                        Views
+                    </TableCell>
+                    <TableCell sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem'}}>
+                        -
+                    </TableCell>
+                    <TableCell sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem'}}>
+                        -
+                    </TableCell>
+                </TableRow>
+                <TableRow>
+                    <TableCell
+                        sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', fontWeight: 'bold'}}>
+                        Favorites
+                    </TableCell>
+                    <TableCell sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem'}}>
+                        -
+                    </TableCell>
+                    <TableCell sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem'}}>
+                        -
+                    </TableCell>
+                </TableRow>
             </TableBody>
         </Table>
     </Box>
 );
 
-// Common Settings Column Component (with Badge)
-const CommonSettingsColumn = ({product, isProduct, onFieldChange, onBadgeChange, actionLoading, filters}) => {
+// Common Settings Column Component (without Badge)
+const CommonSettingsColumn = ({product, isProduct, onFieldChange, actionLoading, filters}) => {
     const [localData, setLocalData] = useState({
         sale_price: product.sale_price || '',
         sort_order: product.sort_order || ''
@@ -147,7 +175,7 @@ const CommonSettingsColumn = ({product, isProduct, onFieldChange, onBadgeChange,
             )}
 
             {/* Sort Order */}
-            { !filters.hiddenColumns.includes('Sort Order') && (
+            {!filters.hiddenColumns.includes('Sort Order') && (
                 <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5}}>
                     <Typography variant="body2"
                                 sx={{fontWeight: 'bold', textWrap: "noWrap", minWidth: '50px', fontSize: '0.7rem'}}>
@@ -163,30 +191,33 @@ const CommonSettingsColumn = ({product, isProduct, onFieldChange, onBadgeChange,
                     />
                 </Box>
             )}
-
-            {/* Badge */}
-            {!filters.hiddenColumns.includes('Badge') && (
-                <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5}}>
-                    <Typography variant="body2"
-                                sx={{fontWeight: 'bold', textWrap: "noWrap", minWidth: '50px', fontSize: '0.7rem'}}>
-                        Image Badge:
-                    </Typography>
-                    <FormControl size="small" sx={{minWidth: '120px'}} disabled={actionLoading}>
-                        <Select
-                            value={product.product_bedge || ''}
-                            onChange={(e) => onBadgeChange(e.target.value)}
-                            displayEmpty
-                            sx={{fontSize: '0.75rem', height: '32px'}}
-                        >
-                            <MenuItem value="" sx={{fontSize: '0.75rem'}}>None</MenuItem>
-                            <MenuItem value="Agu's Pics" sx={{fontSize: '0.75rem'}}>Agu's Pics</MenuItem>
-                            <MenuItem value="Popular Now" sx={{fontSize: '0.75rem'}}>Popular Now</MenuItem>
-                            <MenuItem value="Best Seller" sx={{fontSize: '0.75rem'}}>Best Seller</MenuItem>
-                        </Select>
-                    </FormControl>
-                </Box>
-            )}
         </Box>
+    );
+};
+
+// Image Badge Column Component
+const ImageBadgeColumn = ({product, isProduct, onBadgeChange, actionLoading, filters}) => {
+    if (!isProduct || filters.hiddenColumns.includes('Image Badge')) {
+        return <Typography variant="body2" sx={{fontSize: '0.75rem'}}>-</Typography>;
+    }
+
+    return (
+        <FormControl size="small" sx={{minWidth: '150px', px: 1}} disabled={actionLoading}>
+            <RadioGroup
+                value={product.product_bedge || ''}
+                onChange={(e) => onBadgeChange(e.target.value)}
+                row
+                sx={{fontSize: '0.75rem', height: '32px'}}
+            >
+                <FormControlLabel value="" sx={{fontSize: '0.75rem'}} control={<Radio/>} label={"None"}/>
+                <FormControlLabel value="Agu's Pics" sx={{fontSize: '0.75rem'}} control={<Radio/>}
+                                  label={"Agu's Pics"}/>
+                <FormControlLabel value="Popular Now" sx={{fontSize: '0.75rem'}} control={<Radio/>}
+                                  label={"Popular Now"}/>
+                <FormControlLabel value="Best Seller" sx={{fontSize: '0.75rem'}} control={<Radio/>}
+                                  label={"Best Seller"}/>
+            </RadioGroup>
+        </FormControl>
     );
 };
 
@@ -203,7 +234,8 @@ const ProductRow = ({product, index}) => {
         updateProductField,
         updateSortOrder,
         updateBadge,
-        deleteProduct
+        deleteProduct,
+        deleteProductByAdmin,
     } = useProductStore();
 
     const [actionAnchorEl, setActionAnchorEl] = useState(null);
@@ -221,25 +253,33 @@ const ProductRow = ({product, index}) => {
 
     // Check if all Common Settings sub-columns are hidden
     const showCommonSettingsColumn = !filters.hiddenColumns.includes('Sale Price') ||
-        !filters.hiddenColumns.includes('Sort Order') ||
-        !filters.hiddenColumns.includes('Badge');
+        !filters.hiddenColumns.includes('Sort Order');
 
-    const handleFieldChange = useCallback(async (field, value) => {
-        if (field === 'sale_price' && value > product.price) {
-            toast.error('Sale price must be less than your price');
-            return;
-        }
+    // Fixed debounce function for API calls
+    const debouncedApiCall = useRef(
+        debounce(async (field, value, productId, productPrice) => {
+            try {
+                if (field === 'sale_price' && parseFloat(value) > parseFloat(productPrice)) {
+                    toast.error('Sale price must be less than your price');
+                    return;
+                }
 
-        try {
-            if (field === 'sort_order') {
-                await updateSortOrder(product._id, parseInt(value) || 0);
-            } else {
-                await updateProductField(product._id, field, parseFloat(value) || 0);
+                if (field === 'sort_order') {
+                    await updateSortOrder(productId, parseInt(value) || 0);
+                } else {
+                    await updateProductField(productId, field, parseFloat(value) || 0);
+                }
+            } catch (error) {
+                console.error('Error updating field:', error);
             }
-        } catch (error) {
-            console.error('Error updating field:', error);
-        }
-    }, [product._id, product.price, updateProductField, updateSortOrder]);
+        }, 1000)
+    ).current;
+
+    const handleFieldChange = useCallback((field, value) => {
+        // Convert to number and handle empty values
+        const numValue = value === '' ? 0 : parseFloat(value);
+        debouncedApiCall(field, numValue, product._id, product.price);
+    }, [product._id, product.price, debouncedApiCall]);
 
     const handleBadgeChange = async (badge) => {
         try {
@@ -260,7 +300,11 @@ const ProductRow = ({product, index}) => {
 
     const handleDelete = async () => {
         try {
-            await deleteProduct(product._id);
+            if (designation_id === "2" && filters.status === "delete") {
+                await deleteProductByAdmin(product._id);
+            } else {
+                await deleteProduct(product._id);
+            }
             toast.success('Product deleted successfully');
             setActionAnchorEl(null);
         } catch (error) {
@@ -296,7 +340,11 @@ const ProductRow = ({product, index}) => {
                 sx={{
                     cursor: actionLoading ? "none" : 'pointer',
                     backgroundColor: isExpanded ? alpha('#f5f5f5', 0.5) : 'transparent',
-                    pointerEvents: actionLoading ? 'none' : 'auto'
+                    pointerEvents: actionLoading ? 'none' : 'auto',
+                    '& td': {
+                        verticalAlign: 'top', // Align all cell contents to top
+                        paddingTop: '8px'
+                    }
                 }}
             >
                 {/* Checkbox - Fixed 60px */}
@@ -313,7 +361,7 @@ const ProductRow = ({product, index}) => {
                 {/* Status - Contractible */}
                 {!filters.hiddenColumns.includes('Status') && (
                     <TableCell align="center" sx={{padding: '4px'}}>
-                        <Box sx={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5}}>
+                        <Box sx={{display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: 0.5}}>
                             {hasVariations && (
                                 <IconButton
                                     size="small"
@@ -328,23 +376,6 @@ const ProductRow = ({product, index}) => {
                             <Typography variant="body2" sx={{fontSize: '0.75rem'}}>
                                 {isProduct ? product.status : `${product.type} (${product.productData?.length || 0})`}
                             </Typography>
-                        </Box>
-                    </TableCell>
-                )}
-
-                {/* Featured - Contractible */}
-                {!filters.hiddenColumns.includes('Featured') && (
-                    <TableCell align="center" sx={{padding: '4px'}}>
-                        <Box sx={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5}}>
-                            <IconButton
-                                size="small"
-                                color={product.featured ? "info" : "default"}
-                                onClick={handleToggleFeatured}
-                                disabled={actionLoading}
-                                sx={{padding: '2px'}}
-                            >
-                                {product.featured ? <Star fontSize="small"/> : <StarOutline fontSize="small"/>}
-                            </IconButton>
                         </Box>
                     </TableCell>
                 )}
@@ -390,10 +421,41 @@ const ProductRow = ({product, index}) => {
                     </TableCell>
                 )}
 
+                {/* Image Badge - New Column */}
+                {!filters.hiddenColumns.includes('Image Badge') && (
+                    <TableCell sx={{padding: '4px', minWidth: '120px'}} align="left">
+                        <ImageBadgeColumn
+                            product={product}
+                            isProduct={isProduct}
+                            onBadgeChange={handleBadgeChange}
+                            actionLoading={actionLoading}
+                            filters={filters}
+                        />
+                    </TableCell>
+                )}
+
                 {/* Product Information - Only show if at least one sub-column is visible */}
                 {showProductInfoColumn && (
-                    <TableCell sx={{padding: '4px 20px', minWidth: '150px'}} align="center">
+                    <TableCell sx={{padding: '4px 8px', minWidth: '150px'}} align="left">
                         <Box sx={{display: 'flex', flexDirection: 'column', gap: 0.5}}>
+                            {/* Featured inside Product Information */}
+                            {!filters.hiddenColumns.includes('Featured') && (
+                                <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5}}>
+                                    <IconButton
+                                        size="small"
+                                        color={product.featured ? "info" : "default"}
+                                        onClick={handleToggleFeatured}
+                                        disabled={actionLoading}
+                                        sx={{padding: '2px'}}
+                                    >
+                                        {product.featured ? <Star fontSize="small"/> : <StarOutline fontSize="small"/>}
+                                    </IconButton>
+                                    <Typography variant="body2" sx={{fontSize: '0.7rem', fontWeight: 'bold'}}>
+                                        Featured
+                                    </Typography>
+                                </Box>
+                            )}
+
                             {/* Product Title */}
                             {!filters.hiddenColumns.includes('Product Title') && (
                                 <Box sx={{display: 'flex', alignItems: 'flex-start', gap: 0.5}}>
@@ -404,13 +466,12 @@ const ProductRow = ({product, index}) => {
                                         style={{
                                             color: 'inherit',
                                             textDecoration: 'underline',
-                                            textAlign: "left",
                                             cursor: 'pointer',
                                             fontSize: '0.75rem',
                                             lineHeight: '1.2',
-                                            wordBreak: 'break-word', // This will break at word boundaries
-                                            overflowWrap: 'break-word', // This will break long words
-                                            whiteSpace: 'normal' // Allow text to wrap normally
+                                            wordBreak: 'break-word',
+                                            overflowWrap: 'break-word',
+                                            whiteSpace: 'normal'
                                         }}
                                     >
                                         {getProductTitle()}
@@ -462,12 +523,11 @@ const ProductRow = ({product, index}) => {
 
                 {/* Common Settings Column - Only show if at least one sub-column is visible */}
                 {showCommonSettingsColumn && (
-                    <TableCell align="center" sx={{padding: '4px', minWidth: '150px'}}>
+                    <TableCell align="left" sx={{padding: '4px', minWidth: '150px'}}>
                         <CommonSettingsColumn
                             product={product}
                             isProduct={isProduct}
                             onFieldChange={handleFieldChange}
-                            onBadgeChange={handleBadgeChange}
                             actionLoading={actionLoading}
                             filters={filters}
                         />
@@ -544,13 +604,15 @@ const ProductRow = ({product, index}) => {
                                 </MenuItem>
                             </a>
 
-                            <MenuItem onClick={handleDelete} sx={{fontSize: '0.8rem'}}>Delete</MenuItem>
+                            {filters.status === "delete" && designation_id === "2" ? <MenuItem onClick={handleDelete}
+                                                                                               sx={{fontSize: '0.8rem'}}>Delete</MenuItem> : filters.status !== "delete" &&
+                                <MenuItem onClick={handleDelete} sx={{fontSize: '0.8rem'}}>Delete</MenuItem>}
                         </Menu>
                     </Box>
                 </TableCell>
             </TableRow>
 
-            {/* Expanded variations - Now properly indented as child rows */}
+            {/* Expanded variations */}
             {isExpanded && hasVariations && product.productData.map((variation) => (
                 <VariationRow
                     key={variation._id}
@@ -562,7 +624,7 @@ const ProductRow = ({product, index}) => {
     );
 };
 
-// Variation Row Component - Updated with child row styling
+// Variation Row Component
 const VariationRow = ({variation, parentProduct}) => {
     const {
         actionLoading,
@@ -588,20 +650,28 @@ const VariationRow = ({variation, parentProduct}) => {
 
     // Check if all Common Settings sub-columns are hidden
     const showCommonSettingsColumn = !filters.hiddenColumns.includes('Sale Price') ||
-        !filters.hiddenColumns.includes('Sort Order') ||
-        !filters.hiddenColumns.includes('Badge');
+        !filters.hiddenColumns.includes('Sort Order');
 
-    const handleFieldChange = useCallback(async (field, value) => {
-        try {
-            if (field === 'sort_order') {
-                await updateSortOrder(variation._id, parseInt(value) || 0);
-            } else {
-                await updateProductField(variation._id, field, parseFloat(value) || 0);
+    // Fixed debounce function for API calls
+    const debouncedApiCall = useRef(
+        debounce(async (field, value, productId) => {
+            try {
+                if (field === 'sort_order') {
+                    await updateSortOrder(productId, parseInt(value) || 0);
+                } else {
+                    await updateProductField(productId, field, parseFloat(value) || 0);
+                }
+            } catch (error) {
+                console.error('Error updating field:', error);
             }
-        } catch (error) {
-            console.error('Error updating field:', error);
-        }
-    }, [variation._id, updateProductField, updateSortOrder]);
+        }, 1000)
+    ).current;
+
+    const handleFieldChange = useCallback((field, value) => {
+        // Convert to number and handle empty values
+        const numValue = value === '' ? 0 : parseFloat(value);
+        debouncedApiCall(field, numValue, variation._id);
+    }, [variation._id, debouncedApiCall]);
 
     const handleBadgeChange = async (badge) => {
         try {
@@ -658,9 +728,12 @@ const VariationRow = ({variation, parentProduct}) => {
                 backgroundColor: '#f8f8f8',
                 cursor: actionLoading ? "none" : "auto",
                 pointerEvents: actionLoading ? 'none' : 'auto',
-                // Child row styling with indentation
+                '& td': {
+                    verticalAlign: 'top', // Align all cell contents to top
+                    paddingTop: '8px'
+                },
                 '& td:first-of-type': {
-                    paddingLeft: '40px', // Indent child rows
+                    paddingLeft: '40px',
                     position: 'relative',
                     '&::before': {
                         content: '"↳"',
@@ -687,23 +760,6 @@ const VariationRow = ({variation, parentProduct}) => {
             {!filters.hiddenColumns.includes('Status') && (
                 <TableCell align="center" sx={{padding: '4px'}}>
                     <Typography variant="body2" sx={{fontSize: '0.75rem'}}>{variation.productStatus}</Typography>
-                </TableCell>
-            )}
-
-            {/* Featured - Contractible */}
-            {!filters.hiddenColumns.includes('Featured') && (
-                <TableCell align="center" sx={{padding: '4px'}}>
-                    <Box sx={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5}}>
-                        <IconButton
-                            size="small"
-                            color={variation.featured ? "info" : "default"}
-                            onClick={handleToggleFeatured}
-                            disabled={actionLoading}
-                            sx={{padding: '2px'}}
-                        >
-                            {variation.featured ? <Star fontSize="small"/> : <StarOutline fontSize="small"/>}
-                        </IconButton>
-                    </Box>
                 </TableCell>
             )}
 
@@ -746,10 +802,41 @@ const VariationRow = ({variation, parentProduct}) => {
                 </TableCell>
             )}
 
-            {/* Product Information for Variation - Only show if at least one sub-column is visible */}
+            {/* Image Badge for Variation */}
+            {!filters.hiddenColumns.includes('Image Badge') && (
+                <TableCell sx={{padding: '4px', minWidth: '120px'}} align="left">
+                    <ImageBadgeColumn
+                        product={variation}
+                        isProduct={true}
+                        onBadgeChange={handleBadgeChange}
+                        actionLoading={actionLoading}
+                        filters={filters}
+                    />
+                </TableCell>
+            )}
+
+            {/* Product Information for Variation */}
             {showProductInfoColumn && (
-                <TableCell sx={{padding: '4px 8px', minWidth: '150px'}} align="center">
+                <TableCell sx={{padding: '4px 8px', minWidth: '150px'}} align="left">
                     <Box sx={{display: 'flex', flexDirection: 'column', gap: 0.5}}>
+                        {/* Featured inside Product Information */}
+                        {!filters.hiddenColumns.includes('Featured') && (
+                            <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5}}>
+                                <IconButton
+                                    size="small"
+                                    color={variation.featured ? "info" : "default"}
+                                    onClick={handleToggleFeatured}
+                                    disabled={actionLoading}
+                                    sx={{padding: '2px'}}
+                                >
+                                    {variation.featured ? <Star fontSize="small"/> : <StarOutline fontSize="small"/>}
+                                </IconButton>
+                                <Typography variant="body2" sx={{fontSize: '0.7rem', fontWeight: 'bold'}}>
+                                    Featured
+                                </Typography>
+                            </Box>
+                        )}
+
                         {/* Product Title */}
                         {!filters.hiddenColumns.includes('Product Title') && (
                             <Box sx={{display: 'flex', alignItems: 'flex-start', gap: 0.5}}>
@@ -763,9 +850,9 @@ const VariationRow = ({variation, parentProduct}) => {
                                         cursor: 'pointer',
                                         fontSize: '0.75rem',
                                         lineHeight: '1.2',
-                                        wordBreak: 'break-word', // This will break at word boundaries
-                                        overflowWrap: 'break-word', // This will break long words
-                                        whiteSpace: 'normal' // Allow text to wrap normally
+                                        wordBreak: 'break-word',
+                                        overflowWrap: 'break-word',
+                                        whiteSpace: 'normal'
                                     }}
                                 >
                                     {getProductTitle()}
@@ -809,26 +896,25 @@ const VariationRow = ({variation, parentProduct}) => {
                 </TableCell>
             )}
 
-            {/* Common Settings for Variation - Only show if at least one sub-column is visible */}
+            {/* Common Settings for Variation */}
             {showCommonSettingsColumn && (
-                <TableCell align="center" sx={{padding: '4px', minWidth: '150px'}}>
+                <TableCell align="left" sx={{padding: '4px', minWidth: '150px'}}>
                     <CommonSettingsColumn
                         product={variation}
                         isProduct={true}
                         onFieldChange={handleFieldChange}
-                        onBadgeChange={handleBadgeChange}
                         actionLoading={actionLoading}
                         filters={filters}
                     />
                 </TableCell>
             )}
 
-            {/* Performance Stats - Fixed 200px */}
+            {/* Performance Stats */}
             <TableCell align="center" sx={{width: '200px', minWidth: '200px', maxWidth: '200px', padding: '4px'}}>
                 <StatsSubTable/>
             </TableCell>
 
-            {/* Actions - Contractible */}
+            {/* Actions */}
             <TableCell align="center" sx={{padding: '4px', minWidth: '120px'}}>
                 <Box sx={{display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
                     <Button
@@ -878,7 +964,6 @@ const VariationRow = ({variation, parentProduct}) => {
                             style={{textDecoration: 'none', color: 'inherit'}}
                         >
                             <MenuItem sx={{fontSize: '0.8rem'}}>
-
                                 Edit
                             </MenuItem>
                         </a>
@@ -888,11 +973,9 @@ const VariationRow = ({variation, parentProduct}) => {
                             style={{textDecoration: 'none', color: 'inherit'}}
                         >
                             <MenuItem sx={{fontSize: '0.8rem'}}>
-
                                 Copy Listing
                             </MenuItem>
                         </a>
-
                         <MenuItem onClick={handleDelete} sx={{fontSize: '0.8rem'}}>Delete</MenuItem>
                     </Menu>
                 </Box>
@@ -918,14 +1001,13 @@ const ProductTableNew = () => {
 
     // Check if all Common Settings sub-columns are hidden
     const showCommonSettingsColumn = !filters.hiddenColumns.includes('Sale Price') ||
-        !filters.hiddenColumns.includes('Sort Order') ||
-        !filters.hiddenColumns.includes('Badge');
+        !filters.hiddenColumns.includes('Sort Order');
 
     const columnHeaders = [
         {key: 'checkbox', label: '', align: 'center', fixed: true, width: '60px'},
         {key: 'Status', label: 'Status', align: 'center', hideable: true, fixed: true, width: "100px"},
-        {key: 'Featured', label: 'Featured', align: 'center', hideable: true, fixed: true, width: "60px"},
         {key: 'Image', label: 'Images', align: 'center', hideable: true, fixed: true, width: '200px'},
+        {key: 'Image Badge', label: 'Image Badge', align: 'center', hideable: true, fixed: true, width: "150px"},
         {
             key: 'ProductInfo',
             label: 'Product Information',
@@ -938,7 +1020,8 @@ const ProductTableNew = () => {
             key: 'CommonSettings',
             label: 'Settings',
             align: 'center',
-            fixed: false,
+            fixed: true,
+            width: "150px",
             conditional: showCommonSettingsColumn
         },
         {key: 'Performance', label: 'Performance Stats', align: 'center', fixed: true, width: '300px'},
@@ -989,11 +1072,9 @@ const ProductTableNew = () => {
                 <TableHead>
                     <TableRow>
                         {columnHeaders.map((column) => {
-                            // Skip column if it's hideable and hidden
                             if (column.hideable && filters.hiddenColumns.includes(column.key)) {
                                 return null;
                             }
-                            // Skip column if it has conditional rendering and condition is false
                             if (column.conditional !== undefined && !column.conditional) {
                                 return null;
                             }

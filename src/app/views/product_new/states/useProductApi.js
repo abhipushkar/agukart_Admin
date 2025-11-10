@@ -8,8 +8,7 @@ import {ROUTE_CONSTANT} from "app/constant/routeContanst";
 import {useProductFormStore} from "./useAddProducts";
 
 export const useProductAPI = () => {
-    const [loading, setLoading] = useState(false);
-    const [draftLoading, setDraftLoading] = useState(false);
+    const {loading, setLoading, draftLoading, setDraftLoading, loadingProductData, setLoadingProductData } = useProductFormStore();
     const navigate = useNavigate();
 
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
@@ -770,6 +769,7 @@ export const useProductAPI = () => {
     // Fetch edit product data
     const fetchEditProductData = async (productId) => {
         try {
+            setLoadingProductData(true);
             const editapiUrl = `${apiEndpoints.EditProduct}/${productId}`;
             const res = await ApiService.get(editapiUrl, auth_key);
             if (res?.status === 200) {
@@ -779,14 +779,12 @@ export const useProductAPI = () => {
         } catch (error) {
             console.error("Error fetching edit product data:", error);
             throw error;
+        } finally {
+            setLoadingProductData(false);
         }
     };
 
     return {
-        // State
-        loading,
-        draftLoading,
-
         // Main actions
         submitProduct,
         saveDraft,

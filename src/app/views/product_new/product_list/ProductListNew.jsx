@@ -18,7 +18,7 @@ import {
     InputAdornment,
     IconButton,
     Menu,
-    Paper, Link
+    Paper, Link, styled
 } from '@mui/material';
 import {
     Breadcrumb,
@@ -35,6 +35,68 @@ import {ROUTE_CONSTANT} from 'app/constant/routeContanst';
 import {toast} from 'react-toastify';
 import {useProductStore} from "../states/useProductStore";
 import ProductTableNew from "./components/ProductTableNew";
+import {localStorageKey} from "../../../constant/localStorageKey";
+import Switch from "@mui/material/Switch";
+
+const IOSSwitch = styled((props) => (
+    <Switch focusVisibleClassName=".Mui-focusVisible" disableRipple {...props} />
+))(({ theme }) => ({
+    width: 42,
+    height: 26,
+    padding: 0,
+    '& .MuiSwitch-switchBase': {
+        padding: 0,
+        margin: 2,
+        transitionDuration: '300ms',
+        '&.Mui-checked': {
+            transform: 'translateX(16px)',
+            color: '#fff',
+            '& + .MuiSwitch-track': {
+                backgroundColor: '#1976d2',
+                opacity: 1,
+                border: 0,
+                ...theme.applyStyles('dark', {
+                    backgroundColor: '#1976d2',
+                }),
+            },
+            '&.Mui-disabled + .MuiSwitch-track': {
+                opacity: 0.5,
+            },
+        },
+        '&.Mui-focusVisible .MuiSwitch-thumb': {
+            color: '#1976d2',
+            border: '6px solid #fff',
+        },
+        '&.Mui-disabled .MuiSwitch-thumb': {
+            color: theme.palette.grey[100],
+            ...theme.applyStyles('dark', {
+                color: theme.palette.grey[600],
+            }),
+        },
+        '&.Mui-disabled + .MuiSwitch-track': {
+            opacity: 0.7,
+            ...theme.applyStyles('dark', {
+                opacity: 0.3,
+            }),
+        },
+    },
+    '& .MuiSwitch-thumb': {
+        boxSizing: 'border-box',
+        width: 22,
+        height: 22,
+    },
+    '& .MuiSwitch-track': {
+        borderRadius: 26 / 2,
+        backgroundColor: '#E9E9EA',
+        opacity: 1,
+        transition: theme.transitions.create(['background-color'], {
+            duration: 500,
+        }),
+        ...theme.applyStyles('dark', {
+            backgroundColor: '#39393D',
+        }),
+    },
+}));
 
 const ProductListNew = () => {
     const navigate = useNavigate();
@@ -56,7 +118,8 @@ const ProductListNew = () => {
         bulkUpdateStatus,
         selectAll,
         deselectAll,
-        clearSelection
+        showFeaturedOnly,
+        setShowFeaturedOnly,
     } = useProductStore();
 
     // Local state
@@ -75,21 +138,59 @@ const ProductListNew = () => {
         'Available',
         'Sale Price',
         'Sort Order',
-        'Badge'
+        'Image Badge'
     ];
 
-    // Get available actions based on current filter status
-    const getAvailableActions = () => {
-        const {status} = filters;
+    // Get status of selected products
+    const getSelectedProductsStatus = () => {
+        if (selection.productIds.length === 0) return new Set();
 
+        const selectedStatuses = new Set();
+
+        // Check all products (including variations)
+        products.forEach(product => {
+            // Check main product
+            if (selection.productIds.includes(product._id)) {
+                selectedStatuses.add(product.status);
+            }
+
+            // Check variations
+            if (product.productData && product.productData.length > 0) {
+                product.productData.forEach(variation => {
+                    if (selection.productIds.includes(variation._id)) {
+                        selectedStatuses.add(variation.productStatus);
+                    }
+                });
+            }
+        });
+
+        return selectedStatuses;
+    };
+
+    // Get available actions based on current filter status and selected products
+    const getAvailableActions = () => {
+        const { status } = filters;
+        const selectedStatuses = getSelectedProductsStatus();
+
+        // If no products selected, return empty array
+        if (selection.productIds.length === 0) {
+            return [];
+        }
+
+        // If we're in "all" filter, determine actions based on selected products' status
+        if (status === 'all') {
+            // If mixed statuses are selected, show only common actions
+            if (selectedStatuses.size > 1) {
+                return getCommonActionsForMixedStatus(selectedStatuses);
+            }
+
+            // If all selected products have the same status, show actions for that status
+            const singleStatus = Array.from(selectedStatuses)[0];
+            return getActionsForStatus(singleStatus);
+        }
+
+        // For specific status filters, use the predefined logic
         switch (status) {
-            case 'all':
-                return [
-                    {key: 'active', label: 'Active'},
-                    {key: 'inactive', label: 'Inactive'},
-                    {key: 'draft', label: 'Draft'},
-                    {key: 'delete', label: 'Delete'}
-                ];
             case 'active':
                 return [
                     {key: 'inactive', label: 'Inactive'},
@@ -114,15 +215,75 @@ const ProductListNew = () => {
                     {key: 'active', label: 'Active'},
                     {key: 'inactive', label: 'Inactive'}
                 ];
+            case 'deleteByAdmin':
+                return [];
             default:
                 return [];
         }
     };
 
+    // Get actions for a specific status
+    const getActionsForStatus = (status) => {
+        switch (status) {
+            case 'active':
+                return [
+                    {key: 'inactive', label: 'Inactive'},
+                    {key: 'delete', label: 'Delete'}
+                ];
+            case 'inactive':
+                return [
+                    {key: 'active', label: 'Active'},
+                    {key: 'delete', label: 'Delete'}
+                ];
+            case 'sold-out':
+                return [
+                    {key: 'delete', label: 'Delete'}
+                ];
+            case 'draft':
+                return [
+                    {key: 'active', label: 'Active'},
+                    {key: 'delete', label: 'Delete'}
+                ];
+            case 'delete':
+                return [
+                    {key: 'active', label: 'Active'},
+                    {key: 'inactive', label: 'Inactive'}
+                ];
+            case 'deleteByAdmin':
+                return [
+                ];
+            default:
+                return [
+                    {key: 'active', label: 'Active'},
+                    {key: 'inactive', label: 'Inactive'},
+                    {key: 'draft', label: 'Draft'},
+                    {key: 'delete', label: 'Delete'}
+                ];
+        }
+    };
+
+    // Get common actions when multiple statuses are selected
+    const getCommonActionsForMixedStatus = (selectedStatuses) => {
+        const allPossibleActions = [
+            {key: 'active', label: 'Active'},
+            {key: 'inactive', label: 'Inactive'},
+            {key: 'draft', label: 'Draft'},
+            {key: 'delete', label: 'Delete'}
+        ];
+
+        // Filter actions that are valid for ALL selected statuses
+        return allPossibleActions.filter(action => {
+            return Array.from(selectedStatuses).every(status => {
+                const statusActions = getActionsForStatus(status);
+                return statusActions.some(sa => sa.key === action.key);
+            });
+        });
+    };
+
     // Sync URL hash with status filter
     useEffect(() => {
         const hash = location.hash.replace('#', '');
-        if (hash && ['all', 'active', 'inactive', 'sold-out', 'draft', 'delete'].includes(hash)) {
+        if (hash && ['all', 'active', 'inactive', 'sold-out', 'draft', 'delete', 'deleteByAdmin'].includes(hash)) {
             setFilters({status: hash});
         }
     }, [location.hash]);
@@ -134,6 +295,8 @@ const ProductListNew = () => {
         } else {
             window.location.hash = 'all';
         }
+
+        deselectAll();
     }, [filters.status]);
 
     // Fetch initial data
@@ -220,6 +383,7 @@ const ProductListNew = () => {
         selection.productIds.length === selection.totalProductCount;
 
     const availableActions = getAvailableActions();
+    const selectedStatuses = getSelectedProductsStatus();
 
     return (
         <Box sx={{margin: '30px'}}>
@@ -231,16 +395,13 @@ const ProductListNew = () => {
                     <Link href={ROUTE_CONSTANT.catalog.product.parentProducts}>
                         <Button
                             variant="contained"
-                            // onClick={() => navigate(ROUTE_CONSTANT.catalog.product.parentProducts)}
                         >
                             Add Parent Products
                         </Button>
                     </Link>
-                    <Link href={ROUTE_CONSTANT.catalog.product.add} >
-
+                    <Link href={ROUTE_CONSTANT.catalog.product.add}>
                         <Button
                             variant="contained"
-                            // onClick={() => navigate(ROUTE_CONSTANT.catalog.product.add)}
                         >
                             Add Product
                         </Button>
@@ -255,7 +416,7 @@ const ProductListNew = () => {
             {/* Filters and Actions */}
             <Box sx={{display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap', alignItems: 'center'}}>
                 {/* Bulk Actions */}
-                <Paper sx={{display: 'flex', alignItems: 'center', px: 1, py: 0.5}}>
+                <Paper sx={{display: 'flex', alignItems: 'center',}}>
                     <Checkbox
                         checked={isAllSelected}
                         onChange={(e) => e.target.checked ? selectAll(products) : deselectAll()}
@@ -263,6 +424,11 @@ const ProductListNew = () => {
                     />
                     <Typography variant="body2" sx={{mx: 1}}>
                         {selection.productIds.length} selected
+                        {filters.status === 'all' && selectedStatuses.size > 0 && (
+                            <Typography variant="caption" sx={{ml: 1, color: 'text.secondary'}}>
+                                ({Array.from(selectedStatuses).join(', ')})
+                            </Typography>
+                        )}
                     </Typography>
 
                     <Button
@@ -336,7 +502,7 @@ const ProductListNew = () => {
             </Box>
 
             {/* Status Filter and Column Preferences */}
-            <Paper sx={{p: 2, mb: 2, backgroundColor: '#f5f5f5'}}>
+            <Paper sx={{p: 1, mb: 2, backgroundColor: '#f5f5f5'}}>
                 <Box sx={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                     {/* Status Filter */}
                     <Box sx={{display: 'flex', alignItems: 'center', gap: 2}}>
@@ -353,9 +519,17 @@ const ProductListNew = () => {
                             <FormControlLabel value="sold-out" control={<Radio/>} label="Sold Out"/>
                             <FormControlLabel value="draft" control={<Radio/>} label="Draft"/>
                             <FormControlLabel value="delete" control={<Radio/>} label="Deleted"/>
-                            <FormControlLabel value="deleteByAdmin" control={<Radio/>} label="Deleted By Admin"/>
+                            { localStorage.getItem(localStorageKey.designation_id) === "2" && (<FormControlLabel value="deleteByAdmin" control={<Radio/>} label="Deleted By Admin"/>)}
                         </RadioGroup>
                     </Box>
+
+                    <FormControl sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                    }}>
+                        <FormControlLabel value={showFeaturedOnly} onChange={event => setShowFeaturedOnly(event.target.checked)} control={<IOSSwitch sx={{ m: 1 }} />} label={"Show only Featured"} />
+                    </FormControl>
 
                     {/* Column Preferences */}
                     <FormControl size="small" sx={{minWidth: 300}}>
