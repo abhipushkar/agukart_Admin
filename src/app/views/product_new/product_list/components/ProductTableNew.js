@@ -33,7 +33,7 @@ import debounce from 'lodash.debounce';
 
 // Stats Sub-table Component
 const StatsSubTable = () => (
-    <Box>
+    <Box sx={{ display: 'flex', justifyContent: 'center' }}>
         <Table size="small" sx={{width: '100%', backgroundColor: '#f9f9f9', minWidth: '150px'}}>
             <TableHead>
                 <TableRow>
@@ -42,7 +42,8 @@ const StatsSubTable = () => (
                         padding: '3px 6px',
                         fontSize: '0.65rem',
                         fontWeight: 'bold',
-                        width: '50%'
+                        width: '50%',
+                        textAlign: 'center'
                     }}>
                         Performance
                     </TableCell>
@@ -51,7 +52,8 @@ const StatsSubTable = () => (
                         padding: '3px 6px',
                         fontSize: '0.65rem',
                         fontWeight: 'bold',
-                        width: '50%'
+                        width: '50%',
+                        textAlign: 'center'
                     }}>
                         Last 30 days
                     </TableCell>
@@ -60,7 +62,8 @@ const StatsSubTable = () => (
                         padding: '3px 6px',
                         fontSize: '0.65rem',
                         fontWeight: 'bold',
-                        width: '50%'
+                        width: '50%',
+                        textAlign: 'center'
                     }}>
                         All Time
                     </TableCell>
@@ -73,63 +76,64 @@ const StatsSubTable = () => (
                         padding: '3px 6px',
                         fontSize: '0.65rem',
                         fontWeight: 'bold',
-                        width: '50%'
+                        width: '50%',
+                        textAlign: 'center'
                     }}>
                         Sales
                     </TableCell>
                     <TableCell
-                        sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', width: '50%'}}>
+                        sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', width: '50%', textAlign: 'center'}}>
                         -
                     </TableCell>
                     <TableCell
-                        sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', width: '50%'}}>
+                        sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', width: '50%', textAlign: 'center'}}>
                         -
                     </TableCell>
                 </TableRow>
                 <TableRow>
                     <TableCell
-                        sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', fontWeight: 'bold'}}>
+                        sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', fontWeight: 'bold', textAlign: 'center'}}>
                         Unit Sold
                     </TableCell>
-                    <TableCell sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem'}}>
+                    <TableCell sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', textAlign: 'center'}}>
                         -
                     </TableCell>
-                    <TableCell sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem'}}>
+                    <TableCell sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', textAlign: 'center'}}>
                         -
                     </TableCell>
                 </TableRow>
                 <TableRow>
                     <TableCell
-                        sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', fontWeight: 'bold'}}>
+                        sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', fontWeight: 'bold', textAlign: 'center'}}>
                         Now in Cart
                     </TableCell>
-                    <TableCell sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem'}}>
+                    <TableCell sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', textAlign: 'center'}}>
                         -
-                    </TableCell><TableCell sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem'}}>
+                    </TableCell><TableCell sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', textAlign: 'center'}}>
                     -
                 </TableCell>
                 </TableRow>
                 <TableRow>
                     <TableCell
-                        sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', fontWeight: 'bold'}}>
+                        sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', fontWeight: 'bold', textAlign: 'center'}}>
                         Views
                     </TableCell>
-                    <TableCell sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem'}}>
+                    <TableCell sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', textAlign: 'center'}}>
                         -
                     </TableCell>
-                    <TableCell sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem'}}>
+                    <TableCell sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', textAlign: 'center'}}>
                         -
                     </TableCell>
                 </TableRow>
                 <TableRow>
                     <TableCell
-                        sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', fontWeight: 'bold'}}>
+                        sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', fontWeight: 'bold', textAlign: 'center'}}>
                         Favorites
                     </TableCell>
-                    <TableCell sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem'}}>
+                    <TableCell sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', textAlign: 'center'}}>
                         -
                     </TableCell>
-                    <TableCell sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem'}}>
+                    <TableCell sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', textAlign: 'center'}}>
                         -
                     </TableCell>
                 </TableRow>
@@ -151,14 +155,18 @@ const CommonSettingsColumn = ({product, isProduct, onFieldChange, actionLoading,
     };
 
     if (!isProduct) {
-        return <Typography variant="body2" sx={{fontSize: '0.75rem'}}>-</Typography>;
+        return (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                <Typography variant="body2" sx={{fontSize: '0.75rem'}}>-</Typography>
+            </Box>
+        );
     }
 
     return (
-        <Box sx={{display: 'flex', flexDirection: 'column', gap: 0.5}}>
+        <Box sx={{display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'center', justifyContent: 'center'}}>
             {/* Sale Price */}
             {!filters.hiddenColumns.includes('Sale Price') && (
-                <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5}}>
+                <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center'}}>
                     <Typography variant="body2"
                                 sx={{fontWeight: 'bold', textWrap: "noWrap", minWidth: '50px', fontSize: '0.7rem'}}>
                         Sale Price:
@@ -168,7 +176,7 @@ const CommonSettingsColumn = ({product, isProduct, onFieldChange, actionLoading,
                         value={localData.sale_price}
                         onChange={(e) => handleFieldChange('sale_price', e.target.value)}
                         size="small"
-                        sx={{width: '70px', '& .MuiInputBase-input': {fontSize: '0.75rem', padding: '4px 8px'}}}
+                        sx={{width: '70px', '& .MuiInputBase-input': {fontSize: '0.75rem', padding: '4px 8px', textAlign: 'center'}}}
                         disabled={actionLoading}
                     />
                 </Box>
@@ -176,7 +184,7 @@ const CommonSettingsColumn = ({product, isProduct, onFieldChange, actionLoading,
 
             {/* Sort Order */}
             {!filters.hiddenColumns.includes('Sort Order') && (
-                <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5}}>
+                <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center'}}>
                     <Typography variant="body2"
                                 sx={{fontWeight: 'bold', textWrap: "noWrap", minWidth: '50px', fontSize: '0.7rem'}}>
                         Sort Order:
@@ -186,7 +194,7 @@ const CommonSettingsColumn = ({product, isProduct, onFieldChange, actionLoading,
                         value={localData.sort_order}
                         onChange={(e) => handleFieldChange('sort_order', e.target.value)}
                         size="small"
-                        sx={{width: '70px', '& .MuiInputBase-input': {fontSize: '0.75rem', padding: '4px 8px'}}}
+                        sx={{width: '70px', '& .MuiInputBase-input': {fontSize: '0.75rem', padding: '4px 8px', textAlign: 'center'}}}
                         disabled={actionLoading}
                     />
                 </Box>
@@ -198,26 +206,33 @@ const CommonSettingsColumn = ({product, isProduct, onFieldChange, actionLoading,
 // Image Badge Column Component
 const ImageBadgeColumn = ({product, isProduct, onBadgeChange, actionLoading, filters}) => {
     if (!isProduct || filters.hiddenColumns.includes('Image Badge')) {
-        return <Typography variant="body2" sx={{fontSize: '0.75rem'}}>-</Typography>;
+        return (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                <Typography variant="body2" sx={{fontSize: '0.75rem'}}>-</Typography>
+            </Box>
+        );
     }
 
     return (
-        <FormControl size="small" sx={{minWidth: '150px', px: 1}} disabled={actionLoading}>
-            <RadioGroup
-                value={product.product_bedge || ''}
-                onChange={(e) => onBadgeChange(e.target.value)}
-                row
-                sx={{fontSize: '0.75rem', height: '32px'}}
-            >
-                <FormControlLabel value="" sx={{fontSize: '0.75rem'}} control={<Radio/>} label={"None"}/>
-                <FormControlLabel value="Agu's Pics" sx={{fontSize: '0.75rem'}} control={<Radio/>}
-                                  label={"Agu's Pics"}/>
-                <FormControlLabel value="Popular Now" sx={{fontSize: '0.75rem'}} control={<Radio/>}
-                                  label={"Popular Now"}/>
-                <FormControlLabel value="Best Seller" sx={{fontSize: '0.75rem'}} control={<Radio/>}
-                                  label={"Best Seller"}/>
-            </RadioGroup>
-        </FormControl>
+        <Box sx={{ display: 'flex', flexDirection: "column", justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+            <FormControl size="small" sx={{minWidth: '150px', px: 2}} disabled={actionLoading}>
+                <RadioGroup
+                    value={product.product_bedge || ''}
+                    onChange={(e) => onBadgeChange(e.target.value)}
+                    row
+                    sx={{fontSize: '0.75rem', height: '32px', justifyContent: 'start'}}
+                >
+                    <FormControlLabel value="" sx={{fontSize: '0.75rem'}} control={<Radio/>} label={"None"}/>
+                    <FormControlLabel value="Agu's Pics" sx={{fontSize: '0.75rem'}} control={<Radio/>}
+                                      label={"Agu's Pics"}/>
+                    <FormControlLabel value="Popular Now" sx={{fontSize: '0.75rem'}} control={<Radio/>}
+                                      label={"Popular Now"}/>
+                    <FormControlLabel value="Best Seller" sx={{fontSize: '0.75rem'}} control={<Radio/>}
+                                      label={"Best Seller"}/>
+                </RadioGroup>
+            </FormControl>
+            <Box height={140}></Box>
+        </Box>
     );
 };
 
@@ -249,7 +264,7 @@ const ProductRow = ({product, index}) => {
     // Check if all Product Information sub-columns are hidden
     const showProductInfoColumn = !filters.hiddenColumns.includes('Product Id') ||
         !filters.hiddenColumns.includes('SKU') ||
-        !filters.hiddenColumns.includes('Product Title');
+        !filters.hiddenColumns.includes('Product Title') || !filters.hiddenColumns.includes("Featured") || !filters.hiddenColumns.includes("Shop Name");
 
     // Check if all Common Settings sub-columns are hidden
     const showCommonSettingsColumn = !filters.hiddenColumns.includes('Sale Price') ||
@@ -342,26 +357,28 @@ const ProductRow = ({product, index}) => {
                     backgroundColor: isExpanded ? alpha('#f5f5f5', 0.5) : 'transparent',
                     pointerEvents: actionLoading ? 'none' : 'auto',
                     '& td': {
-                        verticalAlign: 'top', // Align all cell contents to top
-                        paddingTop: '8px'
+                        verticalAlign: 'middle', // Changed from 'top' to 'middle' for center alignment
+                        textAlign: 'center'
                     }
                 }}
             >
                 {/* Checkbox - Fixed 60px */}
                 <TableCell sx={{width: '60px', minWidth: '60px', maxWidth: '60px', padding: '4px'}}>
-                    <Checkbox
-                        checked={isSelected}
-                        onChange={() => toggleProductSelection(product._id, product.productData || [])}
-                        size="small"
-                        disabled={actionLoading}
-                        sx={{padding: '4px'}}
-                    />
+                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                        <Checkbox
+                            checked={isSelected}
+                            onChange={() => toggleProductSelection(product._id, product.productData || [])}
+                            size="small"
+                            disabled={actionLoading}
+                            sx={{padding: '4px'}}
+                        />
+                    </Box>
                 </TableCell>
 
                 {/* Status - Contractible */}
                 {!filters.hiddenColumns.includes('Status') && (
-                    <TableCell align="center" sx={{padding: '4px'}}>
-                        <Box sx={{display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: 0.5}}>
+                    <TableCell sx={{padding: '4px'}}>
+                        <Box sx={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5}}>
                             {hasVariations && (
                                 <IconButton
                                     size="small"
@@ -382,8 +399,7 @@ const ProductRow = ({product, index}) => {
 
                 {/* Image - Fixed 200px */}
                 {!filters.hiddenColumns.includes('Image') && (
-                    <TableCell sx={{width: '200px', minWidth: '200px', maxWidth: '200px', padding: '4px'}}
-                               align="center">
+                    <TableCell sx={{width: '200px', minWidth: '200px', maxWidth: '200px', padding: '4px'}}>
                         <Box
                             sx={{
                                 height: "200px",
@@ -423,7 +439,7 @@ const ProductRow = ({product, index}) => {
 
                 {/* Image Badge - New Column */}
                 {!filters.hiddenColumns.includes('Image Badge') && (
-                    <TableCell sx={{padding: '4px', minWidth: '120px'}} align="left">
+                    <TableCell sx={{padding: '4px', minWidth: '120px'}}>
                         <ImageBadgeColumn
                             product={product}
                             isProduct={isProduct}
@@ -436,11 +452,11 @@ const ProductRow = ({product, index}) => {
 
                 {/* Product Information - Only show if at least one sub-column is visible */}
                 {showProductInfoColumn && (
-                    <TableCell sx={{padding: '4px 8px', minWidth: '150px'}} align="left">
-                        <Box sx={{display: 'flex', flexDirection: 'column', gap: 0.5}}>
+                    <TableCell sx={{padding: '4px 16px', minWidth: '150px'}}>
+                        <Box sx={{display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-start', justifyContent: 'flex-start'}}>
                             {/* Featured inside Product Information */}
                             {!filters.hiddenColumns.includes('Featured') && (
-                                <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5}}>
+                                <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center'}}>
                                     <IconButton
                                         size="small"
                                         color={product.featured ? "info" : "default"}
@@ -458,7 +474,7 @@ const ProductRow = ({product, index}) => {
 
                             {/* Product Title */}
                             {!filters.hiddenColumns.includes('Product Title') && (
-                                <Box sx={{display: 'flex', alignItems: 'flex-start', gap: 0.5}}>
+                                <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center'}}>
                                     <a
                                         href={`${REACT_APP_WEB_URL}/products?id=${product._id}`}
                                         target="_blank"
@@ -471,7 +487,8 @@ const ProductRow = ({product, index}) => {
                                             lineHeight: '1.2',
                                             wordBreak: 'break-word',
                                             overflowWrap: 'break-word',
-                                            whiteSpace: 'normal'
+                                            whiteSpace: 'normal',
+                                            textAlign: 'center'
                                         }}
                                     >
                                         {getProductTitle()}
@@ -479,9 +496,23 @@ const ProductRow = ({product, index}) => {
                                 </Box>
                             )}
 
+                            {/* Shop Name */}
+                            {!hasVariations && !filters.hiddenColumns.includes('Shop Name') && (
+                                <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center'}}>
+                                    <Typography variant="body2"
+                                                sx={{fontWeight: 'bold', minWidth: '45px', fontSize: '0.7rem'}}>
+                                        Shop Name:
+                                    </Typography>
+                                    <Typography variant="body2"
+                                                sx={{fontFamily: 'monospace', fontSize: '0.65rem', wordBreak: 'break-all'}}>
+                                        {product.shop_name || "-"}
+                                    </Typography>
+                                </Box>
+                            )}
+
                             {/* Product ID */}
                             {!filters.hiddenColumns.includes('Product Id') && (
-                                <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5}}>
+                                <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center'}}>
                                     <Typography variant="body2"
                                                 sx={{fontWeight: 'bold', minWidth: '45px', fontSize: '0.7rem'}}>
                                         ID:
@@ -498,7 +529,7 @@ const ProductRow = ({product, index}) => {
 
                             {/* SKU */}
                             {!filters.hiddenColumns.includes('SKU') && (
-                                <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5}}>
+                                <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center'}}>
                                     <Typography variant="body2"
                                                 sx={{fontWeight: 'bold', minWidth: '45px', fontSize: '0.7rem'}}>
                                         SKU:
@@ -514,7 +545,7 @@ const ProductRow = ({product, index}) => {
 
                 {/* Available Quantity - Contractible */}
                 {!filters.hiddenColumns.includes('Available') && (
-                    <TableCell align="center" sx={{padding: '4px', minWidth: '80px'}}>
+                    <TableCell sx={{padding: '4px', minWidth: '80px'}}>
                         <Typography variant="body2" sx={{fontSize: '0.75rem'}}>
                             {isProduct ? product.qty : '-'}
                         </Typography>
@@ -523,7 +554,7 @@ const ProductRow = ({product, index}) => {
 
                 {/* Common Settings Column - Only show if at least one sub-column is visible */}
                 {showCommonSettingsColumn && (
-                    <TableCell align="left" sx={{padding: '4px', minWidth: '150px'}}>
+                    <TableCell sx={{padding: '4px', minWidth: '150px'}}>
                         <CommonSettingsColumn
                             product={product}
                             isProduct={isProduct}
@@ -535,12 +566,12 @@ const ProductRow = ({product, index}) => {
                 )}
 
                 {/* Performance Stats - Fixed 200px */}
-                <TableCell align="center" sx={{width: '200px', minWidth: '200px', maxWidth: '200px', padding: '4px'}}>
+                <TableCell sx={{width: '200px', minWidth: '200px', maxWidth: '200px', padding: '4px'}}>
                     <StatsSubTable/>
                 </TableCell>
 
                 {/* Actions - Contractible */}
-                <TableCell align="center" sx={{padding: '4px', minWidth: '120px'}}>
+                <TableCell sx={{padding: '4px', minWidth: '120px'}}>
                     <Box sx={{display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
                         <Button
                             variant="contained"
@@ -646,7 +677,7 @@ const VariationRow = ({variation, parentProduct}) => {
     // Check if all Product Information sub-columns are hidden
     const showProductInfoColumn = !filters.hiddenColumns.includes('Product Id') ||
         !filters.hiddenColumns.includes('SKU') ||
-        !filters.hiddenColumns.includes('Product Title');
+        !filters.hiddenColumns.includes('Product Title') || !filters.hiddenColumns.includes("Featured") || !filters.hiddenColumns.includes("Shop Name");
 
     // Check if all Common Settings sub-columns are hidden
     const showCommonSettingsColumn = !filters.hiddenColumns.includes('Sale Price') ||
@@ -729,8 +760,8 @@ const VariationRow = ({variation, parentProduct}) => {
                 cursor: actionLoading ? "none" : "auto",
                 pointerEvents: actionLoading ? 'none' : 'auto',
                 '& td': {
-                    verticalAlign: 'top', // Align all cell contents to top
-                    paddingTop: '8px'
+                    verticalAlign: 'middle', // Changed from 'top' to 'middle' for center alignment
+                    textAlign: 'center'
                 },
                 '& td:first-of-type': {
                     paddingLeft: '40px',
@@ -748,23 +779,25 @@ const VariationRow = ({variation, parentProduct}) => {
             }}
         >
             <TableCell sx={{width: '60px', minWidth: '60px', maxWidth: '60px', padding: '4px'}}>
-                <Checkbox
-                    checked={isSelected}
-                    onChange={() => toggleProductSelection(variation._id, [])}
-                    size="small"
-                    disabled={actionLoading}
-                    sx={{padding: '4px'}}
-                />
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                    <Checkbox
+                        checked={isSelected}
+                        onChange={() => toggleProductSelection(variation._id, [])}
+                        size="small"
+                        disabled={actionLoading}
+                        sx={{padding: '4px'}}
+                    />
+                </Box>
             </TableCell>
 
             {!filters.hiddenColumns.includes('Status') && (
-                <TableCell align="center" sx={{padding: '4px'}}>
+                <TableCell sx={{padding: '4px'}}>
                     <Typography variant="body2" sx={{fontSize: '0.75rem'}}>{variation.productStatus}</Typography>
                 </TableCell>
             )}
 
             {!filters.hiddenColumns.includes('Image') && (
-                <TableCell sx={{width: '200px', minWidth: '200px', maxWidth: '200px', padding: '4px'}} align="center">
+                <TableCell sx={{width: '200px', minWidth: '200px', maxWidth: '200px', padding: '4px'}}>
                     <Box
                         sx={{
                             height: "200px",
@@ -804,7 +837,7 @@ const VariationRow = ({variation, parentProduct}) => {
 
             {/* Image Badge for Variation */}
             {!filters.hiddenColumns.includes('Image Badge') && (
-                <TableCell sx={{padding: '4px', minWidth: '120px'}} align="left">
+                <TableCell sx={{padding: '4px', minWidth: '120px'}}>
                     <ImageBadgeColumn
                         product={variation}
                         isProduct={true}
@@ -817,11 +850,11 @@ const VariationRow = ({variation, parentProduct}) => {
 
             {/* Product Information for Variation */}
             {showProductInfoColumn && (
-                <TableCell sx={{padding: '4px 8px', minWidth: '150px'}} align="left">
-                    <Box sx={{display: 'flex', flexDirection: 'column', gap: 0.5}}>
+                <TableCell sx={{padding: '4px 8px', minWidth: '150px'}}>
+                    <Box sx={{display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-start', justifyContent: 'flex-start'}}>
                         {/* Featured inside Product Information */}
                         {!filters.hiddenColumns.includes('Featured') && (
-                            <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5}}>
+                            <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center'}}>
                                 <IconButton
                                     size="small"
                                     color={variation.featured ? "info" : "default"}
@@ -839,7 +872,7 @@ const VariationRow = ({variation, parentProduct}) => {
 
                         {/* Product Title */}
                         {!filters.hiddenColumns.includes('Product Title') && (
-                            <Box sx={{display: 'flex', alignItems: 'flex-start', gap: 0.5}}>
+                            <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center'}}>
                                 <a
                                     href={`${REACT_APP_WEB_URL}/products?id=${variation._id}`}
                                     target="_blank"
@@ -852,7 +885,8 @@ const VariationRow = ({variation, parentProduct}) => {
                                         lineHeight: '1.2',
                                         wordBreak: 'break-word',
                                         overflowWrap: 'break-word',
-                                        whiteSpace: 'normal'
+                                        whiteSpace: 'normal',
+                                        textAlign: 'center'
                                     }}
                                 >
                                     {getProductTitle()}
@@ -860,9 +894,23 @@ const VariationRow = ({variation, parentProduct}) => {
                             </Box>
                         )}
 
+                        {/* Shop Name */}
+                        {!filters.hiddenColumns.includes('Shop Name') && (
+                            <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center'}}>
+                                <Typography variant="body2"
+                                            sx={{fontWeight: 'bold', minWidth: '45px', fontSize: '0.7rem'}}>
+                                    Shop Name:
+                                </Typography>
+                                <Typography variant="body2"
+                                            sx={{fontFamily: 'monospace', fontSize: '0.65rem', wordBreak: 'break-all'}}>
+                                    {variation.shop_name || "-"}
+                                </Typography>
+                            </Box>
+                        )}
+
                         {/* Product ID */}
                         {!filters.hiddenColumns.includes('Product Id') && (
-                            <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5}}>
+                            <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center'}}>
                                 <Typography variant="body2"
                                             sx={{fontWeight: 'bold', minWidth: '45px', fontSize: '0.7rem'}}>
                                     ID:
@@ -876,7 +924,7 @@ const VariationRow = ({variation, parentProduct}) => {
 
                         {/* SKU */}
                         {!filters.hiddenColumns.includes('SKU') && (
-                            <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5}}>
+                            <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center'}}>
                                 <Typography variant="body2"
                                             sx={{fontWeight: 'bold', minWidth: '45px', fontSize: '0.7rem'}}>
                                     SKU:
@@ -891,14 +939,14 @@ const VariationRow = ({variation, parentProduct}) => {
             )}
 
             {!filters.hiddenColumns.includes('Available') && (
-                <TableCell align="center" sx={{padding: '4px', minWidth: '80px'}}>
+                <TableCell sx={{padding: '4px', minWidth: '80px'}}>
                     <Typography variant="body2" sx={{fontSize: '0.75rem'}}>{variation.qty}</Typography>
                 </TableCell>
             )}
 
             {/* Common Settings for Variation */}
             {showCommonSettingsColumn && (
-                <TableCell align="left" sx={{padding: '4px', minWidth: '150px'}}>
+                <TableCell sx={{padding: '4px', minWidth: '150px'}}>
                     <CommonSettingsColumn
                         product={variation}
                         isProduct={true}
@@ -910,12 +958,12 @@ const VariationRow = ({variation, parentProduct}) => {
             )}
 
             {/* Performance Stats */}
-            <TableCell align="center" sx={{width: '200px', minWidth: '200px', maxWidth: '200px', padding: '4px'}}>
+            <TableCell sx={{width: '200px', minWidth: '200px', maxWidth: '200px', padding: '4px'}}>
                 <StatsSubTable/>
             </TableCell>
 
             {/* Actions */}
-            <TableCell align="center" sx={{padding: '4px', minWidth: '120px'}}>
+            <TableCell sx={{padding: '4px', minWidth: '120px'}}>
                 <Box sx={{display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
                     <Button
                         variant="contained"
@@ -997,7 +1045,7 @@ const ProductTableNew = () => {
     // Check if all Product Information sub-columns are hidden
     const showProductInfoColumn = !filters.hiddenColumns.includes('Product Id') ||
         !filters.hiddenColumns.includes('SKU') ||
-        !filters.hiddenColumns.includes('Product Title');
+        !filters.hiddenColumns.includes('Product Title') || !filters.hiddenColumns.includes("Featured") || !filters.hiddenColumns.includes("Shop Name");
 
     // Check if all Common Settings sub-columns are hidden
     const showCommonSettingsColumn = !filters.hiddenColumns.includes('Sale Price') ||
@@ -1007,7 +1055,7 @@ const ProductTableNew = () => {
         {key: 'checkbox', label: '', align: 'center', fixed: true, width: '60px'},
         {key: 'Status', label: 'Status', align: 'center', hideable: true, fixed: true, width: "100px"},
         {key: 'Image', label: 'Images', align: 'center', hideable: true, fixed: true, width: '200px'},
-        {key: 'Image Badge', label: 'Image Badge', align: 'center', hideable: true, fixed: true, width: "150px"},
+        {key: 'Image Badge', label: 'Image Badge', align: 'center', hideable: true, fixed: true, width: "170px"},
         {
             key: 'ProductInfo',
             label: 'Product Information',
@@ -1062,6 +1110,9 @@ const ProductTableNew = () => {
                         bottom: 0,
                         backgroundColor: 'rgba(255, 255, 255, 0.2)',
                         zIndex: 10,
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center'
                     }}
                 >
                     <CircularProgress/>

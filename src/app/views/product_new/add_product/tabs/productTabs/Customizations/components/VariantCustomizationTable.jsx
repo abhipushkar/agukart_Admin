@@ -315,7 +315,7 @@ const VariantCustomizationTable = ({ index }) => {
         const updatedCustomizations = [...customizationData.customizations];
         updatedCustomizations[index] = {
             ...updatedCustomizations[index],
-            [field]: value
+            [field]: value,
         };
         setCustomizationData({
             ...customizationData,

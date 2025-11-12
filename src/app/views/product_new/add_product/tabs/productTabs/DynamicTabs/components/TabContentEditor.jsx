@@ -1,6 +1,6 @@
 // ProductDynamicTabs/components/TabContentEditor.jsx
-import React, { memo } from "react";
-import ReactQuill from "react-quill";
+import React, {memo} from "react";
+import ReactQuill, {Quill} from "react-quill";
 import "react-quill/dist/quill.snow.css";
 
 const TabContentEditor = ({ value, onChange, error }) => {
@@ -15,15 +15,21 @@ const TabContentEditor = ({ value, onChange, error }) => {
             [{ 'align': [] }],
             ['clean']
         ],
+        clipboard: {
+            matchVisual: false
+        },
+        imageResize: {
+            parchment: Quill.import("parchment"),
+            modules: ["Resize", "DisplaySize"]
+        }
     };
 
     const formats = [
-        'header',
-        'bold', 'italic', 'underline', 'strike',
-        'list', 'bullet',
-        'link', 'image',
-        'blockquote', 'code-block',
-        'align'
+        'header', 'font', 'size', // Add 'font' here
+        'bold', 'italic', 'underline', 'strike', 'blockquote',
+        'list', 'bullet', 'indent',
+        'link', 'image', 'video',
+        'code-block', 'align'
     ];
 
     const handleChange = (content) => {
@@ -39,13 +45,8 @@ const TabContentEditor = ({ value, onChange, error }) => {
                 modules={modules}
                 formats={formats}
                 style={{
-                    height: 'auto', // Let it expand naturally
-                    minHeight: '100px' // Only one minimum line
-                }}
-                onBlur={() => {
-                    if (!value || value === "<p><br></p>") {
-                        // Error handling is managed by parent component
-                    }
+                    height: 'auto',
+                    minHeight: '100px'
                 }}
             />
             {error && (

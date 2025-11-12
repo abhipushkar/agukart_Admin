@@ -21,6 +21,10 @@ export const useProductStore = create((set, get) => ({
         search: '',
         status: 'all',
         category: '',
+        sorting: {
+            sortBy: 'createdAt',
+            order: -1,
+        },
         hiddenColumns: JSON.parse(localStorage.getItem(localStorageKey.productTable)) || DEFAULT_HIDDEN_COLUMNS
     },
     selection: {
@@ -32,6 +36,8 @@ export const useProductStore = create((set, get) => ({
     expandedRows: new Set(),
 
     showFeaturedOnly: false,
+
+    allActiveCategories: [],
 
     setShowFeaturedOnly: (value) => {
         set({showFeaturedOnly: value});
@@ -87,10 +93,12 @@ export const useProductStore = create((set, get) => ({
 
     // Fetch products
     fetchProducts: async () => {
-        const {filters, pagination} = get();
+        const {filters, pagination, showFeaturedOnly} = get();
 
         try {
-            const url = `${apiEndpoints.getProduct}?type=${filters.status}&category=${filters.category}`;
+            const url = `${apiEndpoints.getProduct}?type=${filters.status}&category=${filters.category}&search=${filters.search.trim()}&featured=${showFeaturedOnly ? true : ''}&sort=${filters.sorting.sortBy ? JSON.stringify({
+                [filters.sorting.sortBy]: filters.sorting.order,
+            }) : ""}&page=${pagination.page + 1}&limit=${pagination.rowsPerPage}`;
             const auth_key = localStorage.getItem(localStorageKey.auth_key);
             const res = await ApiService.get(url, auth_key);
 
@@ -107,34 +115,54 @@ export const useProductStore = create((set, get) => ({
         }
     },
 
-    // Search products
-    searchProducts: () => {
-        const {products, filters} = get();
+    flattenArray: (data) => {
+        let result = [];
 
-        if (!filters.search.trim()) {
-            set({filteredProducts: products});
-            return;
+        function recurse(items) {
+            for (const item of items) {
+                // Create a shallow copy of the item without the 'subs' key
+                let { subs, ...itemWithoutSubs } = item;
+                result.push(itemWithoutSubs);
+                if (subs && subs.length > 0) {
+                    recurse(subs);
+                }
+            }
         }
 
-        const searchTerm = filters.search.trim().toLowerCase();
-        const filtered = products.filter((product) => {
-            const matchesMainProduct =
-                product?.product_title?.toLowerCase().includes(searchTerm) ||
-                product?.sku_code?.toLowerCase().includes(searchTerm) ||
-                product?.seller_sku?.toLowerCase().includes(searchTerm) ||
-                product?._id?.toLowerCase().includes(searchTerm);
+        recurse(data);
+        return result;
+    },
 
-            const matchesVariants = product.productData?.some(variant =>
-                variant.sku_code?.toLowerCase().includes(searchTerm)
-            );
+    getAllActiveCategories: async () => {
+        try {
+            const auth_key = localStorage.getItem(localStorageKey.auth_key);
+            const res = await ApiService.get(apiEndpoints.getAllActiveCategory, auth_key);
+            if (res?.status === 200) {
 
-            return matchesMainProduct || matchesVariants;
-        });
+                const flatArray = get().flattenArray(res?.data?.subCatgory);
 
-        set({
-            filteredProducts: filtered.length > 0 ? filtered : ['No Product Found'],
-            pagination: {...get().pagination, page: 0}
-        });
+                set({allActiveCategories: flatArray});
+
+                // setAllActiveCategory([
+                //   { subs: [{ title: "All Product", subs: [], id: "" }, ...res?.data?.subCatgory] }
+                // ]);
+            }
+        } catch (error) {
+            throw new Error(error);
+        }
+    },
+
+    // Search products
+    searchProducts: async () => {
+        try {
+            set({actionLoading: true});
+            await get().fetchProducts();
+        } catch (e) {
+            console.error('Error searching products:', e);
+            throw e;
+        } finally {
+            set({actionLoading: false});
+        }
     },
 
     // Toggle featured status

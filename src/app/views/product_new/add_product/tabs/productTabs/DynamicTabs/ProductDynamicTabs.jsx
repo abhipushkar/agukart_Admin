@@ -1,5 +1,5 @@
 // ProductDynamicTabs/ProductDynamicTabs.jsx
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
     Box,
     Typography,
@@ -29,6 +29,9 @@ const ProductDynamicTabs = () => {
     const [editIndex, setEditIndex] = useState(null);
     const [newTab, setNewTab] = useState({ title: "", description: "" });
 
+    // Create a ref for the edit form
+    const editFormRef = useRef(null);
+
     // Handle input change
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -47,6 +50,16 @@ const ProductDynamicTabs = () => {
         // Clear error when content is added
         if (inputErrors.description && value && value !== "<p><br></p>") {
             setInputErrors({ description: "" });
+        }
+    };
+
+    // Scroll to edit form
+    const scrollToEditForm = () => {
+        if (editFormRef.current) {
+            editFormRef.current.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center'
+            });
         }
     };
 
@@ -69,7 +82,7 @@ const ProductDynamicTabs = () => {
         setInputErrors({ title: "", description: "" });
     };
 
-    // Enable edit mode
+    // Enable edit mode and scroll to form
     const enableEdit = (index) => {
         setEditIndex(index);
         setNewTab({
@@ -77,6 +90,11 @@ const ProductDynamicTabs = () => {
             description: formData.tabs[index]?.description || ""
         });
         setIsAdding(false);
+
+        // Scroll to edit form after state update
+        setTimeout(() => {
+            scrollToEditForm();
+        }, 100);
     };
 
     // Cancel edit
@@ -125,6 +143,18 @@ const ProductDynamicTabs = () => {
         setIsAdding(false);
         setNewTab({ title: "", description: "" });
         setInputErrors({ title: "", description: "" });
+    };
+
+    // Handle add new tab with scroll
+    const handleAddNewTab = () => {
+        setIsAdding(true);
+        setEditIndex(null);
+        setNewTab({ title: "", description: "" });
+
+        // Scroll to form after state update
+        setTimeout(() => {
+            scrollToEditForm();
+        }, 100);
     };
 
     return (
@@ -177,8 +207,8 @@ const ProductDynamicTabs = () => {
                             }}
                         >
                             <CardContent>
-                                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                                    <Box sx={{ flex: 1 }}>
+                                <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+                                    <Box sx={{ flex: 1, width: "100%", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                                         <Typography
                                             variant="h6"
                                             sx={{
@@ -189,40 +219,41 @@ const ProductDynamicTabs = () => {
                                         >
                                             {tab.title}
                                         </Typography>
-                                        <Box
-                                            sx={{
-                                                "& .ql-editor": {
-                                                    padding: 0,
-                                                    fontSize: "14px",
-                                                    lineHeight: 1.6,
-                                                    minHeight: "auto"
-                                                },
-                                                "& .ql-editor p": {
-                                                    marginBottom: "8px"
-                                                },
-                                                "& .ql-editor ul, & .ql-editor ol": {
-                                                    paddingLeft: "20px"
-                                                }
-                                            }}
-                                            dangerouslySetInnerHTML={{ __html: tab.description }}
-                                        />
+                                        <Box sx={{ display: "flex", gap: 1, ml: 2 }}>
+                                            <IconButton
+                                                onClick={() => enableEdit(index)}
+                                                size="small"
+                                                color="primary"
+                                            >
+                                                <EditIcon />
+                                            </IconButton>
+                                            <IconButton
+                                                onClick={() => deleteTab(index)}
+                                                size="small"
+                                                color="error"
+                                            >
+                                                <DeleteIcon />
+                                            </IconButton>
+                                        </Box>
                                     </Box>
-                                    <Box sx={{ display: "flex", gap: 1, ml: 2 }}>
-                                        <IconButton
-                                            onClick={() => enableEdit(index)}
-                                            size="small"
-                                            color="primary"
-                                        >
-                                            <EditIcon />
-                                        </IconButton>
-                                        <IconButton
-                                            onClick={() => deleteTab(index)}
-                                            size="small"
-                                            color="error"
-                                        >
-                                            <DeleteIcon />
-                                        </IconButton>
-                                    </Box>
+                                    <Box
+                                        sx={{
+                                            maxWidth: "1000px",
+                                            "& .ql-editor": {
+                                                padding: 0,
+                                                fontSize: "14px",
+                                                lineHeight: 1.6,
+                                                minHeight: "auto"
+                                            },
+                                            "& .ql-editor p": {
+                                                marginBottom: "8px"
+                                            },
+                                            "& .ql-editor ul, & .ql-editor ol": {
+                                                paddingLeft: "20px"
+                                            }
+                                        }}
+                                        dangerouslySetInnerHTML={{ __html: tab.description }}
+                                    />
                                 </Box>
                             </CardContent>
                         </Card>
@@ -230,7 +261,15 @@ const ProductDynamicTabs = () => {
 
                     {/* Add/Edit Form */}
                     {(isAdding || editIndex !== null) && (
-                        <Card sx={{ mt: 2, border: "2px solid", borderColor: "primary.main" }}>
+                        <Card
+                            ref={editFormRef} // Add ref here
+                            sx={{
+                                mt: 2,
+                                border: "2px solid",
+                                borderColor: "primary.main",
+                                scrollMarginTop: "20px" // Add some margin when scrolling to this element
+                            }}
+                        >
                             <CardContent>
                                 <Typography
                                     variant="h6"
@@ -338,7 +377,7 @@ const ProductDynamicTabs = () => {
                         <Button
                             variant="outlined"
                             startIcon={<AddIcon />}
-                            onClick={() => setIsAdding(true)}
+                            onClick={handleAddNewTab}
                             sx={{ mt: 1 }}
                         >
                             Add New Tab
@@ -366,7 +405,7 @@ const ProductDynamicTabs = () => {
                                 <Button
                                     variant="contained"
                                     startIcon={<AddIcon />}
-                                    onClick={() => setIsAdding(true)}
+                                    onClick={handleAddNewTab}
                                 >
                                     Add First Tab
                                 </Button>

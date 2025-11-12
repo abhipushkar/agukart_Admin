@@ -105,11 +105,11 @@ const DraggableCustomizationItem = ({
                                 <Box sx={{ fontSize: "24px", fontWeight: "700", borderRight: "1px solid black", paddingInline: "10px" }}>
                                     {index + 1}
                                 </Box>
-                                <Box sx={{ marginLeft: "10px" }}>
-                                    <Box onClick={() => setTitleModalOpen(true)} sx={{ cursor: "pointer" }}>
-                                        <CreateIcon sx={{ color: "black" }} />
-                                    </Box>
-                                </Box>
+                                {/*<Box sx={{ marginLeft: "10px" }}>*/}
+                                {/*    <Box onClick={() => setTitleModalOpen(true)} sx={{ cursor: "pointer" }}>*/}
+                                {/*        <CreateIcon sx={{ color: "black" }} />*/}
+                                {/*    </Box>*/}
+                                {/*</Box>*/}
                                 <Box sx={{ fontWeight: "700", marginLeft: "10px" }}>
                                     {title}
                                 </Box>

@@ -80,7 +80,7 @@ const CustomizationList = () => {
                             id={i}
                             index={i}
                             moveItem={moveCustomizationItem}
-                            title={item.title}
+                            title={item.label || item.title}
                             onTitleEdit={(newTitle) => handleTitleEdit(i, newTitle)}
                             onDelete={() => handleCustomizationDelete(i)}
                         >

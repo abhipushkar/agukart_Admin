@@ -1,7 +1,12 @@
 // Description/components/ReactQuillDescription.jsx
-import React, { memo } from "react";
-import ReactQuill from "react-quill";
+import React, {memo, useEffect} from "react";
+import ReactQuill, {Quill} from "react-quill";
 import "react-quill/dist/quill.snow.css";
+import ImageResize from "quill-image-resize-module-react/src/ImageResize";
+import CustomImageBlot from "../../../../../../Product/descriptoinTextEditor/CustomImageBot";
+import ReactQuillImageBlot from "./ReactQuillImageBlot";
+
+Quill.register("modules/imageResize", ImageResize);
 
 const ReactQuillDescription = ({ value, onChange, error }) => {
     const modules = {
@@ -15,6 +20,13 @@ const ReactQuillDescription = ({ value, onChange, error }) => {
             [{ 'align': [] }],
             ['clean']
         ],
+        clipboard: {
+            matchVisual: false
+        },
+        imageResize: {
+            parchment: Quill.import("parchment"),
+            modules: ["Resize", "DisplaySize"]
+        }
     };
 
     const formats = [
@@ -29,6 +41,10 @@ const ReactQuillDescription = ({ value, onChange, error }) => {
     const handleChange = (content) => {
         onChange(content);
     };
+
+    useEffect(() => {
+        Quill.register(ReactQuillImageBlot);
+    }, []);
 
     return (
         <div>

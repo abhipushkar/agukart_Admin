@@ -12,7 +12,7 @@ const TextCustomization = ({ index }) => {
         if (name === "instructions" && value.length > 200) return;
 
         const updatedCustomizations = customizationData.customizations.map((item, idx) =>
-            idx === index ? { ...item, [name]: value } : item
+            idx === index ? { ...item, [name]: value, } : item
         );
 
         setCustomizationData({

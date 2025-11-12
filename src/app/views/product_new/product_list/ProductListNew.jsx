@@ -102,6 +102,16 @@ const ProductListNew = () => {
     const navigate = useNavigate();
     const location = useLocation();
 
+    const SORTING_OPTIONS = [
+        { value: { sortBy: 'product_title', order: 1 }, label: 'Title (A to Z)' },
+        { value: { sortBy: 'product_title', order: -1 }, label: 'Title (Z to A)' },
+        { value: { sortBy: 'sku_code', order: 1 }, label: 'SKU (A to Z)' },
+        { value: { sortBy: 'sku_code', order: -1 }, label: 'SKU (Z to A)' },
+        { value: { sortBy: 'createdAt', order: -1 }, label: 'Date Created (New to Old)' },
+        { value: { sortBy: 'createdAt', order: 1 }, label: 'Date Created (Old to New)' },
+        { value: { sortBy: 'updatedAt', order: -1 }, label: 'Last Updated' },
+    ];
+
     // Zustand store
     const {
         products,
@@ -120,6 +130,8 @@ const ProductListNew = () => {
         deselectAll,
         showFeaturedOnly,
         setShowFeaturedOnly,
+        allActiveCategories,
+        getAllActiveCategories,
     } = useProductStore();
 
     // Local state
@@ -132,6 +144,7 @@ const ProductListNew = () => {
         'Status',
         'Image',
         'Featured',
+        'Shop Name',
         'Product Id',
         'SKU',
         'Product Title',
@@ -298,17 +311,15 @@ const ProductListNew = () => {
         deselectAll();
     }, [filters.status]);
 
+    useEffect(() => {
+        getAllActiveCategories();
+    }, []);
+
     // Fetch initial data
     useEffect(() => {
         fetchProductsFirstTime();
-        fetchCategories();
-    }, [fetchProducts, filters.status]);
-
-    const fetchCategories = async () => {
-        // This would be your category fetching logic
-        // For now, using empty array
-        setCategories([]);
-    };
+        // getAllActiveCategories();
+    }, [fetchProducts, filters.status, filters.category, filters.sorting, showFeaturedOnly]);
 
     // Handle status filter change with hash routing
     const handleStatusChange = (event) => {
@@ -459,6 +470,8 @@ const ProductListNew = () => {
     const availableActions = getAvailableActions();
     const selectedStatuses = getSelectedProductsStatus();
 
+    console.log("Sorting Filters: ", filters.sorting);
+
     return (
         <Box sx={{margin: '30px'}}>
             {/* Header */}
@@ -539,9 +552,39 @@ const ProductListNew = () => {
                         onChange={(e) => setFilters({category: e.target.value})}
                     >
                         <MenuItem value="">All Categories</MenuItem>
-                        {categories.map(category => (
+                        {allActiveCategories.map(category => (
                             <MenuItem key={category.id} value={category.id}>
                                 {category.title}
+                            </MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
+
+                {/* Sorting Filter */}
+                <FormControl size="small" sx={{ minWidth: 200 }}>
+                    <InputLabel>Sort By</InputLabel>
+                    <Select
+                        value={filters.sorting.sortBy ? JSON.stringify(filters.sorting) : ''}
+                        label="Sort By"
+                        onChange={(e) => {
+                            const newSorting = e.target.value ? JSON.parse(e.target.value) : { sortBy: '', order: 1 };
+                            setFilters({ sorting: newSorting });
+                        }}
+                        renderValue={(selected) => {
+                            if (!selected) return 'Select sorting...';
+                            const sorting = JSON.parse(selected);
+                            const option = SORTING_OPTIONS.find(opt =>
+                                opt.value.sortBy === sorting.sortBy && opt.value.order === sorting.order
+                            );
+                            return option ? option.label : 'Custom Sort';
+                        }}
+                    >
+                        {SORTING_OPTIONS.map((option, index) => (
+                            <MenuItem
+                                key={index}
+                                value={JSON.stringify(option.value)}
+                            >
+                                {option.label}
                             </MenuItem>
                         ))}
                     </Select>
@@ -605,7 +648,7 @@ const ProductListNew = () => {
                     }}>
                         <FormControlLabel value={showFeaturedOnly}
                                           onChange={event => setShowFeaturedOnly(event.target.checked)}
-                                          control={<IOSSwitch sx={{m: 1}}/>} label={"Show only Featured"}/>
+                                          control={<Switch sx={{m: 1}}/>} label={"Show only Featured"}/>
                     </FormControl>
 
                     {/* Column Preferences */}
