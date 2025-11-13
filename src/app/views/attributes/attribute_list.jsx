@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
     Box,
@@ -18,7 +18,12 @@ import {
     Link,
     CircularProgress,
     Divider,
-    Stack
+    Stack,
+    TablePagination,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem
 } from "@mui/material";
 import {
     Edit as EditIcon,
@@ -30,15 +35,36 @@ import {
 } from "@mui/icons-material";
 import { ROUTE_CONSTANT } from "../../constant/routeContanst";
 import { ApiService } from "../../services/ApiService";
-import ConfirmModal from "../../components/ConfirmModal"; // Import ConfirmModal
-// import { apiEndpoints } from "../../services/apiEndpoints";
+import ConfirmModal from "../../components/ConfirmModal";
+import debounce from "lodash.debounce";
+
+// Sorting options
+const SORTING_OPTIONS = [
+    { value: { sortBy: 'name', order: 1 }, label: 'Name (A to Z)' },
+    { value: { sortBy: 'name', order: -1 }, label: 'Name (Z to A)' },
+    { value: { sortBy: 'createdAt', order: -1 }, label: 'Date Created (New to Old)' },
+    { value: { sortBy: 'createdAt', order: 1 }, label: 'Date Created (Old to New)' },
+    { value: { sortBy: 'updatedAt', order: -1 }, label: 'Last Updated' },
+];
 
 const AttributesList = () => {
+    // State management
     const [attributes, setAttributes] = useState([]);
+    const [filteredAttributes, setFilteredAttributes] = useState([]);
     const [search, setSearch] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
     const [selectedAttribute, setSelectedAttribute] = useState(null);
     const [loading, setLoading] = useState(true);
     const [apiLoading, setApiLoading] = useState(false);
+
+    // Pagination state
+    const [page, setPage] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(25);
+
+    // Sorting state
+    const [sorting, setSorting] = useState({ sortBy: "createdAt", order: -1 });
+
+    // UI state
     const navigate = useNavigate();
     const [confirmModal, setConfirmModal] = useState({
         open: false,
@@ -47,10 +73,88 @@ const AttributesList = () => {
         onConfirm: null
     });
 
+    // Refs
+    const debounceRef = useRef();
+
+    // Initialize debounce
     useEffect(() => {
-        fetchAttributes();
+        debounceRef.current = debounce((searchValue) => {
+            setDebouncedSearch(searchValue);
+            setPage(0); // Reset to first page when search changes
+        }, 500);
+
+        return () => {
+            debounceRef.current?.cancel();
+        };
     }, []);
 
+    // Handle search with debouncing
+    const handleSearch = (e) => {
+        const value = e.target.value;
+        setSearch(value);
+        debounceRef.current(value);
+    };
+
+    // Fetch attributes
+    const fetchAttributes = useCallback(async () => {
+        setLoading(true);
+        try {
+            const accessToken = localStorage.getItem("auth_key");
+
+            // Build query parameters
+            const params = new URLSearchParams({
+                page: (page + 1).toString(),
+                limit: rowsPerPage.toString(),
+            });
+
+            // Add search if provided
+            if (debouncedSearch.trim()) {
+                params.append('search', debouncedSearch.trim());
+            }
+
+            // Add sorting if provided
+            if (sorting.sortBy) {
+                params.append('sort', JSON.stringify({
+                    [sorting.sortBy]: sorting.order
+                }));
+            }
+
+            const url = `get-attribute-list?${params.toString()}`;
+            const response = await ApiService.get(url, accessToken);
+
+            if (response.data.success) {
+                const attributesData = response.data.data || [];
+
+                // Add serial numbers based on current page
+                const attributesWithSerial = attributesData.map((attr, index) => ({
+                    ...attr,
+                    serialNumber: (page * rowsPerPage) + index + 1
+                }));
+
+                setAttributes(attributesWithSerial);
+                setFilteredAttributes(attributesWithSerial);
+            } else {
+                console.error("Failed to fetch attributes:", response.data.message);
+                setAttributes([]);
+                setFilteredAttributes([]);
+                showConfirmModal("error", "Failed to fetch attributes");
+            }
+        } catch (error) {
+            console.error("Error fetching attributes:", error);
+            showConfirmModal("error", "Error fetching attributes. Please try again.");
+            setAttributes([]);
+            setFilteredAttributes([]);
+        } finally {
+            setLoading(false);
+        }
+    }, [debouncedSearch, sorting, page, rowsPerPage]);
+
+    // Fetch data when dependencies change
+    useEffect(() => {
+        fetchAttributes();
+    }, [fetchAttributes]);
+
+    // Confirm modal handlers
     const showConfirmModal = (type, msg, onConfirm) => {
         setConfirmModal({
             open: true,
@@ -76,40 +180,13 @@ const AttributesList = () => {
         closeConfirmModal();
     };
 
-    const fetchAttributes = async () => {
-        setLoading(true);
-        try {
-            const accessToken = localStorage.getItem("auth_key");
-
-            const response = await ApiService.get("get-attribute-list", accessToken);
-
-            if (response.data.success) {
-                setAttributes(response.data.data || []);
-            } else {
-                console.error("Failed to fetch attributes:", response.data.message);
-                setAttributes([]);
-                showConfirmModal("error", "Failed to fetch attributes");
-            }
-        } catch (error) {
-            console.error("Error fetching attributes:", error);
-            showConfirmModal("error", "Error fetching attributes. Please try again.");
-            setAttributes([]);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleSearch = (e) => {
-        setSearch(e.target.value);
-    };
-
+    // Status change handlers
     const handleStatusChange = async (id) => {
         setApiLoading(true);
         try {
             const accessToken = localStorage.getItem("auth_key");
             const attribute = attributes.find(attr => attr._id === id);
 
-            // Replace with actual status update API endpoint
             const response = await ApiService.post(
                 `update-attribute-list/${id}`,
                 { ...attribute, status: !attribute.status },
@@ -117,26 +194,18 @@ const AttributesList = () => {
             );
 
             if (response.data.success) {
-            // Update local state on successful API call
-            setAttributes(attributes.map(attr =>
-                attr._id === id ? { ...attr, status: !attribute.status } : attr
-            ));
+                setAttributes(attributes.map(attr =>
+                    attr._id === id ? { ...attr, status: !attribute.status } : attr
+                ));
+                setFilteredAttributes(filteredAttributes.map(attr =>
+                    attr._id === id ? { ...attr, status: !attribute.status } : attr
+                ));
             } else {
-                alert("Failed to update status");
+                showConfirmModal("error", "Failed to update status");
             }
-
-            // For now, simulate API success
-            // setTimeout(() => {
-            //     setAttributes(attributes.map(attr =>
-            //         attr._id === id ? { ...attr, status: newStatus } : attr
-            //     ));
-            //     setApiLoading(false);
-            // }, 500);
-
         } catch (error) {
             console.error("Error updating status:", error);
             showConfirmModal("error", "Error updating status");
-            // setApiLoading(false);
         } finally {
             setApiLoading(false);
         }
@@ -148,7 +217,6 @@ const AttributesList = () => {
             const accessToken = localStorage.getItem("auth_key");
             const attribute = attributes.find(attr => attr._id === id);
 
-            // Replace with actual view on product page update API endpoint
             const response = await ApiService.post(
                 `update-attribute-list/${id}`,
                 { ...attribute, viewOnProductPage: !attribute.viewOnProductPage },
@@ -156,26 +224,18 @@ const AttributesList = () => {
             );
 
             if (response.data.success) {
-            // Update local state on successful API call
-            setAttributes(attributes.map(attr =>
-                attr._id === id ? { ...attr, viewOnProductPage: !attribute.viewOnProductPage } : attr
-            ));
+                setAttributes(attributes.map(attr =>
+                    attr._id === id ? { ...attr, viewOnProductPage: !attribute.viewOnProductPage } : attr
+                ));
+                setFilteredAttributes(filteredAttributes.map(attr =>
+                    attr._id === id ? { ...attr, viewOnProductPage: !attribute.viewOnProductPage } : attr
+                ));
             } else {
-                alert("Failed to update view on product page setting");
+                showConfirmModal("error", "Failed to update view on product page setting");
             }
-
-            // For now, simulate API success
-            // setTimeout(() => {
-            //     setAttributes(attributes.map(attr =>
-            //         attr._id === id ? { ...attr, viewOnProductPage: newViewOnProductPage } : attr
-            //     ));
-            //     setApiLoading(false);
-            // }, 500);
-
         } catch (error) {
             console.error("Error updating view on product page:", error);
             showConfirmModal("error", "Error updating view on product page setting");
-            // setApiLoading(false);
         } finally {
             setApiLoading(false);
         }
@@ -187,7 +247,6 @@ const AttributesList = () => {
             const accessToken = localStorage.getItem("auth_key");
             const attribute = attributes.find(attr => attr._id === id);
 
-            // Replace with actual view in filters update API endpoint
             const response = await ApiService.post(
                 `update-attribute-list/${id}`,
                 { ...attribute, viewInFilters: !attribute.viewInFilters },
@@ -195,31 +254,24 @@ const AttributesList = () => {
             );
 
             if (response.data.success) {
-            // Update local state on successful API call
-            setAttributes(attributes.map(attr =>
-                attr._id === id ? { ...attr, viewInFilters: !attribute.viewInFilters } : attr
-            ));
+                setAttributes(attributes.map(attr =>
+                    attr._id === id ? { ...attr, viewInFilters: !attribute.viewInFilters } : attr
+                ));
+                setFilteredAttributes(filteredAttributes.map(attr =>
+                    attr._id === id ? { ...attr, viewInFilters: !attribute.viewInFilters } : attr
+                ));
             } else {
-                alert("Failed to update view in filters setting");
+                showConfirmModal("error", "Failed to update view in filters setting");
             }
-
-            // For now, simulate API success
-            // setTimeout(() => {
-            //     setAttributes(attributes.map(attr =>
-            //         attr._id === id ? { ...attr, viewInFilters: newViewInFilters } : attr
-            //     ));
-            //     setApiLoading(false);
-            // }, 500);
-
         } catch (error) {
             console.error("Error updating view in filters:", error);
             showConfirmModal("error", "Error updating view in filters setting");
-            // setApiLoading(false);
         } finally {
             setApiLoading(false);
         }
     };
 
+    // Delete handlers
     const handleDeleteClick = (attribute) => {
         try {
             setSelectedAttribute(attribute);
@@ -244,8 +296,8 @@ const AttributesList = () => {
             );
 
             if (response.data.success) {
-                // Remove from local state on successful API call
                 setAttributes(attributes.filter(attr => attr._id !== selectedAttribute._id));
+                setFilteredAttributes(filteredAttributes.filter(attr => attr._id !== selectedAttribute._id));
                 setSelectedAttribute(null);
                 showConfirmModal("success", "Attribute deleted successfully!");
             } else {
@@ -259,15 +311,36 @@ const AttributesList = () => {
         }
     };
 
+    // Edit handler
     const handleEdit = (id) => {
         navigate(`${ROUTE_CONSTANT.catalog.attribute.add}?id=${id}`);
     };
 
-    const filteredAttributes = attributes.filter(attr =>
-        attr.name.toLowerCase().includes(search.toLowerCase())
-    );
+    // Pagination handlers
+    const handleChangePage = (event, newPage) => {
+        setPage(newPage);
+    };
 
-    if (loading) {
+    const handleChangeRowsPerPage = (event) => {
+        const newRowsPerPage = parseInt(event.target.value, 10);
+        setRowsPerPage(newRowsPerPage);
+        setPage(0);
+    };
+
+    // Sorting handler
+    const handleSortingChange = (e) => {
+        const newSorting = e.target.value ? JSON.parse(e.target.value) : { sortBy: '', order: 1 };
+        setSorting(newSorting);
+        setPage(0);
+    };
+
+    // Export handler
+    const handleExport = () => {
+        // Implement export functionality here
+        console.log("Export functionality to be implemented");
+    };
+
+    if (loading && attributes.length === 0) {
         return (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
                 <CircularProgress />
@@ -308,96 +381,160 @@ const AttributesList = () => {
 
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
                 <Typography variant="h4">Attributes List</Typography>
-                <Box sx={{ display: "flex", gap: 2 }}>
+                <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+                    {/* Sorting Filter */}
+                    <FormControl size="small" sx={{ minWidth: 200 }}>
+                        <InputLabel>Sort By</InputLabel>
+                        <Select
+                            value={JSON.stringify(sorting)}
+                            label="Sort By"
+                            onChange={handleSortingChange}
+                            renderValue={(selected) => {
+                                const selectedSorting = JSON.parse(selected);
+                                const option = SORTING_OPTIONS.find(opt =>
+                                    opt.value.sortBy === selectedSorting.sortBy &&
+                                    opt.value.order === selectedSorting.order
+                                );
+                                return option ? option.label : 'Custom Sort';
+                            }}
+                        >
+                            {SORTING_OPTIONS.map((option, index) => (
+                                <MenuItem
+                                    key={index}
+                                    value={JSON.stringify(option.value)}
+                                >
+                                    {option.label}
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+
+                    {/* Search */}
                     <TextField
                         size="small"
-                        label="Search"
+                        label="Search Attributes"
                         value={search}
                         onChange={handleSearch}
                         disabled={apiLoading}
+                        placeholder="Search by name..."
                     />
+
                     <Button
                         variant="contained"
                         startIcon={<AddIcon />}
                         onClick={() => navigate(ROUTE_CONSTANT.catalog.attribute.add)}
+                        disabled={apiLoading}
                     >
                         Add Attribute
                     </Button>
-                    <Button variant="contained" disabled={apiLoading}>
+                    <Button
+                        variant="contained"
+                        onClick={handleExport}
+                        disabled={apiLoading || attributes.length === 0}
+                    >
                         Export Attributes
                     </Button>
                 </Box>
             </Box>
 
-            <TableContainer sx={{ paddingLeft: 2, paddingRight: 2 }} component={Paper}>
-                <Table >
-                    <TableHead>
-                        <TableRow>
-                            <TableCell>S.No</TableCell>
-                            <TableCell>Name</TableCell>
-                            <TableCell>Type</TableCell>
-                            <TableCell>Status</TableCell>
-                            <TableCell>View on Product Page</TableCell>
-                            <TableCell>View in Filters</TableCell>
-                            <TableCell>Action</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {filteredAttributes.length === 0 ? (
+            {/* Loading indicator */}
+            {loading && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
+                    <CircularProgress />
+                </Box>
+            )}
+
+            <Box sx={{ position: 'relative' }}>
+                <TableContainer
+                    sx={{
+                        paddingLeft: 2,
+                        paddingRight: 2,
+                        opacity: loading ? 0.6 : 1,
+                        transition: 'opacity 0.3s ease'
+                    }}
+                    component={Paper}
+                >
+                    <Table>
+                        <TableHead>
                             <TableRow>
-                                <TableCell colSpan={7} align="center">
-                                    {attributes.length === 0 ? "No attributes found" : "No matching attributes found"}
-                                </TableCell>
+                                <TableCell>S.No</TableCell>
+                                <TableCell>Name</TableCell>
+                                <TableCell>Type</TableCell>
+                                <TableCell>Status</TableCell>
+                                <TableCell>View on Product Page</TableCell>
+                                <TableCell>View in Filters</TableCell>
+                                <TableCell>Action</TableCell>
                             </TableRow>
-                        ) : (
-                            filteredAttributes.map((attr, index) => (
-                                <TableRow key={attr._id}>
-                                    <TableCell>{index + 1}</TableCell>
-                                    <TableCell>{attr.name}</TableCell>
-                                    <TableCell>{attr.type}</TableCell>
-                                    <TableCell>
-                                        <Switch
-                                            checked={attr.status}
-                                            onChange={() => handleStatusChange(attr._id)}
-                                            disabled={apiLoading}
-                                        />
-                                    </TableCell>
-                                    <TableCell>
-                                        <Switch
-                                            checked={attr.viewOnProductPage}
-                                            onChange={() => handleViewOnProductChange(attr._id)}
-                                            disabled={apiLoading}
-                                        />
-                                    </TableCell>
-                                    <TableCell>
-                                        <Switch
-                                            checked={attr.viewInFilters}
-                                            onChange={() => handleViewInFiltersChange(attr._id)}
-                                            disabled={apiLoading}
-                                        />
-                                    </TableCell>
-                                    <TableCell>
-                                        <IconButton
-                                            onClick={() => handleEdit(attr._id)}
-                                            color="primary"
-                                            disabled={apiLoading}
-                                        >
-                                            <EditIcon />
-                                        </IconButton>
-                                        <IconButton
-                                            onClick={() => handleDeleteClick(attr)}
-                                            color="error"
-                                            disabled={apiLoading}
-                                        >
-                                            <DeleteIcon />
-                                        </IconButton>
+                        </TableHead>
+                        <TableBody>
+                            {filteredAttributes.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={7} align="center">
+                                        {loading ? 'Loading attributes...' : 'No attributes found'}
                                     </TableCell>
                                 </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
-            </TableContainer>
+                            ) : (
+                                filteredAttributes.map((attr) => (
+                                    <TableRow key={attr._id}>
+                                        <TableCell>{attr.serialNumber}</TableCell>
+                                        <TableCell>{attr.name}</TableCell>
+                                        <TableCell>{attr.type}</TableCell>
+                                        <TableCell>
+                                            <Switch
+                                                checked={attr.status}
+                                                onChange={() => handleStatusChange(attr._id)}
+                                                disabled={apiLoading}
+                                            />
+                                        </TableCell>
+                                        <TableCell>
+                                            <Switch
+                                                checked={attr.viewOnProductPage}
+                                                onChange={() => handleViewOnProductChange(attr._id)}
+                                                disabled={apiLoading}
+                                            />
+                                        </TableCell>
+                                        <TableCell>
+                                            <Switch
+                                                checked={attr.viewInFilters}
+                                                onChange={() => handleViewInFiltersChange(attr._id)}
+                                                disabled={apiLoading}
+                                            />
+                                        </TableCell>
+                                        <TableCell>
+                                            <IconButton
+                                                onClick={() => handleEdit(attr._id)}
+                                                color="primary"
+                                                disabled={apiLoading}
+                                            >
+                                                <EditIcon />
+                                            </IconButton>
+                                            <IconButton
+                                                onClick={() => handleDeleteClick(attr)}
+                                                color="error"
+                                                disabled={apiLoading}
+                                            >
+                                                <DeleteIcon />
+                                            </IconButton>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+
+                {/* Pagination */}
+                <TablePagination
+                    rowsPerPageOptions={[25, 50, 75, 100]}
+                    component="div"
+                    count={attributes.length} // Total count from server
+                    rowsPerPage={rowsPerPage}
+                    page={page}
+                    onPageChange={handleChangePage}
+                    onRowsPerPageChange={handleChangeRowsPerPage}
+                    disabled={loading || apiLoading}
+                />
+            </Box>
 
             {/* Confirm Modal */}
             <ConfirmModal

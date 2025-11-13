@@ -319,7 +319,7 @@ const ProductListNew = () => {
     useEffect(() => {
         fetchProductsFirstTime();
         // getAllActiveCategories();
-    }, [fetchProducts, filters.status, filters.category, filters.sorting, showFeaturedOnly]);
+    }, [fetchProducts, filters.status, filters.category, filters.sorting, showFeaturedOnly, pagination.page, pagination.rowsPerPage]);
 
     // Handle status filter change with hash routing
     const handleStatusChange = (event) => {
