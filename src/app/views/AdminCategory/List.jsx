@@ -76,6 +76,16 @@ const List = () => {
     );
     const [loading, setLoading] = useState(false);
 
+    // Pagination state from server
+    const [pagination, setPagination] = useState({
+        total: 0,
+        page: 1,
+        limit: 25,
+        totalPages: 0,
+        hasNextPage: false,
+        hasPrevPage: false
+    });
+
     // Sorting state
     const [order, setOrder] = useState("none");
     const [orderBy, setOrderBy] = useState(null);
@@ -150,7 +160,7 @@ const List = () => {
 
             // Build query parameters
             const params = new URLSearchParams({
-                page: (page + 1).toString(),
+                page: (page + 1).toString(), // Convert to 1-based for server
                 limit: rowsPerPage.toString(),
             });
 
@@ -170,14 +180,26 @@ const List = () => {
             const res = await ApiService.get(url, auth_key);
 
             if (res.status === 200) {
-                const myNewList = res?.data?.data?.map((e, i) => {
-                    const serialNumber = (page * rowsPerPage) + i + 1;
-                    return { "S.No": serialNumber, ...e };
-                }) || [];
+                const serverData = res?.data?.data || [];
+                const serverPagination = res?.data?.pagination || {
+                    total: 0,
+                    page: 1,
+                    limit: rowsPerPage,
+                    totalPages: 0,
+                    hasNextPage: false,
+                    hasPrevPage: false
+                };
 
+                // Add serial numbers based on server pagination
+                const myNewList = serverData.map((e, i) => {
+                    const serialNumber = (serverPagination.page - 1) * serverPagination.limit + i + 1;
+                    return { "S.No": serialNumber, ...e };
+                });
+
+                // Prepare Excel data
                 const xData = myNewList.map((e, i) => {
                     let obj = {
-                        "S.NO": (page * rowsPerPage) + i + 1,
+                        "S.NO": (serverPagination.page - 1) * serverPagination.limit + i + 1,
                         title: e.title,
                         status: e.status ? "Active" : "In Active"
                     };
@@ -186,6 +208,7 @@ const List = () => {
 
                 setExcelData(xData);
                 setCategoryList(myNewList);
+                setPagination(serverPagination);
             }
         } catch (error) {
             handleOpen("error", error);
@@ -207,7 +230,7 @@ const List = () => {
     const handleChangeRowsPerPage = useCallback((event) => {
         const newRowsPerPage = parseInt(event.target.value, 10);
         setRowsPerPage(newRowsPerPage);
-        setPage(0);
+        setPage(0); // Reset to first page when rows per page changes
     }, []);
 
     // Status change handlers
@@ -550,9 +573,9 @@ const List = () => {
                                                                         <TableCell>
                                                                             {row?.tag?.map((tag, index) => (
                                                                                 <span key={index}>
-                                        {tag}
+                                                                                    {tag}
                                                                                     {index < row.tag.length - 1 ? ", " : ""}
-                                      </span>
+                                                                                </span>
                                                                             ))}
                                                                         </TableCell>
                                                                     )}
@@ -633,7 +656,7 @@ const List = () => {
                 <TablePagination
                     rowsPerPageOptions={[25, 50, 75, 100]}
                     component="div"
-                    count={categoryList.length}
+                    count={pagination.total}
                     rowsPerPage={rowsPerPage}
                     page={page}
                     onPageChange={handleChangePage}
