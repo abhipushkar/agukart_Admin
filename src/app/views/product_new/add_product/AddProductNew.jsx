@@ -221,7 +221,7 @@ export default function AddProductNew() {
 
     const getAllShippingTemplates = async () => {
         try {
-            const res = await ApiService.get(apiEndpoints.getAllShippingTemplates, auth_key);
+            const res = await ApiService.get(`${apiEndpoints.getAllShippingTemplates}/${formData.vendor}`, auth_key);
             if (res.status === 200) {
                 setShippingTemplateData(res?.data?.template || []);
             }
@@ -245,11 +245,8 @@ export default function AddProductNew() {
     };
 
     useEffect(() => {
-        getAllShippingTemplates();
-    }, []);
-
-    useEffect(() => {
         if (formData.vendor) {
+            getAllShippingTemplates();
             getExchangePolicy();
         }
     }, [formData.vendor]);

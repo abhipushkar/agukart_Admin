@@ -9,7 +9,7 @@ import {
 } from "@mui/material";
 import AppsIcon from "@mui/icons-material/Apps";
 import { useSearchParams } from "react-router-dom";
-import ParentProductIdentity from "../../Product/parentProducts/ParentProductIdentity";
+import ParentProductIdentityNew from "./components/ParentProductIdentityNew";
 
 const ParentProducts = () => {
     const [query] = useSearchParams();
@@ -27,7 +27,7 @@ const ParentProducts = () => {
                     </Typography>
                 </Stack>
                 <Box component={Paper} sx={{ padding: "24px" }}>
-                    <ParentProductIdentity productId={queryId} />
+                    <ParentProductIdentityNew productId={queryId} />
                 </Box>
             </Box>
         </Container>

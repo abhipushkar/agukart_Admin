@@ -1,57 +1,15 @@
-// components/ParentProduct/VariationsSection.jsx
+// components/ParentProduct/Variations/VariationsSection.jsx
 import React from 'react';
 import { Box, Autocomplete, TextField, Typography, Stack } from '@mui/material';
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
-import {useParentProductStore} from "../../../states/parentProductStore";
 
-const VariationsSection = () => {
-    const {
-        formData,
-        varintList,
-        inputErrors,
-        setFormData,
-        setInputErrors,
-        generateCombinations,
-        updateCombinationMap,
-        combinationMap,
-        variantArrValues,
-        setVariantArrValue,
-        sellerSky,
-        setSellerSku,
-        preserveCombinationData
-    } = useParentProductStore();
-
-    const varintHandler = (event, value) => {
-        setFormData({
-            variantData: value,
-            variant_id: value.map((option) => option.id),
-            variant_name: value.map((option) => option.variant_name)
-        });
-        setInputErrors({ variations: "" });
-    };
-
-    const InnervariationsHandle = (variantId) => (event, newValue) => {
-        const updatedInnervariations = {
-            ...formData.Innervariations,
-            [variantId]: newValue
-        };
-
-        const newCombinations = generateCombinations(updatedInnervariations);
-
-        const { preservedVariantData, preservedSellerSky } = preserveCombinationData(
-            newCombinations,
-            variantArrValues,
-            sellerSky
-        );
-
-        updateCombinationMap(newCombinations);
-
-        setFormData({ Innervariations: updatedInnervariations });
-        setVariantArrValue(preservedVariantData);
-        setSellerSku(preservedSellerSky);
-        setInputErrors({ innervariation: "" });
-    };
-
+const VariationsSection = ({
+                               formData,
+                               varintList,
+                               varintHandler,
+                               InnervariationsHandle,
+                               inputErrors
+                           }) => {
     return (
         <>
             <Box sx={{ marginTop: "22px", display: "flex", gap: "20px" }}>
@@ -65,7 +23,10 @@ const VariationsSection = () => {
                     textWrap: "wrap"
                 }}>
                     Variations
-                    <span style={{ color: "red", fontSize: "15px", margin: "0 3px" }}>*</span>:
+                    <span style={{ color: "red", fontSize: "15px", marginRight: "3px", marginLeft: "3px" }}>
+                        *
+                    </span>
+                    :
                 </Box>
                 <Box width={"100%"}>
                     <Autocomplete
@@ -73,7 +34,7 @@ const VariationsSection = () => {
                         limitTags={4}
                         onBlur={() => {
                             if (formData?.variantData?.length === 0) {
-                                setInputErrors({ variations: "Please Select Variation" });
+                                // setInputErrors({ variations: "Please Select Variation" });
                             }
                         }}
                         id="multiple-limit-tags"
@@ -95,7 +56,7 @@ const VariationsSection = () => {
                             />
                         )}
                         sx={{ width: "100%" }}
-                        onChange={varintHandler}
+                        onChange={(event, value) => varintHandler(value)}
                         name="variantData"
                         value={formData.variantData}
                         isOptionEqualToValue={(option, value) => option?.id === value?.id}
@@ -137,7 +98,7 @@ const VariationsSection = () => {
                                 limitTags={4}
                                 onBlur={() => {
                                     if (Object.keys(formData.Innervariations).length == 0) {
-                                        setInputErrors({ innervariation: "Please Select Ineer Variation Fields" });
+                                        // setInputErrors({ innervariation: "Please Select Inner Variation Fields" });
                                     }
                                 }}
                                 id="multiple-limit-tags"

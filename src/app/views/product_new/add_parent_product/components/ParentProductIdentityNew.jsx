@@ -1,9 +1,10 @@
+// components/ParentProduct/ParentProductIdentityNew.jsx
 import React, { useEffect } from 'react';
 import { Box, Button, CircularProgress } from '@mui/material';
 import TextFormField from './FormFields/TextFormField';
 import SelectFormField from './FormFields/SelectFormField';
 import ConfirmModal from 'app/components/ConfirmModal';
-import {useParentProductStore} from "../../states/parentProductStore";
+import { useParentProductStore } from "../../states/parentProductStore";
 import ImageUploadSection from "./Image/ImageUploadSection";
 import VariationsSection from "./Variations/VariationsSection";
 import ProductParentTable from "./Variations/ProductParentTable";
@@ -27,7 +28,10 @@ const ParentProductIdentityNew = ({ productId }) => {
         parentsubmitHandle,
         generateCombinations,
         handleClose,
-        trimValue
+        trimValue,
+        varintList,
+        varintHandler,
+        InnervariationsHandle
     } = useParentProductStore();
 
     useEffect(() => {
@@ -108,12 +112,29 @@ const ParentProductIdentityNew = ({ productId }) => {
 
                 <ImageUploadSection />
 
-                <VariationsSection />
+                <VariationsSection
+                    formData={formData}
+                    varintList={varintList}
+                    varintHandler={varintHandler}
+                    InnervariationsHandle={InnervariationsHandle}
+                    inputErrors={inputErrors}
+                />
 
                 {Object.keys(formData?.Innervariations).length > 0 && (
                     <ProductParentTable
+                        variantArrValues={variantArrValues}
+                        setVariantArrValue={useParentProductStore.getState().setVariantArrValue}
                         combinations={currentCombinations}
                         formdataaaaa={formData.variant_name}
+                        sellerSky={sellerSky}
+                        setSellerSku={useParentProductStore.getState().setSellerSku}
+                        setIsconponentLoader={useParentProductStore.getState().setIsComponentLoader}
+                        skuErrors={skuErrors}
+                        setSkuErrors={useParentProductStore.getState().setSkuErrors}
+                        loadingSkus={loadingSkus}
+                        setLoadingSkus={useParentProductStore.getState().setLoadingSkus}
+                        parentVariants={formData.variantData}
+                        checkForDuplicateSkus={useParentProductStore.getState().checkForDuplicateSkus}
                     />
                 )}
 

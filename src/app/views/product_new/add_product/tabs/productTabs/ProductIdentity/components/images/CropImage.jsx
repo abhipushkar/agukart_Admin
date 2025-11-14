@@ -17,7 +17,9 @@ import {
     ZoomOut,
     Crop,
     Check,
-    DeleteOutline
+    DeleteOutline,
+    DragIndicator,
+    Close
 } from "@mui/icons-material";
 import Cropper from 'react-easy-crop';
 import { getCroppedImg } from './cropUtils';
@@ -62,6 +64,10 @@ const CropImage = ({
     const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
     const [imgDimensions, setImgDimensions] = useState({ width: 0, height: 0 });
     const [showBlurOverlay, setShowBlurOverlay] = useState(false);
+
+    // Drag and drop state
+    const [dragOverIndex, setDragOverIndex] = useState(null);
+    const [draggedIndex, setDraggedIndex] = useState(null);
 
     const inputFileRef = useRef(null);
     const imageContainerRef = useRef(null);
@@ -229,22 +235,19 @@ const CropImage = ({
         const updatedImages = tempImages.filter((_, i) => i !== index);
         const updatedAltText = tempAltText.filter((_, i) => i !== index);
 
-        // Update sort orders
-        updatedImages.forEach((img, idx) => {
-            if (img.file) {
-                img.file.sortOrder = idx + 1;
-            } else {
-                img.sortOrder = idx + 1;
-            }
-            img.isPrimary = idx === 0;
-        });
+        // Update sort orders and mark first image as primary
+        const reorderedImages = updatedImages.map((img, idx) => ({
+            ...img,
+            sortOrder: idx + 1,
+            isPrimary: idx === 0 // First image is always primary
+        }));
 
-        setTempImages(updatedImages);
+        setTempImages(reorderedImages);
         setTempAltText(updatedAltText);
 
         // Adjust selected index if needed
-        if (selectedImageIndex >= updatedImages.length) {
-            setSelectedImageIndex(Math.max(0, updatedImages.length - 1));
+        if (selectedImageIndex >= reorderedImages.length) {
+            setSelectedImageIndex(Math.max(0, reorderedImages.length - 1));
         }
 
         // If primary image was deleted, reset transform data
@@ -253,48 +256,72 @@ const CropImage = ({
         }
     };
 
-    const handleMoveImage = (fromIndex, toIndex) => {
+    // Drag and Drop Handlers
+    const handleDragStart = (e, index) => {
+        setDraggedIndex(index);
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
+    const handleDragOver = (e, index) => {
+        e.preventDefault();
+        setDragOverIndex(index);
+    };
+
+    const handleDragLeave = () => {
+        setDragOverIndex(null);
+    };
+
+    const handleDrop = (e, targetIndex) => {
+        e.preventDefault();
+
+        if (draggedIndex === null || draggedIndex === targetIndex) {
+            setDragOverIndex(null);
+            setDraggedIndex(null);
+            return;
+        }
+
         const updatedImages = [...tempImages];
         const updatedAltText = [...tempAltText];
 
-        const [movedImage] = updatedImages.splice(fromIndex, 1);
-        const [movedAltText] = updatedAltText.splice(fromIndex, 1);
+        // Move the dragged image to the target position
+        const [movedImage] = updatedImages.splice(draggedIndex, 1);
+        const [movedAltText] = updatedAltText.splice(draggedIndex, 1);
 
-        updatedImages.splice(toIndex, 0, movedImage);
-        updatedAltText.splice(toIndex, 0, movedAltText);
+        updatedImages.splice(targetIndex, 0, movedImage);
+        updatedAltText.splice(targetIndex, 0, movedAltText);
 
-        // Update sort orders and primary status
-        updatedImages.forEach((img, idx) => {
-            if (img.file) {
-                img.file.sortOrder = idx + 1;
-            } else {
-                img.sortOrder = idx + 1;
-            }
-            img.isPrimary = idx === 0;
-        });
+        // Update sort orders and mark first image as primary
+        const reorderedImages = updatedImages.map((img, idx) => ({
+            ...img,
+            sortOrder: idx + 1,
+            isPrimary: idx === 0 // First image is always primary
+        }));
 
-        setTempImages(updatedImages);
+        setTempImages(reorderedImages);
         setTempAltText(updatedAltText);
 
         // Update selected index if it moved
-        if (selectedImageIndex === fromIndex) {
-            setSelectedImageIndex(toIndex);
+        if (selectedImageIndex === draggedIndex) {
+            setSelectedImageIndex(targetIndex);
         } else if (
-            selectedImageIndex > fromIndex &&
-            selectedImageIndex <= toIndex
+            selectedImageIndex > draggedIndex &&
+            selectedImageIndex <= targetIndex
         ) {
             setSelectedImageIndex(selectedImageIndex - 1);
         } else if (
-            selectedImageIndex < fromIndex &&
-            selectedImageIndex >= toIndex
+            selectedImageIndex < draggedIndex &&
+            selectedImageIndex >= targetIndex
         ) {
             setSelectedImageIndex(selectedImageIndex + 1);
         }
 
         // If primary image changed, reset transform data
-        if (fromIndex === 0 || toIndex === 0) {
+        if (draggedIndex === 0 || targetIndex === 0) {
             updateTransformData({ scale: 1, x: 0, y: 0 });
         }
+
+        setDragOverIndex(null);
+        setDraggedIndex(null);
     };
 
     const handleApplyChanges = () => {
@@ -323,48 +350,65 @@ const CropImage = ({
             <Dialog
                 open={openEdit}
                 onClose={() => setDiscardModalOpen(true)}
-                maxWidth="lg"
+                maxWidth="md"
                 fullWidth
                 sx={{
                     '& .MuiDialog-paper': {
-                        height: '90vh',
-                        maxHeight: '900px'
+                        height: '85vh',
+                        maxHeight: '700px',
+                        margin: 2,
+                        width: 'calc(100% - 32px)'
                     }
                 }}
             >
-                <Box sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                <Box sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
                     {/* Header */}
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                        <Typography variant="h5" fontWeight="bold">
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                        <Typography variant="h6" fontWeight="bold">
                             Edit Images
                         </Typography>
-                        <IconButton onClick={() => setDiscardModalOpen(true)}>
+                        <IconButton onClick={() => setDiscardModalOpen(true)} size="small">
                             <HighlightOff />
                         </IconButton>
                     </Box>
 
-                    <Grid container spacing={3} sx={{ flex: 1 }}>
+                    <Grid container spacing={2} sx={{ flex: 1, minHeight: 0 }}>
                         {/* Thumbnail Sidebar */}
-                        <Grid item xs={12} md={3}>
-                            <Box sx={{ maxHeight: '400px', overflow: 'auto' }}>
-                                <Grid container spacing={1}>
+                        <Grid item xs={12} md={4}>
+                            <Box sx={{
+                                maxHeight: '300px',
+                                overflow: 'auto',
+                                border: '1px solid #e0e0e0',
+                                borderRadius: '8px',
+                                p: 1
+                            }}>
+                                <Typography variant="subtitle2" gutterBottom sx={{ mb: 1 }}>
+                                    Drag to reorder (first image is primary)
+                                </Typography>
+                                <Grid container spacing={0.5}>
                                     {tempImages.map((image, index) => (
-                                        <Grid item xs={4} key={image._id || index}>
+                                        <Grid item xs={6} key={image._id || index}>
                                             <Box
+                                                draggable
+                                                onDragStart={(e) => handleDragStart(e, index)}
+                                                onDragOver={(e) => handleDragOver(e, index)}
+                                                onDragLeave={handleDragLeave}
+                                                onDrop={(e) => handleDrop(e, index)}
                                                 sx={{
-                                                    border: selectedImageIndex === index ?
-                                                        '2px solid #1976d2' : '1px solid #e0e0e0',
-                                                    borderRadius: '8px',
+                                                    border: dragOverIndex === index ? '2px dashed #1976d2' :
+                                                        (selectedImageIndex === index ? '2px solid #1976d2' : '1px solid #e0e0e0'),
+                                                    borderRadius: '6px',
                                                     overflow: 'hidden',
                                                     cursor: 'pointer',
                                                     position: 'relative',
-                                                    aspectRatio: '1'
+                                                    aspectRatio: '1',
+                                                    backgroundColor: dragOverIndex === index ? '#f0f8ff' : 'transparent',
+                                                    transition: 'all 0.2s ease',
+                                                    transform: draggedIndex === index ? 'scale(0.95)' : 'scale(1)',
+                                                    opacity: draggedIndex === index ? 0.6 : 1
                                                 }}
                                                 onClick={() => {
                                                     setSelectedImageIndex(index);
-                                                    // if (index === 0) {
-                                                    //     updateTransformData({ scale: 1, x: 0, y: 0 });
-                                                    // }
                                                 }}
                                             >
                                                 <img
@@ -376,22 +420,83 @@ const CropImage = ({
                                                         objectFit: 'cover'
                                                     }}
                                                 />
+
+                                                {/* Remove Button (Cross Icon) */}
+                                                <IconButton
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDeleteImage(index);
+                                                    }}
+                                                    size="small"
+                                                    sx={{
+                                                        position: 'absolute',
+                                                        top: 2,
+                                                        right: 2,
+                                                        background: 'rgba(255, 0, 0, 0.7)',
+                                                        color: 'white',
+                                                        width: '20px',
+                                                        height: '20px',
+                                                        '&:hover': {
+                                                            background: 'rgba(255, 0, 0, 0.9)',
+                                                        }
+                                                    }}
+                                                >
+                                                    <Close sx={{ fontSize: 14 }} />
+                                                </IconButton>
+
+                                                {/* Drag Handle */}
+                                                <Box
+                                                    sx={{
+                                                        position: 'absolute',
+                                                        top: 2,
+                                                        left: 2,
+                                                        background: 'rgba(0,0,0,0.6)',
+                                                        color: 'white',
+                                                        borderRadius: '4px',
+                                                        padding: '2px',
+                                                        cursor: 'grab',
+                                                        '&:active': {
+                                                            cursor: 'grabbing'
+                                                        }
+                                                    }}
+                                                >
+                                                    <DragIndicator sx={{ fontSize: 16 }} />
+                                                </Box>
+
+                                                {/* Primary Badge */}
                                                 {index === 0 && (
                                                     <Box
                                                         sx={{
                                                             position: 'absolute',
-                                                            top: 4,
-                                                            left: 4,
+                                                            top: 2,
+                                                            right: 24, // Moved left to make space for remove button
                                                             background: '#1976d2',
                                                             color: 'white',
                                                             fontSize: '10px',
                                                             padding: '2px 4px',
-                                                            borderRadius: '4px'
+                                                            borderRadius: '4px',
+                                                            fontWeight: 'bold'
                                                         }}
                                                     >
                                                         Primary
                                                     </Box>
                                                 )}
+
+                                                {/* Image Number */}
+                                                <Box
+                                                    sx={{
+                                                        position: 'absolute',
+                                                        bottom: 2,
+                                                        left: 2,
+                                                        background: 'rgba(0,0,0,0.6)',
+                                                        color: 'white',
+                                                        fontSize: '10px',
+                                                        padding: '1px 4px',
+                                                        borderRadius: '4px'
+                                                    }}
+                                                >
+                                                    {index + 1}
+                                                </Box>
                                             </Box>
                                         </Grid>
                                     ))}
@@ -402,8 +507,9 @@ const CropImage = ({
                                     fullWidth
                                     variant="outlined"
                                     onClick={triggerFileInput}
-                                    sx={{ mt: 2 }}
+                                    sx={{ mt: 1 }}
                                     disabled={tempImages.length >= 15}
+                                    size="small"
                                 >
                                     Add Image ({tempImages.length}/15)
                                 </Button>
@@ -419,12 +525,11 @@ const CropImage = ({
                         </Grid>
 
                         {/* Main Image Area */}
-                        <Grid item xs={12} md={6}>
+                        <Grid item xs={12} md={5}>
                             <Box
                                 ref={imageContainerRef}
                                 sx={{
-                                    height: '500px',
-                                    aspectRatio: "1/1",
+                                    height: '300px',
                                     position: 'relative',
                                     border: '2px solid gray',
                                     borderRadius: '8px',
@@ -458,118 +563,20 @@ const CropImage = ({
                                         />
                                     ) : (
                                         <>
-                                            {/* Container for image with blur mask */}
-                                            <Box
-                                                sx={{
-                                                    width: '100%',
-                                                    height: '100%',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    overflow: 'hidden',
-                                                    position: 'relative',
-                                                    // This creates the blur mask - only overflow gets blurred
-                                                    '&::before': showBlurOverlay ? {
-                                                        content: '""',
-                                                        position: 'absolute',
-                                                        top: 0,
-                                                        left: 0,
-                                                        right: 0,
-                                                        bottom: 0,
-                                                        backdropFilter: 'blur(8px)',
-                                                        maskImage: `linear-gradient(black, black), 
-                                                                   linear-gradient(black, black)`,
-                                                        maskComposite: 'exclude',
-                                                        maskClip: 'content-box, padding-box',
-                                                        maskOrigin: 'content-box, padding-box',
-                                                        maskPosition: '0 0, 0 0',
-                                                        maskRepeat: 'no-repeat, no-repeat',
-                                                        maskSize: '100% 100%, 100% 100%',
-                                                        zIndex: 1,
-                                                        pointerEvents: 'none'
-                                                    } : {}
+                                            <img
+                                                src={selectedImage.src}
+                                                alt="Selected"
+                                                onLoad={handleImageLoad}
+                                                style={{
+                                                    transform: `translate3d(${isPrimaryImage ? (transformData?.x || 0) : 0}px, ${isPrimaryImage ? (transformData?.y || 0) : 0}px, 0) scale(${isPrimaryImage ? (transformData?.scale || 1) : 1})`,
+                                                    transformOrigin: 'center center',
+                                                    transition: isDragging ? 'none' : 'transform 0.1s ease',
+                                                    maxWidth: '100%',
+                                                    maxHeight: '100%',
+                                                    objectFit: isPrimaryImage ? 'contain' : 'cover',
+                                                    cursor: isPrimaryImage ? (isDragging ? 'grabbing' : 'grab') : 'default',
                                                 }}
-                                            >
-                                                <img
-                                                    src={selectedImage.src}
-                                                    alt="Selected"
-                                                    onLoad={handleImageLoad}
-                                                    style={{
-                                                        transform: `translate3d(${isPrimaryImage ? (transformData?.x || 0) : 0}px, ${isPrimaryImage ? (transformData?.y || 0) : 0}px, 0) scale(${isPrimaryImage ? (transformData?.scale || 1) : 1})`,
-                                                        transformOrigin: 'center center',
-                                                        transition: isDragging ? 'none' : 'transform 0.1s ease',
-                                                        maxWidth: '100%',
-                                                        maxHeight: '100%',
-                                                        objectFit: isPrimaryImage ? 'contain' : 'cover',
-                                                        cursor: isPrimaryImage ? (isDragging ? 'grabbing' : 'grab') : 'default',
-                                                        // Create a clipping area for the image
-                                                        clipPath: showBlurOverlay ? 'inset(0 0 0 0)' : 'none',
-                                                        filter: showBlurOverlay ? 'none' : 'none'
-                                                    }}
-                                                />
-                                            </Box>
-
-                                            {/* Alternative approach using pseudo-elements for blur overlay */}
-                                            {showBlurOverlay && isPrimaryImage && (
-                                                <>
-                                                    {/* Top blur overlay */}
-                                                    <Box
-                                                        sx={{
-                                                            position: 'absolute',
-                                                            top: 0,
-                                                            left: 0,
-                                                            right: 0,
-                                                            height: '50px',
-                                                            backdropFilter: 'blur(4px)',
-                                                            zIndex: 2,
-                                                            pointerEvents: 'none',
-                                                            background: 'rgba(255,255,255,0.3)'
-                                                        }}
-                                                    />
-                                                    {/* Bottom blur overlay */}
-                                                    <Box
-                                                        sx={{
-                                                            position: 'absolute',
-                                                            bottom: 0,
-                                                            left: 0,
-                                                            right: 0,
-                                                            height: '50px',
-                                                            backdropFilter: 'blur(4px)',
-                                                            zIndex: 2,
-                                                            pointerEvents: 'none',
-                                                            background: 'rgba(255,255,255,0.3)'
-                                                        }}
-                                                    />
-                                                    {/* Left blur overlay */}
-                                                    <Box
-                                                        sx={{
-                                                            position: 'absolute',
-                                                            top: 0,
-                                                            left: 0,
-                                                            bottom: 0,
-                                                            width: '50px',
-                                                            backdropFilter: 'blur(4px)',
-                                                            zIndex: 2,
-                                                            pointerEvents: 'none',
-                                                            background: 'rgba(255,255,255,0.3)'
-                                                        }}
-                                                    />
-                                                    {/* Right blur overlay */}
-                                                    <Box
-                                                        sx={{
-                                                            position: 'absolute',
-                                                            top: 0,
-                                                            right: 0,
-                                                            bottom: 0,
-                                                            width: '50px',
-                                                            backdropFilter: 'blur(4px)',
-                                                            zIndex: 2,
-                                                            pointerEvents: 'none',
-                                                            background: 'rgba(255,255,255,0.3)'
-                                                        }}
-                                                    />
-                                                </>
-                                            )}
+                                            />
                                         </>
                                     )
                                 ) : (
@@ -583,12 +590,13 @@ const CropImage = ({
                                             color: '#999'
                                         }}
                                     >
-                                        <Typography variant="h6" gutterBottom>
+                                        <Typography variant="body2" gutterBottom>
                                             No Image Selected
                                         </Typography>
                                         <Button
                                             variant="contained"
                                             onClick={triggerFileInput}
+                                            size="small"
                                         >
                                             Upload Image
                                         </Button>
@@ -598,11 +606,11 @@ const CropImage = ({
 
                             {/* Controls */}
                             {selectedImage && (
-                                <Box sx={{ mt: 2 }}>
+                                <Box sx={{ mt: 1 }}>
                                     {isCropping ? (
-                                        <Grid container spacing={2} alignItems="center">
+                                        <Grid container spacing={1} alignItems="center">
                                             <Grid item xs={12}>
-                                                <Typography gutterBottom>
+                                                <Typography variant="body2" gutterBottom>
                                                     Zoom: {(transformData?.scale || 1).toFixed(1)}x
                                                 </Typography>
                                                 <Slider
@@ -611,6 +619,7 @@ const CropImage = ({
                                                     max={3}
                                                     step={0.1}
                                                     onChange={(e, value) => updateTransformData({ ...transformData, scale: value })}
+                                                    size="small"
                                                 />
                                             </Grid>
                                             <Grid item>
@@ -622,6 +631,7 @@ const CropImage = ({
                                                         }
                                                     }}
                                                     variant="outlined"
+                                                    size="small"
                                                 >
                                                     Cancel Crop
                                                 </Button>
@@ -631,17 +641,18 @@ const CropImage = ({
                                                     variant="contained"
                                                     startIcon={<Check />}
                                                     onClick={handleCrop}
+                                                    size="small"
                                                 >
                                                     Apply Crop
                                                 </Button>
                                             </Grid>
                                         </Grid>
                                     ) : (
-                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                                             {/* Zoom Controls - Only for primary image */}
                                             {isPrimaryImage && (
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                    <Typography variant="body2" sx={{ minWidth: 80 }}>
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                                    <Typography variant="body2" sx={{ minWidth: 60 }}>
                                                         Zoom: {(transformData?.scale || 1).toFixed(1)}x
                                                     </Typography>
                                                     <IconButton
@@ -649,7 +660,7 @@ const CropImage = ({
                                                         size="small"
                                                         disabled={(transformData?.scale || 1) <= 0.1}
                                                     >
-                                                        <ZoomOut />
+                                                        <ZoomOut fontSize="small" />
                                                     </IconButton>
                                                     <Slider
                                                         value={transformData?.scale || 1}
@@ -659,19 +670,21 @@ const CropImage = ({
                                                         onChange={(e, value) => {
                                                             updateTransformData({...transformData, scale: value});
                                                         }}
-                                                        sx={{ flex: 1, mx: 2 }}
+                                                        sx={{ flex: 1, mx: 1 }}
+                                                        size="small"
                                                     />
                                                     <IconButton
                                                         onClick={handleZoomIn}
                                                         size="small"
                                                         disabled={(transformData?.scale || 1) >= 5}
                                                     >
-                                                        <ZoomIn />
+                                                        <ZoomIn fontSize="small" />
                                                     </IconButton>
                                                     <Button
                                                         onClick={handleResetZoom}
                                                         size="small"
                                                         variant="outlined"
+                                                        sx={{ minWidth: 'auto', px: 1 }}
                                                     >
                                                         Reset
                                                     </Button>
@@ -679,11 +692,12 @@ const CropImage = ({
                                             )}
 
                                             {/* Action Buttons */}
-                                            <Box sx={{ display: 'flex', gap: 1 }}>
+                                            <Box sx={{ display: 'flex', gap: 0.5 }}>
                                                 <Button
                                                     variant="outlined"
                                                     startIcon={<Crop />}
                                                     onClick={() => setIsCropping(true)}
+                                                    size="small"
                                                 >
                                                     Crop
                                                 </Button>
@@ -692,6 +706,7 @@ const CropImage = ({
                                                     startIcon={<DeleteOutline />}
                                                     onClick={() => handleDeleteImage(selectedImageIndex)}
                                                     color="error"
+                                                    size="small"
                                                 >
                                                     Delete
                                                 </Button>
@@ -699,7 +714,7 @@ const CropImage = ({
 
                                             {/* Info message for non-primary images */}
                                             {!isPrimaryImage && (
-                                                <Typography variant="body2" color="textSecondary" sx={{ fontStyle: 'italic' }}>
+                                                <Typography variant="caption" color="textSecondary" sx={{ fontStyle: 'italic' }}>
                                                     Only the primary image (first image) can be zoomed and dragged. All images can be cropped.
                                                 </Typography>
                                             )}
@@ -713,16 +728,17 @@ const CropImage = ({
                         <Grid item xs={12} md={3}>
                             {selectedImage && !isCropping && (
                                 <Box>
-                                    <Typography variant="h6" gutterBottom>
+                                    <Typography variant="subtitle2" gutterBottom>
                                         Alt Text
                                     </Typography>
-                                    <Typography variant="body2" color="textSecondary" gutterBottom>
+                                    <Typography variant="caption" color="textSecondary" gutterBottom>
                                         Alt text helps with accessibility and SEO.
                                     </Typography>
                                     <TextField
                                         fullWidth
                                         multiline
-                                        rows={4}
+                                        rows={3}
+                                        size="small"
                                         value={tempAltText[selectedImageIndex] || ''}
                                         onChange={(e) => {
                                             const newAltText = [...tempAltText];
@@ -741,14 +757,15 @@ const CropImage = ({
                     <Box sx={{
                         display: 'flex',
                         justifyContent: 'flex-end',
-                        gap: 2,
-                        mt: 3,
+                        gap: 1,
+                        mt: 2,
                         pt: 2,
                         borderTop: '1px solid #e0e0e0'
                     }}>
                         <Button
                             variant="outlined"
                             onClick={() => setDiscardModalOpen(true)}
+                            size="small"
                         >
                             Cancel
                         </Button>
@@ -756,6 +773,7 @@ const CropImage = ({
                             variant="contained"
                             onClick={handleApplyChanges}
                             disabled={!canApply}
+                            size="small"
                         >
                             Apply Changes
                         </Button>
@@ -779,6 +797,7 @@ const CropImage = ({
                         <Button
                             variant="outlined"
                             onClick={() => setDiscardModalOpen(false)}
+                            size="small"
                         >
                             Keep Editing
                         </Button>
@@ -786,6 +805,7 @@ const CropImage = ({
                             variant="contained"
                             onClick={handleDiscard}
                             color="error"
+                            size="small"
                         >
                             Discard
                         </Button>

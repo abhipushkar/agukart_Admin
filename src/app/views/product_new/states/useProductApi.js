@@ -462,7 +462,7 @@ export const useProductAPI = () => {
             bullet_points: formData.bulletPoints,
             description: formData.productDescription,
             customize: formData.customization,
-            search_terms: keys,
+            search_terms: formData.serchTemsKeyArray,
             launch_date: formData.launchData,
             release_date: formData.releaseDate,
             _id: isEdit ? queryId : "new",

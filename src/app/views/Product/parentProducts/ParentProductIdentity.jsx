@@ -50,7 +50,7 @@ const ParentProductIdentity = ({ productId }) => {
         variantData: [],
         variant_id: [],
         variant_name: [],
-        images: []
+        images: [],
     });
 
     const [inputFields, setInputFields] = React.useState([

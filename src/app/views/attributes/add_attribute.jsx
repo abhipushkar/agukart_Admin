@@ -87,7 +87,7 @@ const AddAttribute = () => {
         isMultiSelect: false
     });
     const [attributeValues, setAttributeValues] = useState([
-        { id: `temp-${Date.now()}-0`, value: "", sortOrder: 1, status: true }
+        { id: `temp-${Date.now()}-0`, value: "", sortOrder: 1, status: true, error: false }
     ]);
     const [subAttributes, setSubAttributes] = useState([
         { id: `temp-${Date.now()}-0`, name: "", type: "Text", values: [], sortOrder: 1 }
@@ -119,6 +119,50 @@ const AddAttribute = () => {
             fetchAttributeDetails(attributeId);
         }
     }, [attributeId]);
+
+    // Check for duplicate values in main attribute values
+    const checkDuplicateMainValues = (values, currentId = null) => {
+        const valueMap = new Map();
+        const duplicates = new Set();
+
+        values.forEach(val => {
+            if (val.value.trim()) {
+                const normalizedValue = val.value.trim().toLowerCase();
+                if (valueMap.has(normalizedValue)) {
+                    duplicates.add(normalizedValue);
+                } else {
+                    valueMap.set(normalizedValue, val.id);
+                }
+            }
+        });
+
+        return values.map(val => ({
+            ...val,
+            error: val.value.trim() && duplicates.has(val.value.trim().toLowerCase()) && val.id !== currentId
+        }));
+    };
+
+    // Check for duplicate values in sub-attribute values
+    const checkDuplicateSubAttributeValues = (values, currentId = null) => {
+        const valueMap = new Map();
+        const duplicates = new Set();
+
+        values.forEach(val => {
+            if (val.value.trim()) {
+                const normalizedValue = val.value.trim().toLowerCase();
+                if (valueMap.has(normalizedValue)) {
+                    duplicates.add(normalizedValue);
+                } else {
+                    valueMap.set(normalizedValue, val.id);
+                }
+            }
+        });
+
+        return values.map(val => ({
+            ...val,
+            error: val.value.trim() && duplicates.has(val.value.trim().toLowerCase()) && val.id !== currentId
+        }));
+    };
 
     const showConfirmModal = (type, msg, onConfirm) => {
         setConfirmModal({
@@ -177,10 +221,13 @@ const AddAttribute = () => {
                 id: `temp-${Date.now()}-${attributeValues.length + index}`,
                 value: value,
                 sortOrder: newSortOrder + index,
-                status: true
+                status: true,
+                error: false
             }));
 
-            setAttributeValues(prev => [...prev, ...newValues]);
+            const updatedValues = [...attributeValues, ...newValues];
+            const validatedValues = checkDuplicateMainValues(updatedValues);
+            setAttributeValues(validatedValues);
         } else {
             // Add to sub-attribute values
             const subAttrId = currentBulkValuesContext;
@@ -195,12 +242,16 @@ const AddAttribute = () => {
                             id: `temp-${Date.now()}-${attr.values.length + index}`,
                             value: value,
                             sortOrder: newSortOrder + index,
-                            status: true
+                            status: true,
+                            error: false
                         }));
+
+                        const updatedValues = [...attr.values, ...newValues];
+                        const validatedValues = checkDuplicateSubAttributeValues(updatedValues);
 
                         return {
                             ...attr,
-                            values: [...attr.values, ...newValues]
+                            values: validatedValues
                         };
                     }
                     return attr;
@@ -255,11 +306,13 @@ const AddAttribute = () => {
                         const valuesWithIds = ensureIds(attribute.values.map((val, index) => ({
                             ...val,
                             value: val.value || "",
-                            status: val.status !== undefined ? val.status : true
+                            status: val.status !== undefined ? val.status : true,
+                            error: false
                         })));
-                        setAttributeValues(valuesWithIds);
+                        const validatedValues = checkDuplicateMainValues(valuesWithIds);
+                        setAttributeValues(validatedValues);
                     } else if (attribute.type === "Dropdown") {
-                        setAttributeValues([{ id: `temp-${Date.now()}-0`, value: "", sortOrder: 1, status: true }]);
+                        setAttributeValues([{ id: `temp-${Date.now()}-0`, value: "", sortOrder: 1, status: true, error: false }]);
                     }
 
                     // Ensure sub-attributes have proper IDs
@@ -270,16 +323,19 @@ const AddAttribute = () => {
                                 ? ensureIds(subAttr.values.map((val, valIndex) => ({
                                     ...val,
                                     value: val.value || "",
-                                    status: val.status !== undefined ? val.status : true
+                                    status: val.status !== undefined ? val.status : true,
+                                    error: false
                                 })))
                                 : [];
+
+                            const validatedValues = checkDuplicateSubAttributeValues(valuesWithIds);
 
                             return {
                                 ...subAttr,
                                 name: subAttr.name || "",
                                 type: subAttr.type || "Text",
                                 isMultiSelect: subAttr.multiSelect || false,
-                                values: valuesWithIds
+                                values: validatedValues
                             };
                         }));
                         setSubAttributes(subAttrsWithIds);
@@ -323,7 +379,8 @@ const AddAttribute = () => {
                 source.index,
                 destination.index
             );
-            setAttributeValues(reorderedValues);
+            const validatedValues = checkDuplicateMainValues(reorderedValues);
+            setAttributeValues(validatedValues);
         }
         // Handle sub-attributes drag and drop
         else if (type === 'subAttributes') {
@@ -344,7 +401,8 @@ const AddAttribute = () => {
                         source.index,
                         destination.index
                     );
-                    return { ...subAttr, values: reorderedValues };
+                    const validatedValues = checkDuplicateSubAttributeValues(reorderedValues);
+                    return { ...subAttr, values: validatedValues };
                 }
                 return subAttr;
             });
@@ -362,7 +420,7 @@ const AddAttribute = () => {
 
             // If switching to/from dropdown, reset values
             if (newType === "Dropdown" && oldType !== "Dropdown") {
-                setAttributeValues([{ id: `temp-${Date.now()}-0`, value: "", sortOrder: 1, status: true }]);
+                setAttributeValues([{ id: `temp-${Date.now()}-0`, value: "", sortOrder: 1, status: true, error: false }]);
                 setAttributeData(prev => ({ ...prev, isMultiSelect: false }));
             } else if (newType !== "Dropdown" && oldType === "Dropdown") {
                 setAttributeValues([]);
@@ -398,10 +456,17 @@ const AddAttribute = () => {
             ? Math.max(...attributeValues.map(v => v.sortOrder)) + 1
             : 1;
 
-        setAttributeValues([
-            ...attributeValues,
-            { id: `temp-${Date.now()}-${attributeValues.length}`, value: "", sortOrder: newSortOrder, status: true }
-        ]);
+        const newValue = {
+            id: `temp-${Date.now()}-${attributeValues.length}`,
+            value: "",
+            sortOrder: newSortOrder,
+            status: true,
+            error: false
+        };
+
+        const updatedValues = [...attributeValues, newValue];
+        const validatedValues = checkDuplicateMainValues(updatedValues);
+        setAttributeValues(validatedValues);
     };
 
     const handleRemoveValue = (id) => {
@@ -412,16 +477,23 @@ const AddAttribute = () => {
                 ...value,
                 sortOrder: index + 1
             }));
-            setAttributeValues(reorderedValues);
+            const validatedValues = checkDuplicateMainValues(reorderedValues);
+            setAttributeValues(validatedValues);
         }
     };
 
     const handleValueChange = (id, field, value) => {
-        setAttributeValues(prevValues =>
-            prevValues.map(item =>
-                item.id === id ? { ...item, [field]: value } : item
-            )
+        const updatedValues = attributeValues.map(item =>
+            item.id === id ? { ...item, [field]: value } : item
         );
+
+        // Check for duplicates whenever value changes
+        if (field === 'value') {
+            const validatedValues = checkDuplicateMainValues(updatedValues, id);
+            setAttributeValues(validatedValues);
+        } else {
+            setAttributeValues(updatedValues);
+        }
     };
 
     // Sub-Attributes Functions
@@ -477,10 +549,18 @@ const AddAttribute = () => {
                             id: `temp-${Date.now()}-${valueIndex}`,
                             value: "",
                             sortOrder: valueIndex + 1,
-                            status: true
+                            status: true,
+                            error: false
                         };
                     }
                     newValues[valueIndex] = { ...newValues[valueIndex], [field]: value };
+
+                    // Check for duplicates whenever value changes
+                    if (field === 'value') {
+                        const validatedValues = checkDuplicateSubAttributeValues(newValues, newValues[valueIndex].id);
+                        return { ...attr, values: validatedValues };
+                    }
+
                     return { ...attr, values: newValues };
                 }
                 return attr;
@@ -496,16 +576,17 @@ const AddAttribute = () => {
                         ? Math.max(...attr.values.map(v => v.sortOrder)) + 1
                         : 1;
 
-                    const newValues = [
-                        ...attr.values,
-                        {
-                            id: `temp-${Date.now()}-${attr.values.length}`,
-                            value: "",
-                            sortOrder: newSortOrder,
-                            status: true
-                        }
-                    ];
-                    return { ...attr, values: newValues };
+                    const newValue = {
+                        id: `temp-${Date.now()}-${attr.values.length}`,
+                        value: "",
+                        sortOrder: newSortOrder,
+                        status: true,
+                        error: false
+                    };
+
+                    const updatedValues = [...attr.values, newValue];
+                    const validatedValues = checkDuplicateSubAttributeValues(updatedValues);
+                    return { ...attr, values: validatedValues };
                 }
                 return attr;
             })
@@ -522,7 +603,8 @@ const AddAttribute = () => {
                         ...value,
                         sortOrder: index + 1
                     }));
-                    return { ...attr, values: reorderedValues };
+                    const validatedValues = checkDuplicateSubAttributeValues(reorderedValues);
+                    return { ...attr, values: validatedValues };
                 }
                 return attr;
             })
@@ -606,11 +688,21 @@ const AddAttribute = () => {
             return;
         }
 
-        // For dropdown, validate that values are provided
-        if (attributeData.type === "Dropdown" && attributeValues.some(val => val.value.trim() === "")) {
-            showConfirmModal("error", "All attribute values must be filled!");
-            setLoading(false);
-            return;
+        // For dropdown, validate that values are provided and no duplicates
+        if (attributeData.type === "Dropdown") {
+            if (attributeValues.some(val => val.value.trim() === "")) {
+                showConfirmModal("error", "All attribute values must be filled!");
+                setLoading(false);
+                return;
+            }
+
+            // Check for duplicate values in main attribute
+            const hasDuplicateMainValues = attributeValues.some(val => val.error);
+            if (hasDuplicateMainValues) {
+                showConfirmModal("error", "Please fix duplicate values in attribute options!");
+                setLoading(false);
+                return;
+            }
         }
 
         // For compound attributes, validate sub-attributes
@@ -622,12 +714,22 @@ const AddAttribute = () => {
                 return;
             }
 
-            // Validate dropdown sub-attribute values
+            // Validate dropdown sub-attribute values and check for duplicates
             for (const subAttr of subAttributes) {
-                if ((subAttr.type === "Dropdown") && subAttr.values.some(val => val.value.trim() === "")) {
-                    showConfirmModal("error", `All values for sub-attribute "${subAttr.name}" must be filled!`);
-                    setLoading(false);
-                    return;
+                if (subAttr.type === "Dropdown") {
+                    if (subAttr.values.some(val => val.value.trim() === "")) {
+                        showConfirmModal("error", `All values for sub-attribute "${subAttr.name}" must be filled!`);
+                        setLoading(false);
+                        return;
+                    }
+
+                    // Check for duplicate values in sub-attribute
+                    const hasDuplicateSubValues = subAttr.values.some(val => val.error);
+                    if (hasDuplicateSubValues) {
+                        showConfirmModal("error", `Please fix duplicate values in sub-attribute "${subAttr.name}" options!`);
+                        setLoading(false);
+                        return;
+                    }
                 }
             }
         }
@@ -678,7 +780,7 @@ const AddAttribute = () => {
                 status: true,
                 isMultiSelect: false
             });
-            setAttributeValues([{ id: `temp-${Date.now()}-0`, value: "", sortOrder: 1, status: true }]);
+            setAttributeValues([{ id: `temp-${Date.now()}-0`, value: "", sortOrder: 1, status: true, error: false }]);
             setSubAttributes([{ id: `temp-${Date.now()}-0`, name: "", type: "Text", values: [], sortOrder: 1 }]);
             setExpandedSubAttr({});
         });
@@ -873,6 +975,8 @@ const AddAttribute = () => {
                                                                                     onChange={(e) => handleValueChange(value.id, 'value', e.target.value)}
                                                                                     placeholder="Enter option value"
                                                                                     required
+                                                                                    error={value.error}
+                                                                                    helperText={value.error ? "Duplicate value found" : ""}
                                                                                 />
                                                                             </TableCell>
                                                                             <TableCell>
@@ -909,7 +1013,6 @@ const AddAttribute = () => {
                                             </Table>
                                         </TableContainer>
 
-
                                         {/* Add Multiple Values Button Group */}
                                         <Box sx={{ display: 'flex', gap: 2, mt: 2, flexWrap: 'wrap' }}>
                                             <Button
@@ -923,7 +1026,6 @@ const AddAttribute = () => {
                                             <Button
                                                 onClick={() => handleOpenBulkValuesDialog('main')}
                                                 variant="outlined"
-                                                // color="secondary"
                                                 startIcon={<AddIcon />}
                                             >
                                                 Add Multiple Values
@@ -1101,6 +1203,8 @@ const AddAttribute = () => {
                                                                                                                                 onChange={(e) => handleSubAttributeValueChange(subAttr.id, index, 'value', e.target.value)}
                                                                                                                                 placeholder="Enter option value"
                                                                                                                                 required
+                                                                                                                                error={value.error}
+                                                                                                                                helperText={value.error ? "Duplicate value found" : ""}
                                                                                                                             />
                                                                                                                         </TableCell>
                                                                                                                         <TableCell>

@@ -286,5 +286,3 @@ const ImageGrid = ({ images, setImages, setFormData, altText, setAltText }) => {
 };
 
 export default ImageGrid;
-
-

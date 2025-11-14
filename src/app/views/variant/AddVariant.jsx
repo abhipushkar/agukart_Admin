@@ -215,7 +215,7 @@ const AddVariant = () => {
             id: 1,
             attributeValue: "",
             sortOrder: 1,
-            status: false,
+            status: true,
             _id: "",
             previewImage: null,
             thumbnailImage: null,
@@ -437,7 +437,7 @@ const AddVariant = () => {
             id: Date.now() + index, // Unique IDs
             attributeValue: attribute,
             sortOrder: inputFields.length + index + 1, // Continue from current length
-            status: false,
+            status: true,
             _id: "new",
             previewImage: null,
             thumbnailImage: null,
@@ -703,7 +703,7 @@ const AddVariant = () => {
                 id: 1,
                 attributeValue: "",
                 sortOrder: 1,
-                status: false,
+                status: true,
                 previewImage: null,
                 thumbnailImage: null,
                 previewImageUrl: "",

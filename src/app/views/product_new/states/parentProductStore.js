@@ -22,7 +22,8 @@ export const useParentProductStore = create(devtools((set, get) => ({
         variantData: [],
         variant_id: [],
         variant_name: [],
-        images: []
+        images: [],
+        transformData: { scale: 1, x: 0, y: 0 },
     },
 
     // UI state
@@ -34,7 +35,6 @@ export const useParentProductStore = create(devtools((set, get) => ({
     showVariant: false,
     varintList: [],
     varientAttribute: [],
-    images: [],
     isCoponentLoader: false,
     issubmitLoader: false,
     variantArrValues: [],
@@ -71,7 +71,10 @@ export const useParentProductStore = create(devtools((set, get) => ({
         inputErrors: { ...state.inputErrors, ...errors }
     })),
 
-    setImages: (images) => set({ images }),
+    setImages: (images) => set((state) => ({
+        formData: { ...state.formData, images },
+        images: images
+    })),
 
     setVariantArrValue: (values) => set({ variantArrValues: values }),
 
@@ -211,6 +214,53 @@ export const useParentProductStore = create(devtools((set, get) => ({
         set({ combinationMap: newMap });
     },
 
+    // Variation handlers
+    varintHandler: (value) => {
+        const { setFormData, setInputErrors } = get();
+        setFormData({
+            variantData: value,
+            variant_id: value.map((option) => option.id),
+            variant_name: value.map((option) => option.variant_name)
+        });
+        setInputErrors({ variations: "" });
+    },
+
+    InnervariationsHandle: (variantId) => (event, newValue) => {
+        const {
+            formData,
+            combinationMap,
+            variantArrValues,
+            sellerSky,
+            generateCombinations,
+            preserveCombinationData,
+            updateCombinationMap,
+            setFormData,
+            setVariantArrValue,
+            setSellerSku,
+            setInputErrors
+        } = get();
+
+        const updatedInnervariations = {
+            ...formData.Innervariations,
+            [variantId]: newValue
+        };
+
+        const newCombinations = generateCombinations(updatedInnervariations);
+
+        const { preservedVariantData, preservedSellerSky } = preserveCombinationData(
+            newCombinations,
+            variantArrValues,
+            sellerSky
+        );
+
+        updateCombinationMap(newCombinations);
+
+        setFormData({ Innervariations: updatedInnervariations });
+        setVariantArrValue(preservedVariantData);
+        setSellerSku(preservedSellerSky);
+        setInputErrors({ innervariation: "" });
+    },
+
     // Validation functions
     validateChildProductVariants: (childProductData, parentVariants) => {
         if (!childProductData?.variants_used || !parentVariants?.length) return null;
@@ -291,10 +341,13 @@ export const useParentProductStore = create(devtools((set, get) => ({
             validateChildProductVariants,
             handleApiError,
             generateCombinations,
-            updateCombinationMap
+            updateCombinationMap,
+            setImages,
+            setVarintList
         } = get();
 
         try {
+            get().setIsComponentLoader(true);
             const res = await ApiService.get(
                 `${apiEndpoints.getParentProductDetail}/${productId}`,
                 auth_key
@@ -303,18 +356,32 @@ export const useParentProductStore = create(devtools((set, get) => ({
             if (res?.status === 200) {
                 const resData = res?.data?.data;
 
+                // Set basic form data
                 setFormData({
                     productTitle: resData?.product_title || "",
                     description: resData?.description || "",
                     sellerSku: resData?.seller_sku || "",
-                    images: [{ src: `${res?.data?.base_url}${resData?.image}` }],
                     variant_id: resData?.variant_id?.map((option) => option?._id) || [],
                     variant_name: resData?.variant_id?.map((option) => option?.variant_name) || [],
-                    subCategory: resData?.sub_category || ""
+                    subCategory: resData?.sub_category || "",
+                    transformData: resData?.zppm || { scale: 1, x: 0, y: 0 },
                 });
+
+                // Set images
+                if (resData?.image) {
+                    setImages([{ src: `${res?.data?.base_url}${resData?.image}` }]);
+                }
 
                 setParentId(resData?._id);
                 setVarientAttribute(resData?.variant_attribute_id?.map((option) => option._id) || []);
+
+                // Handle variant data
+                if (resData?.variant_id) {
+                    const filteredVariantData = get().varintList.filter((variant) =>
+                        resData.variant_id.map(v => v._id).includes(variant.id)
+                    );
+                    setFormData({ variantData: filteredVariantData });
+                }
 
                 // Handle SKU data fetching
                 if (resData?.sku && resData?.sku.length > 0) {
@@ -406,6 +473,8 @@ export const useParentProductStore = create(devtools((set, get) => ({
             }
         } catch (error) {
             handleApiError(error, "Failed to load product details");
+        } finally {
+            get().setIsComponentLoader(false);
         }
     },
 
@@ -443,7 +512,6 @@ export const useParentProductStore = create(devtools((set, get) => ({
         set({ modalState: { ...modalState, open: false } });
 
         if (modalState.route) {
-            // Navigate would be handled by the component
             window.location.href = modalState.route;
         }
     },
@@ -456,13 +524,15 @@ export const useParentProductStore = create(devtools((set, get) => ({
             sellerSky,
             skuErrors,
             varientAttribute,
+            parentId,
             setInputErrors,
             setIsSubmitLoader,
             handleOpen,
             generateCombinations,
             trimValue,
             trimArrayValues,
-            handleApiError
+            handleApiError,
+            images
         } = get();
 
         // Validation logic
@@ -472,7 +542,7 @@ export const useParentProductStore = create(devtools((set, get) => ({
         if (!trimValue(formData.sellerSku)) errors.sellerSku = "Seller Sku is Required";
         if (formData.variantData.length === 0) errors.variations = "Please Select At least one Variant";
         if (Object.keys(formData.Innervariations).length === 0) errors.innervariation = "Please Select At least one Innervariations Variant";
-        if (get().images.length === 0) errors.parentImage = "Images Is Required";
+        if (images.length === 0) errors.parentImage = "Images Is Required";
 
         setInputErrors(errors);
 
@@ -507,7 +577,7 @@ export const useParentProductStore = create(devtools((set, get) => ({
         // Validate product array
         const validateProductArray = (combine) => {
             return combine.every((product, index) => {
-                const isExistingProduct = product.product_id && product.product_id !== "";
+                const isExistingProduct = product.isExistingProduct;
                 const isValid = isExistingProduct
                     ? product.sku_code
                     : product.sale_price && product.qty && product.comb && product.sku_code;
@@ -535,7 +605,8 @@ export const useParentProductStore = create(devtools((set, get) => ({
             variant_attribute_id: varientAttribute,
             combinations: trimArrayValues(combine),
             sub_category: formData?.subCategory || "",
-            sku: trimArrayValues(sellerSky)
+            sku: trimArrayValues(sellerSky),
+            zppm: formData.transformData
         };
 
         try {
@@ -546,19 +617,21 @@ export const useParentProductStore = create(devtools((set, get) => ({
 
             if (res.status === 200) {
                 // Handle image upload
-                const { images, parentId } = get();
-                if (images?.[0]?.file) {
-                    const formData = new FormData();
-                    formData.append("_id", productId ? productId : res?.data?.parent_product._id);
-                    formData.append(
-                        "file",
-                        productId
-                            ? images?.[0]?.file
-                                ? images?.[0]?.file
-                                : images?.[0]?.src
-                            : images?.[0]?.file
-                    );
-                    await ApiService.postImage(ImagesurlWithParam, formData, auth_key);
+                if (images?.[0]?.file || images?.[0]?.src) {
+                    const imageFormData = new FormData();
+                    const productIdToUse = productId ? productId : res?.data?.parent_product._id;
+                    imageFormData.append("_id", productIdToUse);
+
+                    if (images[0].file) {
+                        imageFormData.append("file", images[0].file);
+                    } else if (images[0].src) {
+                        // Handle existing image URL
+                        const response = await fetch(images[0].src);
+                        const blob = await response.blob();
+                        imageFormData.append("file", blob, `image_${productIdToUse}.jpg`);
+                    }
+
+                    await ApiService.postImage(ImagesurlWithParam, imageFormData, auth_key);
                 }
 
                 // Reset form
@@ -572,7 +645,8 @@ export const useParentProductStore = create(devtools((set, get) => ({
                         variantData: [],
                         variant_id: [],
                         variant_name: [],
-                        images: []
+                        images: [],
+                        transformData: { scale: 1, x: 0, y: 0 }
                     },
                     images: [],
                     variantArrValues: [],
@@ -594,15 +668,20 @@ export const useParentProductStore = create(devtools((set, get) => ({
 
     // Initialize data
     initializeData: async (productId) => {
-        await Promise.all([
-            get().getBrandList(),
-            get().getVaraintList(),
-            get().getChildCategory()
-        ]);
+        const { setIsComponentLoader } = get();
+        try {
+            setIsComponentLoader(true);
+            await Promise.all([
+                get().getBrandList(),
+                get().getVaraintList(),
+                get().getChildCategory()
+            ]);
 
-        if (productId) {
-            await get().getParentProductDetail(productId);
+            if (productId) {
+                await get().getParentProductDetail(productId);
+            }
+        } finally {
+            setIsComponentLoader(false);
         }
     }
 })));
-
