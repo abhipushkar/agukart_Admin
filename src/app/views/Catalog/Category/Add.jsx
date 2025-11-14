@@ -119,6 +119,13 @@ const Add = () => {
     // State for dynamic dropdown data
     const [parentCategories, setParentCategories] = useState([]);
 
+    // New states for conditions
+    const [selectedCategories, setSelectedCategories] = useState([]);
+    const [categoryScope, setCategoryScope] = useState("all"); // "all" or "specific"
+    const [isAutomatic, setIsAutomatic] = useState(false);
+    const [filteredVariants, setFilteredVariants] = useState([]);
+    const [filteredAttributes, setFilteredAttributes] = useState([]);
+
     const validationSchema = Yup.object().shape({
         name: Yup.string().required("Name is required"),
         description: Yup.string().required("Description is required"),
@@ -280,6 +287,29 @@ const Add = () => {
         });
     };
 
+    // Get filtered variants and attributes based on selected categories
+    const getFilteredVariantsAndAttributes = async (categoryIds) => {
+        if (categoryIds.length === 0) {
+            setFilteredVariants(varintList);
+            setFilteredAttributes(attributeList);
+            return;
+        }
+
+        try {
+            // TODO: Replace with actual API endpoints when available
+            // const variantsRes = await ApiService.get(`${apiEndpoints.getVariantsByCategory}?categories=${categoryIds.join(',')}`, auth_key);
+            // const attributesRes = await ApiService.get(`${apiEndpoints.getAttributesByCategory}?categories=${categoryIds.join(',')}`, auth_key);
+
+            // For now, use all variants and attributes
+            setFilteredVariants(varintList);
+            setFilteredAttributes(attributeList);
+        } catch (error) {
+            console.error("Error fetching filtered data:", error);
+            setFilteredVariants(varintList);
+            setFilteredAttributes(attributeList);
+        }
+    };
+
     const handleSubmit = async (values) => {
         console.log("Original values:", values);
 
@@ -299,7 +329,10 @@ const Add = () => {
             conditions: processedConditions,
             conditionType: values.conditionType,
             bestseller: values.bestSelling,
-            restricted_keywords: values.tags
+            restricted_keywords: values.tags,
+            isAutomatic: isAutomatic,
+            categoryScope: categoryScope,
+            selectedCategories: selectedCategories.map(cat => cat._id)
         };
 
         const variant_id = SelectedEditVariant.map((variant) => {
@@ -366,6 +399,18 @@ const Add = () => {
                     }
                     setSelectedEditVariant(res?.data?.data?.variant_data || []);
                     setSelectedEditAttribute(res?.data?.data?.attributeList_data || []);
+
+                    // Set initial conditions data
+                    if (res?.data?.data?.isAutomatic) {
+                        setIsAutomatic(true);
+                    }
+                    if (res?.data?.data?.categoryScope) {
+                        setCategoryScope(res?.data?.data?.categoryScope);
+                    }
+                    if (res?.data?.data?.selectedCategories) {
+                        const selectedCats = findObjectsByIds(res?.data?.data?.selectedCategories, parentCategories);
+                        setSelectedCategories(selectedCats);
+                    }
                 }
             } catch (error) {
                 handleOpen("error", error?.response?.data || error);
@@ -431,11 +476,13 @@ const Add = () => {
             if (res.status === 200) {
                 setVariantList(res?.data?.data || []);
                 setSearchList(res?.data?.data || []);
+                setFilteredVariants(res?.data?.data || []);
             }
         } catch (error) {
             handleOpen("error", error?.response?.data || error);
             setVariantList([]);
             setSearchList([]);
+            setFilteredVariants([]);
         }
     };
 
@@ -444,10 +491,12 @@ const Add = () => {
             const res = await ApiService.get("get-attribute-list", auth_key);
             if (res?.data?.success) {
                 setAttributeList(res?.data?.data || []);
+                setFilteredAttributes(res?.data?.data || []);
             }
         } catch (error) {
             handleOpen("error", error?.response?.data || error);
             setAttributeList([]);
+            setFilteredAttributes([]);
         }
     };
 
@@ -482,6 +531,12 @@ const Add = () => {
             getCateLabel();
         }
     }, [getCatData?.parent_id]);
+
+    useEffect(() => {
+        // Update filtered variants and attributes when categories change
+        const categoryIds = selectedCategories.map(cat => cat._id);
+        getFilteredVariantsAndAttributes(categoryIds);
+    }, [selectedCategories]);
 
     function returnJSX(subItems) {
         if (!subItems?.length) {
@@ -531,6 +586,9 @@ const Add = () => {
         setTopRatedUrl(null);
         setSelectedEditVariant([]);
         setSelectedEditAttribute([]);
+        setIsAutomatic(false);
+        setCategoryScope("all");
+        setSelectedCategories([]);
     };
 
     function findObjectByTitle(data, title) {
@@ -574,9 +632,9 @@ const Add = () => {
             case "Product Tag":
                 return parentCategories;
             case "Attributes Tag":
-                return attributeList;
+                return filteredAttributes;
             case "Variant Tag":
-                return varintList;
+                return filteredVariants;
             default:
                 return [];
         }
@@ -614,6 +672,178 @@ const Add = () => {
             default:
                 return String(option);
         }
+    };
+
+    // Render value input based on field type
+    const renderValueInput = (condition, index, setFieldValue) => {
+        const field = condition.field;
+
+        if (field === "Product Title" || field === "Product Tag") {
+            return (
+                <TextField
+                    fullWidth
+                    value={condition.value || ""}
+                    onChange={(e) => setFieldValue(`conditions.${index}.value`, e.target.value)}
+                    placeholder="Enter value"
+                    sx={{
+                        "& .MuiInputBase-root": { height: "40px" },
+                        "& .MuiFormLabel-root": { top: "-7px" },
+                    }}
+                />
+            );
+        }
+
+        if (field === "Attributes Tag") {
+            const selectedAttribute = filteredAttributes.find(attr => attr._id === condition.value?.attributeId);
+            const attributeValues = selectedAttribute?.values || [];
+
+            return (
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                    <FormControl fullWidth>
+                        <TextField
+                            select
+                            sx={{
+                                "& .MuiInputBase-root": { height: "40px" },
+                                "& .MuiFormLabel-root": { top: "-7px" },
+                            }}
+                            value={condition.value?.attributeId || ""}
+                            onChange={(e) => {
+                                const newValue = {
+                                    attributeId: e.target.value,
+                                    valueIds: []
+                                };
+                                setFieldValue(`conditions.${index}.value`, newValue);
+                            }}
+                            label="Select Attribute"
+                        >
+                            {filteredAttributes.map((attribute) => (
+                                <MenuItem key={attribute._id} value={attribute._id}>
+                                    {attribute.name}
+                                </MenuItem>
+                            ))}
+                        </TextField>
+                    </FormControl>
+
+                    <FormControl fullWidth>
+                        <Autocomplete
+                            multiple
+                            options={attributeValues}
+                            getOptionLabel={(option) => option.value || ""}
+                            value={attributeValues.filter(val =>
+                                condition.value?.valueIds?.includes(val._id)
+                            ) || []}
+                            onChange={(event, newValue) => {
+                                const valueIds = newValue.map(val => val._id);
+                                setFieldValue(`conditions.${index}.value`, {
+                                    ...condition.value,
+                                    valueIds: valueIds
+                                });
+                            }}
+                            renderInput={(params) => (
+                                <TextField
+                                    {...params}
+                                    label="Select Values"
+                                    sx={{
+                                        "& .MuiInputBase-root": { height: "auto" },
+                                        "& .MuiFormLabel-root": { top: "-7px" },
+                                    }}
+                                />
+                            )}
+                            isOptionEqualToValue={(option, value) => option._id === value._id}
+                        />
+                    </FormControl>
+                </Box>
+            );
+        }
+
+        if (field === "Variant Tag") {
+            const selectedVariantType = filteredVariants.find(variant => variant._id === condition.value?.variantId);
+            const variantAttributes = selectedVariantType?.variantAttributes || [];
+
+            return (
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                    <FormControl fullWidth>
+                        <TextField
+                            select
+                            sx={{
+                                "& .MuiInputBase-root": { height: "40px" },
+                                "& .MuiFormLabel-root": { top: "-7px" },
+                            }}
+                            value={condition.value?.variantId || ""}
+                            onChange={(e) => {
+                                const newValue = {
+                                    variantId: e.target.value,
+                                    attributeIds: []
+                                };
+                                setFieldValue(`conditions.${index}.value`, newValue);
+                            }}
+                            label="Select Variant"
+                        >
+                            {filteredVariants.map((variant) => (
+                                <MenuItem key={variant._id} value={variant._id}>
+                                    {variant.variant_name}
+                                </MenuItem>
+                            ))}
+                        </TextField>
+                    </FormControl>
+
+                    <FormControl fullWidth>
+                        <Autocomplete
+                            multiple
+                            options={variantAttributes}
+                            getOptionLabel={(option) => option.attribute_value || ""}
+                            value={variantAttributes.filter(attr =>
+                                condition.value?.attributeIds?.includes(attr._id)
+                            ) || []}
+                            onChange={(event, newValue) => {
+                                const attributeIds = newValue.map(attr => attr._id);
+                                setFieldValue(`conditions.${index}.value`, {
+                                    ...condition.value,
+                                    attributeIds: attributeIds
+                                });
+                            }}
+                            renderInput={(params) => (
+                                <TextField
+                                    {...params}
+                                    label="Select Attributes"
+                                    sx={{
+                                        "& .MuiInputBase-root": { height: "auto" },
+                                        "& .MuiFormLabel-root": { top: "-7px" },
+                                    }}
+                                />
+                            )}
+                            isOptionEqualToValue={(option, value) => option._id === value._id}
+                        />
+                    </FormControl>
+                </Box>
+            );
+        }
+
+        // Default autocomplete for other fields
+        return (
+            <Autocomplete
+                multiple
+                options={getValueOptions(field)}
+                getOptionLabel={(option) => getOptionLabel(option, field)}
+                value={condition.value || []}
+                onChange={(event, newValue) => {
+                    setFieldValue(`conditions.${index}.value`, newValue);
+                }}
+                renderInput={(params) => (
+                    <TextField
+                        {...params}
+                        placeholder="Select values"
+                        sx={{
+                            "& .MuiInputBase-root": { height: "auto" },
+                            "& .MuiFormLabel-root": { top: "-7px" },
+                        }}
+                    />
+                )}
+                isOptionEqualToValue={(option, value) =>
+                    getOptionValue(option, field) === getOptionValue(value, field)
+                }
+            />
+        );
     };
 
     console.log(getCatData, "getCatData")
@@ -806,189 +1036,6 @@ const Add = () => {
                                             </RadioGroup>
                                         </FormControl>
                                     </Box>
-                                </Box>
-
-                                {/* DYNAMIC CONDITIONS SECTION - IMPROVED UI */}
-                                <Box sx={{ mb: 3, mt: 3 }}>
-                                    <FormControl component="fieldset" sx={{ mb: 2 }}>
-                                        <FormLabel
-                                            component="legend"
-                                            sx={{
-                                                fontWeight: "700",
-                                                color: "darkblue",
-                                                mb: 1
-                                            }}
-                                        >
-                                            Products must match:
-                                        </FormLabel>
-                                        <RadioGroup
-                                            row
-                                            name="conditionType"
-                                            value={values.conditionType}
-                                            onChange={handleChange}
-                                        >
-                                            <FormControlLabel
-                                                value="all"
-                                                control={<Radio />}
-                                                label="All conditions (AND)"
-                                            />
-                                            <FormControlLabel
-                                                value="any"
-                                                control={<Radio />}
-                                                label="Any conditions (OR)"
-                                            />
-                                        </RadioGroup>
-                                        {errors.conditionType && touched.conditionType && (
-                                            <span style={{ color: "red", fontSize: "12px" }}>
-                                                {errors.conditionType}
-                                            </span>
-                                        )}
-                                    </FormControl>
-
-                                    <FieldArray name="conditions">
-                                        {({ push, remove }) => (
-                                            <Box>
-                                                {values.conditions.map((condition, index) => {
-                                                    const fieldOptions = [
-                                                        "Product Title",
-                                                        "Product Tag",
-                                                        "Attributes Tag",
-                                                        "Variant Tag"
-                                                    ];
-
-                                                    const operatorOptions = getOperatorsForField(condition.field);
-                                                    const valueOptions = getValueOptions(condition.field);
-
-                                                    return (
-                                                        <Card key={index} sx={{ mb: 2, p: 2, position: 'relative' }}>
-                                                            <Box sx={{ display: 'flex', justifyContent: 'flex-end', position: 'absolute', top: 16, right: 16 }}>
-                                                                <IconButton
-                                                                    onClick={() => remove(index)}
-                                                                    disabled={values.conditions.length === 1}
-                                                                    color="error"
-                                                                    size="small"
-                                                                >
-                                                                    <DeleteIcon />
-                                                                </IconButton>
-                                                            </Box>
-
-                                                            <Grid container spacing={2} alignItems="flex-start">
-                                                                <Grid item xs={12} sm={5}>
-                                                                    <FormControl fullWidth>
-                                                                        <TextField
-                                                                            select
-                                                                            sx={{
-                                                                                "& .MuiInputBase-root": { height: "40px" },
-                                                                                "& .MuiFormLabel-root": { top: "-7px" },
-                                                                            }}
-                                                                            label="Field"
-                                                                            value={condition.field}
-                                                                            name={`conditions.${index}.field`}
-                                                                            onChange={handleChange}
-                                                                            error={errors.conditions?.[index]?.field && touched.conditions?.[index]?.field}
-                                                                            helperText={
-                                                                                errors.conditions?.[index]?.field && touched.conditions?.[index]?.field ? (
-                                                                                    <span style={{ color: "red" }}>
-                                                                                        {errors.conditions[index].field}
-                                                                                    </span>
-                                                                                ) : null
-                                                                            }
-                                                                        >
-                                                                            {fieldOptions.map((option) => (
-                                                                                <MenuItem key={option} value={option}>
-                                                                                    {option}
-                                                                                </MenuItem>
-                                                                            ))}
-                                                                        </TextField>
-                                                                    </FormControl>
-                                                                </Grid>
-
-                                                                <Grid item xs={12} sm={5}>
-                                                                    <FormControl fullWidth>
-                                                                        <TextField
-                                                                            select
-                                                                            sx={{
-                                                                                "& .MuiInputBase-root": { height: "40px" },
-                                                                                "& .MuiFormLabel-root": { top: "-7px" },
-                                                                            }}
-                                                                            label="Operator"
-                                                                            value={condition.operator}
-                                                                            name={`conditions.${index}.operator`}
-                                                                            onChange={handleChange}
-                                                                            error={errors.conditions?.[index]?.operator && touched.conditions?.[index]?.operator}
-                                                                            helperText={
-                                                                                errors.conditions?.[index]?.operator && touched.conditions?.[index]?.operator ? (
-                                                                                    <span style={{ color: "red" }}>
-                                                                                        {errors.conditions[index].operator}
-                                                                                    </span>
-                                                                                ) : null
-                                                                            }
-                                                                        >
-                                                                            {operatorOptions.map((option) => (
-                                                                                <MenuItem key={option} value={option}>
-                                                                                    {option}
-                                                                                </MenuItem>
-                                                                            ))}
-                                                                        </TextField>
-                                                                    </FormControl>
-                                                                </Grid>
-
-                                                                <Grid item xs={12}>
-                                                                    <FormControl fullWidth>
-                                                                        <Autocomplete
-                                                                            multiple
-                                                                            disableCloseOnSelect
-                                                                            options={valueOptions}
-                                                                            getOptionLabel={(option) => getOptionLabel(option, condition.field)}
-                                                                            value={condition.value || []}
-                                                                            onChange={(event, newValue) => {
-                                                                                setFieldValue(`conditions.${index}.value`, newValue);
-                                                                            }}
-                                                                            renderInput={(params) => (
-                                                                                <TextField
-                                                                                    {...params}
-                                                                                    label="Value"
-                                                                                    error={errors.conditions?.[index]?.value && touched.conditions?.[index]?.value}
-                                                                                    helperText={
-                                                                                        errors.conditions?.[index]?.value && touched.conditions?.[index]?.value ? (
-                                                                                            <span style={{ color: "red" }}>
-                                                                                                {errors.conditions[index].value}
-                                                                                            </span>
-                                                                                        ) : null
-                                                                                    }
-                                                                                    sx={{
-                                                                                        "& .MuiInputBase-root": { height: "auto" },
-                                                                                        "& .MuiFormLabel-root": { top: "-7px" },
-                                                                                    }}
-                                                                                />
-                                                                            )}
-                                                                            isOptionEqualToValue={(option, value) =>
-                                                                                getOptionValue(option, condition.field) === getOptionValue(value, condition.field)
-                                                                            }
-                                                                        />
-                                                                    </FormControl>
-                                                                </Grid>
-                                                            </Grid>
-                                                        </Card>
-                                                    );
-                                                })}
-
-                                                <Button
-                                                    startIcon={<AddIcon />}
-                                                    variant="outlined"
-                                                    onClick={() => push({ field: "", operator: "", value: "" })}
-                                                    sx={{ mt: 1 }}
-                                                >
-                                                    Add another condition
-                                                </Button>
-                                            </Box>
-                                        )}
-                                    </FieldArray>
-                                    {errors.conditions && typeof errors.conditions === 'string' && (
-                                        <span style={{ color: "red", fontSize: "12px", display: "block", mt: 1 }}>
-                                            {errors.conditions}
-                                        </span>
-                                    )}
                                 </Box>
 
                                 <TextField
@@ -1241,6 +1288,226 @@ const Add = () => {
                     </span>
                                     }
                                 />
+
+                                {/* NEW AUTOMATIC CONDITIONS SECTION */}
+                                <Box sx={{ mb: 3, mt: 3, p: 2, border: '1px solid #e0e0e0', borderRadius: 2 }}>
+                                    <FormControl component="fieldset" sx={{ mb: 2 }}>
+                                        <FormControlLabel
+                                            control={
+                                                <Checkbox
+                                                    checked={isAutomatic}
+                                                    onChange={(e) => setIsAutomatic(e.target.checked)}
+                                                    name="automatic"
+                                                />
+                                            }
+                                            label={
+                                                <Box>
+                                                    <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+                                                        Automatic
+                                                    </Typography>
+                                                    <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
+                                                        Products matched with the following conditions will be automatically assigned to this category
+                                                    </Typography>
+                                                </Box>
+                                            }
+                                        />
+                                    </FormControl>
+
+                                    {isAutomatic && (
+                                        <Box sx={{ mt: 2 }}>
+                                            <Typography variant="h6" sx={{ mb: 2, fontWeight: "bold" }}>
+                                                Conditions
+                                            </Typography>
+
+                                            {/* Category Scope */}
+                                            <Box sx={{ mb: 3 }}>
+                                                <FormLabel component="legend" sx={{ fontWeight: "bold", mb: 1 }}>
+                                                    Category
+                                                </FormLabel>
+                                                <RadioGroup
+                                                    row
+                                                    value={categoryScope}
+                                                    onChange={(e) => setCategoryScope(e.target.value)}
+                                                >
+                                                    <FormControlLabel
+                                                        value="all"
+                                                        control={<Radio />}
+                                                        label="All Categories"
+                                                    />
+                                                    <FormControlLabel
+                                                        value="specific"
+                                                        control={<Radio />}
+                                                        label="Specific Categories"
+                                                    />
+                                                </RadioGroup>
+
+                                                {categoryScope === "specific" && (
+                                                    <Autocomplete
+                                                        multiple
+                                                        options={parentCategories}
+                                                        getOptionLabel={(option) => option.title || ''}
+                                                        value={selectedCategories}
+                                                        onChange={(event, newValue) => setSelectedCategories(newValue)}
+                                                        renderInput={(params) => (
+                                                            <TextField
+                                                                {...params}
+                                                                label="Select Categories"
+                                                                placeholder="Choose categories"
+                                                                sx={{ mt: 1 }}
+                                                            />
+                                                        )}
+                                                        sx={{ mt: 1 }}
+                                                        isOptionEqualToValue={(option, value) => option._id === value._id}
+                                                    />
+                                                )}
+                                            </Box>
+
+                                            {/* Product Match Logic */}
+                                            <Box sx={{ mb: 3 }}>
+                                                <FormLabel component="legend" sx={{ fontWeight: "bold", mb: 1 }}>
+                                                    Product must match
+                                                </FormLabel>
+                                                <RadioGroup
+                                                    row
+                                                    name="conditionType"
+                                                    value={values.conditionType}
+                                                    onChange={handleChange}
+                                                >
+                                                    <FormControlLabel
+                                                        value="all"
+                                                        control={<Radio />}
+                                                        label="All conditions (AND)"
+                                                    />
+                                                    <FormControlLabel
+                                                        value="any"
+                                                        control={<Radio />}
+                                                        label="Any conditions (OR)"
+                                                    />
+                                                </RadioGroup>
+                                                {errors.conditionType && touched.conditionType && (
+                                                    <span style={{ color: "red", fontSize: "12px" }}>
+                                                        {errors.conditionType}
+                                                    </span>
+                                                )}
+                                            </Box>
+
+                                            {/* Dynamic Conditions */}
+                                            <FieldArray name="conditions">
+                                                {({ push, remove }) => (
+                                                    <Box>
+                                                        {values.conditions.map((condition, index) => {
+                                                            const fieldOptions = [
+                                                                "Product Title",
+                                                                "Product Tag",
+                                                                "Attributes Tag",
+                                                                "Variant Tag"
+                                                            ];
+
+                                                            const operatorOptions = getOperatorsForField(condition.field);
+
+                                                            return (
+                                                                <Grid container spacing={2} alignItems="center" sx={{ mb: 2 }} key={index}>
+                                                                    <Grid item xs={12} sm={3}>
+                                                                        <FormControl fullWidth>
+                                                                            <TextField
+                                                                                select
+                                                                                sx={{
+                                                                                    "& .MuiInputBase-root": { height: "40px" },
+                                                                                }}
+                                                                                label="Field"
+                                                                                value={condition.field}
+                                                                                name={`conditions.${index}.field`}
+                                                                                onChange={handleChange}
+                                                                                error={errors.conditions?.[index]?.field && touched.conditions?.[index]?.field}
+                                                                                helperText={
+                                                                                    errors.conditions?.[index]?.field && touched.conditions?.[index]?.field ? (
+                                                                                        <span style={{ color: "red" }}>
+                                                                                            {errors.conditions[index].field}
+                                                                                        </span>
+                                                                                    ) : null
+                                                                                }
+                                                                            >
+                                                                                {fieldOptions.map((option) => (
+                                                                                    <MenuItem key={option} value={option}>
+                                                                                        {option}
+                                                                                    </MenuItem>
+                                                                                ))}
+                                                                            </TextField>
+                                                                        </FormControl>
+                                                                    </Grid>
+
+                                                                    <Grid item xs={12} sm={3}>
+                                                                        <FormControl fullWidth>
+                                                                            <TextField
+                                                                                select
+                                                                                sx={{
+                                                                                    "& .MuiInputBase-root": { height: "40px" },
+                                                                                }}
+                                                                                label="Operator"
+                                                                                value={condition.operator}
+                                                                                name={`conditions.${index}.operator`}
+                                                                                onChange={handleChange}
+                                                                                error={errors.conditions?.[index]?.operator && touched.conditions?.[index]?.operator}
+                                                                                helperText={
+                                                                                    errors.conditions?.[index]?.operator && touched.conditions?.[index]?.operator ? (
+                                                                                        <span style={{ color: "red" }}>
+                                                                                            {errors.conditions[index].operator}
+                                                                                        </span>
+                                                                                    ) : null
+                                                                                }
+                                                                            >
+                                                                                {operatorOptions.map((option) => (
+                                                                                    <MenuItem key={option} value={option}>
+                                                                                        {option}
+                                                                                    </MenuItem>
+                                                                                ))}
+                                                                            </TextField>
+                                                                        </FormControl>
+                                                                    </Grid>
+
+                                                                    <Grid item xs={12} sm={5}>
+                                                                        <FormControl fullWidth>
+                                                                            {renderValueInput(condition, index, setFieldValue)}
+                                                                            {errors.conditions?.[index]?.value && touched.conditions?.[index]?.value && (
+                                                                                <span style={{ color: "red", fontSize: "12px" }}>
+                                                                                    {errors.conditions[index].value}
+                                                                                </span>
+                                                                            )}
+                                                                        </FormControl>
+                                                                    </Grid>
+
+                                                                    <Grid item xs={12} sm={1}>
+                                                                        <IconButton
+                                                                            onClick={() => remove(index)}
+                                                                            disabled={values.conditions.length === 1}
+                                                                            color="error"
+                                                                        >
+                                                                            <DeleteIcon />
+                                                                        </IconButton>
+                                                                    </Grid>
+                                                                </Grid>
+                                                            );
+                                                        })}
+
+                                                        <Button
+                                                            startIcon={<AddIcon />}
+                                                            variant="outlined"
+                                                            onClick={() => push({ field: "", operator: "", value: "" })}
+                                                            sx={{ mt: 1 }}
+                                                        >
+                                                            Add another condition
+                                                        </Button>
+                                                    </Box>
+                                                )}
+                                            </FieldArray>
+                                            {errors.conditions && typeof errors.conditions === 'string' && (
+                                                <span style={{ color: "red", fontSize: "12px", display: "block", mt: 1 }}>
+                                                    {errors.conditions}
+                                                </span>
+                                            )}
+                                        </Box>
+                                    )}
+                                </Box>
 
                                 <Button
                                     endIcon={loading ? <CircularProgress size={15} /> : ""}
