@@ -64,6 +64,7 @@ const List = () => {
     const [excelData, setExcelData] = useState([]);
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(25);
+    const [totalCount, setTotalCount] = useState(0);
     const [search, setSearch] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [statusData, setStatusData] = useState({});
@@ -170,7 +171,10 @@ const List = () => {
             const res = await ApiService.get(url, auth_key);
 
             if (res.status === 200) {
-                const myNewList = res?.data?.categories?.map((e, i) => {
+                const categories = res?.data?.data || [];
+                const pagination = res?.data?.pagination || {};
+
+                const myNewList = categories.map((e, i) => {
                     const serialNumber = (page * rowsPerPage) + i + 1;
                     return { "S.No": serialNumber, ...e };
                 }) || [];
@@ -186,6 +190,7 @@ const List = () => {
 
                 setExcelData(xData);
                 setCategoryList(myNewList);
+                setTotalCount(pagination.total || categories.length || 0);
             }
         } catch (error) {
             handleOpen("error", error);
@@ -556,7 +561,7 @@ const List = () => {
                 <TablePagination
                     rowsPerPageOptions={[25, 50, 75, 100]}
                     component="div"
-                    count={categoryList.length}
+                    count={totalCount}
                     rowsPerPage={rowsPerPage}
                     page={page}
                     onPageChange={handleChangePage}

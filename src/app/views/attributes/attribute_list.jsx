@@ -50,7 +50,7 @@ const SORTING_OPTIONS = [
 const AttributesList = () => {
     // State management
     const [attributes, setAttributes] = useState([]);
-    const [filteredAttributes, setFilteredAttributes] = useState([]);
+    const [totalCount, setTotalCount] = useState(0);
     const [search, setSearch] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [selectedAttribute, setSelectedAttribute] = useState(null);
@@ -124,6 +124,7 @@ const AttributesList = () => {
 
             if (response.data.success) {
                 const attributesData = response.data.data || [];
+                const pagination = response.data.pagination || {};
 
                 // Add serial numbers based on current page
                 const attributesWithSerial = attributesData.map((attr, index) => ({
@@ -132,18 +133,18 @@ const AttributesList = () => {
                 }));
 
                 setAttributes(attributesWithSerial);
-                setFilteredAttributes(attributesWithSerial);
+                setTotalCount(pagination.total || attributesData.length || 0);
             } else {
                 console.error("Failed to fetch attributes:", response.data.message);
                 setAttributes([]);
-                setFilteredAttributes([]);
+                setTotalCount(0);
                 showConfirmModal("error", "Failed to fetch attributes");
             }
         } catch (error) {
             console.error("Error fetching attributes:", error);
             showConfirmModal("error", "Error fetching attributes. Please try again.");
             setAttributes([]);
-            setFilteredAttributes([]);
+            setTotalCount(0);
         } finally {
             setLoading(false);
         }
@@ -194,12 +195,8 @@ const AttributesList = () => {
             );
 
             if (response.data.success) {
-                setAttributes(attributes.map(attr =>
-                    attr._id === id ? { ...attr, status: !attribute.status } : attr
-                ));
-                setFilteredAttributes(filteredAttributes.map(attr =>
-                    attr._id === id ? { ...attr, status: !attribute.status } : attr
-                ));
+                // Refresh the list to get updated data from server
+                await fetchAttributes();
             } else {
                 showConfirmModal("error", "Failed to update status");
             }
@@ -224,12 +221,8 @@ const AttributesList = () => {
             );
 
             if (response.data.success) {
-                setAttributes(attributes.map(attr =>
-                    attr._id === id ? { ...attr, viewOnProductPage: !attribute.viewOnProductPage } : attr
-                ));
-                setFilteredAttributes(filteredAttributes.map(attr =>
-                    attr._id === id ? { ...attr, viewOnProductPage: !attribute.viewOnProductPage } : attr
-                ));
+                // Refresh the list to get updated data from server
+                await fetchAttributes();
             } else {
                 showConfirmModal("error", "Failed to update view on product page setting");
             }
@@ -254,12 +247,8 @@ const AttributesList = () => {
             );
 
             if (response.data.success) {
-                setAttributes(attributes.map(attr =>
-                    attr._id === id ? { ...attr, viewInFilters: !attribute.viewInFilters } : attr
-                ));
-                setFilteredAttributes(filteredAttributes.map(attr =>
-                    attr._id === id ? { ...attr, viewInFilters: !attribute.viewInFilters } : attr
-                ));
+                // Refresh the list to get updated data from server
+                await fetchAttributes();
             } else {
                 showConfirmModal("error", "Failed to update view in filters setting");
             }
@@ -296,8 +285,8 @@ const AttributesList = () => {
             );
 
             if (response.data.success) {
-                setAttributes(attributes.filter(attr => attr._id !== selectedAttribute._id));
-                setFilteredAttributes(filteredAttributes.filter(attr => attr._id !== selectedAttribute._id));
+                // Refresh the list to get updated data from server
+                await fetchAttributes();
                 setSelectedAttribute(null);
                 showConfirmModal("success", "Attribute deleted successfully!");
             } else {
@@ -467,14 +456,14 @@ const AttributesList = () => {
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {filteredAttributes.length === 0 ? (
+                            {attributes.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={7} align="center">
                                         {loading ? 'Loading attributes...' : 'No attributes found'}
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                filteredAttributes.map((attr) => (
+                                attributes.map((attr) => (
                                     <TableRow key={attr._id}>
                                         <TableCell>{attr.serialNumber}</TableCell>
                                         <TableCell>{attr.name}</TableCell>
@@ -527,7 +516,7 @@ const AttributesList = () => {
                 <TablePagination
                     rowsPerPageOptions={[25, 50, 75, 100]}
                     component="div"
-                    count={attributes.length} // Total count from server
+                    count={totalCount} // Changed from attributes.length to totalCount
                     rowsPerPage={rowsPerPage}
                     page={page}
                     onPageChange={handleChangePage}

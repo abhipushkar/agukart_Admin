@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import {Breadcrumb} from "app/components";
-import {Icon, TablePagination, TextField, CircularProgress} from "@mui/material";
+import {Icon, TablePagination, TextField, CircularProgress, TableContainer} from "@mui/material";
 import {useState, useEffect, useCallback, useRef} from "react";
 import {
     Box,
@@ -10,7 +10,6 @@ import {
     Table,
     TableBody,
     TableCell,
-    TableContainer,
     TableHead,
     TableRow,
     FormControl,
@@ -178,7 +177,10 @@ const VariantList = () => {
             const res = await ApiService.get(url, auth_key);
 
             if (res.status === 200) {
-                const myNewList = res?.data?.variant?.map((e, i) => {
+                const variants = res?.data?.data || [];
+                const pagination = res?.data?.pagination || {};
+
+                const myNewList = variants.map((e, i) => {
                     const serialNumber = (page * rowsPerPage) + i + 1;
                     return {"S.No": serialNumber, ...e};
                 });
@@ -190,7 +192,7 @@ const VariantList = () => {
                 })) || [];
 
                 setAllVariants(myNewList || []);
-                setTotalCount(res.data?.totalCount || myNewList?.length || 0);
+                setTotalCount(pagination.total || variants.length || 0);
                 setExcelData(newExcelData);
             }
         } catch (error) {
