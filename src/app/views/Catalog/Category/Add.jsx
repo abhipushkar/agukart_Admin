@@ -126,6 +126,9 @@ const Add = () => {
     const [filteredVariants, setFilteredVariants] = useState([]);
     const [filteredAttributes, setFilteredAttributes] = useState([]);
 
+    // State to track parent category data
+    const [parentCategoryData, setParentCategoryData] = useState(null);
+
     const validationSchema = Yup.object().shape({
         name: Yup.string().required("Name is required"),
         description: Yup.string().required("Description is required"),
@@ -287,24 +290,105 @@ const Add = () => {
         });
     };
 
+    // Get parent category data when selectedCatId changes
+    const getParentCategoryData = async (parentId) => {
+        if (!parentId) return;
+
+        try {
+            const res = await ApiService.get(`${apiEndpoints.editCategory}/${parentId}`, auth_key);
+            if (res.status === 200) {
+                setParentCategoryData(res?.data?.data);
+
+                // Auto-populate variants and attributes if current selection is empty
+                if (SelectedEditVariant.length === 0 && res?.data?.data?.variant_data?.length > 0) {
+                    setSelectedEditVariant(res?.data?.data?.variant_data || []);
+                }
+
+                if (SelectedEditAttribute.length === 0 && res?.data?.data?.attributeList_data?.length > 0) {
+                    setSelectedEditAttribute(res?.data?.data?.attributeList_data || []);
+                }
+            }
+        } catch (error) {
+            console.error("Error fetching parent category data:", error);
+        }
+    };
+
     // Get filtered variants and attributes based on selected categories
     const getFilteredVariantsAndAttributes = async (categoryIds) => {
-        if (categoryIds.length === 0) {
+        if (categoryIds.length === 0 || categoryScope === "all") {
             setFilteredVariants(varintList);
             setFilteredAttributes(attributeList);
             return;
         }
 
         try {
-            // TODO: Replace with actual API endpoints when available
-            // const variantsRes = await ApiService.get(`${apiEndpoints.getVariantsByCategory}?categories=${categoryIds.join(',')}`, auth_key);
-            // const attributesRes = await ApiService.get(`${apiEndpoints.getAttributesByCategory}?categories=${categoryIds.join(',')}`, auth_key);
+            const res = await ApiService.post(`${apiEndpoints.getCategoryFullDetails}`, { categoryIds }, auth_key);
 
-            // For now, use all variants and attributes
-            setFilteredVariants(varintList);
-            setFilteredAttributes(attributeList);
+            if (res.data?.success && res.data?.data) {
+                const categoriesData = res.data.data;
+
+                // Use Sets to avoid duplicates
+                const variantIds = new Set();
+                const attributeIds = new Set();
+
+                // Recursive function to collect variant and attribute IDs from categories and subcategories
+                const collectIdsFromCategories = (categories) => {
+                    categories.forEach(category => {
+                        // Collect variant IDs from variants array
+                        if (category.variants && Array.isArray(category.variants)) {
+                            category.variants.forEach(variant => {
+                                if (variant.id) variantIds.add(variant.id);
+                            });
+                        }
+
+                        // Collect attribute IDs from attributeList
+                        if (category.attributeList && Array.isArray(category.attributeList)) {
+                            category.attributeList.forEach(attribute => {
+                                if (attribute.id) attributeIds.add(attribute.id);
+                            });
+                        }
+
+                        // Process subcategories recursively
+                        if (category.subs && Array.isArray(category.subs)) {
+                            collectIdsFromCategories(category.subs);
+                        }
+                    });
+                };
+
+                collectIdsFromCategories(categoriesData);
+
+                // Convert Sets to Arrays
+                const variantIdArray = Array.from(variantIds);
+                const attributeIdArray = Array.from(attributeIds);
+
+                console.log("Filtered Variant IDs:", variantIdArray);
+                console.log("Filtered Attribute IDs:", attributeIdArray);
+
+                // Filter variants based on collected IDs
+                const filteredVariantData = varintList.filter(variant =>
+                    variantIdArray.includes(variant._id) || variantIdArray.includes(variant.id)
+                );
+
+                // Filter attributes based on collected IDs
+                const filteredAttributeData = attributeList.filter(attribute =>
+                    attributeIdArray.includes(attribute._id) || attributeIdArray.includes(attribute.id)
+                );
+
+                console.log("Filtered Variants:", filteredVariantData);
+                console.log("Filtered Attributes:", filteredAttributeData);
+
+                setFilteredVariants(filteredVariantData);
+                setFilteredAttributes(filteredAttributeData);
+
+            } else {
+                // If API response structure is different, fallback to all
+                console.log("API response structure unexpected, using all variants and attributes");
+                setFilteredVariants(varintList);
+                setFilteredAttributes(attributeList);
+            }
         } catch (error) {
             console.error("Error fetching filtered data:", error);
+            // On error, show all available variants and attributes
             setFilteredVariants(varintList);
             setFilteredAttributes(attributeList);
         }
@@ -394,6 +478,8 @@ const Add = () => {
                     setSelectedCatId(res?.data?.data?.parent_id);
                     if (res?.data?.data?.parent_id) {
                         catData(res?.data?.data?.parent_id);
+                        // Get parent category data for auto-population
+                        getParentCategoryData(res?.data?.data?.parent_id);
                     } else {
                         setSelectedCatLable("Select Category");
                     }
@@ -534,9 +620,21 @@ const Add = () => {
 
     useEffect(() => {
         // Update filtered variants and attributes when categories change
-        const categoryIds = selectedCategories.map(cat => cat._id);
-        getFilteredVariantsAndAttributes(categoryIds);
-    }, [selectedCategories]);
+        if (selectedCategories && selectedCategories.length > 0) {
+            const categoryIds = selectedCategories.map(cat => cat._id || cat.id).filter(id => id);
+            getFilteredVariantsAndAttributes(categoryIds);
+        } else {
+            setFilteredVariants(varintList);
+            setFilteredAttributes(attributeList);
+        }
+    }, [selectedCategories, categoryScope]);
+
+    // Effect to get parent category data when selectedCatId changes
+    useEffect(() => {
+        if (selectedCatId) {
+            getParentCategoryData(selectedCatId);
+        }
+    }, [selectedCatId]);
 
     function returnJSX(subItems) {
         if (!subItems?.length) {
@@ -589,6 +687,7 @@ const Add = () => {
         setIsAutomatic(false);
         setCategoryScope("all");
         setSelectedCategories([]);
+        setParentCategoryData(null);
     };
 
     function findObjectByTitle(data, title) {
@@ -674,7 +773,7 @@ const Add = () => {
         }
     };
 
-    // Render value input based on field type
+    // Enhanced renderValueInput function with dynamic height
     const renderValueInput = (condition, index, setFieldValue) => {
         const field = condition.field;
 
@@ -696,14 +795,17 @@ const Add = () => {
         if (field === "Attributes Tag") {
             const selectedAttribute = filteredAttributes.find(attr => attr._id === condition.value?.attributeId);
             const attributeValues = selectedAttribute?.values || [];
+            const selectedValuesCount = condition.value?.valueIds?.length || 0;
 
             return (
-                <Box sx={{ display: 'flex', gap: 1 }}>
+                <Box sx={{ display: 'flex', flexDirection: selectedValuesCount > 1 ? 'column' : 'row', gap: 1 }}>
                     <FormControl fullWidth>
                         <TextField
                             select
                             sx={{
-                                "& .MuiInputBase-root": { height: "40px" },
+                                "& .MuiInputBase-root": {
+                                    height: selectedValuesCount > 1 ? "auto" : "40px"
+                                },
                                 "& .MuiFormLabel-root": { top: "-7px" },
                             }}
                             value={condition.value?.attributeId || ""}
@@ -744,7 +846,10 @@ const Add = () => {
                                     {...params}
                                     label="Select Values"
                                     sx={{
-                                        "& .MuiInputBase-root": { height: "auto" },
+                                        "& .MuiInputBase-root": {
+                                            height: selectedValuesCount > 1 ? "auto" : "40px",
+                                            minHeight: "40px"
+                                        },
                                         "& .MuiFormLabel-root": { top: "-7px" },
                                     }}
                                 />
@@ -758,15 +863,18 @@ const Add = () => {
 
         if (field === "Variant Tag") {
             const selectedVariantType = filteredVariants.find(variant => variant._id === condition.value?.variantId);
-            const variantAttributes = selectedVariantType?.variantAttributes || [];
+            const variantAttributes = selectedVariantType?.attributes || [];
+            const selectedAttributesCount = condition.value?.attributeIds?.length || 0;
 
             return (
-                <Box sx={{ display: 'flex', gap: 1 }}>
+                <Box sx={{ display: 'flex', flexDirection: selectedAttributesCount > 1 ? 'column' : 'row', gap: 1 }}>
                     <FormControl fullWidth>
                         <TextField
                             select
                             sx={{
-                                "& .MuiInputBase-root": { height: "40px" },
+                                "& .MuiInputBase-root": {
+                                    height: selectedAttributesCount > 1 ? "auto" : "40px"
+                                },
                                 "& .MuiFormLabel-root": { top: "-7px" },
                             }}
                             value={condition.value?.variantId || ""}
@@ -807,7 +915,10 @@ const Add = () => {
                                     {...params}
                                     label="Select Attributes"
                                     sx={{
-                                        "& .MuiInputBase-root": { height: "auto" },
+                                        "& .MuiInputBase-root": {
+                                            height: selectedAttributesCount > 1 ? "auto" : "40px",
+                                            minHeight: "40px"
+                                        },
                                         "& .MuiFormLabel-root": { top: "-7px" },
                                     }}
                                 />
@@ -834,7 +945,10 @@ const Add = () => {
                         {...params}
                         placeholder="Select values"
                         sx={{
-                            "& .MuiInputBase-root": { height: "auto" },
+                            "& .MuiInputBase-root": {
+                                height: "40px",
+                                minHeight: "40px"
+                            },
                             "& .MuiFormLabel-root": { top: "-7px" },
                         }}
                     />

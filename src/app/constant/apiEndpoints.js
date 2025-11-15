@@ -45,6 +45,7 @@ export const apiEndpoints = {
   changeFeaturedStatus: "change-featured-status",
   changeBestSellerStatus: "change-best-seller-status",
   getOccassion: "get-occassion",
+    getCategoryFullDetails: "category-full-detail",
   addOccasion: "add-occassion",
   addOccasionImage: "add-occassion-image",
   changeOccsionsStatus: "change-status-occassion",
