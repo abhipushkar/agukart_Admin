@@ -163,6 +163,7 @@ const Add = () => {
     // New states for conditions
     const [parentCategories, setParentCategories] = useState([]);
     const [parentMainCategories, setParentMainCategories] = useState([]);
+    const [isParentCategoriesLoaded, setIsParentCategoriesLoaded] = useState(false);
 
     const [filteredVariants, setFilteredVariants] = useState([]);
     const [filteredAttributes, setFilteredAttributes] = useState([]);
@@ -181,6 +182,32 @@ const Add = () => {
     console.log({formValues});
     console.log({allActiveCat});
     console.log("queryIdqueryId", queryId);
+
+    // Helper function to find objects by their IDs
+    const findObjectsByIds = (ids, options) => {
+        if (!ids || !Array.isArray(ids) || !options || !Array.isArray(options)) return [];
+
+        console.log("Finding objects by IDs:", { ids, optionsLength: options.length });
+
+        return ids.map(id => {
+            if (typeof id === 'object') return id; // Already an object
+
+            // Find the object with matching _id
+            const found = options.find(option => {
+                // Handle both _id and id properties
+                const optionId = option._id || option.id;
+                return optionId === id;
+            });
+
+            if (found) {
+                console.log("Found object for ID:", id, found.title);
+                return found;
+            } else {
+                console.warn("No object found for ID:", id);
+                return null;
+            }
+        }).filter(Boolean); // Remove null values
+    };
 
     const getAllActiveCategory = async () => {
         try {
@@ -234,6 +261,35 @@ const Add = () => {
         } catch (error) {
             console.error("Error fetching parent categories:", error);
             setParentCategories([]);
+        }
+    };
+
+    // Get parent categories for dropdown - FIXED VERSION
+    const getParentMainCategories = async () => {
+        try {
+            console.log("Fetching parent main categories...");
+            const res = await ApiService.get(apiEndpoints.getParentCatgory, auth_key);
+            if (res.status === 200) {
+                const categories = res?.data?.data || [];
+                console.log("Loaded parent main categories:", categories.length, categories);
+                setParentMainCategories(categories);
+                setIsParentCategoriesLoaded(true);
+
+                // If we have existing selected categories but they're not loaded yet, set them now
+                if (existingData?.selectedCategories) {
+                    console.log("Setting selected categories after parentMainCategories load");
+                    const selectedCats = findObjectsByIds(existingData.selectedCategories, categories);
+                    console.log("Found selected categories:", selectedCats);
+                    setFormValues(prev => ({
+                        ...prev,
+                        selectedCategories: selectedCats
+                    }));
+                }
+            }
+        } catch (error) {
+            console.error("Error fetching parent main categories:", error);
+            setParentMainCategories([]);
+            setIsParentCategoriesLoaded(true);
         }
     };
 
@@ -319,11 +375,21 @@ const Add = () => {
     };
 
     useEffect(() => {
-        getAllActiveCategory();
-        getVaraintList();
-        getAttributeList();
-        getParentCategories();
-        getParentMainCategories();
+        const loadInitialData = async () => {
+            try {
+                await Promise.all([
+                    getAllActiveCategory(),
+                    getVaraintList(),
+                    getAttributeList(),
+                    getParentCategories(),
+                    getParentMainCategories() // Ensure this loads first
+                ]);
+            } catch (error) {
+                console.error("Error loading initial data:", error);
+            }
+        };
+
+        loadInitialData();
     }, []);
 
     // Update filtered variants and attributes when selected categories change
@@ -595,12 +661,16 @@ const Add = () => {
                 const resData = res?.data?.data;
                 console.log({resData});
 
+                // Store the existing data for later use
+                setExistingData(resData);
+
                 // Process conditions data if exists
                 let conditions = [{field: "", operator: "", value: ""}];
                 if (resData?.conditions && resData.conditions.length > 0) {
                     conditions = resData.conditions;
                 }
 
+                // Set basic form values immediately
                 setFormValues((prev) => ({
                     ...prev,
                     title: resData?.title,
@@ -609,19 +679,48 @@ const Add = () => {
                     catName: resData?.parent_id?._id,
                     catId: resData?._id,
                     parent_id: resData?.parent_id?._id,
-                    // New conditions data
+                    // New conditions data - set basic values first
                     isAutomatic: resData?.isAutomatic || false,
                     categoryScope: resData?.categoryScope || "all",
-                    selectedCategories: resData?.selectedCategories || [],
                     conditionType: resData?.conditionType || "all",
                     conditions: conditions
                 }));
+
+                // Selected categories will be set after parent categories load
+                if (resData?.selectedCategories && isParentCategoriesLoaded) {
+                    const selectedCats = findObjectsByIds(resData.selectedCategories, parentMainCategories);
+                    setFormValues(prev => ({
+                        ...prev,
+                        selectedCategories: selectedCats
+                    }));
+                }
+
                 setImgUrl(resData?.image);
             }
         } catch (error) {
             handleOpen("error", error);
         }
     };
+
+    // Load category data when queryId changes and parent categories are loaded
+    useEffect(() => {
+        if (queryId && isParentCategoriesLoaded) {
+            getCategory();
+        }
+    }, [queryId, isParentCategoriesLoaded]);
+
+    // Handle the case when parentMainCategories load after getCategory
+    useEffect(() => {
+        if (queryId && existingData?.selectedCategories && isParentCategoriesLoaded && parentMainCategories.length > 0) {
+            console.log("Re-setting selected categories with loaded parentMainCategories");
+            const selectedCats = findObjectsByIds(existingData.selectedCategories, parentMainCategories);
+            console.log("Final selected categories:", selectedCats);
+            setFormValues(prev => ({
+                ...prev,
+                selectedCategories: selectedCats
+            }));
+        }
+    }, [parentMainCategories, isParentCategoriesLoaded, queryId, existingData]);
 
     useEffect(() => {
         if (queryId) {
@@ -1182,19 +1281,6 @@ const Add = () => {
         }));
     };
 
-    // Get parent categories for dropdown
-    const getParentMainCategories = async () => {
-        try {
-            const res = await ApiService.get(apiEndpoints.getParentCatgory, auth_key);
-            if (res.status === 200) {
-                setParentMainCategories(res?.data?.data || []);
-            }
-        } catch (error) {
-            console.error("Error fetching parent categories:", error);
-            setParentMainCategories([]);
-        }
-    };
-
     // Remove condition
     const removeCondition = (index) => {
         const newConditions = formValues.conditions.filter((_, i) => i !== index);
@@ -1214,6 +1300,16 @@ const Add = () => {
 
         setFormValues(prev => ({...prev, conditions: newConditions}));
     };
+
+    // Debug useEffect to track loading states
+    useEffect(() => {
+        console.log("Current state:", {
+            parentMainCategories: parentMainCategories.length,
+            isParentCategoriesLoaded,
+            selectedCategories: formValues.selectedCategories?.length,
+            existingDataSelected: existingData?.selectedCategories?.length
+        });
+    }, [parentMainCategories, isParentCategoriesLoaded, formValues.selectedCategories, existingData]);
 
     return (
         <ThemeProvider theme={theme}>
@@ -1375,7 +1471,7 @@ const Add = () => {
                         </Box>
 
                         {/* Image Upload */}
-                        <Box sx={{mb: 3}}>
+                        <Box sx={{my: 3}}>
                             <Box sx={{display: 'flex', alignItems: 'center', gap: 2}}>
                                 <Typography sx={{minWidth: '120px', fontWeight: 'bold'}}>
                                     Category Image:
@@ -1500,23 +1596,31 @@ const Add = () => {
                                                     Select Categories:
                                                 </Typography>
                                                 <Box sx={{flex: 1}}>
-                                                    <Autocomplete
-                                                        multiple
-                                                        options={parentMainCategories}
-                                                        getOptionLabel={(option) => option.title || ''}
-                                                        value={formValues.selectedCategories}
-                                                        onChange={(event, newValue) => setFormValues(prev => ({
-                                                            ...prev,
-                                                            selectedCategories: newValue
-                                                        }))}
-                                                        renderInput={(params) => (
-                                                            <TextField
-                                                                {...params}
-                                                                placeholder="Choose categories"
-                                                            />
-                                                        )}
-                                                        isOptionEqualToValue={(option, value) => option._id === value._id}
-                                                    />
+                                                    {!isParentCategoriesLoaded ? (
+                                                        <TextField
+                                                            value="Loading categories..."
+                                                            disabled
+                                                            sx={{ width: '100%' }}
+                                                        />
+                                                    ) : (
+                                                        <Autocomplete
+                                                            multiple
+                                                            options={parentMainCategories}
+                                                            getOptionLabel={(option) => option.title || ''}
+                                                            value={formValues.selectedCategories}
+                                                            onChange={(event, newValue) => setFormValues(prev => ({
+                                                                ...prev,
+                                                                selectedCategories: newValue
+                                                            }))}
+                                                            renderInput={(params) => (
+                                                                <TextField
+                                                                    {...params}
+                                                                    placeholder="Choose categories"
+                                                                />
+                                                            )}
+                                                            isOptionEqualToValue={(option, value) => option._id === value._id}
+                                                        />
+                                                    )}
                                                 </Box>
                                             </Box>
                                         )}
