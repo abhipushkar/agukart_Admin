@@ -60,6 +60,7 @@ const VariantModal = ({show, handleCloseVariant}) => {
         formValues,
         setFormValues,
         varientName,
+        parentProductData // NEW: Get parent product data from store
     } = useProductFormStore();
 
     const [selectedVariant, setSelectedVariant] = useState("");
@@ -85,6 +86,25 @@ const VariantModal = ({show, handleCloseVariant}) => {
 
     // Combine predefined variants with custom variants
     const allVariants = [...varientName, ...customVariants];
+
+    // NEW: Function to get disabled variants including parent product variants
+    const getDisabledVariants = useCallback(() => {
+        const disabledVariants = new Set();
+
+        // Add already selected variations
+        (selectedVariations || []).forEach(variant => disabledVariants.add(variant));
+
+        // Add parent product variants that have SKUs assigned
+        if (parentProductData?.variant_id) {
+            parentProductData.variant_id.forEach(variant => {
+                // Check if this variant has any SKUs assigned in the parent product
+                // If variant_id exists in parent, it means this variant is already used
+                disabledVariants.add(variant.variant_name);
+            });
+        }
+
+        return disabledVariants;
+    }, [selectedVariations, parentProductData]);
 
     // Fixed generateNameCombinations without setState calls
     const generateNameCombinations = useCallback(() => {
@@ -704,10 +724,10 @@ const VariantModal = ({show, handleCloseVariant}) => {
                             variant_name: item?.name,
                             guide: [
                                 {
-                                    guide_name: selectedVariations.find((variant) => variant.variant_name === item?.name).guide_name || null,
-                                    guide_file: selectedVariations.find((variant) => variant.variant_name === item?.name).guide_file || null,
-                                    guide_description: selectedVariations.find((variant) => variant.variant_name === item?.name).guide_description || null,
-                                    guide_type: selectedVariations.find((variant) => variant.variant_name === item?.name).guide_type || null,
+                                    guide_name: selectedVariations.find((variant) => variant.variant_name === item?.name)?.guide_name || null,
+                                    guide_file: selectedVariations.find((variant) => variant.variant_name === item?.name)?.guide_file || null,
+                                    guide_description: selectedVariations.find((variant) => variant.variant_name === item?.name)?.guide_description || null,
+                                    guide_type: selectedVariations.find((variant) => variant.variant_name === item?.name)?.guide_type || null,
                                 }],
                             combinations: result,
                         });
@@ -831,6 +851,9 @@ const VariantModal = ({show, handleCloseVariant}) => {
         setSelectedVariant(variantName);
         setAttrValues(prev => ({...prev, name: variantName, values: []}));
     };
+
+    // Get disabled variants
+    const disabledVariants = getDisabledVariants();
 
     return (
         <>
@@ -1003,23 +1026,37 @@ const VariantModal = ({show, handleCloseVariant}) => {
                                         discoverability.
                                     </Typography>
                                     <Box my={2}>
-                                        {allVariants?.map((item, index) => (
-                                            <Button
-                                                key={index}
-                                                variant="outlined"
-                                                sx={{
-                                                    m: 0.5,
-                                                    borderRadius: '20px',
-                                                    textTransform: 'none'
-                                                }}
-                                                onClick={() => handleVariantSelect(item?.variant_name)}
-                                                disabled={(selectedVariations || []).includes(item?.variant_name)}
-                                                startIcon={(selectedVariations || []).includes(item?.variant_name) ?
-                                                    <CheckIcon/> : null}
-                                            >
-                                                {item?.variant_name}
-                                            </Button>
-                                        ))}
+                                        {allVariants?.map((item, index) => {
+                                            const isDisabled = disabledVariants.has(item?.variant_name);
+                                            const isSelected = (selectedVariations || []).includes(item?.variant_name);
+                                            return (
+                                                <Button
+                                                    key={index}
+                                                    variant="outlined"
+                                                    sx={{
+                                                        m: 0.5,
+                                                        borderRadius: '20px',
+                                                        textTransform: 'none',
+                                                        // Different styling for parent-disabled variants
+                                                        ...(isDisabled && !isSelected && {
+                                                            borderColor: '#ccc',
+                                                            color: '#999',
+                                                            backgroundColor: '#f5f5f5',
+                                                            '&:hover': {
+                                                                backgroundColor: '#f5f5f5',
+                                                                borderColor: '#ccc'
+                                                            }
+                                                        })
+                                                    }}
+                                                    onClick={() => handleVariantSelect(item?.variant_name)}
+                                                    disabled={isDisabled}
+                                                    startIcon={isDisabled ? <CheckIcon/> : null}
+                                                >
+                                                    {item?.variant_name}
+                                                    {isDisabled && !isSelected && " (Used in Parent)"}
+                                                </Button>
+                                            );
+                                        })}
                                     </Box>
                                     <Box my={2}>
                                         <Button

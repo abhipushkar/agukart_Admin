@@ -2,13 +2,14 @@ import React, { useState } from "react";
 import {
     Box,
     Typography,
-    Button
+    Button, TextField
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import { useProductFormStore } from "../../../../states/useAddProducts";
 import VariantModal from "./components/VaraintModal";
 import VariationsTable from "./components/VariationsTable";
 import EmptyVariationsState from "./components/EmptyVariationsState";
+import FormControl from "@mui/material/FormControl";
 
 const ProductVariations = () => {
     const {
@@ -17,6 +18,7 @@ const ProductVariations = () => {
         formValues,
         setCombinationError,
         setShowAll,
+        parentProductData,
         draftLoading
     } = useProductFormStore();
 
@@ -70,6 +72,64 @@ const ProductVariations = () => {
                 mx: "auto"
             }}
         >
+            {/* Parent Product Info*/}
+            {parentProductData && (<Box sx={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "20px",
+                width: "100%",
+                mx: "auto"
+            }}>
+                {/* Parent Title Field */}
+                <Box
+                    sx={{
+                        display: "flex",
+                        gap: "20px",
+                        alignItems: "center"
+                    }}
+                >
+                    <Box
+                        sx={{
+                            fontSize: "14px",
+                            fontWeight: 700,
+                            width: "12.7%",
+                            minWidth: "120px"
+                        }}
+                    >
+                        Parent ID:
+                    </Box>
+                    <Box sx={{ width: "100%" }}>
+                        <Typography>
+                            {parentProductData._id}
+                        </Typography>
+                    </Box>
+                </Box>
+                {/* SKU Field */}
+                <Box
+                    sx={{
+                        display: "flex",
+                        gap: "20px",
+                        alignItems: "center"
+                    }}
+                >
+                    <Box
+                        sx={{
+                            fontSize: "14px",
+                            fontWeight: 700,
+                            width: "11%",
+                            minWidth: "120px"
+                        }}
+                    >
+                        Parent SKU:
+                    </Box>
+                    <Box sx={{ width: "50%" }}>
+                        <Typography>
+                            {parentProductData.seller_sku}
+                        </Typography>
+                    </Box>
+                </Box>
+            </Box>)}
+
             {/* Variations Section Header */}
             <Box
                 sx={{

@@ -44,6 +44,7 @@ export default function AddProductNew() {
     const {
         submitProduct,
         saveDraft,
+        fetchEditProductData,
     } = useProductAPI();
 
     const [open, setOpen] = useState(false);
@@ -60,23 +61,7 @@ export default function AddProductNew() {
 
     // Fetch edit product data if query parameters exist
     useEffect(() => {
-        const fetchEditProductData = async () => {
-            if (queryId || copyQueryId) {
-                try {
-                    const editapiUrl = `${apiEndpoints.EditProduct}/${copyQueryId || queryId}`;
-                    const res = await ApiService.get(editapiUrl, auth_key);
-                    if (res?.status === 200) {
-                        console.log("IS COPIED", isCopied);
-                        initializeFormWithEditData(res?.data?.productData, isCopied);
-                    }
-                } catch (error) {
-                    handleOpen("error", error);
-                    console.log("error", error);
-                }
-            }
-        };
-
-        fetchEditProductData();
+        fetchEditProductData(queryId, copyQueryId, isCopied);
     }, [queryId, copyQueryId, auth_key, initializeFormWithEditData]);
 
     const handleOpen = (type, msg) => {

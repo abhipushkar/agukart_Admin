@@ -46,6 +46,7 @@ const ParentProductIdentity = ({ productId }) => {
         description: "",
         subCategory: "",
         sellerSku: "",
+        zoom: {scale: 1, x: 0, y: 0},
         Innervariations: {},
         variantData: [],
         variant_id: [],
@@ -459,7 +460,8 @@ const ParentProductIdentity = ({ productId }) => {
             variant_attribute_id: varientAttribute,
             combinations: trimArrayValues(combine),
             sub_category: formData?.subCategory || "",
-            sku: trimArrayValues(sellerSky)
+            sku: trimArrayValues(sellerSky),
+            zoom: formData.zoom,
         };
 
         try {
@@ -487,6 +489,7 @@ const ParentProductIdentity = ({ productId }) => {
                     description: "",
                     subCategory: "",
                     sellerSku: "",
+                    zoom: {scale: 1, x: 0, y: 0},
                     Innervariations: {},
                     variantData: [],
                     variant_id: [],
@@ -547,6 +550,7 @@ const ParentProductIdentity = ({ productId }) => {
                     description: resData?.description || "",
                     sellerSku: resData?.seller_sku || "",
                     images: [{ src: `${res?.data?.base_url}${resData?.image}` }],
+                    zoom: resData?.zoom || {scale: 1, x: 0, y: 0},
                     variant_id: resData?.variant_id?.map((option) => option?._id) || [],
                     variant_name: resData?.variant_id?.map((option) => option?.variant_name) || [],
                     subCategory: resData?.sub_category || ""
@@ -1009,7 +1013,7 @@ const ParentProductIdentity = ({ productId }) => {
                                 Upload Images:
                             </Box>
                             <Box sx={{ width: 400 }}>
-                                <MyImageGrid images={images} setImages={setImages} setFormData={setFormData} />
+                                <MyImageGrid images={images} setImages={setImages} setFormData={setFormData} formData={formData} />
                                 {inputErrors.images && (
                                     <Typography
                                         sx={{

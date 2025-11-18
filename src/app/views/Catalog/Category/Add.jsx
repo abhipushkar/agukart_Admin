@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { ROUTE_CONSTANT } from "app/constant/routeContanst";
-import { Formik, Form, Field, ErrorMessage, FieldArray } from "formik";
+import React, {useState, useEffect} from "react";
+import {ROUTE_CONSTANT} from "app/constant/routeContanst";
+import {Formik, Form, Field, ErrorMessage, FieldArray} from "formik";
 import * as Yup from "yup";
 import {
     TextField,
@@ -26,20 +26,20 @@ import {
     CardContent
 } from "@mui/material";
 
-import { ThemeProvider, createTheme } from "@mui/material/styles";
+import {ThemeProvider, createTheme} from "@mui/material/styles";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
-import { toast } from "react-toastify";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import {toast} from "react-toastify";
+import {useNavigate, useSearchParams} from "react-router-dom";
 import styled from "@emotion/styled";
-import { ApiService } from "app/services/ApiService";
-import { apiEndpoints } from "app/constant/apiEndpoints";
-import { localStorageKey } from "app/constant/localStorageKey";
+import {ApiService} from "app/services/ApiService";
+import {apiEndpoints} from "app/constant/apiEndpoints";
+import {localStorageKey} from "app/constant/localStorageKey";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import AppsIcon from "@mui/icons-material/Apps";
 
 import ArrowRight from "@mui/icons-material/ArrowRight";
 
-import { Dropdown, DropdownMenuItem, DropdownNestedMenuItem } from "./DropDown";
+import {Dropdown, DropdownMenuItem, DropdownNestedMenuItem} from "./DropDown";
 
 import PropTypes from "prop-types";
 import CloseIcon from "@mui/icons-material/Close";
@@ -47,18 +47,18 @@ import ClearIcon from "@mui/icons-material/Clear";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 
-import { autocompleteClasses } from "@mui/material/Autocomplete";
+import {autocompleteClasses} from "@mui/material/Autocomplete";
 
 import Autocomplete from "@mui/material/Autocomplete";
-import { TextRotateVerticalRounded } from "@mui/icons-material";
+import {TextRotateVerticalRounded} from "@mui/icons-material";
 import ConfirmModal from "app/components/ConfirmModal";
 
 function Tag(props) {
-    const { label, onDelete, ...other } = props;
+    const {label, onDelete, ...other} = props;
     return (
         <div {...other}>
             <span>{label}</span>
-            <CloseIcon onClick={onDelete} />
+            <CloseIcon onClick={onDelete}/>
         </div>
     );
 }
@@ -70,12 +70,12 @@ Tag.propTypes = {
 
 const theme = createTheme();
 
-const StyledContainer = styled("div")(({ theme }) => ({
+const StyledContainer = styled("div")(({theme}) => ({
     margin: "30px",
-    [theme.breakpoints.down("sm")]: { margin: "16px" },
+    [theme.breakpoints.down("sm")]: {margin: "16px"},
     "& .breadcrumb": {
         marginBottom: "30px",
-        [theme.breakpoints.down("sm")]: { marginBottom: "16px" }
+        [theme.breakpoints.down("sm")]: {marginBottom: "16px"}
     }
 }));
 
@@ -118,6 +118,7 @@ const Add = () => {
 
     // State for dynamic dropdown data
     const [parentCategories, setParentCategories] = useState([]);
+    const [isParentCategoriesLoaded, setIsParentCategoriesLoaded] = useState(false);
 
     // New states for conditions
     const [selectedCategories, setSelectedCategories] = useState([]);
@@ -140,8 +141,8 @@ const Add = () => {
             Yup.object().shape({
                 field: Yup.string().required("Field is required"),
                 operator: Yup.string().required("Operator is required"),
-                value: Yup.mixed().test('required', 'Value is required', function(value) {
-                    const { field } = this.parent;
+                value: Yup.mixed().test('required', 'Value is required', function (value) {
+                    const {field} = this.parent;
                     if (field && !value) {
                         return false;
                     }
@@ -260,18 +261,35 @@ const Add = () => {
         }));
     };
 
-    // Helper function to find objects by IDs for initial values
+    // Improved findObjectsByIds function with better error handling
     const findObjectsByIds = (ids, options) => {
-        if (!ids || !Array.isArray(ids)) return [];
+        if (!ids || !Array.isArray(ids) || !options || !Array.isArray(options)) return [];
+
+        console.log("Finding objects by IDs:", { ids, optionsLength: options.length });
+
         return ids.map(id => {
             if (typeof id === 'object') return id; // Already an object
-            return options.find(option => option._id === id) || id;
-        }).filter(Boolean);
+
+            // Find the object with matching _id
+            const found = options.find(option => {
+                // Handle both _id and id properties
+                const optionId = option._id || option.id;
+                return optionId === id;
+            });
+
+            if (found) {
+                console.log("Found object for ID:", id, found.title);
+                return found;
+            } else {
+                console.warn("No object found for ID:", id);
+                return null;
+            }
+        }).filter(Boolean); // Remove null values
     };
 
-    // Process initial conditions data - convert IDs to objects for display
+    // Improved processInitialConditions function
     const processInitialConditions = (conditions) => {
-        if (!conditions || !Array.isArray(conditions)) return [{ field: "", operator: "", value: "" }];
+        if (!conditions || !Array.isArray(conditions)) return [{field: "", operator: "", value: ""}];
 
         return conditions.map(condition => {
             let value = condition.value;
@@ -279,6 +297,11 @@ const Add = () => {
             // If value contains IDs, convert them to objects for display
             if (condition.value && Array.isArray(condition.value)) {
                 const options = getValueOptions(condition.field);
+                console.log("Processing condition value:", {
+                    field: condition.field,
+                    value: condition.value,
+                    optionsLength: options?.length
+                });
                 value = findObjectsByIds(condition.value, options);
             }
 
@@ -322,7 +345,7 @@ const Add = () => {
         }
 
         try {
-            const res = await ApiService.post(`${apiEndpoints.getCategoryFullDetails}`, { categoryIds }, auth_key);
+            const res = await ApiService.post(`${apiEndpoints.getCategoryFullDetails}`, {categoryIds}, auth_key);
 
             if (res.data?.success && res.data?.data) {
                 const categoriesData = res.data.data;
@@ -422,7 +445,7 @@ const Add = () => {
         const variant_id = SelectedEditVariant.map((variant) => {
             return variant._id;
         });
-        payload = { ...payload, variant_id: variant_id };
+        payload = {...payload, variant_id: variant_id};
 
         try {
             setLoading(true);
@@ -431,9 +454,9 @@ const Add = () => {
             if (res.status === 200) {
                 if (image || topRatedImg) {
                     if (queryId) {
-                        handleUploadImage(getCatData._id, res?.data);
+                        await handleUploadImage(getCatData._id, res?.data);
                     } else {
-                        handleUploadImage(res?.data?.data?._id, res?.data);
+                        await handleUploadImage(res?.data?.data?._id, res?.data);
                     }
                 } else {
                     setRoute(ROUTE_CONSTANT.catalog.category.list);
@@ -468,14 +491,43 @@ const Add = () => {
         }
     };
 
+    // Get parent categories for dropdown
+    const getParentCategories = async () => {
+        try {
+            console.log("Fetching parent categories...");
+            const res = await ApiService.get(apiEndpoints.getParentCatgory, auth_key);
+            if (res.status === 200) {
+                const categories = res?.data?.data || [];
+                console.log("Loaded parent categories:", categories.length, categories);
+                setParentCategories(categories);
+                setIsParentCategoriesLoaded(true);
+
+                // If we have selected categories from getCatData but they're not loaded yet, set them now
+                if (queryId && getCatData?.selectedCategories) {
+                    console.log("Setting selected categories after parentCategories load");
+                    const selectedCats = findObjectsByIds(getCatData.selectedCategories, categories);
+                    console.log("Found selected categories:", selectedCats);
+                    setSelectedCategories(selectedCats);
+                }
+            }
+        } catch (error) {
+            console.error("Error fetching parent categories:", error);
+            setParentCategories([]);
+            setIsParentCategoriesLoaded(true);
+        }
+    };
+
     const getCategoryData = async () => {
         if (queryId) {
             try {
+                console.log("Getting category data for:", queryId);
                 const res = await ApiService.get(`${apiEndpoints.editCategory}/${queryId}`, auth_key);
                 if (res.status === 200) {
+                    console.log("Category data received:", res?.data?.data);
                     setTopRatedUrl(res?.data?.data?.topRatedImage);
                     setCatData(res?.data?.data);
                     setSelectedCatId(res?.data?.data?.parent_id);
+
                     if (res?.data?.data?.parent_id) {
                         catData(res?.data?.data?.parent_id);
                         // Get parent category data for auto-population
@@ -483,6 +535,7 @@ const Add = () => {
                     } else {
                         setSelectedCatLable("Select Category");
                     }
+
                     setSelectedEditVariant(res?.data?.data?.variant_data || []);
                     setSelectedEditAttribute(res?.data?.data?.attributeList_data || []);
 
@@ -494,8 +547,17 @@ const Add = () => {
                         setCategoryScope(res?.data?.data?.categoryScope);
                     }
                     if (res?.data?.data?.selectedCategories) {
-                        const selectedCats = findObjectsByIds(res?.data?.data?.selectedCategories, parentCategories);
-                        setSelectedCategories(selectedCats);
+                        console.log("Setting selected categories from API:", res?.data?.data?.selectedCategories);
+
+                        // Wait for parent categories to be loaded before setting selected categories
+                        if (isParentCategoriesLoaded && parentCategories.length > 0) {
+                            const selectedCats = findObjectsByIds(res?.data?.data?.selectedCategories, parentCategories);
+                            console.log("Found selected categories immediately:", selectedCats);
+                            setSelectedCategories(selectedCats);
+                        } else {
+                            console.log("Parent categories not loaded yet, will set selected categories later");
+                            // This will be handled by the useEffect below
+                        }
                     }
                 }
             } catch (error) {
@@ -508,11 +570,11 @@ const Add = () => {
         try {
             if (getCatData?.parent_id) {
                 const res = await ApiService.get(apiEndpoints.getParentCatgory, auth_key);
-                console.log({ res });
+                console.log({res});
 
                 if (res.status === 200) {
                     const find = res?.data?.data.find((item) => item._id === getCatData?.parent_id);
-                    console.log({ find });
+                    console.log({find});
                     if (find?.title?.includes(">")) {
                         setSelectedCatLable(find.title);
                     } else {
@@ -545,7 +607,7 @@ const Add = () => {
         try {
             const res = await ApiService.get(apiEndpoints.getAllActiveCategory, auth_key);
             if (res?.status === 200) {
-                setAllActiveCategory([{ subs: res?.data?.subCatgory }]);
+                setAllActiveCategory([{subs: res?.data?.subCatgory}]);
                 setRander(false);
             }
         } catch (error) {
@@ -555,7 +617,7 @@ const Add = () => {
 
     const getVaraintList = async () => {
         const typeParam = "type=Category";
-        const urlWithParam = `${apiEndpoints.getVariant}?${typeParam}`;
+        const urlWithParam = `${apiEndpoints.getVariant}?${typeParam}&fulldata=true`;
         try {
             const res = await ApiService.get(urlWithParam, auth_key);
             console.log("resresres", res);
@@ -574,7 +636,7 @@ const Add = () => {
 
     const getAttributeList = async () => {
         try {
-            const res = await ApiService.get("get-attribute-list", auth_key);
+            const res = await ApiService.get("get-attribute-list?fulldata=true", auth_key);
             if (res?.data?.success) {
                 setAttributeList(res?.data?.data || []);
                 setFilteredAttributes(res?.data?.data || []);
@@ -586,31 +648,40 @@ const Add = () => {
         }
     };
 
-    // Get parent categories for dropdown
-    const getParentCategories = async () => {
-        try {
-            const res = await ApiService.get(apiEndpoints.getParentCatgory, auth_key);
-            if (res.status === 200) {
-                setParentCategories(res?.data?.data || []);
-            }
-        } catch (error) {
-            console.error("Error fetching parent categories:", error);
-            setParentCategories([]);
-        }
-    };
-
+    // Load all initial data
     useEffect(() => {
-        getAllActiveCategory();
-        getVaraintList();
-        getAttributeList();
-        getParentCategories();
+        const loadInitialData = async () => {
+            try {
+                await Promise.all([
+                    getAllActiveCategory(),
+                    getVaraintList(),
+                    getAttributeList(),
+                    getParentCategories() // Ensure parent categories are loaded first
+                ]);
+            } catch (error) {
+                console.error("Error loading initial data:", error);
+            }
+        };
+
+        loadInitialData();
     }, []);
 
+    // Load category data when queryId changes and parent categories are loaded
     useEffect(() => {
-        if (queryId) {
+        if (queryId && isParentCategoriesLoaded) {
             getCategoryData();
         }
-    }, [queryId]);
+    }, [queryId, isParentCategoriesLoaded]);
+
+    // Handle the case when parentCategories load after getCategoryData
+    useEffect(() => {
+        if (queryId && getCatData?.selectedCategories && isParentCategoriesLoaded && parentCategories.length > 0) {
+            console.log("Re-setting selected categories with loaded parentCategories");
+            const selectedCats = findObjectsByIds(getCatData.selectedCategories, parentCategories);
+            console.log("Final selected categories:", selectedCats);
+            setSelectedCategories(selectedCats);
+        }
+    }, [parentCategories, isParentCategoriesLoaded, queryId, getCatData]);
 
     useEffect(() => {
         if (getCatData?.parent_id) {
@@ -666,7 +737,7 @@ const Add = () => {
                         }}
                         label={items?.title}
                         menu={returnJSX(items?.subs || []) || []}
-                        rightIcon={<ArrowRight />}
+                        rightIcon={<ArrowRight/>}
                     />
                 );
             }
@@ -709,14 +780,14 @@ const Add = () => {
         const obj = findObjectByTitle(allActiveCategory, selectedCatLable);
     }, [selectedCatLable]);
 
-    console.log({ getCatData });
+    console.log({getCatData});
 
     const getParentCategory = async (id) => {
         try {
             const res = await ApiService.get(apiEndpoints.getParentCatgory, auth_key);
             if (res.status === 200) {
                 const findSubCatgory = res?.data?.data.find((cat) => cat._id === id);
-                console.log({ findSubCatgory });
+                console.log({findSubCatgory});
                 setSelectedCatLable(findSubCatgory?.title);
             }
         } catch (error) {
@@ -773,7 +844,7 @@ const Add = () => {
         }
     };
 
-    // Enhanced renderValueInput function with dynamic height
+    // Enhanced renderValueInput function with compound attribute support
     const renderValueInput = (condition, index, setFieldValue) => {
         const field = condition.field;
 
@@ -785,8 +856,8 @@ const Add = () => {
                     onChange={(e) => setFieldValue(`conditions.${index}.value`, e.target.value)}
                     placeholder="Enter value"
                     sx={{
-                        "& .MuiInputBase-root": { height: "40px" },
-                        "& .MuiFormLabel-root": { top: "-7px" },
+                        "& .MuiInputBase-root": {height: "40px"},
+                        "& .MuiFormLabel-root": {top: "-7px"},
                     }}
                 />
             );
@@ -794,19 +865,92 @@ const Add = () => {
 
         if (field === "Attributes Tag") {
             const selectedAttribute = filteredAttributes.find(attr => attr._id === condition.value?.attributeId);
+
+            // Handle compound attributes with sub-attributes
+            if (selectedAttribute?.type === "Compound") {
+                const subAttributes = selectedAttribute?.subAttributes || [];
+                const selectedSubAttribute = subAttributes.find(sub => sub._id === condition.value?.subAttributeId);
+
+                return (
+                    <Box sx={{display: 'flex', flexDirection: 'column', gap: 1}}>
+                        {/* Attribute Selection */}
+                        <FormControl fullWidth>
+                            <TextField
+                                select
+                                sx={{
+                                    "& .MuiInputBase-root": {height: "40px"}
+                                }}
+                                value={condition.value?.attributeId || ""}
+                                onChange={(e) => {
+                                    const newAttribute = filteredAttributes.find(attr => attr._id === e.target.value);
+                                    const newValue = {
+                                        attributeId: e.target.value,
+                                        subAttributeId: "",
+                                        value: ""
+                                    };
+                                    setFieldValue(`conditions.${index}.value`, newValue);
+                                }}
+                                label="Select Attribute"
+                            >
+                                {filteredAttributes.map((attribute) => (
+                                    <MenuItem key={attribute._id} value={attribute._id}>
+                                        {attribute.name} {attribute.type === "Compound" ? "(Compound)" : ""}
+                                    </MenuItem>
+                                ))}
+                            </TextField>
+                        </FormControl>
+
+                        {/* Sub-attribute Selection for Compound types */}
+                        {selectedAttribute?.type === "Compound" && (
+                            <FormControl fullWidth>
+                                <TextField
+                                    select
+                                    sx={{
+                                        "& .MuiInputBase-root": {height: "40px"}
+                                    }}
+                                    value={condition.value?.subAttributeId || ""}
+                                    onChange={(e) => {
+                                        const newValue = {
+                                            ...condition.value,
+                                            subAttributeId: e.target.value,
+                                            value: ""
+                                        };
+                                        setFieldValue(`conditions.${index}.value`, newValue);
+                                    }}
+                                    label="Select Sub-Attribute"
+                                >
+                                    {subAttributes.map((subAttr) => (
+                                        <MenuItem key={subAttr._id} value={subAttr._id}>
+                                            {subAttr.name} ({subAttr.type})
+                                        </MenuItem>
+                                    ))}
+                                </TextField>
+                            </FormControl>
+                        )}
+
+                        {/* Value Input based on selected sub-attribute type */}
+                        {selectedSubAttribute && (
+                            <FormControl fullWidth>
+                                {renderSubAttributeValueInput(selectedSubAttribute, condition, index, setFieldValue)}
+                            </FormControl>
+                        )}
+                    </Box>
+                );
+            }
+
+            // Handle regular attributes (Dropdown, Yes/No, Text)
             const attributeValues = selectedAttribute?.values || [];
             const selectedValuesCount = condition.value?.valueIds?.length || 0;
 
             return (
-                <Box sx={{ display: 'flex', flexDirection: selectedValuesCount > 1 ? 'column' : 'row', gap: 1 }}>
+                <Box sx={{display: 'flex', flexDirection: selectedValuesCount > 1 ? 'column' : 'row', gap: 1}}>
                     <FormControl fullWidth>
                         <TextField
                             select
                             sx={{
                                 "& .MuiInputBase-root": {
                                     height: selectedValuesCount > 1 ? "auto" : "40px"
-                                },
-                                "& .MuiFormLabel-root": { top: "-7px" },
+                                }
                             }}
                             value={condition.value?.attributeId || ""}
                             onChange={(e) => {
@@ -827,35 +971,7 @@ const Add = () => {
                     </FormControl>
 
                     <FormControl fullWidth>
-                        <Autocomplete
-                            multiple
-                            options={attributeValues}
-                            getOptionLabel={(option) => option.value || ""}
-                            value={attributeValues.filter(val =>
-                                condition.value?.valueIds?.includes(val._id)
-                            ) || []}
-                            onChange={(event, newValue) => {
-                                const valueIds = newValue.map(val => val._id);
-                                setFieldValue(`conditions.${index}.value`, {
-                                    ...condition.value,
-                                    valueIds: valueIds
-                                });
-                            }}
-                            renderInput={(params) => (
-                                <TextField
-                                    {...params}
-                                    label="Select Values"
-                                    sx={{
-                                        "& .MuiInputBase-root": {
-                                            height: selectedValuesCount > 1 ? "auto" : "40px",
-                                            minHeight: "40px"
-                                        },
-                                        "& .MuiFormLabel-root": { top: "-7px" },
-                                    }}
-                                />
-                            )}
-                            isOptionEqualToValue={(option, value) => option._id === value._id}
-                        />
+                        {renderAttributeValueInput(selectedAttribute, condition, index, setFieldValue)}
                     </FormControl>
                 </Box>
             );
@@ -867,15 +983,14 @@ const Add = () => {
             const selectedAttributesCount = condition.value?.attributeIds?.length || 0;
 
             return (
-                <Box sx={{ display: 'flex', flexDirection: selectedAttributesCount > 1 ? 'column' : 'row', gap: 1 }}>
+                <Box sx={{display: 'flex', flexDirection: selectedAttributesCount > 1 ? 'column' : 'row', gap: 1}}>
                     <FormControl fullWidth>
                         <TextField
                             select
                             sx={{
                                 "& .MuiInputBase-root": {
                                     height: selectedAttributesCount > 1 ? "auto" : "40px"
-                                },
-                                "& .MuiFormLabel-root": { top: "-7px" },
+                                }
                             }}
                             value={condition.value?.variantId || ""}
                             onChange={(e) => {
@@ -918,8 +1033,7 @@ const Add = () => {
                                         "& .MuiInputBase-root": {
                                             height: selectedAttributesCount > 1 ? "auto" : "40px",
                                             minHeight: "40px"
-                                        },
-                                        "& .MuiFormLabel-root": { top: "-7px" },
+                                        }
                                     }}
                                 />
                             )}
@@ -948,8 +1062,7 @@ const Add = () => {
                             "& .MuiInputBase-root": {
                                 height: "40px",
                                 minHeight: "40px"
-                            },
-                            "& .MuiFormLabel-root": { top: "-7px" },
+                            }
                         }}
                     />
                 )}
@@ -960,25 +1073,222 @@ const Add = () => {
         );
     };
 
-    console.log(getCatData, "getCatData")
+// Helper function to render attribute value input based on attribute type
+    const renderAttributeValueInput = (attribute, condition, index, setFieldValue) => {
+        if (!attribute) {
+            return (
+                <TextField
+                    label="Select Attribute First"
+                    disabled
+                    sx={{
+                        "& .MuiInputBase-root": {height: "40px"}
+                    }}
+                />
+            );
+        }
+
+        const attributeValues = attribute.values || [];
+        const selectedValuesCount = condition.value?.valueIds?.length || 0;
+
+        switch (attribute.type) {
+            case "Dropdown":
+                return (
+                    <Autocomplete
+                        multiple
+                        disableCloseOnSelect
+                        options={attributeValues}
+                        getOptionLabel={(option) => option.value || ""}
+                        value={attributeValues.filter(val =>
+                            condition.value?.valueIds?.includes(val._id)
+                        )}
+                        onChange={(event, newValue) => {
+                            const valueIds = newValue.map(val => val._id);
+                            setFieldValue(`conditions.${index}.value`, {
+                                ...condition.value,
+                                valueIds: valueIds
+                            });
+                        }}
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                label={`Select ${attribute.multiSelect ? 'Values' : 'Value'}`}
+                                sx={{
+                                    "& .MuiInputBase-root": {
+                                        height: selectedValuesCount > 1 ? "auto" : "40px",
+                                        minHeight: "40px"
+                                    }
+                                }}
+                            />
+                        )}
+                        isOptionEqualToValue={(option, value) => option._id === value._id}
+                    />
+                );
+
+            case "Yes/No":
+                const yesNoOptions = [
+                    {_id: "yes", value: "Yes"},
+                    {_id: "no", value: "No"}
+                ];
+
+                return (
+                    <TextField
+                        select
+                        sx={{
+                            "& .MuiInputBase-root": {height: "40px"}
+                        }}
+                        value={condition.value?.valueIds?.[0] || ""}
+                        onChange={(e) => {
+                            setFieldValue(`conditions.${index}.value`, {
+                                ...condition.value,
+                                valueIds: [e.target.value]
+                            });
+                        }}
+                        label="Select Value"
+                    >
+                        {yesNoOptions.map((option) => (
+                            <MenuItem key={option._id} value={option._id}>
+                                {option.value}
+                            </MenuItem>
+                        ))}
+                    </TextField>
+                );
+
+            default:
+                return (
+                    <TextField
+                        select
+                        sx={{
+                            "& .MuiInputBase-root": {height: "40px"}
+                        }}
+                        value={""}
+                        onChange={(e) => {
+
+                        }}
+                        disabled
+                        label="Select Value"
+                    >
+                        <MenuItem value={""}>
+                            No Option
+                        </MenuItem>
+                    </TextField>
+                );
+        }
+    };
+
+// Helper function to render sub-attribute value input
+    const renderSubAttributeValueInput = (subAttribute, condition, index, setFieldValue) => {
+        const subAttributeValues = subAttribute.values || [];
+
+        switch (subAttribute.type) {
+            case "Dropdown":
+                return (
+                    <Autocomplete
+                        multiple
+                        disableCloseOnSelect
+                        options={subAttributeValues}
+                        getOptionLabel={(option) => option.value || ""}
+                        value={subAttributeValues.filter(val =>
+                            condition.value?.valueIds?.includes(val._id)
+                        )}
+                        onChange={(event, newValue) => {
+                            const valueIds = newValue.map(val => val._id);
+                            setFieldValue(`conditions.${index}.value`, {
+                                ...condition.value,
+                                valueIds: valueIds
+                            });
+                        }}
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                label={`Select ${subAttribute.multiSelect ? 'Values' : 'Value'}`}
+                                sx={{
+                                    "& .MuiInputBase-root": {
+                                        height: "auto",
+                                        minHeight: "40px"
+                                    }
+                                }}
+                            />
+                        )}
+                        isOptionEqualToValue={(option, value) => option._id === value._id}
+                    />
+                );
+
+            case "Yes/No":
+                const yesNoOptions = [
+                    {_id: "yes", value: "Yes"},
+                    {_id: "no", value: "No"}
+                ];
+
+                return (
+                    <TextField
+                        select
+                        sx={{
+                            "& .MuiInputBase-root": {height: "40px"}
+                        }}
+                        value={condition.value?.valueIds?.[0] || ""}
+                        onChange={(e) => {
+                            setFieldValue(`conditions.${index}.value`, {
+                                ...condition.value,
+                                valueIds: [e.target.value]
+                            });
+                        }}
+                        label="Select Value"
+                    >
+                        {yesNoOptions.map((option) => (
+                            <MenuItem key={option._id} value={option._id}>
+                                {option.value}
+                            </MenuItem>
+                        ))}
+                    </TextField>
+                );
+
+            default:
+                return (
+                    <TextField
+                        select
+                        sx={{
+                            "& .MuiInputBase-root": {height: "40px"}
+                        }}
+                        value={""}
+                        onChange={(e) => {
+
+                        }}
+                        disabled
+                        label="Select Value"
+                    >
+                        <MenuItem value={""}>
+                            No Option
+                        </MenuItem>
+                    </TextField>
+                );
+        }
+    };
+
+    console.log("Current state:", {
+        parentCategories: parentCategories.length,
+        isParentCategoriesLoaded,
+        selectedCategories: selectedCategories.length,
+        getCatDataSelected: getCatData?.selectedCategories?.length
+    });
+
     return (
         <ThemeProvider theme={theme}>
             <MuiContainer>
                 <StyledContainer>
-                    <Box sx={{ py: "16px", marginBottom: "20px" }} component={Paper}>
-                        <Stack sx={{ ml: "24px", mb: "12px" }} gap={1} direction={"row"}>
+                    <Box sx={{py: "16px", marginBottom: "20px"}} component={Paper}>
+                        <Stack sx={{ml: "24px", mb: "12px"}} gap={1} direction={"row"}>
                             <Box>
-                                <AppsIcon />
+                                <AppsIcon/>
                             </Box>
                             <Box>
-                                <Typography sx={{ fontWeight: "600", fontSize: "18px" }}>Go To</Typography>
+                                <Typography sx={{fontWeight: "600", fontSize: "18px"}}>Go To</Typography>
                             </Box>
                         </Stack>
-                        <Divider />
-                        <Box sx={{ ml: "24px", mt: "16px" }}>
+                        <Divider/>
+                        <Box sx={{ml: "24px", mt: "16px"}}>
                             <Button
                                 onClick={() => navigate(ROUTE_CONSTANT.catalog.category.list)}
-                                startIcon={<AppsIcon />}
+                                startIcon={<AppsIcon/>}
                                 variant="contained"
                             >
                                 Category List
@@ -998,13 +1308,13 @@ const Add = () => {
                             conditionType: queryId ? getCatData?.conditionType || "all" : "all",
                             conditions: queryId && getCatData?.conditions?.length > 0
                                 ? processInitialConditions(getCatData.conditions)
-                                : [{ field: "", operator: "", value: "" }]
+                                : [{field: "", operator: "", value: ""}]
                         }}
                         enableReinitialize={true}
                         validationSchema={validationSchema}
                         onSubmit={handleSubmit}
                     >
-                        {({ setFieldValue, resetForm, values, handleChange, errors, touched }) => {
+                        {({setFieldValue, resetForm, values, handleChange, errors, touched}) => {
                             console.log("values", values);
                             const handleTagHandler = (event, newValue) => {
                                 const processedValues = newValue
@@ -1014,123 +1324,122 @@ const Add = () => {
                                             : [value]
                                     )
                                     .filter(v => v);
-                                setFieldValue("tags",[...new Set(processedValues)]);
+                                setFieldValue("tags", [...new Set(processedValues)]);
                             };
 
                             return <Form>
-                                <Stack spacing={2} direction="row" sx={{ marginBottom: 4 }}>
-                                    <Box sx={{ minWidth: "50%" }}>
-                                        {allActiveCategory.length === 0 ? (
-                                            <Stack sx={{ position: "relative" }}>
-                                                <TextField
-                                                    sx={{
-                                                        bgcolor: "#F0F0F0",
-                                                        cursor: "pointer",
-                                                        outline: "none",
-                                                        height: "40px"
-                                                    }}
-                                                    readOnly
-                                                    value={selectedCatLable}
-                                                />
-                                                <ArrowDropDownIcon
-                                                    sx={{
-                                                        position: "absolute",
-                                                        right: "10px",
-                                                        top: "28%",
-                                                        width: "20px",
-                                                        height: "20px"
-                                                    }}
-                                                />
-                                            </Stack>
-                                        ) : (
-                                            allActiveCategory?.map((item) => {
-                                                return (
-                                                    <Dropdown
-                                                        trigger={
-                                                            <Stack sx={{ position: "relative" }}>
-                                                                <TextField
-                                                                    sx={{
-                                                                        bgcolor: "#F0F0F0",
-                                                                        cursor: "pointer",
-                                                                        height: "40px",
-                                                                        outline: "none",
-                                                                        "& .MuiInputBase-root": { height: "40px" }
-                                                                    }}
-                                                                    readOnly
-                                                                    value={selectedCatLable}
-                                                                />
+                                {/* Category and Title in row */}
+                                <Grid container spacing={2} sx={{marginBottom: 4}}>
+                                    <Grid item xs={12} sm={6}>
+                                        <Box sx={{display: 'flex', alignItems: 'center', gap: 2}}>
+                                            <Typography sx={{minWidth: '120px', fontWeight: 'bold'}}>
+                                                Category:
+                                            </Typography>
+                                            <Box sx={{flex: 1}}>
+                                                {allActiveCategory.length === 0 ? (
+                                                    <Stack sx={{position: "relative"}}>
+                                                        <TextField
+                                                            sx={{
+                                                                bgcolor: "#F0F0F0",
+                                                                cursor: "pointer",
+                                                                outline: "none",
+                                                                height: "40px"
+                                                            }}
+                                                            readOnly
+                                                            value={selectedCatLable}
+                                                        />
+                                                        <ArrowDropDownIcon
+                                                            sx={{
+                                                                position: "absolute",
+                                                                right: "10px",
+                                                                top: "28%",
+                                                                width: "20px",
+                                                                height: "20px"
+                                                            }}
+                                                        />
+                                                    </Stack>
+                                                ) : (
+                                                    allActiveCategory?.map((item) => {
+                                                        return (
+                                                            <Dropdown
+                                                                trigger={
+                                                                    <Stack sx={{position: "relative"}}>
+                                                                        <TextField
+                                                                            sx={{
+                                                                                bgcolor: "#F0F0F0",
+                                                                                cursor: "pointer",
+                                                                                height: "40px",
+                                                                                outline: "none",
+                                                                                "& .MuiInputBase-root": {height: "40px"}
+                                                                            }}
+                                                                            readOnly
+                                                                            value={selectedCatLable}
+                                                                        />
 
-                                                                <ArrowDropDownIcon
-                                                                    sx={{
-                                                                        position: "absolute",
-                                                                        right: "10px",
-                                                                        top: "28%",
-                                                                        width: "20px",
-                                                                        height: "20px"
-                                                                    }}
-                                                                />
-                                                            </Stack>
+                                                                        <ArrowDropDownIcon
+                                                                            sx={{
+                                                                                position: "absolute",
+                                                                                right: "10px",
+                                                                                top: "28%",
+                                                                                width: "20px",
+                                                                                height: "20px"
+                                                                            }}
+                                                                        />
+                                                                    </Stack>
+                                                                }
+                                                                menu={returnJSX(item?.subs || []) || []}
+                                                            />
+                                                        );
+                                                    })
+                                                )}
+                                                <span style={{color: "red"}}>
+                                                    <ErrorMessage name="category" component="div"/>
+                                                </span>
+                                            </Box>
+                                        </Box>
+                                    </Grid>
+                                    <Grid item xs={12} sm={6}>
+                                        <Box sx={{display: 'flex', alignItems: 'center', gap: 2}}>
+                                            <Typography sx={{minWidth: '120px', fontWeight: 'bold'}}>
+                                                Title:
+                                            </Typography>
+                                            <Box sx={{flex: 1}}>
+                                                <Field
+                                                    as={TextField}
+                                                    type="text"
+                                                    variant="outlined"
+                                                    color="primary"
+                                                    fullWidth
+                                                    name="name"
+                                                    placeholder={queryId ? "Title" : ""}
+                                                    helperText={
+                                                        <span style={{color: "red"}}>
+                                                            <ErrorMessage name="name"/>
+                                                        </span>
+                                                    }
+                                                    sx={{
+                                                        "& .MuiInputBase-root": {
+                                                            height: "40px"
+                                                        },
+                                                        "& .MuiFormLabel-root": {
+                                                            top: "-7px"
                                                         }
-                                                        menu={returnJSX(item?.subs || []) || []}
-                                                    />
-                                                );
-                                            })
-                                        )}
+                                                    }}
+                                                />
+                                            </Box>
+                                        </Box>
+                                    </Grid>
+                                </Grid>
 
-                                        <span style={{ color: "red" }}>
-                      <ErrorMessage name="category" component="div" />
-                    </span>
-                                    </Box>
-
-                                    <Field
-                                        as={TextField}
-                                        type="text"
-                                        variant="outlined"
-                                        color="primary"
-                                        label={queryId ? "" : "Title"}
-                                        fullWidth
-                                        name="name"
-                                        placeholder={queryId ? "Title" : ""}
-                                        helperText={
-                                            <span style={{ color: "red" }}>
-                        <ErrorMessage name="name" />
-                      </span>
-                                        }
-                                        sx={{
-                                            "& .MuiInputBase-root": {
-                                                height: "40px"
-                                            },
-                                            "& .MuiFormLabel-root": {
-                                                top: "-7px"
-                                            }
-                                        }}
-                                    />
-                                </Stack>
-
-                                <Box
-                                    sx={{
-                                        display: "flex",
-                                        gap: "20px"
-                                    }}
-                                >
-                                    <Box
-                                        sx={
-                                            {
-                                                // width: "100%"
-                                            }
-                                        }
-                                    >
+                                {/* Best Selling Radio Group */}
+                                <Box sx={{mb: 3}}>
+                                    <Box sx={{display: 'flex', alignItems: 'center', gap: 2, mb: 2}}>
+                                        <Typography sx={{minWidth: '120px', fontWeight: 'bold'}}>
+                                            Best Selling:
+                                        </Typography>
                                         <FormControl>
-                                            <FormLabel
-                                                id="demo-radio-buttons-group-label"
-                                                sx={{
-                                                    fontWeight: "700",
-                                                    color: "darkblue"
-                                                }}
-                                            >
-                                                Is the best selling category?
-                                            </FormLabel>
                                             <RadioGroup
+                                                row
                                                 aria-labelledby="demo-radio-buttons-group-label"
                                                 defaultValue={queryId ? getCatData?.bestseller : "No"}
                                                 name="bestSelling"
@@ -1139,12 +1448,12 @@ const Add = () => {
                                             >
                                                 <FormControlLabel
                                                     value="Yes"
-                                                    control={<Radio checked={values.bestSelling === "Yes"} />}
+                                                    control={<Radio checked={values.bestSelling === "Yes"}/>}
                                                     label="Yes"
                                                 />
                                                 <FormControlLabel
                                                     value="No"
-                                                    control={<Radio checked={values.bestSelling === "No"} />}
+                                                    control={<Radio checked={values.bestSelling === "No"}/>}
                                                     label="No"
                                                 />
                                             </RadioGroup>
@@ -1152,260 +1461,315 @@ const Add = () => {
                                     </Box>
                                 </Box>
 
-                                <TextField
-                                    fullWidth
-                                    value={fileName}
-                                    sx={{
-                                        "& .MuiInputBase-root": {
-                                            height: "40px"
-                                        }
-                                    }}
-                                    InputProps={{
-                                        startAdornment: (
-                                            <InputAdornment position="start">
-                                                <AttachFileIcon />
-                                            </InputAdornment>
-                                        ),
-                                        endAdornment: (
-                                            <input
-                                                type="file"
-                                                accept="image/*"
-                                                style={{ display: "none" }}
-                                                id="file-input"
-                                                onChange={(event) => {
-                                                    handleImageSelect(event);
-                                                    handleImageChange(event);
-                                                    setFieldValue("file", event.currentTarget.files[0]);
-                                                }}
-                                            />
-                                        ),
-                                        readOnly: true
-                                    }}
-                                    placeholder="Select file"
-                                    onClick={() => document.getElementById("file-input").click()}
-                                />
+                                {/* File Uploads */}
+                                <Grid container spacing={2} sx={{mb: 3}}>
+                                    <Grid item xs={12} sm={6}>
+                                        <Box sx={{display: 'flex', alignItems: 'start', gap: 2}}>
+                                            <Typography sx={{minWidth: '120px', fontWeight: 'bold'}}>
+                                                Category Image:
+                                            </Typography>
+                                            <Box sx={{flex: 1}}>
+                                                <TextField
+                                                    fullWidth
+                                                    value={fileName}
+                                                    sx={{
+                                                        "& .MuiInputBase-root": {
+                                                            height: "40px"
+                                                        }
+                                                    }}
+                                                    InputProps={{
+                                                        startAdornment: (
+                                                            <InputAdornment position="start">
+                                                                <AttachFileIcon/>
+                                                            </InputAdornment>
+                                                        ),
+                                                        endAdornment: (
+                                                            <input
+                                                                type="file"
+                                                                accept="image/*"
+                                                                style={{display: "none"}}
+                                                                id="file-input"
+                                                                onChange={(event) => {
+                                                                    handleImageSelect(event);
+                                                                    handleImageChange(event);
+                                                                    setFieldValue("file", event.currentTarget.files[0]);
+                                                                }}
+                                                            />
+                                                        ),
+                                                        readOnly: true
+                                                    }}
+                                                    placeholder="Select file"
+                                                    onClick={() => document.getElementById("file-input").click()}
+                                                />
+                                                {(imagePreview || getCatData.image) && (
+                                                    <img
+                                                        style={{margin: "16px 0"}}
+                                                        src={imagePreview ? imagePreview : getCatData.image}
+                                                        width={200}
+                                                        alt="Category"
+                                                    />
+                                                )}
+                                            </Box>
+                                        </Box>
+                                    </Grid>
+                                    <Grid item xs={12} sm={6}>
+                                        <Box sx={{display: 'flex', alignItems: 'start', gap: 2}}>
+                                            <Typography sx={{minWidth: '120px', fontWeight: 'bold'}}>
+                                                Top Rated Image:
+                                            </Typography>
+                                            <Box sx={{flex: 1}}>
+                                                <TextField
+                                                    fullWidth
+                                                    value={topRatedImg?.name}
+                                                    sx={{
+                                                        "& .MuiInputBase-root": {
+                                                            height: "40px"
+                                                        }
+                                                    }}
+                                                    InputProps={{
+                                                        startAdornment: (
+                                                            <InputAdornment position="start">
+                                                                <AttachFileIcon/>
+                                                            </InputAdornment>
+                                                        ),
+                                                        endAdornment: (
+                                                            <input
+                                                                type="file"
+                                                                accept="image/*"
+                                                                style={{display: "none"}}
+                                                                id="file-input1"
+                                                                onChange={(event) => {
+                                                                    handleImageChange(event, "topRated");
+                                                                }}
+                                                            />
+                                                        ),
+                                                        readOnly: true
+                                                    }}
+                                                    placeholder="Select top rated file"
+                                                    onClick={() => document.getElementById("file-input1").click()}
+                                                />
+                                                {topRatedUrl && (
+                                                    <img style={{margin: "16px 0"}} src={topRatedUrl} width={200} alt=""/>
+                                                )}
+                                            </Box>
+                                        </Box>
+                                    </Grid>
+                                </Grid>
 
-                                {(imagePreview || getCatData.image) && (
-                                    <img
-                                        style={{ margin: "16px 0" }}
-                                        src={imagePreview ? imagePreview : getCatData.image}
-                                        width={200}
-                                        alt="Category"
-                                    />
-                                )}
-
-                                <TextField
-                                    fullWidth
-                                    value={topRatedImg?.name}
-                                    sx={{
-                                        "& .MuiInputBase-root": {
-                                            height: "40px",
-                                            mb: 2,
-                                            mt: 2
-                                        }
-                                    }}
-                                    InputProps={{
-                                        startAdornment: (
-                                            <InputAdornment position="start">
-                                                <AttachFileIcon />
-                                            </InputAdornment>
-                                        ),
-                                        endAdornment: (
-                                            <input
-                                                type="file"
-                                                accept="image/*"
-                                                style={{ display: "none" }}
-                                                id="file-input1"
-                                                onChange={(event) => {
-                                                    handleImageChange(event, "topRated");
-                                                }}
-                                            />
-                                        ),
-                                        readOnly: true
-                                    }}
-                                    placeholder="Select top rated file"
-                                    onClick={() => document.getElementById("file-input1").click()}
-                                />
-
-                                {topRatedUrl && (
-                                    <img style={{ marginBottom: "16px" }} src={topRatedUrl} width={200} alt="" />
-                                )}
-
-                                {/* Variants Autocomplete */}
-                                <Autocomplete
-                                    multiple
-                                    limitTags={4}
-                                    id="multiple-limit-tags-variants"
-                                    options={varintList || []}
-                                    getOptionLabel={(option) => option?.variant_name || ""}
-                                    renderInput={(params) => {
-                                        return (
-                                            <TextField
-                                                {...params}
-                                                label="Variant"
-                                                placeholder="Select Variant"
-                                                sx={{
-                                                    "& .MuiInputBase-root": {
-                                                        height: "auto"
-                                                    },
-                                                    "& .MuiFormLabel-root": {
-                                                        top: "-7px"
-                                                    }
-                                                }}
-                                            />
-                                        );
-                                    }}
-                                    sx={{ width: "100%", mb: 2 }}
-                                    onChange={(event, value) => setSelectedEditVariant(value || [])}
-                                    value={SelectedEditVariant || []}
-                                    isOptionEqualToValue={(option, value) => option?._id === value?._id}
-                                />
-
-                                {/* Attributes Autocomplete */}
-                                <Autocomplete
-                                    multiple
-                                    limitTags={4}
-                                    id="multiple-limit-tags-attributes"
-                                    options={attributeList || []}
-                                    getOptionLabel={(option) => option?.name || ""}
-                                    renderInput={(params) => {
-                                        return (
-                                            <TextField
-                                                {...params}
-                                                label="Attributes"
-                                                placeholder="Select Attributes"
-                                                sx={{
-                                                    "& .MuiInputBase-root": {
-                                                        height: "auto"
-                                                    },
-                                                    "& .MuiFormLabel-root": {
-                                                        top: "-7px"
-                                                    }
-                                                }}
-                                            />
-                                        );
-                                    }}
-                                    sx={{ width: "100%", mb: 2 }}
-                                    onChange={(event, value) => setSelectedEditAttribute(value || [])}
-                                    value={SelectedEditAttribute || []}
-                                    isOptionEqualToValue={(option, value) => option?._id === value?._id}
-                                />
-
-                                <Box
-                                    sx={{
-                                        display: "flex",
-                                        flexDirection: "row",
-                                        marginBottom: "20px",
-                                        gap: "20px",
-                                    }}
-                                >
-                                    <Autocomplete
-                                        multiple
-                                        freeSolo
-                                        limitTags={4}
-                                        id="multiple-limit-tags"
-                                        options={[]}
-                                        getOptionLabel={(option) => option || ""}
-                                        renderInput={(params) => (
-                                            <TextField
-                                                {...params}
-                                                label="Enter Restricted Keywords ..."
-                                                placeholder="Enter Restricted Keywords ..."
-                                                sx={{
-                                                    "& .MuiInputBase-root": {
-                                                        padding: "0 11px",
-                                                    },
-                                                    "& .MuiFormLabel-root": {
-                                                        top: "-7px",
-                                                    },
-                                                }}
-                                            />
-                                        )}
-                                        sx={{ width: "100%" }}
-                                        onChange={handleTagHandler}
-                                        value={values.tags || []}
-                                        isOptionEqualToValue={(option, value) => option === value}
-                                    />
+                                {/* Variants and Attributes */}
+                                <Box spacing={2} sx={{mb: 3}}>
+                                    <Box sx={{mb: 3}}>
+                                        <Box sx={{display: 'flex', alignItems: 'center', gap: 2}}>
+                                            <Typography sx={{minWidth: '120px', fontWeight: 'bold'}}>
+                                                Variants:
+                                            </Typography>
+                                            <Box sx={{flex: 1}}>
+                                                <Autocomplete
+                                                    multiple
+                                                    limitTags={4}
+                                                    id="multiple-limit-tags-variants"
+                                                    options={varintList || []}
+                                                    getOptionLabel={(option) => option?.variant_name || ""}
+                                                    renderInput={(params) => {
+                                                        return (
+                                                            <TextField
+                                                                {...params}
+                                                                placeholder="Select Variant"
+                                                                sx={{
+                                                                    "& .MuiInputBase-root": {
+                                                                        height: "auto"
+                                                                    }
+                                                                }}
+                                                            />
+                                                        );
+                                                    }}
+                                                    onChange={(event, value) => setSelectedEditVariant(value || [])}
+                                                    value={SelectedEditVariant || []}
+                                                    isOptionEqualToValue={(option, value) => option?._id === value?._id}
+                                                />
+                                            </Box>
+                                        </Box>
+                                    </Box>
+                                    <Box sx={{mb: 3}}>
+                                        <Box sx={{display: 'flex', alignItems: 'center', gap: 2}}>
+                                            <Typography sx={{minWidth: '120px', fontWeight: 'bold'}}>
+                                                Attributes:
+                                            </Typography>
+                                            <Box sx={{flex: 1}}>
+                                                <Autocomplete
+                                                    multiple
+                                                    limitTags={4}
+                                                    id="multiple-limit-tags-attributes"
+                                                    options={attributeList || []}
+                                                    getOptionLabel={(option) => option?.name || ""}
+                                                    renderInput={(params) => {
+                                                        return (
+                                                            <TextField
+                                                                {...params}
+                                                                placeholder="Select Attributes"
+                                                                sx={{
+                                                                    "& .MuiInputBase-root": {
+                                                                        height: "auto"
+                                                                    }
+                                                                }}
+                                                            />
+                                                        );
+                                                    }}
+                                                    onChange={(event, value) => setSelectedEditAttribute(value || [])}
+                                                    value={SelectedEditAttribute || []}
+                                                    isOptionEqualToValue={(option, value) => option?._id === value?._id}
+                                                />
+                                            </Box>
+                                        </Box>
+                                    </Box>
                                 </Box>
-                                <Field
-                                    as={TextField}
-                                    label={queryId ? "" : "Description"}
-                                    multiline
-                                    rows={2}
-                                    variant="outlined"
-                                    fullWidth
-                                    sx={{ mb: 2 }}
-                                    placeholder={queryId ? "Description" : ""}
-                                    name="description"
-                                    helperText={
-                                        <span style={{ color: "red" }}>
-                      <ErrorMessage name="description" />
-                    </span>
-                                    }
-                                />
 
-                                <Field
-                                    as={TextField}
-                                    type="text"
-                                    variant="outlined"
-                                    color="primary"
-                                    label={queryId ? "" : "Meta title"}
-                                    fullWidth
-                                    sx={{
-                                        mb: 2,
-                                        "& .MuiInputBase-root": {
-                                            height: "40px"
-                                        },
-                                        "& .MuiFormLabel-root": {
-                                            top: "-7px"
-                                        }
-                                    }}
-                                    placeholder={queryId ? "Meta Title" : ""}
-                                    name="metaTitle"
-                                    helperText={
-                                        <span style={{ color: "red" }}>
-                      <ErrorMessage name="metaTitle" />
-                    </span>
-                                    }
-                                />
+                                {/* Restricted Keywords */}
+                                <Box sx={{mb: 3}}>
+                                    <Box sx={{display: 'flex', alignItems: 'center', gap: 2}}>
+                                        <Typography sx={{minWidth: '120px', fontWeight: 'bold'}}>
+                                            Restricted Keywords:
+                                        </Typography>
+                                        <Box sx={{flex: 1}}>
+                                            <Autocomplete
+                                                multiple
+                                                freeSolo
+                                                limitTags={4}
+                                                id="multiple-limit-tags"
+                                                options={[]}
+                                                getOptionLabel={(option) => option || ""}
+                                                renderInput={(params) => (
+                                                    <TextField
+                                                        {...params}
+                                                        placeholder="Enter Restricted Keywords ..."
+                                                        sx={{
+                                                            "& .MuiInputBase-root": {
+                                                                padding: "0 11px",
+                                                            }
+                                                        }}
+                                                    />
+                                                )}
+                                                onChange={handleTagHandler}
+                                                value={values.tags || []}
+                                                isOptionEqualToValue={(option, value) => option === value}
+                                            />
+                                        </Box>
+                                    </Box>
+                                </Box>
 
-                                <Field
-                                    as={TextField}
-                                    label={queryId ? "" : "Meta KeyWords"}
-                                    multiline
-                                    rows={2}
-                                    sx={{ mb: 2 }}
-                                    variant="outlined"
-                                    fullWidth
-                                    placeholder={queryId ? "Meta KeyWords" : ""}
-                                    name="metaKeywords"
-                                    helperText={
-                                        <span style={{ color: "red" }}>
-                      <ErrorMessage name="metaKeywords" />{" "}
-                    </span>
-                                    }
-                                />
+                                {/* Description and Meta Fields */}
+                                <Grid container spacing={2} sx={{mb: 3}}>
+                                    <Grid item xs={12}>
+                                        <Box sx={{display: 'flex', alignItems: 'flex-start', gap: 2}}>
+                                            <Typography sx={{minWidth: '120px', fontWeight: 'bold', pt: 1}}>
+                                                Description:
+                                            </Typography>
+                                            <Box sx={{flex: 1}}>
+                                                <Field
+                                                    as={TextField}
+                                                    multiline
+                                                    rows={2}
+                                                    variant="outlined"
+                                                    fullWidth
+                                                    placeholder={queryId ? "Description" : ""}
+                                                    name="description"
+                                                    helperText={
+                                                        <span style={{color: "red"}}>
+                                                            <ErrorMessage name="description"/>
+                                                        </span>
+                                                    }
+                                                />
+                                            </Box>
+                                        </Box>
+                                    </Grid>
+                                    <Grid item xs={12} sm={6}>
+                                        <Box sx={{display: 'flex', alignItems: 'center', gap: 2}}>
+                                            <Typography sx={{minWidth: '120px', fontWeight: 'bold'}}>
+                                                Meta Title:
+                                            </Typography>
+                                            <Box sx={{flex: 1}}>
+                                                <Field
+                                                    as={TextField}
+                                                    type="text"
+                                                    variant="outlined"
+                                                    color="primary"
+                                                    fullWidth
+                                                    placeholder={queryId ? "Meta Title" : ""}
+                                                    name="metaTitle"
+                                                    helperText={
+                                                        <span style={{color: "red"}}>
+                                                            <ErrorMessage name="metaTitle"/>
+                                                        </span>
+                                                    }
+                                                    sx={{
+                                                        "& .MuiInputBase-root": {
+                                                            height: "40px"
+                                                        }
+                                                    }}
+                                                />
+                                            </Box>
+                                        </Box>
+                                    </Grid>
+                                    <Grid item xs={12} sm={6}>
+                                        <Box sx={{display: 'flex', alignItems: 'flex-start', gap: 2}}>
+                                            <Typography sx={{minWidth: '120px', fontWeight: 'bold', pt: 1}}>
+                                                Meta Keywords:
+                                            </Typography>
+                                            <Box sx={{flex: 1}}>
+                                                <Field
+                                                    as={TextField}
+                                                    multiline
+                                                    rows={2}
+                                                    variant="outlined"
+                                                    fullWidth
+                                                    placeholder={queryId ? "Meta KeyWords" : ""}
+                                                    name="metaKeywords"
+                                                    helperText={
+                                                        <span style={{color: "red"}}>
+                                                            <ErrorMessage name="metaKeywords"/>
+                                                        </span>
+                                                    }
+                                                />
+                                            </Box>
+                                        </Box>
+                                    </Grid>
+                                    <Grid item xs={12}>
+                                        <Box sx={{display: 'flex', alignItems: 'flex-start', gap: 2}}>
+                                            <Typography sx={{minWidth: '120px', fontWeight: 'bold', pt: 1}}>
+                                                Meta Description:
+                                            </Typography>
+                                            <Box sx={{flex: 1}}>
+                                                <Field
+                                                    as={TextField}
+                                                    multiline
+                                                    placeholder={queryId ? "Meta Description" : ""}
+                                                    rows={2}
+                                                    variant="outlined"
+                                                    fullWidth
+                                                    name="metaDescription"
+                                                    helperText={
+                                                        <span style={{color: "red"}}>
+                                                            <ErrorMessage name="metaDescription"/>
+                                                        </span>
+                                                    }
+                                                />
+                                            </Box>
+                                        </Box>
+                                    </Grid>
+                                </Grid>
 
-                                <Field
-                                    as={TextField}
-                                    label={queryId ? "" : "Meta Description"}
-                                    multiline
-                                    placeholder={queryId ? "Meta Description" : ""}
-                                    rows={2}
-                                    variant="outlined"
-                                    fullWidth
-                                    sx={{ mb: 2 }}
-                                    name="metaDescription"
-                                    helperText={
-                                        <span style={{ color: "red" }}>
-                      <ErrorMessage name="metaDescription" />
-                    </span>
-                                    }
-                                />
-
-                                {/* NEW AUTOMATIC CONDITIONS SECTION */}
-                                <Box sx={{ mb: 3, mt: 3, p: 2, border: '1px solid #e0e0e0', borderRadius: 2 }}>
-                                    <FormControl component="fieldset" sx={{ mb: 2 }}>
+                                {/* AUTOMATION SECTION - Keep original layout */}
+                                <Box sx={{
+                                    mb: 3,
+                                    mt: 3,
+                                    p: 3,
+                                    border: '1px solid #e0e0e0',
+                                    borderRadius: 2,
+                                    width: '100%',
+                                    maxWidth: '100%',
+                                    boxSizing: 'border-box'
+                                }}>
+                                    <FormControl component="fieldset" sx={{mb: 2, width: '100%'}}>
                                         <FormControlLabel
                                             control={
                                                 <Checkbox
@@ -1415,12 +1779,13 @@ const Add = () => {
                                                 />
                                             }
                                             label={
-                                                <Box>
-                                                    <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+                                                <Box sx={{width: '100%'}}>
+                                                    <Typography variant="h6" sx={{fontWeight: "bold"}}>
                                                         Automatic
                                                     </Typography>
-                                                    <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
-                                                        Products matched with the following conditions will be automatically assigned to this category
+                                                    <Typography variant="body2" sx={{color: 'text.secondary', mt: 0.5}}>
+                                                        Products matched with the following conditions will be
+                                                        automatically assigned to this category
                                                     </Typography>
                                                 </Box>
                                             }
@@ -1428,57 +1793,70 @@ const Add = () => {
                                     </FormControl>
 
                                     {isAutomatic && (
-                                        <Box sx={{ mt: 2 }}>
-                                            <Typography variant="h6" sx={{ mb: 2, fontWeight: "bold" }}>
+                                        <Box sx={{mt: 2, width: '100%'}}>
+                                            <Typography variant="h6" sx={{mb: 2, fontWeight: "bold"}}>
                                                 Conditions
                                             </Typography>
 
                                             {/* Category Scope */}
-                                            <Box sx={{ mb: 3 }}>
-                                                <FormLabel component="legend" sx={{ fontWeight: "bold", mb: 1 }}>
+                                            <Box sx={{mb: 3, width: '100%'}}>
+                                                <FormLabel component="legend" sx={{fontWeight: "bold", mb: 1}}>
                                                     Category
                                                 </FormLabel>
                                                 <RadioGroup
                                                     row
                                                     value={categoryScope}
                                                     onChange={(e) => setCategoryScope(e.target.value)}
+                                                    sx={{width: '100%'}}
                                                 >
                                                     <FormControlLabel
                                                         value="all"
-                                                        control={<Radio />}
+                                                        control={<Radio/>}
                                                         label="All Categories"
                                                     />
                                                     <FormControlLabel
                                                         value="specific"
-                                                        control={<Radio />}
+                                                        control={<Radio/>}
                                                         label="Specific Categories"
                                                     />
                                                 </RadioGroup>
 
                                                 {categoryScope === "specific" && (
-                                                    <Autocomplete
-                                                        multiple
-                                                        options={parentCategories}
-                                                        getOptionLabel={(option) => option.title || ''}
-                                                        value={selectedCategories}
-                                                        onChange={(event, newValue) => setSelectedCategories(newValue)}
-                                                        renderInput={(params) => (
-                                                            <TextField
-                                                                {...params}
-                                                                label="Select Categories"
-                                                                placeholder="Choose categories"
-                                                                sx={{ mt: 1 }}
-                                                            />
-                                                        )}
-                                                        sx={{ mt: 1 }}
-                                                        isOptionEqualToValue={(option, value) => option._id === value._id}
-                                                    />
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 1 }}>
+                                                        <Typography sx={{ minWidth: '120px', fontWeight: 'bold' }}>
+                                                            Select Categories:
+                                                        </Typography>
+                                                        <Box sx={{ flex: 1 }}>
+                                                            {!isParentCategoriesLoaded ? (
+                                                                <TextField
+                                                                    value="Loading categories..."
+                                                                    disabled
+                                                                    sx={{ width: '100%' }}
+                                                                />
+                                                            ) : (
+                                                                <Autocomplete
+                                                                    multiple
+                                                                    options={parentCategories}
+                                                                    getOptionLabel={(option) => option.title || ''}
+                                                                    value={selectedCategories}
+                                                                    onChange={(event, newValue) => setSelectedCategories(newValue)}
+                                                                    renderInput={(params) => (
+                                                                        <TextField
+                                                                            {...params}
+                                                                            placeholder="Choose categories"
+                                                                        />
+                                                                    )}
+                                                                    isOptionEqualToValue={(option, value) => option._id === value._id}
+                                                                />
+                                                            )}
+                                                        </Box>
+                                                    </Box>
                                                 )}
                                             </Box>
 
                                             {/* Product Match Logic */}
-                                            <Box sx={{ mb: 3 }}>
-                                                <FormLabel component="legend" sx={{ fontWeight: "bold", mb: 1 }}>
+                                            <Box sx={{mb: 3, width: '100%'}}>
+                                                <FormLabel component="legend" sx={{fontWeight: "bold", mb: 1}}>
                                                     Product must match
                                                 </FormLabel>
                                                 <RadioGroup
@@ -1486,20 +1864,21 @@ const Add = () => {
                                                     name="conditionType"
                                                     value={values.conditionType}
                                                     onChange={handleChange}
+                                                    sx={{width: '100%'}}
                                                 >
                                                     <FormControlLabel
                                                         value="all"
-                                                        control={<Radio />}
+                                                        control={<Radio/>}
                                                         label="All conditions (AND)"
                                                     />
                                                     <FormControlLabel
                                                         value="any"
-                                                        control={<Radio />}
+                                                        control={<Radio/>}
                                                         label="Any conditions (OR)"
                                                     />
                                                 </RadioGroup>
                                                 {errors.conditionType && touched.conditionType && (
-                                                    <span style={{ color: "red", fontSize: "12px" }}>
+                                                    <span style={{color: "red", fontSize: "12px"}}>
                                                         {errors.conditionType}
                                                     </span>
                                                 )}
@@ -1507,8 +1886,8 @@ const Add = () => {
 
                                             {/* Dynamic Conditions */}
                                             <FieldArray name="conditions">
-                                                {({ push, remove }) => (
-                                                    <Box>
+                                                {({push, remove}) => (
+                                                    <Box sx={{width: '100%'}}>
                                                         {values.conditions.map((condition, index) => {
                                                             const fieldOptions = [
                                                                 "Product Title",
@@ -1520,13 +1899,14 @@ const Add = () => {
                                                             const operatorOptions = getOperatorsForField(condition.field);
 
                                                             return (
-                                                                <Grid container spacing={2} alignItems="center" sx={{ mb: 2 }} key={index}>
+                                                                <Grid container spacing={2} alignItems="center"
+                                                                      sx={{mb: 2}} key={index}>
                                                                     <Grid item xs={12} sm={3}>
                                                                         <FormControl fullWidth>
                                                                             <TextField
                                                                                 select
                                                                                 sx={{
-                                                                                    "& .MuiInputBase-root": { height: "40px" },
+                                                                                    "& .MuiInputBase-root": {height: "40px"},
                                                                                 }}
                                                                                 label="Field"
                                                                                 value={condition.field}
@@ -1535,14 +1915,15 @@ const Add = () => {
                                                                                 error={errors.conditions?.[index]?.field && touched.conditions?.[index]?.field}
                                                                                 helperText={
                                                                                     errors.conditions?.[index]?.field && touched.conditions?.[index]?.field ? (
-                                                                                        <span style={{ color: "red" }}>
+                                                                                        <span style={{color: "red"}}>
                                                                                             {errors.conditions[index].field}
                                                                                         </span>
                                                                                     ) : null
                                                                                 }
                                                                             >
                                                                                 {fieldOptions.map((option) => (
-                                                                                    <MenuItem key={option} value={option}>
+                                                                                    <MenuItem key={option}
+                                                                                              value={option}>
                                                                                         {option}
                                                                                     </MenuItem>
                                                                                 ))}
@@ -1555,7 +1936,7 @@ const Add = () => {
                                                                             <TextField
                                                                                 select
                                                                                 sx={{
-                                                                                    "& .MuiInputBase-root": { height: "40px" },
+                                                                                    "& .MuiInputBase-root": {height: "40px"},
                                                                                 }}
                                                                                 label="Operator"
                                                                                 value={condition.operator}
@@ -1564,14 +1945,15 @@ const Add = () => {
                                                                                 error={errors.conditions?.[index]?.operator && touched.conditions?.[index]?.operator}
                                                                                 helperText={
                                                                                     errors.conditions?.[index]?.operator && touched.conditions?.[index]?.operator ? (
-                                                                                        <span style={{ color: "red" }}>
+                                                                                        <span style={{color: "red"}}>
                                                                                             {errors.conditions[index].operator}
                                                                                         </span>
                                                                                     ) : null
                                                                                 }
                                                                             >
                                                                                 {operatorOptions.map((option) => (
-                                                                                    <MenuItem key={option} value={option}>
+                                                                                    <MenuItem key={option}
+                                                                                              value={option}>
                                                                                         {option}
                                                                                     </MenuItem>
                                                                                 ))}
@@ -1583,7 +1965,10 @@ const Add = () => {
                                                                         <FormControl fullWidth>
                                                                             {renderValueInput(condition, index, setFieldValue)}
                                                                             {errors.conditions?.[index]?.value && touched.conditions?.[index]?.value && (
-                                                                                <span style={{ color: "red", fontSize: "12px" }}>
+                                                                                <span style={{
+                                                                                    color: "red",
+                                                                                    fontSize: "12px"
+                                                                                }}>
                                                                                     {errors.conditions[index].value}
                                                                                 </span>
                                                                             )}
@@ -1593,10 +1978,9 @@ const Add = () => {
                                                                     <Grid item xs={12} sm={1}>
                                                                         <IconButton
                                                                             onClick={() => remove(index)}
-                                                                            disabled={values.conditions.length === 1}
                                                                             color="error"
                                                                         >
-                                                                            <DeleteIcon />
+                                                                            <DeleteIcon/>
                                                                         </IconButton>
                                                                     </Grid>
                                                                 </Grid>
@@ -1604,10 +1988,10 @@ const Add = () => {
                                                         })}
 
                                                         <Button
-                                                            startIcon={<AddIcon />}
+                                                            startIcon={<AddIcon/>}
                                                             variant="outlined"
-                                                            onClick={() => push({ field: "", operator: "", value: "" })}
-                                                            sx={{ mt: 1 }}
+                                                            onClick={() => push({field: "", operator: "", value: ""})}
+                                                            sx={{mt: 1}}
                                                         >
                                                             Add another condition
                                                         </Button>
@@ -1615,7 +1999,7 @@ const Add = () => {
                                                 )}
                                             </FieldArray>
                                             {errors.conditions && typeof errors.conditions === 'string' && (
-                                                <span style={{ color: "red", fontSize: "12px", display: "block", mt: 1 }}>
+                                                <span style={{color: "red", fontSize: "12px", display: "block", mt: 1}}>
                                                     {errors.conditions}
                                                 </span>
                                             )}
@@ -1624,9 +2008,9 @@ const Add = () => {
                                 </Box>
 
                                 <Button
-                                    endIcon={loading ? <CircularProgress size={15} /> : ""}
+                                    endIcon={loading ? <CircularProgress size={15}/> : ""}
                                     disabled={loading ? true : false}
-                                    sx={{ mr: "16px" }}
+                                    sx={{mr: "16px"}}
                                     variant="contained"
                                     color="primary"
                                     type="submit"
@@ -1651,7 +2035,7 @@ const Add = () => {
                     </Formik>
                 </StyledContainer>
             </MuiContainer>
-            <ConfirmModal open={open} handleClose={handleClose} type={type} msg={msg} />
+            <ConfirmModal open={open} handleClose={handleClose} type={type} msg={msg}/>
         </ThemeProvider>
     );
 };

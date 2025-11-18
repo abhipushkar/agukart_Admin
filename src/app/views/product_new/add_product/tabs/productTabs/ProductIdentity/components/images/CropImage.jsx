@@ -376,7 +376,7 @@ const CropImage = ({
                         {/* Thumbnail Sidebar */}
                         <Grid item xs={12} md={4}>
                             <Box sx={{
-                                maxHeight: '300px',
+                                maxHeight: '600px',
                                 overflow: 'auto',
                                 border: '1px solid #e0e0e0',
                                 borderRadius: '8px',
@@ -444,25 +444,6 @@ const CropImage = ({
                                                     <Close sx={{ fontSize: 14 }} />
                                                 </IconButton>
 
-                                                {/* Drag Handle */}
-                                                <Box
-                                                    sx={{
-                                                        position: 'absolute',
-                                                        top: 2,
-                                                        left: 2,
-                                                        background: 'rgba(0,0,0,0.6)',
-                                                        color: 'white',
-                                                        borderRadius: '4px',
-                                                        padding: '2px',
-                                                        cursor: 'grab',
-                                                        '&:active': {
-                                                            cursor: 'grabbing'
-                                                        }
-                                                    }}
-                                                >
-                                                    <DragIndicator sx={{ fontSize: 16 }} />
-                                                </Box>
-
                                                 {/* Primary Badge */}
                                                 {index === 0 && (
                                                     <Box
@@ -529,7 +510,7 @@ const CropImage = ({
                             <Box
                                 ref={imageContainerRef}
                                 sx={{
-                                    height: '300px',
+                                    width: '350px',
                                     position: 'relative',
                                     border: '2px solid gray',
                                     borderRadius: '8px',
@@ -573,6 +554,7 @@ const CropImage = ({
                                                     transition: isDragging ? 'none' : 'transform 0.1s ease',
                                                     maxWidth: '100%',
                                                     maxHeight: '100%',
+                                                    aspectRatio: "1/1",
                                                     objectFit: isPrimaryImage ? 'contain' : 'cover',
                                                     cursor: isPrimaryImage ? (isDragging ? 'grabbing' : 'grab') : 'default',
                                                 }}
@@ -760,7 +742,7 @@ const CropImage = ({
                         gap: 1,
                         mt: 2,
                         pt: 2,
-                        borderTop: '1px solid #e0e0e0'
+                        // borderTop: '1px solid #e0e0e0'
                     }}>
                         <Button
                             variant="outlined"
