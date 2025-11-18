@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import {Breadcrumb} from "app/components";
-import {Icon, TablePagination, TextField, CircularProgress, TableContainer} from "@mui/material";
+import {Icon, TablePagination, TextField, CircularProgress, TableContainer, Link} from "@mui/material";
 import {useState, useEffect, useCallback, useRef} from "react";
 import {
     Box,
@@ -350,13 +350,15 @@ const VariantList = () => {
                     />
 
                     {/* Action Buttons */}
-                    <Button
-                        onClick={() => navigate(ROUTE_CONSTANT.catalog.variant.add)}
-                        variant="contained"
-                        sx={{whiteSpace: "nowrap", width: "180px", minWidth: "120px"}}
-                    >
-                        Add Variant
-                    </Button>
+                    <Link href={`${ROUTE_CONSTANT.catalog.variant.add}`}>
+                        <Button
+                            variant="contained"
+                            sx={{whiteSpace: "nowrap", width: "180px", minWidth: "120px"}}
+                        >
+                            Add Variant
+                        </Button>
+                    </Link>
+
                     <Button
                         onClick={handleExport}
                         variant="contained"
@@ -504,12 +506,14 @@ const VariantList = () => {
                                                 >
                                                     <Icon sx={{color: "#DC3545"}}>delete</Icon>
                                                 </IconButton>
-                                                <IconButton
-                                                    onClick={() => navigate(`${ROUTE_CONSTANT.catalog.variant.add}?id=${row._id}`)}
-                                                    disabled={isUpdating(row._id)}
-                                                >
-                                                    <Icon color="primary">edit</Icon>
-                                                </IconButton>
+                                                <Link href={`${ROUTE_CONSTANT.catalog.variant.add}?id=${row._id}`}>
+                                                    <IconButton
+                                                        disabled={isUpdating(row._id)}
+                                                    >
+                                                        <Icon color="primary">edit</Icon>
+                                                    </IconButton>
+                                                </Link>
+
                                             </TableCell>
                                         )}
                                     </TableRow>

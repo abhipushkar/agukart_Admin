@@ -87,7 +87,7 @@ const useStyles = makeStyles((theme) => ({
     }
 }));
 
-const MyImageGrid = ({ images, setImages, setFormData, altText, setAltText }) => {
+const MyImageGrid = ({ images, setImages, setFormData, formData, altText, setAltText }) => {
     const classes = useStyles();
     const [query] = useSearchParams();
     const copyQueryId = query.get("_id");
@@ -97,8 +97,8 @@ const MyImageGrid = ({ images, setImages, setFormData, altText, setAltText }) =>
     const [zoomState, setZoomState] = useState({
         open: false,
         currentImage: null,
-        scale: 1,
-        position: { x: 0, y: 0 },
+        scale: formData.zoom?.scale || 1,
+        position: { x: formData.zoom?.x || 0, y: formData.zoom?.y || 0 },
         isDragging: false,
         dragStart: { x: 0, y: 0 }
     });
@@ -139,7 +139,9 @@ const MyImageGrid = ({ images, setImages, setFormData, altText, setAltText }) =>
         newAltText.splice(hoverIndex, 0, draggedAltText);
 
         setImages(newImages);
-        setAltText(newAltText);
+        if(setAltText) {
+            setAltText(newAltText);
+        }
     };
 
     // Zoom functionality handlers
@@ -147,10 +149,10 @@ const MyImageGrid = ({ images, setImages, setFormData, altText, setAltText }) =>
         setZoomState({
             open: true,
             currentImage: image.src,
-            scale: image.transformData?.scale || 1,
+            scale: formData.zoom?.scale || 1,
             position: {
-                x: image.transformData?.x || 0,
-                y: image.transformData?.y || 0
+                x: formData.zoom?.x || 0,
+                y: formData.zoom?.y || 0
             },
             isDragging: false,
             dragStart: { x: 0, y: 0 }
@@ -272,21 +274,22 @@ const MyImageGrid = ({ images, setImages, setFormData, altText, setAltText }) =>
                         }
                     });
                     setImages(newImages);
-                    setAltText((prevAltText) => prevAltText.filter((_, idx) => idx !== index));
-
+                    if(setAltText) {
+                        setAltText((prevAltText) => prevAltText.filter((_, idx) => idx !== index));
+                    }
                     // Also clear zoom data when image is deleted
                     setFormData(prevFormData => ({
                         ...prevFormData,
-                        zoom: null
+                        zoom: {scale: 1, x: 0, y: 0}
                     }));
                 }
-                setFormData((prevFormData) => {
-                    const updatedDeleteIconData = [...prevFormData.deleteIconData, image.src];
-                    return {
-                        ...prevFormData,
-                        deleteIconData: updatedDeleteIconData,
-                    };
-                });
+                // setFormData((prevFormData) => {
+                //     const updatedDeleteIconData = [...?prevFormData?.deleteIconData, image.src];
+                //     return {
+                //         ...prevFormData,
+                //         deleteIconData: updatedDeleteIconData,
+                //     };
+                // });
                 setTimeout(() => {
                     const newImages = images.filter((img) => img?.src !== image?.src);
                     setImages(newImages);
@@ -298,7 +301,7 @@ const MyImageGrid = ({ images, setImages, setFormData, altText, setAltText }) =>
                 // Clear zoom data when image is deleted
                 setFormData(prevFormData => ({
                     ...prevFormData,
-                    zoom: null
+                    zoom: {}
                 }));
             }
         };
@@ -354,22 +357,40 @@ const MyImageGrid = ({ images, setImages, setFormData, altText, setAltText }) =>
             </DndProvider>
 
             {/* Zoom Modal */}
-            <Modal open={zoomState.open} onClose={handleCloseZoom}>
-                <Box className={classes.modalBox}>
+            <Modal open={zoomState.open} onClose={handleCloseZoom} sx={{
+                display: "flex",
+                alignItems: 'center',
+                justifyContent: 'center',
+            }}>
+                <Box sx={{
+                    width: "500px",
+                    maxHeight: "90vh",
+                    bgcolor: "#ffff",
+                    p: 2,
+                    m: "auto",
+                    borderRadius: "20px",
+                }}>
                     <Typography variant="h6" gutterBottom>
                         Edit Parent Product Image
                         {images[0]?.isPrimary && " (Primary)"}
                     </Typography>
 
                     <Box
-                        className={classes.zoomContainer}
                         onMouseDown={handleMouseDown}
                         onMouseMove={handleMouseMove}
                         onMouseUp={handleMouseUp}
                         onMouseLeave={handleMouseUp}
                         onWheel={handleWheel}
                         sx={{
-                            cursor: zoomState.isDragging ? 'grabbing' : 'grab'
+                            cursor: zoomState.isDragging ? 'grabbing' : 'grab',
+                            width: '400px',
+                            height: "400px",
+                            position: 'relative',
+                            border: '2px solid gray',
+                            borderRadius: '8px',
+                            overflow: 'hidden',
+                            bgcolor: '#f5f5f5',
+                            m: "auto",
                         }}
                     >
                         {zoomState.currentImage && (

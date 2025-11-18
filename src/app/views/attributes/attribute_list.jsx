@@ -408,14 +408,15 @@ const AttributesList = () => {
                         placeholder="Search by name..."
                     />
 
-                    <Button
-                        variant="contained"
-                        startIcon={<AddIcon />}
-                        onClick={() => navigate(ROUTE_CONSTANT.catalog.attribute.add)}
-                        disabled={apiLoading}
-                    >
-                        Add Attribute
-                    </Button>
+                    <Link href={ROUTE_CONSTANT.catalog.attribute.add} underline="none">
+                        <Button
+                            variant="contained"
+                            startIcon={<AddIcon />}
+                            disabled={apiLoading}
+                        >
+                            Add Attribute
+                        </Button>
+                    </Link>
                     <Button
                         variant="contained"
                         onClick={handleExport}
@@ -490,13 +491,14 @@ const AttributesList = () => {
                                             />
                                         </TableCell>
                                         <TableCell>
-                                            <IconButton
-                                                onClick={() => handleEdit(attr._id)}
-                                                color="primary"
-                                                disabled={apiLoading}
-                                            >
-                                                <EditIcon />
-                                            </IconButton>
+                                            <Link href={`${ROUTE_CONSTANT.catalog.attribute.add}?id=${attr._id}`}>
+                                                <IconButton
+                                                    color="primary"
+                                                    disabled={apiLoading}
+                                                >
+                                                    <EditIcon />
+                                                </IconButton>
+                                            </Link>
                                             <IconButton
                                                 onClick={() => handleDeleteClick(attr)}
                                                 color="error"

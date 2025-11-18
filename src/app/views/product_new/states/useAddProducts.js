@@ -35,6 +35,10 @@ export const useProductFormStore = create(
             exchangePolicy: [],
             setExchangePolicy: (exchangePolicy) => set((state) => ({exchangePolicy})),
 
+            // NEW: Parent product data
+            parentProductData: null,
+            setParentProductData: (parentProductData) => set({ parentProductData }),
+
             // Form Data (main state)
             formData: {
                 productTitle: "",
@@ -564,7 +568,8 @@ export const useProductFormStore = create(
                 combinationError: {},
                 showAll: false,
                 altText: [],
-                keys: []
+                keys: [],
+                parentProductData: null // NEW: Reset parent product data
             }),
 
             // Validation helper

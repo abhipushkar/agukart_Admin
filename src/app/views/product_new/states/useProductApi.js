@@ -2,18 +2,15 @@
 import {ApiService} from "app/services/ApiService";
 import {apiEndpoints} from "app/constant/apiEndpoints";
 import {localStorageKey} from "app/constant/localStorageKey";
-import {useState} from "react";
 import {useNavigate} from "react-router-dom";
 import {ROUTE_CONSTANT} from "app/constant/routeContanst";
 import {useProductFormStore} from "./useAddProducts";
 
 export const useProductAPI = () => {
-    const {loading, setLoading, draftLoading, setDraftLoading, loadingProductData, setLoadingProductData } = useProductFormStore();
+    const { setLoading, setDraftLoading, setLoadingProductData } = useProductFormStore();
     const navigate = useNavigate();
 
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
-    // const designation_id = localStorage.getItem(localStorageKey.designation_id);
-    // const vendorId = localStorage.getItem(localStorageKey.vendorId);
 
 // ---------------- helper to build FormData ----------------
     const buildProductFormData = (payload, combinations, customizationData) => {
@@ -444,8 +441,6 @@ export const useProductAPI = () => {
             formValues,
             variationsData,
             combinations,
-            // customizationData,
-            keys,
         } = state;
 
         const occassion = formData.productdetailsOccassion?.map((o) => o._id) || [];
@@ -558,14 +553,6 @@ export const useProductAPI = () => {
 
             console.log("In Submit Product", queryId);
 
-            // Validate combinations
-            // const combinationErrors = validateCombinations();
-            // if (Object.keys(combinationErrors).length > 0) {
-            //     useProductFormStore.getState().setCombinationError(combinationErrors);
-            //     useProductFormStore.getState().setShowAll(true);
-            //     throw new Error("Please fix combination errors");
-            // }
-
             // Build payload and form data
             const payload = buildProductPayload(isEdit, queryId);
             const state = useProductFormStore.getState();
@@ -657,18 +644,6 @@ export const useProductAPI = () => {
             name: img.src.split("product/")[1],
             sortOrder: img.sortOrder,
         }));
-
-        // const deleteArr = deleteIconData
-        //     ?.map((item) => {
-        //         if (typeof item === "string") {
-        //             const arrsplit = item.split("product/");
-        //             return arrsplit[1];
-        //         }
-        //         return null;
-        //     })
-        //     .filter(Boolean);
-
-        // const uniqueSetarr = [...new Set(deleteArr)];
 
         try {
             const fData = new FormData();
@@ -766,21 +741,55 @@ export const useProductAPI = () => {
         }
     };
 
-    // Fetch edit product data
-    const fetchEditProductData = async (productId) => {
+    // NEW: Fetch parent product data
+    const fetchParentProductData = async (parentId) => {
         try {
-            setLoadingProductData(true);
-            const editapiUrl = `${apiEndpoints.EditProduct}/${productId}`;
-            const res = await ApiService.get(editapiUrl, auth_key);
+            if (!parentId) return null;
+
+            const parentApiUrl = `${apiEndpoints.getParentProductDetail}/${parentId}`;
+            const res = await ApiService.get(parentApiUrl, auth_key);
+
             if (res?.status === 200) {
-                useProductFormStore.getState().initializeFormWithEditData(res?.data?.productData);
-                return res?.data?.productData;
+                return res.data.data;
             }
+            return null;
         } catch (error) {
-            console.error("Error fetching edit product data:", error);
-            throw error;
-        } finally {
-            setLoadingProductData(false);
+            console.warn("Error fetching parent product data:", error);
+            return null;
+        }
+    };
+
+    // UPDATED: Fetch edit product data with parent product
+    const fetchEditProductData = async (productId, copyQueryId, isCopied) => {
+        if(productId || copyQueryId) {
+            try {
+                setLoadingProductData(true);
+                const editapiUrl = `${apiEndpoints.EditProduct}/${copyQueryId || productId}`;
+                const res = await ApiService.get(editapiUrl, auth_key);
+                if (res?.status === 200) {
+                    const {productData} = res?.data;
+
+                    // Fetch parent product data if parent_id exists
+                    console.log("OUTSIDE IF Parent Id is", productData.parent_id);
+                    if (productData.parent_id) {
+                        console.log("Parent Id is", productData.parent_id);
+                        const parentData = await fetchParentProductData(productData.parent_id);
+                        console.log("OUTSIDE IF Parent Data is", parentData);
+                        if (parentData) {
+                            console.log("Parent Data is", parentData);
+                            useProductFormStore.getState().setParentProductData(parentData);
+                        }
+                    }
+
+                    useProductFormStore.getState().initializeFormWithEditData(productData, isCopied);
+                    return productData;
+                }
+            } catch (error) {
+                console.error("Error fetching edit product data:", error);
+                throw error;
+            } finally {
+                setLoadingProductData(false);
+            }
         }
     };
 

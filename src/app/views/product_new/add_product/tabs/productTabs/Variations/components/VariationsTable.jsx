@@ -70,25 +70,12 @@ const VariationsTable = ({setShowVariantModal}) => {
         setCombinations
     } = useProductFormStore();
 
-    // State for column visibility
-    const [visibleColumns, setVisibleColumns] = useState({
-        drag: true,
-        select: true,
-        attribute1: true,
-        attribute2: true,
-        multipleUpload: true,
-        mainImage1: true,
-        mainImage2: true,
-        mainImage3: true,
-        preview: true,
-        thumbnail: true,
-        price: formValues.isCheckedPrice,
-        quantity: formValues.isCheckedQuantity,
-        visible: true
-    });
+    // State for column visibility per table (using variant_name as key)
+    const [visibleColumns, setVisibleColumns] = useState({});
 
-    // State for column selection menu
+    // State for column selection menu per table
     const [anchorEl, setAnchorEl] = useState(null);
+    const [currentTableKey, setCurrentTableKey] = useState(null);
 
     // State for hovered header
     const [hoveredHeader, setHoveredHeader] = useState(null);
@@ -104,22 +91,35 @@ const VariationsTable = ({setShowVariantModal}) => {
         guide_file_url: ""
     });
 
-    // Initialize visible columns based on current data
+    // Initialize visible columns for each table based on current data
     useEffect(() => {
-        const newVisibleColumns = { ...visibleColumns };
-
-        // Hide attribute columns if they don't exist in the data
         if (combinations?.length > 0) {
-            const firstCombination = combinations[0];
-            newVisibleColumns.attribute1 = !!firstCombination?.combinations[0]?.name1;
-            newVisibleColumns.attribute2 = !!firstCombination?.combinations[0]?.name2;
+            const newVisibleColumns = { ...visibleColumns };
 
-            // Hide price/quantity columns based on form values
-            newVisibleColumns.price = (variationsData.length >= 2 ? formValues?.prices === firstCombination.variant_name : true) && formValues?.isCheckedPrice;
-            newVisibleColumns.quantity = (variationsData.length >= 2 ? formValues?.quantities === firstCombination.variant_name : true) && formValues?.isCheckedQuantity;
+            combinations.forEach((comb) => {
+                const tableKey = comb.variant_name || comb.combinations[0]?.name1;
+                if (tableKey && !newVisibleColumns[tableKey]) {
+                    // Initialize with default visibility for this table
+                    newVisibleColumns[tableKey] = {
+                        drag: true,
+                        select: true,
+                        attribute1: true,
+                        attribute2: true,
+                        multipleUpload: true,
+                        mainImage1: true,
+                        mainImage2: true,
+                        mainImage3: true,
+                        preview: true,
+                        thumbnail: true,
+                        price: (variationsData.length >= 2 ? formValues?.prices === comb.variant_name : true) && formValues?.isCheckedPrice,
+                        quantity: (variationsData.length >= 2 ? formValues?.quantities === comb.variant_name : true) && formValues?.isCheckedQuantity,
+                        visible: true
+                    };
+                }
+            });
+
+            setVisibleColumns(newVisibleColumns);
         }
-
-        setVisibleColumns(newVisibleColumns);
     }, [combinations, variationsData, formValues]);
 
     const handleEdit = (comb) => {
@@ -127,55 +127,72 @@ const VariationsTable = ({setShowVariantModal}) => {
         setShowVariantModal(true);
     };
 
-    const handleColumnMenuOpen = (event) => {
+    const handleColumnMenuOpen = (event, tableKey) => {
         setAnchorEl(event.currentTarget);
+        setCurrentTableKey(tableKey);
     };
 
     const handleColumnMenuClose = () => {
         setAnchorEl(null);
+        setCurrentTableKey(null);
     };
 
     const handleColumnToggle = (column) => {
+        if (!currentTableKey) return;
+
         setVisibleColumns(prev => ({
             ...prev,
-            [column]: !prev[column]
+            [currentTableKey]: {
+                ...prev[currentTableKey],
+                [column]: !prev[currentTableKey][column]
+            }
         }));
     };
 
     const handleSelectAllColumns = () => {
-        setVisibleColumns({
-            drag: true,
-            select: true,
-            attribute1: true,
-            attribute2: true,
-            multipleUpload: true,
-            mainImage1: true,
-            mainImage2: true,
-            mainImage3: true,
-            preview: true,
-            thumbnail: true,
-            price: true,
-            quantity: true,
-            visible: true
-        });
+        if (!currentTableKey) return;
+
+        setVisibleColumns(prev => ({
+            ...prev,
+            [currentTableKey]: {
+                drag: true,
+                select: true,
+                attribute1: true,
+                attribute2: true,
+                multipleUpload: true,
+                mainImage1: true,
+                mainImage2: true,
+                mainImage3: true,
+                preview: true,
+                thumbnail: true,
+                price: true,
+                quantity: true,
+                visible: true
+            }
+        }));
     };
 
     const handleDeselectAllColumns = () => {
-        setVisibleColumns({
-            drag: true,
-            select: false,
-            attribute1: true,
-            attribute2: true,
-            multipleUpload: false,
-            mainImage1: false,
-            mainImage2: false,
-            mainImage3: false,
-            preview: false,
-            thumbnail: false,
-            price: false,
-            quantity: false,
-            visible: true
-        });
+        if (!currentTableKey) return;
+
+        setVisibleColumns(prev => ({
+            ...prev,
+            [currentTableKey]: {
+                drag: true,
+                select: false,
+                attribute1: true,
+                attribute2: true,
+                multipleUpload: false,
+                mainImage1: false,
+                mainImage2: false,
+                mainImage3: false,
+                preview: false,
+                thumbnail: false,
+                price: false,
+                quantity: false,
+                visible: true
+            }
+        }));
     };
 
     const getAvailableColumns = (comb) => {
@@ -205,6 +222,25 @@ const VariationsTable = ({setShowVariantModal}) => {
         ];
 
         return columns.filter(col => !col.alwaysVisible && (col.visible === undefined || col.visible));
+    };
+
+    // Get visible columns for a specific table
+    const getTableVisibleColumns = (tableKey) => {
+        return visibleColumns[tableKey] || {
+            drag: true,
+            select: true,
+            attribute1: true,
+            attribute2: true,
+            multipleUpload: true,
+            mainImage1: true,
+            mainImage2: true,
+            mainImage3: true,
+            preview: true,
+            thumbnail: true,
+            price: true,
+            quantity: true,
+            visible: true
+        };
     };
 
     // Check if file is an image
@@ -600,6 +636,8 @@ const VariationsTable = ({setShowVariantModal}) => {
     return (
         <Box>
             {combinations?.map((comb, combindex) => {
+                const tableKey = comb.variant_name || comb.combinations[0]?.name1;
+                const tableVisibleColumns = getTableVisibleColumns(tableKey);
                 const availableColumns = getAvailableColumns(comb);
 
                 return (
@@ -616,7 +654,7 @@ const VariationsTable = ({setShowVariantModal}) => {
                         }}>
                             <Box>
                                 <Typography variant="h6" fontWeight={600} color="primary">
-                                    {comb.variant_name || comb.combinations[0].name1}
+                                    {tableKey}
                                 </Typography>
                                 <Typography variant="body2" color="textSecondary">
                                     {comb.combinations?.length || 0} attribute(s)
@@ -625,7 +663,7 @@ const VariationsTable = ({setShowVariantModal}) => {
                             <Box sx={{ display: 'flex', gap: 1 }}>
                                 <Button
                                     startIcon={<ViewColumnIcon />}
-                                    onClick={handleColumnMenuOpen}
+                                    onClick={(e) => handleColumnMenuOpen(e, tableKey)}
                                     variant="outlined"
                                     size="small"
                                     sx={{
@@ -642,7 +680,7 @@ const VariationsTable = ({setShowVariantModal}) => {
 
                         {/* Column Selection Menu */}
                         <Popover
-                            open={Boolean(anchorEl)}
+                            open={Boolean(anchorEl) && currentTableKey === tableKey}
                             anchorEl={anchorEl}
                             onClose={handleColumnMenuClose}
                             anchorOrigin={{
@@ -656,7 +694,7 @@ const VariationsTable = ({setShowVariantModal}) => {
                         >
                             <Box sx={{ p: 2, minWidth: 200 }}>
                                 <Typography variant="subtitle1" fontWeight={600} mb={1}>
-                                    Show Columns
+                                    Show Columns - {tableKey}
                                 </Typography>
                                 <Box sx={{ mb: 1 }}>
                                     <Button size="small" onClick={handleSelectAllColumns} sx={{ mr: 1 }}>
@@ -673,7 +711,7 @@ const VariationsTable = ({setShowVariantModal}) => {
                                         dense
                                     >
                                         <Checkbox
-                                            checked={visibleColumns[column.key]}
+                                            checked={tableVisibleColumns[column.key]}
                                         />
                                         <Typography variant="body2">
                                             {column.label}
@@ -688,12 +726,12 @@ const VariationsTable = ({setShowVariantModal}) => {
                             <Table width={"100%"}>
                                 <TableHead>
                                     <TableRow sx={{ backgroundColor: '#f5f5f5', width: "100%" }}>
-                                        {visibleColumns.drag && (
+                                        {tableVisibleColumns.drag && (
                                             <TableCell align="center" sx={{ wordBreak: "keep-all", fontWeight: 600, py: 2 }}>
                                                 Drag
                                             </TableCell>
                                         )}
-                                        {visibleColumns.attribute1 && comb.combinations[0]?.name1 && (
+                                        {tableVisibleColumns.attribute1 && comb.combinations[0]?.name1 && (
                                             <AttributeCell
                                                 comb={comb}
                                                 combindex={combindex}
@@ -701,7 +739,7 @@ const VariationsTable = ({setShowVariantModal}) => {
                                                 attributeKey="attribute1"
                                             />
                                         )}
-                                        {visibleColumns.attribute2 && comb.combinations[0]?.name2 && (
+                                        {tableVisibleColumns.attribute2 && comb.combinations[0]?.name2 && (
                                             <AttributeCell
                                                 comb={comb}
                                                 combindex={combindex}
@@ -709,57 +747,57 @@ const VariationsTable = ({setShowVariantModal}) => {
                                                 attributeKey="attribute2"
                                             />
                                         )}
-                                        {visibleColumns.multipleUpload && (
+                                        {tableVisibleColumns.multipleUpload && (
                                             <TableCell align="center" sx={{ wordBreak: "keep-all", fontWeight: 600, py: 2 }}>
                                                 Multiple Upload
                                             </TableCell>
                                         )}
-                                        {visibleColumns.mainImage1 && (
+                                        {tableVisibleColumns.mainImage1 && (
                                             <ImageHeaderCell
                                                 columnKey="mainImage1"
                                                 displayName="Main Image 1"
                                                 combindex={combindex}
                                             />
                                         )}
-                                        {visibleColumns.mainImage2 && (
+                                        {tableVisibleColumns.mainImage2 && (
                                             <ImageHeaderCell
                                                 columnKey="mainImage2"
                                                 displayName="Main Image 2"
                                                 combindex={combindex}
                                             />
                                         )}
-                                        {visibleColumns.mainImage3 && (
+                                        {tableVisibleColumns.mainImage3 && (
                                             <ImageHeaderCell
                                                 columnKey="mainImage3"
                                                 displayName="Main Image 3"
                                                 combindex={combindex}
                                             />
                                         )}
-                                        {visibleColumns.preview && (
+                                        {tableVisibleColumns.preview && (
                                             <ImageHeaderCell
                                                 columnKey="preview"
                                                 displayName="Preview"
                                                 combindex={combindex}
                                             />
                                         )}
-                                        {visibleColumns.thumbnail && (
+                                        {tableVisibleColumns.thumbnail && (
                                             <ImageHeaderCell
                                                 columnKey="thumbnail"
                                                 displayName="Thumbnail"
                                                 combindex={combindex}
                                             />
                                         )}
-                                        {(variationsData.length >= 2 ? formValues?.prices === comb.variant_name : true) && formValues?.isCheckedPrice && (
+                                        {(variationsData.length >= 2 ? formValues?.prices === comb.variant_name : true) && formValues?.isCheckedPrice && tableVisibleColumns.price && (
                                             <TableCell align="center" sx={{ wordBreak: "keep-all", fontWeight: 600, py: 2 }}>
                                                 Price
                                             </TableCell>
                                         )}
-                                        {(variationsData.length >= 2 ? formValues?.quantities === comb.variant_name : true) && formValues?.isCheckedQuantity && (
+                                        {(variationsData.length >= 2 ? formValues?.quantities === comb.variant_name : true) && formValues?.isCheckedQuantity && tableVisibleColumns.quantity && (
                                             <TableCell align="center" sx={{ wordBreak: "keep-all", fontWeight: 600, py: 2 }}>
                                                 Quantity
                                             </TableCell>
                                         )}
-                                        {visibleColumns.visible && (
+                                        {tableVisibleColumns.visible && (
                                             <TableCell align="center" sx={{ wordBreak: "keep-all", fontWeight: 600, py: 2 }}>
                                                 Visible
                                             </TableCell>
@@ -782,7 +820,7 @@ const VariationsTable = ({setShowVariantModal}) => {
                                         handleImageRemove={handleImageRemove}
                                         handleEditImage={handleEditImage}
                                         onRowReorder={handleRowReorder}
-                                        visibleColumns={visibleColumns}
+                                        visibleColumns={tableVisibleColumns}
                                     />
                                 </TableBody>
                             </Table>
