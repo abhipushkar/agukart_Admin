@@ -21,7 +21,7 @@ import {
 } from "@mui/material";
 import { Icon } from "@mui/material";
 import Switch from "@mui/material/Switch";
-import { useNavigate } from "react-router-dom";
+import {Link, useNavigate} from "react-router-dom";
 import { ROUTE_CONSTANT } from "app/constant/routeContanst";
 import { ApiService } from "app/services/ApiService";
 import { localStorageKey } from "app/constant/localStorageKey";
@@ -440,13 +440,14 @@ const List = () => {
                             placeholder="Search by title..."
                         />
                     </Box>
-                    <Button
-                        onClick={() => navigate(ROUTE_CONSTANT.catalog.adminCategory.add)}
-                        variant="contained"
-                        sx={{ whiteSpace: "nowrap", width: "180px", minWidth: "120px" }}
+                    <Link
+                        to={ROUTE_CONSTANT.catalog.adminCategory.add}
                     >
-                        Add Admin Category
-                    </Button>
+                        <Button variant="contained"
+                                sx={{ whiteSpace: "nowrap", width: "180px", minWidth: "120px" }}>
+                            Add Admin Category
+                        </Button>
+                    </Link>
 
                     <Button onClick={() => exportToExcel(excelData)} variant="contained" sx={{ whiteSpace: "nowrap", width: "180px", minWidth: "120px" }}>
                         Export Categories
@@ -625,13 +626,11 @@ const List = () => {
                                                                     )}
                                                                     {!personName?.includes("Action") && (
                                                                         <TableCell>
-                                                                            <IconButton
-                                                                                onClick={() =>
-                                                                                    navigate(`${ROUTE_CONSTANT.catalog.adminCategory.add}?id=${row._id}`)
-                                                                                }
+                                                                            <Link
+                                                                                to={`${ROUTE_CONSTANT.catalog.adminCategory.add}?id=${row._id}`}
                                                                             >
                                                                                 <Icon color="primary">edit</Icon>
-                                                                            </IconButton>{" "}
+                                                                            </Link>{" "}
                                                                         </TableCell>
                                                                     )}
                                                                 </TableRow>

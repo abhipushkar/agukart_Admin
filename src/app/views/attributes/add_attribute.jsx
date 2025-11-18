@@ -284,11 +284,10 @@ const AddAttribute = () => {
         try {
             const accessToken = localStorage.getItem("auth_key");
 
-            const response = await ApiService.get("get-attribute-list", accessToken);
+            const response = await ApiService.get(`get-attribute-detail/${id}`, accessToken);
 
             if (response.data.success) {
-                const attributes = response.data.data || [];
-                const attribute = attributes.find(attr => attr._id === id);
+                const attribute = response.data.data;
 
                 if (attribute) {
                     setAttributeData({

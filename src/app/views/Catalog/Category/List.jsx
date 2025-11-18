@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, useEffect, useRef } from "react";
+import {useCallback, useMemo, useState, useEffect, useRef} from "react";
 import {
     Box,
     Button,
@@ -19,15 +19,15 @@ import {
     MenuItem,
     CircularProgress
 } from "@mui/material";
-import { Icon } from "@mui/material";
+import {Icon} from "@mui/material";
 import Switch from "@mui/material/Switch";
-import { useNavigate } from "react-router-dom";
-import { ROUTE_CONSTANT } from "app/constant/routeContanst";
-import { ApiService } from "app/services/ApiService";
-import { localStorageKey } from "app/constant/localStorageKey";
-import { apiEndpoints } from "app/constant/apiEndpoints";
-import { exportToExcel } from "app/utils/excelExport";
-import { Breadcrumb } from "app/components";
+import {Link, useNavigate} from "react-router-dom";
+import {ROUTE_CONSTANT} from "app/constant/routeContanst";
+import {ApiService} from "app/services/ApiService";
+import {localStorageKey} from "app/constant/localStorageKey";
+import {apiEndpoints} from "app/constant/apiEndpoints";
+import {exportToExcel} from "app/utils/excelExport";
+import {Breadcrumb} from "app/components";
 import styled from "@emotion/styled";
 import ConfirmModal from "app/components/ConfirmModal";
 import OutlinedInput from "@mui/material/OutlinedInput";
@@ -51,11 +51,11 @@ const names = ["Title", "Total Products", "View", "Orders", "Revenue"];
 
 // Sorting options for category column
 const SORTING_OPTIONS = [
-    { value: { sortBy: 'parent', order: 1 }, label: 'Category (A to Z)' },
-    { value: { sortBy: 'parent', order: -1 }, label: 'Category (Z to A)' },
-    { value: { sortBy: 'createdAt', order: -1 }, label: 'Date Created (New to Old)' },
-    { value: { sortBy: 'createdAt', order: 1 }, label: 'Date Created (Old to New)' },
-    { value: { sortBy: 'updatedAt', order: -1 }, label: 'Last Updated' },
+    {value: {sortBy: 'parent', order: 1}, label: 'Category (A to Z)'},
+    {value: {sortBy: 'parent', order: -1}, label: 'Category (Z to A)'},
+    {value: {sortBy: 'createdAt', order: -1}, label: 'Date Created (New to Old)'},
+    {value: {sortBy: 'createdAt', order: 1}, label: 'Date Created (Old to New)'},
+    {value: {sortBy: 'updatedAt', order: -1}, label: 'Last Updated'},
 ];
 
 const List = () => {
@@ -80,7 +80,7 @@ const List = () => {
     // Sorting state
     const [order, setOrder] = useState("none");
     const [orderBy, setOrderBy] = useState(null);
-    const [serverSorting, setServerSorting] = useState({ sortBy: "createdAt", order: -1 });
+    const [serverSorting, setServerSorting] = useState({sortBy: "createdAt", order: -1});
 
     const navigate = useNavigate();
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
@@ -108,7 +108,7 @@ const List = () => {
     // Handle column preferences
     const handleChange = (event) => {
         const {
-            target: { value }
+            target: {value}
         } = event;
         const setPerson = typeof value === "string" ? value.split(",") : value;
         setPersonName(setPerson);
@@ -176,7 +176,7 @@ const List = () => {
 
                 const myNewList = categories.map((e, i) => {
                     const serialNumber = (page * rowsPerPage) + i + 1;
-                    return { "S.No": serialNumber, ...e };
+                    return {"S.No": serialNumber, ...e};
                 }) || [];
 
                 const xData = myNewList.map((e, i) => {
@@ -246,7 +246,7 @@ const List = () => {
 
     // Server-side sorting handler
     const handleServerSortingChange = (e) => {
-        const newSorting = e.target.value ? JSON.parse(e.target.value) : { sortBy: '', order: 1 };
+        const newSorting = e.target.value ? JSON.parse(e.target.value) : {sortBy: '', order: 1};
         setServerSorting(newSorting);
         setPage(0); // Reset to first page when sorting changes
     };
@@ -287,17 +287,17 @@ const List = () => {
         )
         : categoryList;
 
-    const Container = styled("div")(({ theme }) => ({
+    const Container = styled("div")(({theme}) => ({
         margin: "30px",
-        [theme.breakpoints.down("sm")]: { margin: "16px" },
+        [theme.breakpoints.down("sm")]: {margin: "16px"},
         "& .breadcrumb": {
             marginBottom: "30px",
-            [theme.breakpoints.down("sm")]: { marginBottom: "16px" }
+            [theme.breakpoints.down("sm")]: {marginBottom: "16px"}
         }
     }));
 
     return (
-        <Box sx={{ margin: "30px" }}>
+        <Box sx={{margin: "30px"}}>
             <Box
                 sx={{
                     display: "flex",
@@ -307,10 +307,10 @@ const List = () => {
                 }}
                 className="breadcrumb"
             >
-                <Breadcrumb routeSegments={[{ name: "Catalog", path: "" }, { name: "Category" }]} />
+                <Breadcrumb routeSegments={[{name: "Catalog", path: ""}, {name: "Category"}]}/>
                 <Box display={"flex"} gap={"16px"} alignItems={"center"}>
                     {/* Server-side Sorting Filter */}
-                    <FormControl size="small" sx={{ minWidth: 200 }}>
+                    <FormControl size="small" sx={{minWidth: 200}}>
                         <InputLabel>Sort Category</InputLabel>
                         <Select
                             value={JSON.stringify(serverSorting)}
@@ -355,14 +355,14 @@ const List = () => {
                                 multiple
                                 value={personName}
                                 onChange={handleChange}
-                                input={<OutlinedInput label="Preference: Columns hidden" />}
+                                input={<OutlinedInput label="Preference: Columns hidden"/>}
                                 renderValue={(selected) => `${selected.length} columns hidden`}
                                 MenuProps={MenuProps}
                             >
                                 {names.map((name) => (
                                     <MenuItem key={name} value={name}>
-                                        <Checkbox checked={personName.indexOf(name) > -1} />
-                                        <ListItemText primary={name} />
+                                        <Checkbox checked={personName.indexOf(name) > -1}/>
+                                        <ListItemText primary={name}/>
                                     </MenuItem>
                                 ))}
                             </Select>
@@ -378,18 +378,21 @@ const List = () => {
                             placeholder="Search by title..."
                         />
                     </Box>
-                    <Button onClick={() => navigate(ROUTE_CONSTANT.catalog.category.add)} variant="contained" sx={{ whiteSpace: "nowrap", width: "180px", minWidth: "120px" }}>
-                        Add Category
-                    </Button>
-
-                    <Button onClick={() => exportToExcel(excelData)} variant="contained" sx={{ whiteSpace: "nowrap", width: "180px", minWidth: "120px" }}>
+                    <Link to={ROUTE_CONSTANT.catalog.category.add}>
+                        <Button  variant="contained"
+                                sx={{whiteSpace: "nowrap", width: "180px", minWidth: "120px"}}>
+                            Add Category
+                        </Button>
+                    </Link>
+                    <Button onClick={() => exportToExcel(excelData)} variant="contained"
+                            sx={{whiteSpace: "nowrap", width: "180px", minWidth: "120px"}}>
                         Export Categories
                     </Button>
                 </Box>
             </Box>
 
             <Box>
-                <TableContainer sx={{ paddingLeft: 2, paddingRight: 2 }} component={Paper}>
+                <TableContainer sx={{paddingLeft: 2, paddingRight: 2}} component={Paper}>
                     <Table
                         sx={{
                             width: 'auto',
@@ -495,8 +498,8 @@ const List = () => {
                             {
                                 loading ? (
                                     <TableRow>
-                                        <TableCell colSpan={9} sx={{ textAlign: "center" }}>
-                                            <CircularProgress />
+                                        <TableCell colSpan={9} sx={{textAlign: "center"}}>
+                                            <CircularProgress/>
                                         </TableCell>
                                     </TableRow>
                                 ) : (
@@ -507,18 +510,25 @@ const List = () => {
                                                     return (
                                                         <TableRow key={row._id}>
                                                             <TableCell>{row["S.No"]}</TableCell>
-                                                            <TableCell sx={{ wordBreak: "break-word" }}>{row?.parent}</TableCell>
+                                                            <TableCell
+                                                                sx={{wordBreak: "break-word"}}>{row?.parent}</TableCell>
                                                             {!personName?.includes("Total Products") && (
                                                                 <TableCell>{row.totalProducts}</TableCell>
                                                             )}
-                                                            {!personName?.includes("View") && <TableCell>{row.view}</TableCell>}
-                                                            {!personName?.includes("Orders") && <TableCell>{row.numberOfOrders}</TableCell>}
-                                                            {!personName?.includes("Revenue") && <TableCell>{row.revenue}</TableCell>}
+                                                            {!personName?.includes("View") &&
+                                                                <TableCell>{row.view}</TableCell>}
+                                                            {!personName?.includes("Orders") &&
+                                                                <TableCell>{row.numberOfOrders}</TableCell>}
+                                                            {!personName?.includes("Revenue") &&
+                                                                <TableCell>{row.revenue}</TableCell>}
                                                             <TableCell>
                                                                 <Switch
                                                                     onClick={() => {
                                                                         handleOpen("catStatus");
-                                                                        setStatusData(() => ({ id: row._id, status: !row.status }));
+                                                                        setStatusData(() => ({
+                                                                            id: row._id,
+                                                                            status: !row.status
+                                                                        }));
                                                                     }}
                                                                     checked={row.status}
                                                                 />
@@ -527,26 +537,27 @@ const List = () => {
                                                                 <Switch
                                                                     onClick={() => {
                                                                         handleOpen("catTopRatedStatus");
-                                                                        setStatusData(() => ({ id: row._id, topRated: !row.topRated }));
+                                                                        setStatusData(() => ({
+                                                                            id: row._id,
+                                                                            topRated: !row.topRated
+                                                                        }));
                                                                     }}
                                                                     checked={row.topRated}
                                                                 />
                                                             </TableCell>
                                                             <TableCell>
-                                                                <IconButton
-                                                                    onClick={() =>
-                                                                        navigate(`${ROUTE_CONSTANT.catalog.category.add}?id=${row._id}`)
-                                                                    }
+                                                                <Link
+                                                                    to={`${ROUTE_CONSTANT.catalog.category.add}?id=${row._id}`}
                                                                 >
                                                                     <Icon color="primary">edit</Icon>
-                                                                </IconButton>{" "}
+                                                                </Link>{" "}
                                                             </TableCell>
                                                         </TableRow>
                                                     )
                                                 })
                                             ) : (
                                                 <TableRow>
-                                                    <TableCell colSpan={12} sx={{ textAlign: "center" }}>
+                                                    <TableCell colSpan={12} sx={{textAlign: "center"}}>
                                                         No data found
                                                     </TableCell>
                                                 </TableRow>
