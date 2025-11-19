@@ -4,10 +4,7 @@ import {
     Autocomplete,
     Box,
     Button,
-    Checkbox,
-    InputLabel,
     MenuItem,
-    Select,
     Stack,
     Typography
 } from "@mui/material";
@@ -15,21 +12,12 @@ import ControlPointIcon from "@mui/icons-material/ControlPoint";
 import MyImageGrid from "../Demo";
 import { toast } from "react-toastify";
 import { TextField } from "@mui/material";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { ApiService } from "app/services/ApiService";
 import { apiEndpoints } from "app/constant/apiEndpoints";
 import { localStorageKey } from "app/constant/localStorageKey";
-import CloseIcon from "@mui/icons-material/Close";
-import { combinedMaterials, unitValueOptions } from "app/data/Index";
 import { v4 as uuidv4 } from "uuid";
 import CircularProgress from "@mui/material/CircularProgress";
-import {
-    DropdownNestedMenuItem,
-    Dropdown,
-    DropdownMenuItem
-} from "app/views/Catalog/Category/DropDown";
-import { ArrowRight, SingleBed } from "@mui/icons-material";
-import { ArrowDropDownIcon } from "@mui/x-date-pickers";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import ProductParentTable from "app/components/ProductListTable/ProductParentTable";
 import { ROUTE_CONSTANT } from "app/constant/routeContanst";
@@ -38,11 +26,10 @@ import { useState } from "react";
 import dayjs from "dayjs";
 import ConfirmModal from "app/components/ConfirmModal";
 
-const label = { inputProps: { "aria-label": "Checkbox demo" } };
 
 const ParentProductIdentity = ({ productId }) => {
     const [formData, setFormData] = React.useState({
-        productTitle: "",
+        productTitle: "",       
         description: "",
         subCategory: "",
         sellerSku: "",
@@ -52,6 +39,7 @@ const ParentProductIdentity = ({ productId }) => {
         variant_id: [],
         variant_name: [],
         images: [],
+        vendor: null, // Added vendor field
     });
 
     const [inputFields, setInputFields] = React.useState([
@@ -85,8 +73,12 @@ const ParentProductIdentity = ({ productId }) => {
         description: "",
         sellerSku: "",
         innervariation: "",
-        parentImage: ""
+        parentImage: "",
+        vendor: "" // Added vendor error
     });
+
+    const [vendors, setVendors] = React.useState([]); // Added vendors state
+    const [vendorLoading, setVendorLoading] = React.useState(false); // Added vendor loading state
 
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
 
@@ -143,6 +135,21 @@ const ParentProductIdentity = ({ productId }) => {
         }
     };
 
+    // Get vendors list
+    const getVendors = async () => {
+        try {
+            setVendorLoading(true);
+            const res = await ApiService.get(apiEndpoints.getVendorsList, auth_key);
+            if (res.status === 200) {
+                setVendors(res?.data?.data || []);
+            }
+        } catch (error) {
+            handleApiError(error, "Failed to load vendors");
+        } finally {
+            setVendorLoading(false);
+        }
+    };
+
     // Helper function to trim string values
     const trimValue = (value) => {
         if (typeof value === 'string') {
@@ -157,6 +164,26 @@ const ParentProductIdentity = ({ productId }) => {
             ...prev,
             [e.target.name]: trimmedValue
         }));
+    };
+
+    // Vendor change handler
+    const handleVendorChange = (event, newValue) => {
+        setFormData((prev) => ({
+            ...prev,
+            vendor: newValue
+        }));
+        setInputErrors((prev) => ({ ...prev, vendor: "" }));
+        
+        // Clear SKU errors when vendor changes as validation needs to be rechecked
+        setSkuErrors({});
+        
+        // Clear existing variant data as vendor change might affect product associations
+        setVariantArrValue(prev => prev.map(item => ({
+            ...item,
+            _id: "",
+            product_id: "",
+            isExistingProduct: false
+        })));
     };
 
     const getVaraintList = async () => {
@@ -176,6 +203,7 @@ const ParentProductIdentity = ({ productId }) => {
         getBrandList();
         getVaraintList();
         getChildCategory();
+        getVendors(); // Load vendors on component mount
     }, []);
 
     React.useEffect(() => {
@@ -364,6 +392,7 @@ const ParentProductIdentity = ({ productId }) => {
         if (formData.variantData.length === 0) errors.variations = "Please Select At least one Variant";
         if (Object.keys(formData.Innervariations).length === 0) errors.innervariation = "Please Select At least one Innervariations Variant";
         if (images.length === 0) errors.parentImage = "Images Is Required";
+        if (!formData.vendor) errors.vendor = "Vendor is Required"; // Added vendor validation
 
         // Check for SKU errors
         const hasSkuErrors = Object.values(skuErrors).some(error => error);
@@ -462,6 +491,7 @@ const ParentProductIdentity = ({ productId }) => {
             sub_category: formData?.subCategory || "",
             sku: trimArrayValues(sellerSky),
             zoom: formData.zoom,
+            vendor_id: formData.vendor?._id || "", // Added vendor_id to payload
         };
 
         try {
@@ -494,7 +524,8 @@ const ParentProductIdentity = ({ productId }) => {
                     variantData: [],
                     variant_id: [],
                     variant_name: [],
-                    images: []
+                    images: [],
+                    vendor: null, // Reset vendor
                 });
 
                 setRoute(ROUTE_CONSTANT.catalog.product.list);
@@ -544,6 +575,9 @@ const ParentProductIdentity = ({ productId }) => {
                 const resData = res?.data?.data;
                 setImgName(resData?.image);
 
+                // Find vendor from vendors list if vendor_id exists
+                const vendor = resData?.vendor_id ? vendors.find(v => v._id === resData.vendor_id) : null;
+
                 setFormData((prev) => ({
                     ...prev,
                     productTitle: resData?.product_title || "",
@@ -553,7 +587,8 @@ const ParentProductIdentity = ({ productId }) => {
                     zoom: resData?.zoom || {scale: 1, x: 0, y: 0},
                     variant_id: resData?.variant_id?.map((option) => option?._id) || [],
                     variant_name: resData?.variant_id?.map((option) => option?.variant_name) || [],
-                    subCategory: resData?.sub_category || ""
+                    subCategory: resData?.sub_category || "",
+                    vendor: vendor || null // Set vendor
                 }));
 
                 setParentId(resData?._id);
@@ -695,7 +730,7 @@ const ParentProductIdentity = ({ productId }) => {
         if (productId) {
             getParentProductDetail();
         }
-    }, []);
+    }, [vendors]); // Added vendors dependency to ensure vendors are loaded before setting vendor
 
     const currentCombinations = getCurrentCombinations();
 
@@ -722,6 +757,74 @@ const ParentProductIdentity = ({ productId }) => {
                             gap: "10px"
                         }}
                     >
+                        {/* Vendor Selection Field */}
+                        {localStorage.getItem(localStorageKey.designation_id) === "2" && (<Box
+                            sx={{
+                                display: "flex",
+                                gap: "20px"
+                            }}
+                        >
+                            <Box
+                                sx={{
+                                    fontSize: "14px",
+                                    fontWeight: 700,
+                                    wordBreak: "normal",
+                                    width: "15%",
+                                    textOverflow: "ellipsis",
+                                    display: "flex",
+                                    textWrap: "wrap"
+                                }}
+                            >
+                                Shop Name
+                                <span
+                                    style={{ color: "red", fontSize: "15px", marginRight: "3px", marginLeft: "3px" }}
+                                >
+                  {" "}
+                                    *
+                </span>
+                                :
+                            </Box>
+                            <Box
+                                sx={{
+                                    width: "100%"
+                                }}
+                            >
+                                <Autocomplete
+                                    options={vendors}
+                                    getOptionLabel={(option) => option?.shopName || ""}
+                                    value={formData.vendor}
+                                    onChange={handleVendorChange}
+                                    loading={vendorLoading}
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            label="Select Vendor"
+                                            error={!!inputErrors.vendor}
+                                            helperText={inputErrors.vendor}
+                                            sx={{
+                                                mb: 2,
+                                                "& .MuiInputBase-root": {
+                                                    height: "40px"
+                                                },
+                                                "& .MuiFormLabel-root": {
+                                                    top: "-7px"
+                                                }
+                                            }}
+                                            onBlur={() => {
+                                                if (!formData.vendor) {
+                                                    setInputErrors((prv) => ({
+                                                        ...prv,
+                                                        vendor: "Vendor is Required"
+                                                    }));
+                                                }
+                                            }}
+                                        />
+                                    )}
+                                    isOptionEqualToValue={(option, value) => option._id === value._id}
+                                />
+                            </Box>
+                        </Box>)}
+
                         <Box
                             sx={{
                                 display: "flex",
@@ -1219,6 +1322,7 @@ const ParentProductIdentity = ({ productId }) => {
                                 setLoadingSkus={setLoadingSkus}
                                 parentVariants={formData.variantData}
                                 checkForDuplicateSkus={checkForDuplicateSkus}
+                                selectedVendor={formData.vendor} // Pass selected vendor to table
                             />
                         ) : (
                             <></>

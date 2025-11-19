@@ -15,13 +15,13 @@ export const useProductFormStore = create(
             setLoadingProductData: (loadingProductData) => set({ loadingProductData }),
 
             brandList: [],
-            setBrandList: (brandList => set((state) => ({brandList}))),
+            setBrandList: (brandList => set((state) => ({ brandList }))),
 
             allCategory: [],
-            setAllCategory: (allCategory) => set((state) => ({allCategory})),
+            setAllCategory: (allCategory) => set((state) => ({ allCategory })),
 
             allVendors: [],
-            setAllVendors: (allVendors) => set((state) => ({allVendors})),
+            setAllVendors: (allVendors) => set((state) => ({ allVendors })),
 
             varientName: [],
 
@@ -30,10 +30,10 @@ export const useProductFormStore = create(
             })),
 
             shippingTemplateData: [],
-            setShippingTemplateData: (shippingTemplateData) => set((state) => ({shippingTemplateData})),
+            setShippingTemplateData: (shippingTemplateData) => set((state) => ({ shippingTemplateData })),
 
             exchangePolicy: [],
-            setExchangePolicy: (exchangePolicy) => set((state) => ({exchangePolicy})),
+            setExchangePolicy: (exchangePolicy) => set((state) => ({ exchangePolicy })),
 
             // NEW: Parent product data
             parentProductData: null,
@@ -118,7 +118,7 @@ export const useProductFormStore = create(
             dynamicFields: [],
 
             setDynamicField: (dynamicFields) => set((state) => (
-                {dynamicFields: dynamicFields}
+                { dynamicFields: dynamicFields }
             )),
 
             // Form Values for variations
@@ -194,7 +194,7 @@ export const useProductFormStore = create(
 
             setShowAll: (showAll) => set({ showAll }),
 
-            setTransformData: (transformData) => set((state) => ({ formData: {...state.formData, transformData}})),
+            setTransformData: (transformData) => set((state) => ({ formData: { ...state.formData, transformData } })),
 
             setAltText: (altText) => set({ altText }),
 
@@ -405,7 +405,7 @@ export const useProductFormStore = create(
                         popularGifts: editData?.popular_gifts || "No",
                         bestSelling: editData?.bestseller || "No",
                         stylesKeyWords: [{ value: editData?.style_name || "" }],
-                        searchTerms: editData?.size ||"",
+                        searchTerms: editData?.size || "",
                         serchTemsKeyArray: editData?.search_terms || [],
                         StyleName: editData?.style_name || "",
                         Shopingsweight: editData?.shipping_weight || "",
@@ -448,7 +448,7 @@ export const useProductFormStore = create(
                         color: editData?.color || "",
                         offeringCanBe: editData?.can_offer || "",
                         isGiftWrap: editData?.gift_wrap || "",
-                        transformData: editData?.zoom || {scale: 1, x: 0, y: 0},
+                        transformData: editData?.zoom || { scale: 1, x: 0, y: 0 },
                         reStockDate: editData?.restock_date ? dayjs(editData.restock_date) : null,
                         productionTime: editData?.production_time || "",
                         vendor: editData?.vendor_id || "",
@@ -500,7 +500,7 @@ export const useProductFormStore = create(
                     packageWidth: "",
                     launchData: null,
                     releaseDate: null,
-                    transformData: {scale: 1, x: 0, y: 0},
+                    transformData: { scale: 1, x: 0, y: 0 },
                     brandId: "brandId",
                     taxRatio: "6",
                     images: [],
