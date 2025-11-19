@@ -17,17 +17,17 @@ const VisuallyHiddenInput = styled("input")({
 });
 
 const ImageCell = ({
-                       item,
-                       index,
-                       imageType,
-                       imageIndex = null,
-                       editData = null,
-                       combindex,
-                       onImageUpload,
-                       onImageRemove,
-                       onImageEdit,
-                       isEditable = false
-                   }) => {
+    item,
+    index,
+    imageType,
+    imageIndex = null,
+    editData = null,
+    combindex,
+    onImageUpload,
+    onImageRemove,
+    onImageEdit,
+    isEditable = false
+}) => {
     let imageValue;
     let editedImageValue;
 
