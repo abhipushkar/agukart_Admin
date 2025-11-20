@@ -78,6 +78,7 @@ const VariantModal = ({ show, handleCloseVariant }) => {
     const [customVariantName, setCustomVariantName] = useState("");
     const [customVariantOptions, setCustomVariantOptions] = useState([""]);
     const [customVariants, setCustomVariants] = useState([]);
+    const [editingCustomVariant, setEditingCustomVariant] = useState(null); // Track which custom variant is being edited
 
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
 
@@ -420,16 +421,25 @@ const VariantModal = ({ show, handleCloseVariant }) => {
     };
 
     // Custom Variant Dialog Functions
-    const handleOpenCustomVariantDialog = () => {
+    const handleOpenCustomVariantDialog = (variantToEdit = null) => {
+        setEditingCustomVariant(variantToEdit);
+        if (variantToEdit) {
+            // Editing existing custom variant
+            setCustomVariantName(variantToEdit.variant_name);
+            setCustomVariantOptions(variantToEdit.variant_attribute.map(attr => attr.attribute_value));
+        } else {
+            // Creating new custom variant
+            setCustomVariantName("");
+            setCustomVariantOptions([""]);
+        }
         setCustomVariantDialogOpen(true);
-        setCustomVariantName("");
-        setCustomVariantOptions([""]);
     };
 
     const handleCloseCustomVariantDialog = () => {
         setCustomVariantDialogOpen(false);
         setCustomVariantName("");
         setCustomVariantOptions([""]);
+        setEditingCustomVariant(null);
     };
 
     const handleAddOption = () => {
@@ -473,22 +483,63 @@ const VariantModal = ({ show, handleCloseVariant }) => {
             isCustom: true
         };
 
-        // Add to custom variants list
-        setCustomVariants(prev => [...prev, newCustomVariant]);
+        if (editingCustomVariant) {
+            // Update existing custom variant
+            setCustomVariants(prev =>
+                prev.map(variant =>
+                    variant.variant_name === editingCustomVariant.variant_name
+                        ? newCustomVariant
+                        : variant
+                )
+            );
+
+            // Update variationsData if this variant is currently being used
+            const currentData = variationsData || [];
+            const updatedVariationsData = currentData.map(variation =>
+                variation.name === editingCustomVariant.variant_name
+                    ? { name: newCustomVariant.variant_name, values: validOptions }
+                    : variation
+            );
+            setVariationsData(updatedVariationsData);
+
+            // Update selectedVariations if name changed
+            if (editingCustomVariant.variant_name !== newCustomVariant.variant_name) {
+                setSelectedVariations(prev =>
+                    prev.map(variant =>
+                        variant === editingCustomVariant.variant_name
+                            ? newCustomVariant.variant_name
+                            : variant
+                    )
+                );
+            }
+        } else {
+            // Add new custom variant
+            setCustomVariants(prev => [...prev, newCustomVariant]);
+        }
 
         // Close dialog and reset
         handleCloseCustomVariantDialog();
 
-        // Auto-select the newly created variant
-        setSelectedVariations([...selectedVariations, newCustomVariant.variant_name]);
-        setSelectedVariant(newCustomVariant.variant_name);
+        if (!editingCustomVariant) {
+            // Auto-select the newly created variant only for new variants
+            setSelectedVariations([...selectedVariations, newCustomVariant.variant_name]);
+            setSelectedVariant(newCustomVariant.variant_name);
 
-        // Set attribute options for the new variant
-        setAttrOptions(validOptions);
-        setAttrValues({
-            name: newCustomVariant.variant_name,
-            values: [],
-        });
+            // Set attribute options for the new variant
+            setAttrOptions(validOptions);
+            setAttrValues({
+                name: newCustomVariant.variant_name,
+                values: [],
+            });
+        }
+    };
+
+    // Function to handle editing custom variant options
+    const handleEditCustomVariantOptions = (variantName) => {
+        const customVariant = customVariants.find(v => v.variant_name === variantName);
+        if (customVariant) {
+            handleOpenCustomVariantDialog(customVariant);
+        }
     };
 
     const handleTagHandler = (event, newValue) => {
@@ -564,13 +615,19 @@ const VariantModal = ({ show, handleCloseVariant }) => {
         const updatedData = currentData.filter(variation => variation.name !== selectedVariantName);
         setVariationsData(updatedData);
 
+        // Remove from custom variants if it's a custom variant
+        const isCustomVariant = customVariants.some(v => v.variant_name === selectedVariantName);
+        if (isCustomVariant) {
+            setCustomVariants(prev => prev.filter(v => v.variant_name !== selectedVariantName));
+        }
+
         const variant = allVariants.find((item) => item.variant_name === selectedVariantName);
         const parentMainName = variant?.variant_name;
         const allAttributeValues = variant?.variant_attribute?.map((attr) => attr.attribute_value) || [];
-        const allIds = variant?.variant_attribute.map((attr) => attr._id);
+        const allIds = variant?.variant_attribute?.map((attr) => attr._id) || [];
 
         setFormData({
-            ParentMainId: formData.ParentMainId.filter((id) => id !== variant._id),
+            ParentMainId: formData.ParentMainId.filter((id) => id !== variant?._id),
             varientName: formData.varientName.filter((id) => !allIds.includes(id)),
         });
 
@@ -657,7 +714,17 @@ const VariantModal = ({ show, handleCloseVariant }) => {
                                                 border: '1px solid #e0e0e0',
                                                 padding: '16px'
                                             }}>
-                                                <Typography fontWeight={500}>{item?.name}</Typography>
+                                                <Box display="flex" justifyContent="space-between" alignItems="center">
+                                                    <Typography fontWeight={500}>{item?.name}</Typography>
+                                                    {customVariants.some(v => v.variant_name === item.name) && (
+                                                        <Chip
+                                                            label="Custom"
+                                                            size="small"
+                                                            color="primary"
+                                                            variant="outlined"
+                                                        />
+                                                    )}
+                                                </Box>
                                                 <Typography variant="body2" color="textSecondary">
                                                     {item?.values?.length || 0} options
                                                 </Typography>
@@ -674,6 +741,16 @@ const VariantModal = ({ show, handleCloseVariant }) => {
                                                         ))}
                                                     </Box>
                                                     <Box display="flex">
+                                                        {/* Edit Custom Variant Options Button */}
+                                                        {/* {customVariants.some(v => v.variant_name === item.name) && (
+                                                            <IconButton
+                                                                size="small"
+                                                                onClick={() => handleEditCustomVariantOptions(item.name)}
+                                                                title="Edit variant options"
+                                                            >
+                                                                <EditIcon />
+                                                            </IconButton>
+                                                        )} */}
                                                         <IconButton
                                                             size="small"
                                                             onClick={() => handleEditVariation(item)}
@@ -802,39 +879,65 @@ const VariantModal = ({ show, handleCloseVariant }) => {
                                         {allVariants?.map((item, index) => {
                                             const isDisabled = disabledVariants.has(item?.variant_name);
                                             const isSelected = (selectedVariations || []).includes(item?.variant_name);
+                                            const isCustom = item.isCustom;
                                             return (
-                                                <Button
-                                                    key={index}
-                                                    variant="outlined"
-                                                    sx={{
-                                                        m: 0.5,
-                                                        borderRadius: '20px',
-                                                        textTransform: 'none',
-                                                        // Different styling for parent-disabled variants
-                                                        ...(isDisabled && !isSelected && {
-                                                            borderColor: '#ccc',
-                                                            color: '#999',
-                                                            backgroundColor: '#f5f5f5',
-                                                            '&:hover': {
+                                                <Box key={index} sx={{ display: 'inline-block', m: 0.5, position: 'relative' }}>
+                                                    <Button
+                                                        variant="outlined"
+                                                        sx={{
+                                                            borderRadius: '20px',
+                                                            textTransform: 'none',
+                                                            // Different styling for parent-disabled variants
+                                                            ...(isDisabled && !isSelected && {
+                                                                borderColor: '#ccc',
+                                                                color: '#999',
                                                                 backgroundColor: '#f5f5f5',
-                                                                borderColor: '#ccc'
-                                                            }
-                                                        })
-                                                    }}
-                                                    onClick={() => handleVariantSelect(item?.variant_name)}
-                                                    disabled={isDisabled}
-                                                    startIcon={isDisabled ? <CheckIcon /> : null}
-                                                >
-                                                    {item?.variant_name}
-                                                    {isDisabled && !isSelected && " (Used in Parent)"}
-                                                </Button>
+                                                                '&:hover': {
+                                                                    backgroundColor: '#f5f5f5',
+                                                                    borderColor: '#ccc'
+                                                                }
+                                                            })
+                                                        }}
+                                                        onClick={() => handleVariantSelect(item?.variant_name)}
+                                                        disabled={isDisabled}
+                                                        startIcon={isDisabled ? <CheckIcon /> : null}
+                                                    >
+                                                        {item?.variant_name}
+                                                        {isCustom && " (Custom)"}
+                                                        {isDisabled && !isSelected && " (Used in Parent)"}
+                                                    </Button>
+                                                    {isCustom && (
+                                                        <IconButton
+                                                            size="small"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleEditCustomVariantOptions(item.variant_name);
+                                                            }}
+                                                            sx={{
+                                                                position: 'absolute',
+                                                                top: -8,
+                                                                right: -8,
+                                                                backgroundColor: 'white',
+                                                                border: '1px solid #ccc',
+                                                                width: 24,
+                                                                height: 24,
+                                                                '&:hover': {
+                                                                    backgroundColor: '#f5f5f5'
+                                                                }
+                                                            }}
+                                                            title="Edit custom variant options"
+                                                        >
+                                                            <EditIcon fontSize="small" />
+                                                        </IconButton>
+                                                    )}
+                                                </Box>
                                             );
                                         })}
                                     </Box>
                                     <Box my={2}>
                                         <Button
                                             variant="outlined"
-                                            onClick={handleOpenCustomVariantDialog}
+                                            onClick={() => handleOpenCustomVariantDialog()}
                                             sx={{
                                                 borderColor: '#1976d2',
                                                 color: '#1976d2',
@@ -856,6 +959,15 @@ const VariantModal = ({ show, handleCloseVariant }) => {
                                 <>
                                     <Typography variant="h5" gutterBottom>
                                         {selectedVariant}
+                                        {customVariants.some(v => v.variant_name === selectedVariant) && (
+                                            <Chip
+                                                label="Custom"
+                                                size="small"
+                                                color="primary"
+                                                variant="outlined"
+                                                sx={{ ml: 1 }}
+                                            />
+                                        )}
                                     </Typography>
                                     <Typography variant="body2" color="textSecondary" mb={2}>
                                         Variation
@@ -866,6 +978,25 @@ const VariantModal = ({ show, handleCloseVariant }) => {
                                     <Typography color="textSecondary" mb={3}>
                                         Buyers can choose from the following options.
                                     </Typography>
+
+                                    {/* Edit Custom Variant Options Button */}
+                                    {customVariants.some(v => v.variant_name === selectedVariant) && (
+                                        <Box mb={2}>
+                                            <Button
+                                                variant="outlined"
+                                                size="small"
+                                                startIcon={<EditIcon />}
+                                                onClick={() => {
+                                                    const customVariant = customVariants.find(v => v.variant_name === selectedVariant);
+                                                    if (customVariant) {
+                                                        handleOpenCustomVariantDialog(customVariant);
+                                                    }
+                                                }}
+                                            >
+                                                Edit Variant Options
+                                            </Button>
+                                        </Box>
+                                    )}
 
                                     <Autocomplete
                                         multiple
@@ -948,7 +1079,9 @@ const VariantModal = ({ show, handleCloseVariant }) => {
 
             {/* Custom Variant Dialog */}
             <Dialog open={customVariantDialogOpen} onClose={handleCloseCustomVariantDialog} maxWidth="sm" fullWidth>
-                <DialogTitle>Add Custom Variant</DialogTitle>
+                <DialogTitle>
+                    {editingCustomVariant ? 'Edit Custom Variant' : 'Add Custom Variant'}
+                </DialogTitle>
                 <DialogContent>
                     <TextField
                         autoFocus
@@ -988,7 +1121,7 @@ const VariantModal = ({ show, handleCloseVariant }) => {
                 <DialogActions>
                     <Button onClick={handleCloseCustomVariantDialog}>Cancel</Button>
                     <Button onClick={handleSaveCustomVariant} variant="contained">
-                        Save Variant
+                        {editingCustomVariant ? 'Update Variant' : 'Save Variant'}
                     </Button>
                 </DialogActions>
             </Dialog>
