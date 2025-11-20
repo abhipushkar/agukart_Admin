@@ -134,7 +134,7 @@ const VariantModal = ({ show, handleCloseVariant }) => {
         }
     }, [variationsData, generateNameCombinations, formValues?.prices, formValues?.quantities]);
 
-    // ========== SIMPLE COMBINATION GENERATION (like old code) ==========
+    // ========== FIXED: SIMPLE COMBINATION GENERATION ==========
     const generateCombinations = (data) => {
         if (!data || data.length === 0) return [];
 
@@ -179,7 +179,7 @@ const VariantModal = ({ show, handleCloseVariant }) => {
         return allCombinations || [];
     };
 
-    // Handle combined variants generation
+    // ========== FIXED: Handle combined variants generation ==========
     const handleCombinedVariants = (variantNames, currentData) => {
         const selectedVariationData = currentData.filter(variation =>
             variantNames.includes(variation.name)
@@ -187,38 +187,55 @@ const VariantModal = ({ show, handleCloseVariant }) => {
 
         if (selectedVariationData.length === 0) return [];
 
+        // Generate proper combinations for multiple variants
         let combinedResult = generateCombinations(selectedVariationData);
 
         return [{
             variant_name: variantNames.join(" and "),
-            combinations: combinedResult
+            combinations: combinedResult,
+            isCombined: true,
+            componentVariants: variantNames
         }];
     };
 
-    // Function to mark price/quantity variations in combinations
+    // ========== FIXED: Function to mark price/quantity variations in combinations ==========
     const markPriceQuantityVariations = (combinationsData, formValues) => {
         if (!formValues?.isCheckedPrice && !formValues?.isCheckedQuantity) {
             return combinationsData;
         }
 
         return combinationsData.map(variantGroup => {
-            const { variant_name, combinations } = variantGroup;
+            const { variant_name, combinations, isCombined, componentVariants } = variantGroup;
 
             const updatedCombinations = combinations.map(combination => {
-                // Check if this combination belongs to a price variation
-                const isPriceVariation = formValues?.isCheckedPrice &&
-                    (formValues?.prices === variant_name ||
-                        (formValues?.prices?.includes("and") && formValues?.prices.split("and").map(p => p.trim()).includes(variant_name)));
+                // For combined variants, check if any component variant matches
+                let isPriceVariation = false;
+                let isQuantityVariation = false;
 
-                // Check if this combination belongs to a quantity variation
-                const isQuantityVariation = formValues?.isCheckedQuantity &&
-                    (formValues?.quantities === variant_name ||
-                        (formValues?.quantities?.includes("and") && formValues?.quantities.split("and").map(q => q.trim()).includes(variant_name)));
+                if (formValues?.isCheckedPrice && formValues?.prices) {
+                    if (isCombined && componentVariants) {
+                        // For combined variant, check if the price selection matches this combined variant
+                        isPriceVariation = formValues?.prices === variant_name;
+                    } else {
+                        // For single variant
+                        isPriceVariation = formValues?.prices === variant_name;
+                    }
+                }
+
+                if (formValues?.isCheckedQuantity && formValues?.quantities) {
+                    if (isCombined && componentVariants) {
+                        // For combined variant, check if the quantity selection matches this combined variant
+                        isQuantityVariation = formValues?.quantities === variant_name;
+                    } else {
+                        // For single variant
+                        isQuantityVariation = formValues?.quantities === variant_name;
+                    }
+                }
 
                 return {
                     ...combination,
-                    isPriceVariation: isPriceVariation || false,
-                    isQuantityVariation: isQuantityVariation || false
+                    isPriceVariation: isPriceVariation,
+                    isQuantityVariation: isQuantityVariation
                 };
             });
 
@@ -229,7 +246,7 @@ const VariantModal = ({ show, handleCloseVariant }) => {
         });
     };
 
-    // ========== UPDATED: handleGenerate with proper mixed case handling ==========
+    // ========== FIXED: handleGenerate with proper combined variant handling ==========
     const handleGenerate = async () => {
         const currentData = variationsData || [];
 
@@ -239,6 +256,7 @@ const VariantModal = ({ show, handleCloseVariant }) => {
         }
 
         let data = [];
+        const processedVariants = new Set();
 
         // Initialize product_variants FIRST
         initializeProductVariants(currentData, allVariants);
@@ -250,130 +268,75 @@ const VariantModal = ({ show, handleCloseVariant }) => {
             const isPriceCombined = formValues?.prices?.includes("and");
             const isQuantityCombined = formValues?.quantities?.includes("and");
 
-            if (isPriceCombined || isQuantityCombined) {
-                // Handle combined variants
-                const processedVariants = new Set();
-
-                // Process PRICE combinations (combined or single)
-                if (formValues?.isCheckedPrice && formValues?.prices) {
-                    if (isPriceCombined) {
-                        // Combined price variant
-                        const priceVariantNames = formValues?.prices.split("and").map(v => v.trim());
-                        const priceCombinedData = handleCombinedVariants(priceVariantNames, currentData);
-                        data.push(...priceCombinedData);
-                        priceVariantNames.forEach(v => processedVariants.add(v));
-                    } else {
-                        // Single price variant
-                        const priceVariantName = formValues?.prices;
-                        const priceVariationData = currentData.filter((item) => item.name === priceVariantName);
-                        let priceResult = generateCombinations(priceVariationData);
-                        data.push({
-                            variant_name: priceVariantName,
-                            combinations: priceResult,
-                        });
-                        processedVariants.add(priceVariantName);
-                    }
-                }
-
-                // Process QUANTITY combinations (combined or single)
-                if (formValues?.isCheckedQuantity && formValues?.quantities) {
-                    if (isQuantityCombined) {
-                        // Combined quantity variant
-                        const quantityVariantNames = formValues?.quantities.split("and").map(v => v.trim());
-
-                        // Check if this combined variant already exists in data
-                        const existingCombined = data.find(d => d.variant_name === formValues?.quantities);
-                        if (!existingCombined) {
-                            const quantityCombinedData = handleCombinedVariants(quantityVariantNames, currentData);
-                            data.push(...quantityCombinedData);
-                        }
-                        quantityVariantNames.forEach(v => processedVariants.add(v));
-                    } else {
-                        // Single quantity variant
-                        const quantityVariantName = formValues?.quantities;
-
-                        // Check if this single variant already exists in data
-                        const existingSingle = data.find(d => d.variant_name === quantityVariantName);
-                        if (!existingSingle) {
-                            const quantityVariationData = currentData.filter((item) => item.name === quantityVariantName);
-                            let quantityResult = generateCombinations(quantityVariationData);
-                            data.push({
-                                variant_name: quantityVariantName,
-                                combinations: quantityResult,
-                            });
-                        }
-                        processedVariants.add(quantityVariantName);
-                    }
-                }
-
-                // Handle individual variations that are not part of any price/quantity variation
-                const individualVariations = currentData.filter(item => !processedVariants.has(item.name));
-                for (const item of individualVariations) {
-                    let result = generateCombinations([item]);
-                    data.push({
-                        variant_name: item?.name,
-                        combinations: result,
-                    });
-                }
-            } else {
-                // Both are single variants (no "and" in either)
-                const priceVariantName = formValues?.prices;
-                const quantityVariantName = formValues?.quantities;
-
-                if (priceVariantName === quantityVariantName && formValues.isCheckedPrice && formValues.isCheckedQuantity) {
-                    // Same variant for both price and quantity
-                    const variationData = currentData.filter((item) => item.name === priceVariantName);
-                    let result = generateCombinations(variationData);
+            // Process PRICE combinations (combined or single)
+            if (formValues?.isCheckedPrice && formValues?.prices) {
+                if (isPriceCombined) {
+                    // Combined price variant
+                    const priceVariantNames = formValues?.prices.split(" and ").map(v => v.trim());
+                    const priceCombinedData = handleCombinedVariants(priceVariantNames, currentData);
+                    data.push(...priceCombinedData);
+                    priceVariantNames.forEach(v => processedVariants.add(v));
+                } else {
+                    // Single price variant
+                    const priceVariantName = formValues?.prices;
+                    const priceVariationData = currentData.filter((item) => item.name === priceVariantName);
+                    let priceResult = generateCombinations(priceVariationData);
                     data.push({
                         variant_name: priceVariantName,
-                        combinations: result
+                        combinations: priceResult,
+                        isCombined: false
                     });
+                    processedVariants.add(priceVariantName);
+                }
+            }
 
-                    // Handle remaining variations
-                    const remainingVariations = currentData.filter(item => item.name !== priceVariantName);
-                    for (const item of remainingVariations) {
-                        let remainingResult = generateCombinations([item]);
-                        data.push({
-                            variant_name: item?.name,
-                            combinations: remainingResult,
-                        });
+            // Process QUANTITY combinations (combined or single)
+            if (formValues?.isCheckedQuantity && formValues?.quantities) {
+                if (isQuantityCombined) {
+                    // Combined quantity variant
+                    const quantityVariantNames = formValues?.quantities.split(" and ").map(v => v.trim());
+
+                    // Check if this combined variant already exists in data
+                    const existingCombinedIndex = data.findIndex(d =>
+                        d.isCombined && d.variant_name === formValues?.quantities
+                    );
+
+                    if (existingCombinedIndex === -1) {
+                        const quantityCombinedData = handleCombinedVariants(quantityVariantNames, currentData);
+                        data.push(...quantityCombinedData);
                     }
+                    quantityVariantNames.forEach(v => processedVariants.add(v));
                 } else {
-                    // Different variants for price and quantity
-                    const processed = new Set();
+                    // Single quantity variant
+                    const quantityVariantName = formValues?.quantities;
 
-                    // Add price variant
-                    if (formValues.isCheckedPrice && priceVariantName) {
-                        const priceData = currentData.filter((item) => item.name === priceVariantName);
-                        let priceResult = generateCombinations(priceData);
-                        data.push({
-                            variant_name: priceVariantName,
-                            combinations: priceResult,
-                        });
-                        processed.add(priceVariantName);
-                    }
+                    // Check if this single variant already exists in data
+                    const existingSingleIndex = data.findIndex(d =>
+                        !d.isCombined && d.variant_name === quantityVariantName
+                    );
 
-                    // Add quantity variant (if different from price)
-                    if (formValues.isCheckedQuantity && quantityVariantName && !processed.has(quantityVariantName)) {
-                        const quantityData = currentData.filter((item) => item.name === quantityVariantName);
-                        let quantityResult = generateCombinations(quantityData);
+                    if (existingSingleIndex === -1) {
+                        const quantityVariationData = currentData.filter((item) => item.name === quantityVariantName);
+                        let quantityResult = generateCombinations(quantityVariationData);
                         data.push({
                             variant_name: quantityVariantName,
                             combinations: quantityResult,
-                        });
-                        processed.add(quantityVariantName);
-                    }
-
-                    // Add remaining variations
-                    const remainingVariations = currentData.filter(item => !processed.has(item.name));
-                    for (const item of remainingVariations) {
-                        let remainingResult = generateCombinations([item]);
-                        data.push({
-                            variant_name: item?.name,
-                            combinations: remainingResult,
+                            isCombined: false
                         });
                     }
+                    processedVariants.add(quantityVariantName);
                 }
+            }
+
+            // Handle individual variations that are not part of any price/quantity variation
+            const individualVariations = currentData.filter(item => !processedVariants.has(item.name));
+            for (const item of individualVariations) {
+                let result = generateCombinations([item]);
+                data.push({
+                    variant_name: item?.name,
+                    combinations: result,
+                    isCombined: false
+                });
             }
         } else {
             // No price/quantity variations enabled - generate all variations normally
@@ -382,14 +345,16 @@ const VariantModal = ({ show, handleCloseVariant }) => {
                 data.push({
                     variant_name: item?.name,
                     combinations: result,
+                    isCombined: false
                 });
             }
         }
 
-        console.log("Generated combinations:", data);
+        console.log("Generated combinations before marking:", data);
 
         // Mark price/quantity variations properly
         const finalCombinationsData = markPriceQuantityVariations(data, formValues);
+        console.log("Final combinations after marking:", finalCombinationsData);
         setCombinations(finalCombinationsData);
 
         // Update form data with selected variations
