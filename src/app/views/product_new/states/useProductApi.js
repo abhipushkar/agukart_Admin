@@ -1,10 +1,10 @@
 // hooks/useProductAPI.js
-import {ApiService} from "app/services/ApiService";
-import {apiEndpoints} from "app/constant/apiEndpoints";
-import {localStorageKey} from "app/constant/localStorageKey";
-import {useNavigate} from "react-router-dom";
-import {ROUTE_CONSTANT} from "app/constant/routeContanst";
-import {useProductFormStore} from "./useAddProducts";
+import { ApiService } from "app/services/ApiService";
+import { apiEndpoints } from "app/constant/apiEndpoints";
+import { localStorageKey } from "app/constant/localStorageKey";
+import { useNavigate } from "react-router-dom";
+import { ROUTE_CONSTANT } from "app/constant/routeContanst";
+import { useProductFormStore } from "./useAddProducts";
 
 export const useProductAPI = () => {
     const { setLoading, setDraftLoading, setLoadingProductData } = useProductFormStore();
@@ -12,8 +12,8 @@ export const useProductAPI = () => {
 
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
 
-// ---------------- helper to build FormData ----------------
-    const buildProductFormData = (payload, combinations, customizationData) => {
+    // ---------------- helper to build FormData ----------------
+    const buildProductFormData = (payload, product_variants, combinations, customizationData) => {
         const fData = new FormData();
 
         // fields that can be null/dates
@@ -102,55 +102,164 @@ export const useProductAPI = () => {
             }
         });
 
-        // 2) Append ALL combination data (not just files) - only non-empty values
-        combinations.forEach((variant, vIndex) => {
-            console.log("Edited Data", variant);
+        // 2) Append product_variants with proper image and guide handling
+        if (product_variants && product_variants.length > 0) {
+            product_variants.forEach((variant, vIndex) => {
+                // Append variant basic info
+                if (variant.variant_name) {
+                    fData.append(`product_variants[${vIndex}][variant_name]`, variant.variant_name);
+                }
 
+                // Handle guide data for variant
+                if (variant.guide && Array.isArray(variant.guide) && variant.guide.length > 0) {
+                    variant.guide.forEach((guide, gIndex) => {
+                        // Append guide fields
+                        if (guide.guide_name) {
+                            fData.append(
+                                `product_variants[${vIndex}][guide][${gIndex}][guide_name]`,
+                                guide.guide_name
+                            );
+                        }
+
+                        if (guide.guide_description) {
+                            fData.append(
+                                `product_variants[${vIndex}][guide][${gIndex}][guide_description]`,
+                                guide.guide_description
+                            );
+                        }
+
+                        if (guide.guide_type) {
+                            fData.append(
+                                `product_variants[${vIndex}][guide][${gIndex}][guide_type]`,
+                                guide.guide_type
+                            );
+                        }
+
+                        // Handle guide file - both File objects and strings
+                        if (guide.guide_file instanceof File) {
+                            fData.append(
+                                `product_variants[${vIndex}][guide][${gIndex}][guide_file]`,
+                                guide.guide_file
+                            );
+                        } else if (typeof guide.guide_file === "string") {
+                            fData.append(
+                                `product_variants[${vIndex}][guide][${gIndex}][guide_file]`,
+                                guide.guide_file
+                            );
+                        }
+                    });
+                }
+
+                // Handle variant attributes and their images
+                if (variant.variant_attributes && Array.isArray(variant.variant_attributes)) {
+                    variant.variant_attributes.forEach((attribute, aIndex) => {
+                        // Append attribute basic info
+                        if (attribute.attribute) {
+                            fData.append(
+                                `product_variants[${vIndex}][variant_attributes][${aIndex}][attribute]`,
+                                attribute.attribute
+                            );
+                        }
+
+                        // Handle main_images array
+                        if (attribute.main_images && Array.isArray(attribute.main_images)) {
+                            attribute.main_images.forEach((image, imgIndex) => {
+                                if (image instanceof File) {
+                                    fData.append(
+                                        `product_variants[${vIndex}][variant_attributes][${aIndex}][main_images][${imgIndex}]`,
+                                        image
+                                    );
+                                } else if (typeof image === "string") {
+                                    fData.append(
+                                        `product_variants[${vIndex}][variant_attributes][${aIndex}][main_images][${imgIndex}]`,
+                                        image
+                                    );
+                                }
+                            });
+                        }
+
+                        // Handle preview_image
+                        if (attribute.preview_image instanceof File) {
+                            fData.append(
+                                `product_variants[${vIndex}][variant_attributes][${aIndex}][preview_image]`,
+                                attribute.preview_image
+                            );
+                        } else if (typeof attribute.preview_image === "string") {
+                            fData.append(
+                                `product_variants[${vIndex}][variant_attributes][${aIndex}][preview_image]`,
+                                attribute.preview_image
+                            );
+                        }
+
+                        // Handle thumbnail
+                        if (attribute.thumbnail instanceof File) {
+                            fData.append(
+                                `product_variants[${vIndex}][variant_attributes][${aIndex}][thumbnail]`,
+                                attribute.thumbnail
+                            );
+                        } else if (typeof attribute.thumbnail === "string") {
+                            fData.append(
+                                `product_variants[${vIndex}][variant_attributes][${aIndex}][thumbnail]`,
+                                attribute.thumbnail
+                            );
+                        }
+
+                        // Handle edit_main_image
+                        if (attribute.edit_main_image instanceof File) {
+                            fData.append(
+                                `product_variants[${vIndex}][variant_attributes][${aIndex}][edit_main_image]`,
+                                attribute.edit_main_image
+                            );
+                        } else if (typeof attribute.edit_main_image === "string") {
+                            fData.append(
+                                `product_variants[${vIndex}][variant_attributes][${aIndex}][edit_main_image]`,
+                                attribute.edit_main_image
+                            );
+                        }
+
+                        // Handle edit_preview_image
+                        if (attribute.edit_preview_image instanceof File) {
+                            fData.append(
+                                `product_variants[${vIndex}][variant_attributes][${aIndex}][edit_preview_image]`,
+                                attribute.edit_preview_image
+                            );
+                        } else if (typeof attribute.edit_preview_image === "string") {
+                            fData.append(
+                                `product_variants[${vIndex}][variant_attributes][${aIndex}][edit_preview_image]`,
+                                attribute.edit_preview_image
+                            );
+                        }
+
+                        // Handle edit data (non-file data)
+                        if (attribute.edit_main_image_data) {
+                            fData.append(
+                                `product_variants[${vIndex}][variant_attributes][${aIndex}][edit_main_image_data]`,
+                                typeof attribute.edit_main_image_data === "string"
+                                    ? attribute.edit_main_image_data
+                                    : JSON.stringify(attribute.edit_main_image_data)
+                            );
+                        }
+
+                        if (attribute.edit_preview_image_data) {
+                            fData.append(
+                                `product_variants[${vIndex}][variant_attributes][${aIndex}][edit_preview_image_data]`,
+                                typeof attribute.edit_preview_image_data === "string"
+                                    ? attribute.edit_preview_image_data
+                                    : JSON.stringify(attribute.edit_preview_image_data)
+                            );
+                        }
+                    });
+                }
+            });
+        }
+
+        // 3) Append ALL combination data (not just files) - only non-empty values
+        combinations.forEach((variant, vIndex) => {
             if (variant.variant_name) {
                 fData.append(
                     `combinationData[${vIndex}][variant_name]`,
                     variant.variant_name
                 );
-            }
-
-            // Append guide array data - NEW STRUCTURE
-            if (variant.guide && Array.isArray(variant.guide) && variant.guide.length > 0) {
-                variant.guide.forEach((guide, gIndex) => {
-                    // Append guide fields
-                    if (guide.guide_name) {
-                        fData.append(
-                            `combinationData[${vIndex}][guide][${gIndex}][guide_name]`,
-                            guide.guide_name
-                        );
-                    }
-
-                    if (guide.guide_description) {
-                        fData.append(
-                            `combinationData[${vIndex}][guide][${gIndex}][guide_description]`,
-                            guide.guide_description
-                        );
-                    }
-
-                    if (guide.guide_type) {
-                        fData.append(
-                            `combinationData[${vIndex}][guide][${gIndex}][guide_type]`,
-                            guide.guide_type
-                        );
-                    }
-
-                    // Handle guide file
-                    if (guide.guide_file instanceof File) {
-                        fData.append(
-                            `combinationData[${vIndex}][guide][${gIndex}][guide_file]`,
-                            guide.guide_file
-                        );
-                    } else if (typeof guide.guide_file === "string") {
-                        fData.append(
-                            `combinationData[${vIndex}][guide][${gIndex}][guide_file]`,
-                            guide.guide_file
-                        );
-                    }
-                });
             }
 
             // Skip empty variants
@@ -159,8 +268,6 @@ export const useProductAPI = () => {
             }
 
             (variant.combinations || []).forEach((comb, cIndex) => {
-                console.log("Edited Data", comb);
-
                 // Skip empty combinations
                 if (!comb) return;
 
@@ -179,19 +286,6 @@ export const useProductAPI = () => {
                         fieldKey === "edit_main_image" ||
                         fieldKey === "edit_preview_image"
                     ) {
-                        return; // skip nulls and skip file/image fields (they're handled separately below)
-                    }
-
-                    console.log("Edited Data", JSON.stringify(fieldVal), fieldKey, fieldKey === "edit_main_image_data",
-                        fieldKey === "edit_preview_image_data");
-
-                    if ((fieldKey === "edit_main_image_data" ||
-                        fieldKey === "edit_preview_image_data") && fieldVal && fieldKey) {
-                        console.log("Edited Data", JSON.stringify(fieldVal), fieldKey);
-                        fData.append(
-                            `combinationData[${vIndex}][combinations][${cIndex}][${fieldKey}]`,
-                            typeof fieldVal === "string" ? fieldVal : JSON.stringify(fieldVal)
-                        );
                         return;
                     }
 
@@ -216,78 +310,10 @@ export const useProductAPI = () => {
                         );
                     }
                 });
-
-                // Handle files - only append if they are File objects or empty strings
-                const mainArr = comb?.main_images || [];
-                mainArr.forEach((img, imgIndex) => {
-                    if (img instanceof File) {
-                        fData.append(
-                            `combinationData[${vIndex}][combinations][${cIndex}][main_images][]`,
-                            img
-                        );
-                    } else if (typeof img === "string") {
-                        fData.append(
-                            `combinationData[${vIndex}][combinations][${cIndex}][main_images][]`,
-                            img
-                        );
-                    }
-                });
-
-                if (comb?.preview_image instanceof File) {
-                    fData.append(
-                        `combinationData[${vIndex}][combinations][${cIndex}][preview_image]`,
-                        comb.preview_image
-                    );
-                } else if (typeof comb?.preview_image === "string") {
-                    // Append empty string for removed preview image
-                    fData.append(
-                        `combinationData[${vIndex}][combinations][${cIndex}][preview_image]`,
-                        comb?.preview_image
-                    );
-                }
-
-                if (comb?.thumbnail instanceof File) {
-                    fData.append(
-                        `combinationData[${vIndex}][combinations][${cIndex}][thumbnail]`,
-                        comb.thumbnail
-                    );
-                } else if (typeof comb.thumbnail === "string") {
-                    // Append empty string for removed thumbnail
-                    fData.append(
-                        `combinationData[${vIndex}][combinations][${cIndex}][thumbnail]`,
-                        comb.thumbnail
-                    );
-                }
-
-                if (comb?.edit_main_image instanceof File) {
-                    console.log("Sending as binary", comb?.edit_main_image);
-                    fData.append(
-                        `combinationData[${vIndex}][combinations][${cIndex}][edit_main_image]`,
-                        comb.edit_main_image
-                    );
-                } else if (typeof comb?.edit_main_image === "string") {
-                    console.log("Sending as string", comb?.edit_main_image);
-                    fData.append(
-                        `combinationData[${vIndex}][combinations][${cIndex}][edit_main_image]`,
-                        comb?.edit_main_image
-                    );
-                }
-
-                if (comb?.edit_preview_image instanceof File) {
-                    fData.append(
-                        `combinationData[${vIndex}][combinations][${cIndex}][edit_preview_image]`,
-                        comb.edit_preview_image
-                    );
-                } else if (typeof comb?.edit_preview_image === "string") {
-                    fData.append(
-                        `combinationData[${vIndex}][combinations][${cIndex}][edit_preview_image]`,
-                        comb.edit_preview_image
-                    );
-                }
             });
         });
 
-        // 3) Append customization data with images - UPDATED TO MATCH COMBINATIONS STRUCTURE
+        // 4) Append customization data with images - UPDATED TO MATCH COMBINATIONS STRUCTURE
         if (customizationData && customizationData.customizations && customizationData.customizations.length > 0) {
             // Append basic customization fields
             fData.append(`customizationData[label]`, customizationData.label || '');
@@ -519,7 +545,7 @@ export const useProductAPI = () => {
     // Validate combinations
     const validateCombinations = () => {
         const state = useProductFormStore.getState();
-        const {variationsData, formValues, combinations} = state;
+        const { variationsData, formValues, combinations } = state;
 
         const errors = {};
         combinations.forEach((variant) => {
@@ -556,7 +582,7 @@ export const useProductAPI = () => {
             // Build payload and form data
             const payload = buildProductPayload(isEdit, queryId);
             const state = useProductFormStore.getState();
-            const fData = buildProductFormData(payload, state.combinations, state.customizationData);
+            const fData = buildProductFormData(payload, state.product_variants, state.combinations, state.customizationData);
 
             // Make API call
             const endpoint = isEdit ? apiEndpoints.addProduct : apiEndpoints.addProduct;
@@ -586,7 +612,7 @@ export const useProductAPI = () => {
 
             const payload = buildProductPayload(!!queryId, queryId);
             const state = useProductFormStore.getState();
-            const fData = buildProductFormData(payload, state.combinations, state.customizationData);
+            const fData = buildProductFormData(payload, state.product_variants, state.combinations, state.customizationData);
 
             const res = await ApiService.postImage(apiEndpoints.addDraftProduct, fData, auth_key);
 
@@ -635,7 +661,7 @@ export const useProductAPI = () => {
 
     const handleUploadImage2 = async (id) => {
         const state = useProductFormStore.getState();
-        const {images, deleteIconData, altText} = state.formData;
+        const { images, deleteIconData, altText } = state.formData;
 
         const filterImagesData = images.filter((img) => img.file);
         const sortImagesData = images.filter((img) => !img.file);
@@ -699,7 +725,7 @@ export const useProductAPI = () => {
 
     const editVideoHandler = async (id) => {
         const state = useProductFormStore.getState();
-        const {videos, deletedVideos} = state.formData;
+        const { videos, deletedVideos } = state.formData;
 
         const filterVideoData = videos.filter((res) => res.file);
         const videoArr = filterVideoData?.map((e) => e.file);
@@ -761,13 +787,13 @@ export const useProductAPI = () => {
 
     // UPDATED: Fetch edit product data with parent product
     const fetchEditProductData = async (productId, copyQueryId, isCopied) => {
-        if(productId || copyQueryId) {
+        if (productId || copyQueryId) {
             try {
                 setLoadingProductData(true);
                 const editapiUrl = `${apiEndpoints.EditProduct}/${copyQueryId || productId}`;
                 const res = await ApiService.get(editapiUrl, auth_key);
                 if (res?.status === 200) {
-                    const {productData} = res?.data;
+                    const { productData } = res?.data;
 
                     // Fetch parent product data if parent_id exists
                     console.log("OUTSIDE IF Parent Id is", productData.parent_id);

@@ -45,11 +45,11 @@ export default function Footer() {
               Design and Developed by{" "}
               <img style={{ height: "34px" }} src="assets/images/img-logo.webp" alt="" />
             </Paragraph>
-              <Paragraph m={0} display={"flex"} alignItems={"center"} justifyContent={"center"}>
-                  and
-                  Maintained by{" "}
-                 iSkylar Technologies
-              </Paragraph>
+            <Paragraph m={0} display={"flex"} alignItems={"center"} justifyContent={"center"}>
+              and
+              Maintained by{" "}
+              <img style={{ height: "54px", color: "white" }} src="assets/images/iskylar.png" alt="" />
+            </Paragraph>
           </FooterContent>
         </AppFooter>
       </AppBar>

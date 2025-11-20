@@ -2,12 +2,14 @@ import React, { useState } from "react";
 import {
     Box,
     Typography,
-    Button, TextField
+    Button,
+    TextField
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import { useProductFormStore } from "../../../../states/useAddProducts";
 import VariantModal from "./components/VaraintModal";
 import VariationsTable from "./components/VariationsTable";
+import CombinationsTable from "./components/CombinationTable";
 import EmptyVariationsState from "./components/EmptyVariationsState";
 import FormControl from "@mui/material/FormControl";
 
@@ -15,6 +17,7 @@ const ProductVariations = () => {
     const {
         variationsData,
         combinations,
+        product_variants, // NEW: For images table
         formValues,
         setCombinationError,
         setShowAll,
@@ -23,6 +26,22 @@ const ProductVariations = () => {
     } = useProductFormStore();
 
     const [showVariantModal, setShowVariantModal] = useState(false);
+
+    // Check if tables should be synced (no combined variants)
+    const shouldSyncTables = () => {
+        if (!formValues?.isCheckedPrice && !formValues?.isCheckedQuantity) {
+            return true; // No price/quantity variations, tables are in sync
+        }
+
+        // Check if any combined variants exist
+        const hasCombinedVariants = combinations.some(comb =>
+            comb.variant_name.includes(" and ")
+        );
+
+        return !hasCombinedVariants;
+    };
+
+    const isSynced = shouldSyncTables();
 
     // Handle opening variant modal
     const handleOpenVariant = () => {
@@ -68,7 +87,7 @@ const ProductVariations = () => {
                 display: "flex",
                 flexDirection: "column",
                 gap: "20px",
-                maxWidth: "1200px",
+                maxWidth: "100%", // Increased for two tables
                 mx: "auto"
             }}
         >
@@ -130,7 +149,24 @@ const ProductVariations = () => {
                 </Box>
             </Box>)}
 
-            {/* Variations Section Header */}
+            {/* Add Variations Button */}
+            <Box sx={{ mt: 2 }}>
+                <Button
+                    variant="outlined"
+                    startIcon={<AddIcon />}
+                    onClick={handleOpenVariant}
+                    sx={{ minWidth: '160px' }}
+                >
+                    Add Variations ({variationsData?.length || 0}/3)
+                </Button>
+                {variationsData?.length >= 3 && (
+                    <Typography variant="caption" color="textSecondary" sx={{ ml: 2 }}>
+                        Maximum 3 variation types allowed
+                    </Typography>
+                )}
+            </Box>
+
+            {/* Two Tables Layout */}
             <Box
                 sx={{
                     display: "flex",
@@ -138,49 +174,52 @@ const ProductVariations = () => {
                     alignItems: "flex-start"
                 }}
             >
-                <Box
-                    sx={{
-                        fontSize: "14px",
-                        fontWeight: 700,
-                        width: "15%",
-                        minWidth: "120px",
-                        mt: 1
-                    }}
-                >
-                    Product Variations
-                    <span style={{ color: "red", marginLeft: "3px" }}>*</span>:
-                </Box>
-                <Box sx={{ width: "100%" }}>
+                {/* Variations Table (Images) */}
+                <Box sx={{ flex: 1.5 }}>
                     <Typography
-                        variant="body2"
-                        color="textSecondary"
-                        sx={{ mb: 2 }}
+                        variant="h6"
+                        sx={{ mb: 2, color: 'primary.main' }}
                     >
-                        Manage product variations like sizes, colors, materials, etc. Add up to 3 variation types.
+                        Product Variants
                     </Typography>
 
-                    {/* Add Variations Button */}
-                    <Box sx={{ mb: 3 }}>
-                        <Button
-                            variant="outlined"
-                            startIcon={<AddIcon />}
-                            onClick={handleOpenVariant}
-                            sx={{ minWidth: '160px' }}
-                        >
-                            Add Variations ({variationsData?.length || 0}/3)
-                        </Button>
-                        {variationsData?.length >= 3 && (
-                            <Typography variant="caption" color="textSecondary" sx={{ ml: 2 }}>
-                                Maximum 3 variation types allowed
-                            </Typography>
-                        )}
-                    </Box>
-
-                    {/* Variations Content */}
-                    {combinations?.length > 0 ? (
-                        <VariationsTable setShowVariantModal={setShowVariantModal} />
+                    {product_variants?.length > 0 ? (
+                        <VariationsTable
+                            setShowVariantModal={setShowVariantModal}
+                            isSynced={isSynced}
+                        />
                     ) : (
                         <EmptyVariationsState onAddVariation={handleOpenVariant} />
+                    )}
+                </Box>
+
+                {/* Combinations Table (Price/Quantity) */}
+                <Box sx={{ flex: 1 }}>
+                    <Typography
+                        variant="h6"
+                        sx={{ mb: 2, color: 'primary.main' }}
+                    >
+                        Price & Quantity
+                        {/* {!isSynced && (
+                            <Typography variant="caption" color="warning.main" sx={{ ml: 1 }}>
+                                (Independent - Combined variants active)
+                            </Typography>
+                        )} */}
+                    </Typography>
+
+                    {combinations?.length > 0 ? (
+                        <CombinationsTable isSynced={isSynced} />
+                    ) : (
+                        <Box sx={{
+                            p: 4,
+                            textAlign: 'center',
+                            border: '1px dashed #e0e0e0',
+                            borderRadius: 1
+                        }}>
+                            <Typography color="textSecondary">
+                                Price and quantity settings will appear here after generating variations
+                            </Typography>
+                        </Box>
                     )}
                 </Box>
             </Box>

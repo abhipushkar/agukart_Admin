@@ -6,22 +6,14 @@ import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Paper from "@mui/material/Paper";
-import { Box, InputAdornment, OutlinedInput, TextField, Typography, CircularProgress } from "@mui/material";
-import InputLabel from "@mui/material/InputLabel";
-import MenuItem from "@mui/material/MenuItem";
+import { Box, InputAdornment, TextField, Typography, CircularProgress } from "@mui/material";
 import FormControl from "@mui/material/FormControl";
-import Select from "@mui/material/Select";
-import { DemoContainer } from "@mui/x-date-pickers/internals/demo";
-import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
-import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import { DateField } from "@mui/x-date-pickers/DateField";
-import { useState, useRef, useCallback } from "react";
+import { useRef, useCallback } from "react";
 import { useEffect } from "react";
 import { ApiService } from "app/services/ApiService";
 import { apiEndpoints } from "app/constant/apiEndpoints";
 import { localStorageKey } from "app/constant/localStorageKey";
 import dayjs from "dayjs";
-import { DatePicker } from "@mui/x-date-pickers";
 import { toast } from "react-toastify";
 
 export default function ProductParentTable({
@@ -37,7 +29,8 @@ export default function ProductParentTable({
                                                loadingSkus,
                                                setLoadingSkus,
                                                parentVariants,
-                                               checkForDuplicateSkus
+                                               checkForDuplicateSkus,
+                                               selectedVendor // Added selectedVendor prop
                                            }) {
     const [sellerSkyValues, setSellerSkyValues] = React.useState(
         sellerSky ? sellerSky : Array(combinations.length).fill("")
@@ -74,6 +67,17 @@ export default function ProductParentTable({
             return `Child product already uses variants: ${conflictingVariants.join(', ')}. Please select different variants.`;
         }
 
+        return null;
+    };
+
+    // Validate vendor match
+    const validateVendorMatch = (childProductData, selectedVendor) => {
+        if (!childProductData?.vendor_id || !selectedVendor) return null;
+        
+        if (childProductData.vendor_id !== selectedVendor._id) {
+            return `SKU not found in this shop.`;
+        }
+        
         return null;
     };
 
@@ -130,9 +134,17 @@ export default function ProductParentTable({
             if (res.status === 200) {
                 let obj = res.data.data;
 
+                // Validate variants
                 const variantError = validateChildProductVariants(obj, parentVariants);
                 if (variantError) {
                     setSkuErrors(prev => ({ ...prev, [index]: variantError }));
+                    return;
+                }
+
+                // Validate vendor match
+                const vendorError = validateVendorMatch(obj, selectedVendor);
+                if (vendorError) {
+                    setSkuErrors(prev => ({ ...prev, [index]: vendorError }));
                     return;
                 }
 
@@ -191,7 +203,18 @@ export default function ProductParentTable({
         debounceTimers.current[index] = setTimeout(() => {
             validateSkuAndVariants(trimmedSku, index);
         }, 500);
-    }, [variantArrValues]);
+    }, [variantArrValues, selectedVendor]); // Added selectedVendor dependency
+
+    // Revalidate all SKUs when vendor changes
+    useEffect(() => {
+        if (selectedVendor) {
+            sellerSkyValues.forEach((sku, index) => {
+                if (sku && trimValue(sku)) {
+                    debouncedValidateSku(sku, index);
+                }
+            });
+        }
+    }, [selectedVendor]);
 
     const handleSellerSkuChange = async (index, event) => {
         const value = trimValue(event.target.value);
@@ -299,6 +322,11 @@ export default function ProductParentTable({
             <Typography variant="h6" gutterBottom>
                 Variant Combinations
             </Typography>
+            {selectedVendor && (
+                <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+                    Selected Shop: <strong>{selectedVendor.shopName}</strong>
+                </Typography>
+            )}
             <TableContainer component={Paper}>
                 <Table sx={{ minWidth: 650 }} aria-label="simple table">
                     <TableHead>

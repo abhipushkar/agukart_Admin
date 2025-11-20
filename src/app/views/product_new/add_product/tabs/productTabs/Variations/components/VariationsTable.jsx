@@ -13,7 +13,6 @@ import {
     Menu,
     MenuItem,
     Checkbox,
-    FormControlLabel,
     Button,
     Popover,
     Dialog,
@@ -28,18 +27,19 @@ import ViewColumnIcon from "@mui/icons-material/ViewColumn";
 import DeleteIcon from "@mui/icons-material/Delete";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
+import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import VariationTableRow from "./VariationTableRow";
-import {useProductFormStore} from "../../../../../states/useAddProducts";
+import { useProductFormStore } from "../../../../../states/useAddProducts";
 
 // React Quill modules configuration
 const quillModules = {
     toolbar: [
         [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
         ['bold', 'italic', 'underline', 'strike'],
-        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-        [{ 'indent': '-1'}, { 'indent': '+1' }],
+        [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+        [{ 'indent': '-1' }, { 'indent': '+1' }],
         ['link', 'image'],
         ['clean']
     ],
@@ -52,37 +52,105 @@ const quillFormats = [
     'link', 'image'
 ];
 
-const VariationsTable = ({setShowVariantModal}) => {
+// Draggable Table Container Component
+const DraggableTableContainer = ({
+    children,
+    index,
+    onDragStart,
+    onDragOver,
+    onDrop,
+    onDragEnd,
+    isDragging,
+    isDragOver,
+    ...props
+}) => {
+    const handleDragStart = (e) => {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', index.toString());
+        onDragStart(e, index);
+    };
+
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        onDragOver(e, index);
+    };
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        onDrop(e, index);
+    };
+
+    return (
+        <Box
+            {...props}
+            draggable
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+            onDragEnd={onDragEnd}
+            sx={{
+                cursor: isDragging ? 'grabbing' : 'grab',
+                backgroundColor: isDragging
+                    ? 'rgba(25, 118, 210, 0.04)'
+                    : isDragOver
+                        ? 'rgba(0, 0, 0, 0.02)'
+                        : 'transparent',
+                my: 2,
+                opacity: isDragging ? 0.8 : 1,
+                transform: isDragging ? 'scale(1.02)' : 'scale(1)',
+                transition: 'all 0.2s ease',
+                boxShadow: isDragging ? '0 8px 25px rgba(0,0,0,0.15)' : '0 2px 8px rgba(0,0,0,0.1)',
+                position: 'relative',
+                border: isDragOver ? '2px dashed #1976d2' : '1px solid rgba(224, 224, 224, 1)',
+                borderRadius: 1,
+                overflow: 'hidden',
+                '&:hover': {
+                    backgroundColor: isDragging
+                        ? 'rgba(25, 118, 210, 0.04)'
+                        : 'rgba(0, 0, 0, 0.01)',
+                },
+                '& .drag-handle': {
+                    opacity: isDragging ? 1 : 0.5,
+                    transition: 'opacity 0.2s ease',
+                },
+                '&:hover .drag-handle': {
+                    opacity: 0.8,
+                },
+            }}
+        >
+            {children}
+        </Box>
+    );
+};
+
+const VariationsTable = ({ setShowVariantModal, isSynced }) => {
     const {
-        combinations,
+        product_variants,
         variationsData,
         formValues,
-        combinationError,
-        showAll,
-        setCombinationError,
         setShowAll,
-        handleToggle,
-        handleCombChange,
+        handleProductVariantReorder,
         handleImageUpload,
         handleImageRemove,
         handleEditImage,
-        handleRowReorder,
-        setCombinations
+        handleVariantGroupReorder, // For reordering entire variant groups
+        showAll,
     } = useProductFormStore();
 
-    // State for column visibility per table (using variant_name as key)
+    // State for column visibility per table
     const [visibleColumns, setVisibleColumns] = useState({});
-
-    // State for column selection menu per table
     const [anchorEl, setAnchorEl] = useState(null);
     const [currentTableKey, setCurrentTableKey] = useState(null);
-
-    // State for hovered header
     const [hoveredHeader, setHoveredHeader] = useState(null);
+
+    // State for table dragging
+    const [draggingTableIndex, setDraggingTableIndex] = useState(null);
+    const [dragOverTableIndex, setDragOverTableIndex] = useState(null);
 
     // State for guide dialog
     const [guideDialogOpen, setGuideDialogOpen] = useState(false);
-    const [currentCombIndex, setCurrentCombIndex] = useState(null);
+    const [currentVariantIndex, setCurrentVariantIndex] = useState(null);
     const [currentGuide, setCurrentGuide] = useState({
         guide_name: "",
         guide_file: null,
@@ -91,39 +159,64 @@ const VariationsTable = ({setShowVariantModal}) => {
         guide_file_url: ""
     });
 
-    // Initialize visible columns for each table based on current data
+    // Initialize visible columns based on product_variants
     useEffect(() => {
-        if (combinations?.length > 0) {
+        if (product_variants?.length > 0) {
             const newVisibleColumns = { ...visibleColumns };
 
-            combinations.forEach((comb) => {
-                const tableKey = comb.variant_name || comb.combinations[0]?.name1;
+            product_variants.forEach((variant) => {
+                const tableKey = variant.variant_name;
                 if (tableKey && !newVisibleColumns[tableKey]) {
-                    // Initialize with default visibility for this table
+                    // Initialize with default visibility for images table
                     newVisibleColumns[tableKey] = {
                         drag: true,
-                        select: true,
-                        attribute1: true,
-                        attribute2: true,
+                        attribute: true,
                         multipleUpload: true,
                         mainImage1: true,
                         mainImage2: true,
                         mainImage3: true,
                         preview: true,
                         thumbnail: true,
-                        price: (variationsData.length >= 2 ? formValues?.prices === comb.variant_name : true) && formValues?.isCheckedPrice,
-                        quantity: (variationsData.length >= 2 ? formValues?.quantities === comb.variant_name : true) && formValues?.isCheckedQuantity,
-                        visible: true
                     };
                 }
             });
 
             setVisibleColumns(newVisibleColumns);
         }
-    }, [combinations, variationsData, formValues]);
+    }, [product_variants]);
 
-    const handleEdit = (comb) => {
-        console.log("Edit variation:", comb);
+    // Table drag and drop handlers
+    const handleTableDragStart = (e, index) => {
+        setDraggingTableIndex(index);
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', index.toString());
+    };
+
+    const handleTableDragOver = (e, index) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        if (draggingTableIndex !== null && draggingTableIndex !== index) {
+            setDragOverTableIndex(index);
+        }
+    };
+
+    const handleTableDragEnd = () => {
+        setDraggingTableIndex(null);
+        setDragOverTableIndex(null);
+    };
+
+    const handleTableDrop = (e, targetIndex) => {
+        e.preventDefault();
+        const sourceIndex = parseInt(e.dataTransfer.getData('text/plain'));
+        if (sourceIndex !== targetIndex && handleVariantGroupReorder) {
+            handleVariantGroupReorder(sourceIndex, targetIndex);
+        }
+        setDraggingTableIndex(null);
+        setDragOverTableIndex(null);
+    };
+
+    const handleEdit = (variant) => {
+        console.log("Edit variation:", variant);
         setShowVariantModal(true);
     };
 
@@ -156,18 +249,13 @@ const VariationsTable = ({setShowVariantModal}) => {
             ...prev,
             [currentTableKey]: {
                 drag: true,
-                select: true,
-                attribute1: true,
-                attribute2: true,
+                attribute: true,
                 multipleUpload: true,
                 mainImage1: true,
                 mainImage2: true,
                 mainImage3: true,
                 preview: true,
                 thumbnail: true,
-                price: true,
-                quantity: true,
-                visible: true
             }
         }));
     };
@@ -179,67 +267,42 @@ const VariationsTable = ({setShowVariantModal}) => {
             ...prev,
             [currentTableKey]: {
                 drag: true,
-                select: false,
-                attribute1: true,
-                attribute2: true,
+                attribute: true,
                 multipleUpload: false,
                 mainImage1: false,
                 mainImage2: false,
                 mainImage3: false,
                 preview: false,
                 thumbnail: false,
-                price: false,
-                quantity: false,
-                visible: true
             }
         }));
     };
 
-    const getAvailableColumns = (comb) => {
+    const getAvailableColumns = (variant) => {
         const columns = [
             { key: 'drag', label: 'Drag', alwaysVisible: true },
-            { key: 'attribute1', label: comb?.combinations[0]?.name1 || 'Attribute 1', alwaysVisible: true },
-            { key: 'attribute2', label: comb?.combinations[0]?.name2 || 'Attribute 2', alwaysVisible: true },
+            { key: 'attribute', label: 'Attribute', alwaysVisible: true },
             { key: 'multipleUpload', label: 'Multiple Upload', alwaysVisible: false },
             { key: 'mainImage1', label: 'Main Image 1', alwaysVisible: false },
             { key: 'mainImage2', label: 'Main Image 2', alwaysVisible: false },
             { key: 'mainImage3', label: 'Main Image 3', alwaysVisible: false },
             { key: 'preview', label: 'Preview', alwaysVisible: false },
             { key: 'thumbnail', label: 'Thumbnail', alwaysVisible: false },
-            {
-                key: 'price',
-                label: 'Price',
-                alwaysVisible: false,
-                visible: (variationsData.length >= 2 ? formValues?.prices === comb.variant_name : true) && formValues?.isCheckedPrice
-            },
-            {
-                key: 'quantity',
-                label: 'Quantity',
-                alwaysVisible: false,
-                visible: (variationsData.length >= 2 ? formValues?.quantities === comb.variant_name : true) && formValues?.isCheckedQuantity
-            },
-            { key: 'visible', label: 'Visible', alwaysVisible: true }
         ];
 
-        return columns.filter(col => !col.alwaysVisible && (col.visible === undefined || col.visible));
+        return columns.filter(col => !col.alwaysVisible);
     };
 
-    // Get visible columns for a specific table
     const getTableVisibleColumns = (tableKey) => {
         return visibleColumns[tableKey] || {
             drag: true,
-            select: true,
-            attribute1: true,
-            attribute2: true,
+            attribute: true,
             multipleUpload: true,
             mainImage1: true,
             mainImage2: true,
             mainImage3: true,
             preview: true,
             thumbnail: true,
-            price: true,
-            quantity: true,
-            visible: true
         };
     };
 
@@ -254,21 +317,20 @@ const VariationsTable = ({setShowVariantModal}) => {
     // Create object URL for preview
     const createObjectURL = (file) => {
         if (typeof file === 'string') {
-            return file; // Already a URL string
+            return file;
         }
         return URL.createObjectURL(file);
     };
 
-    // Open guide dialog
-    const handleOpenGuideDialog = (combIndex) => {
-        setCurrentCombIndex(combIndex);
-        const comb = combinations[combIndex];
+    // Guide dialog functions
+    const handleOpenGuideDialog = (variantIndex) => {
+        setCurrentVariantIndex(variantIndex);
+        const variant = product_variants[variantIndex];
 
-        // Initialize current guide with existing data or empty
-        if (comb.guide && comb.guide.length > 0) {
+        if (variant.guide && variant.guide.length > 0) {
             setCurrentGuide({
-                ...comb.guide[0],
-                guide_file_url: comb.guide[0].guide_file ? createObjectURL(comb.guide[0].guide_file) : ""
+                ...variant.guide[0],
+                guide_file_url: variant.guide[0].guide_file ? createObjectURL(variant.guide[0].guide_file) : ""
             });
         } else {
             setCurrentGuide({
@@ -282,10 +344,9 @@ const VariationsTable = ({setShowVariantModal}) => {
         setGuideDialogOpen(true);
     };
 
-    // Close guide dialog
     const handleCloseGuideDialog = () => {
         setGuideDialogOpen(false);
-        setCurrentCombIndex(null);
+        setCurrentVariantIndex(null);
         setCurrentGuide({
             guide_name: "",
             guide_file: null,
@@ -295,7 +356,6 @@ const VariationsTable = ({setShowVariantModal}) => {
         });
     };
 
-    // Handle guide file upload in dialog
     const handleGuideFileUpload = (event) => {
         const file = event.target.files[0];
         if (!file) return;
@@ -309,7 +369,6 @@ const VariationsTable = ({setShowVariantModal}) => {
         }));
     };
 
-    // Handle guide name change in dialog
     const handleGuideNameChange = (value) => {
         setCurrentGuide(prev => ({
             ...prev,
@@ -317,7 +376,6 @@ const VariationsTable = ({setShowVariantModal}) => {
         }));
     };
 
-    // Handle guide description change in dialog
     const handleGuideDescriptionChange = (value) => {
         setCurrentGuide(prev => ({
             ...prev,
@@ -325,7 +383,6 @@ const VariationsTable = ({setShowVariantModal}) => {
         }));
     };
 
-    // Handle guide file remove in dialog
     const handleGuideFileRemove = () => {
         setCurrentGuide(prev => ({
             ...prev,
@@ -335,45 +392,25 @@ const VariationsTable = ({setShowVariantModal}) => {
         }));
     };
 
-    // Save guide data
     const handleSaveGuide = () => {
-        if (currentCombIndex === null) return;
-
-        const updatedCombinations = combinations.map((comb, index) => {
-            if (index === currentCombIndex) {
-                return {
-                    ...comb,
-                    guide: [currentGuide] // Store as array with one object
-                };
-            }
-            return comb;
-        });
-
-        setCombinations(updatedCombinations);
+        if (currentVariantIndex === null) return;
+        // TODO: Implement guide saving to product_variants
         handleCloseGuideDialog();
     };
 
-    // Handle opening file in new tab
     const handleOpenFile = (guide) => {
         if (!guide.guide_file) return;
 
-        let fileUrl;
+        let fileUrl = typeof guide.guide_file === 'string'
+            ? guide.guide_file
+            : URL.createObjectURL(guide.guide_file);
 
-        if (typeof guide.guide_file === 'string') {
-            // If it's already a URL string
-            fileUrl = guide.guide_file;
-        } else {
-            // If it's a File object, create object URL
-            fileUrl = URL.createObjectURL(guide.guide_file);
-        }
-
-        // Open in new tab
         window.open(fileUrl, '_blank');
     };
 
-    // Fixed handleRemoveAllImages function
-    const handleRemoveAllImages = (columnType, combIndex) => {
-        if (!combinations?.[combIndex]?.combinations) return;
+    // Remove all images from a column
+    const handleRemoveAllImages = (columnType, variantIndex) => {
+        if (!product_variants?.[variantIndex]?.variant_attributes) return;
 
         const imageKeyMap = {
             'mainImage1': 'main_images[0]',
@@ -386,45 +423,37 @@ const VariationsTable = ({setShowVariantModal}) => {
         const imageKey = imageKeyMap[columnType];
         if (!imageKey) return;
 
-        console.log('Removing all images for:', columnType, '->', imageKey, 'in combination:', combIndex);
-
-        combinations[combIndex].combinations.forEach((item, rowIndex) => {
-            // Check if image exists
+        product_variants[variantIndex].variant_attributes.forEach((attribute, attributeIndex) => {
             let hasImage = false;
             if (imageKey.startsWith('main_images')) {
                 const index = parseInt(imageKey.match(/\[(\d+)\]/)[1]);
-                hasImage = item.main_images && item.main_images[index];
+                hasImage = attribute.main_images && attribute.main_images[index];
             } else {
-                hasImage = item[imageKey];
+                hasImage = attribute[imageKey];
             }
 
             if (hasImage) {
-                console.log(`Removing image from row ${rowIndex}`);
-                try {
-                    handleImageRemove(combIndex, rowIndex, imageKey);
-                } catch (error) {
-                    console.error(`Error removing image from row ${rowIndex}:`, error);
-                }
+                handleImageRemove(variantIndex, attributeIndex, imageKey);
             }
         });
     };
 
     // Check if a column has any images
-    const hasColumnImages = (columnType, combindex) => {
-        if (!combinations?.[combindex]?.combinations) return false;
+    const hasColumnImages = (columnType, variantIndex) => {
+        if (!product_variants?.[variantIndex]?.variant_attributes) return false;
 
-        return combinations[combindex].combinations.some(item => {
+        return product_variants[variantIndex].variant_attributes.some(attribute => {
             switch (columnType) {
                 case 'mainImage1':
-                    return item.main_images && item.main_images[0];
+                    return attribute.main_images && attribute.main_images[0];
                 case 'mainImage2':
-                    return item.main_images && item.main_images[1];
+                    return attribute.main_images && attribute.main_images[1];
                 case 'mainImage3':
-                    return item.main_images && item.main_images[2];
+                    return attribute.main_images && attribute.main_images[2];
                 case 'preview':
-                    return item.preview_image;
+                    return attribute.preview_image;
                 case 'thumbnail':
-                    return item.thumbnail;
+                    return attribute.thumbnail;
                 default:
                     return false;
             }
@@ -432,12 +461,8 @@ const VariationsTable = ({setShowVariantModal}) => {
     };
 
     // Image Header Cell Component
-    const ImageHeaderCell = ({
-                                 columnKey,
-                                 displayName,
-                                 combindex
-                             }) => {
-        const hasImages = hasColumnImages(columnKey, combindex);
+    const ImageHeaderCell = ({ columnKey, displayName, variantIndex }) => {
+        const hasImages = hasColumnImages(columnKey, variantIndex);
 
         return (
             <TableCell
@@ -447,7 +472,7 @@ const VariationsTable = ({setShowVariantModal}) => {
                     fontWeight: 600,
                     py: 2,
                     position: 'relative',
-                    backgroundColor: hoveredHeader === columnKey ? '#fff3e0' : '#f5f5f5',
+                    backgroundColor: '#f5f5f5',
                     transition: 'background-color 0.2s ease',
                     minWidth: 120
                 }}
@@ -460,7 +485,7 @@ const VariationsTable = ({setShowVariantModal}) => {
                         size="small"
                         variant="contained"
                         color="error"
-                        onClick={() => handleRemoveAllImages(columnKey, combindex)}
+                        onClick={() => handleRemoveAllImages(columnKey, variantIndex)}
                         sx={{
                             position: 'absolute',
                             top: '50%',
@@ -471,7 +496,7 @@ const VariationsTable = ({setShowVariantModal}) => {
                             height: 24,
                             fontSize: '12px',
                             padding: 0,
-                            borderRadius: '50%'
+                            borderRadius: '50%',
                         }}
                         title={`Remove all ${displayName}`}
                     >
@@ -483,14 +508,14 @@ const VariationsTable = ({setShowVariantModal}) => {
     };
 
     // Attribute Cell with Tooltip Component
-    const AttributeCell = ({ comb, combindex, attributeName, attributeKey }) => {
-        const hasGuide = comb.guide && comb.guide.length > 0 && comb.guide[0];
-        const guide = hasGuide ? comb.guide[0] : null;
+    const AttributeCell = ({ variant, variantIndex, attributeName }) => {
+        const hasGuide = variant.guide && variant.guide.length > 0 && variant.guide[0];
+        const guide = hasGuide ? variant.guide[0] : null;
         const isImage = guide && isImageFile(guide.guide_file);
         const fileUrl = guide?.guide_file_url || (guide?.guide_file ? createObjectURL(guide.guide_file) : null);
 
         return (
-            <TableCell align="center" sx={{ wordBreak: "keep-all", fontWeight: 600, py: 2 }}>
+            <TableCell align="center" sx={{ wordBreak: "keep-all", width: 200, fontWeight: 600, py: 2 }}>
                 <Tooltip
                     title={
                         <Box sx={{ p: 1, maxWidth: 300 }}>
@@ -574,7 +599,7 @@ const VariationsTable = ({setShowVariantModal}) => {
                                         size="small"
                                         variant="outlined"
                                         startIcon={<EditIcon />}
-                                        onClick={() => handleOpenGuideDialog(combindex)}
+                                        onClick={() => handleOpenGuideDialog(variantIndex)}
                                         sx={{ mt: 1 }}
                                     >
                                         Edit Guide
@@ -589,7 +614,7 @@ const VariationsTable = ({setShowVariantModal}) => {
                                         size="small"
                                         variant="outlined"
                                         startIcon={<EditIcon />}
-                                        onClick={() => handleOpenGuideDialog(combindex)}
+                                        onClick={() => handleOpenGuideDialog(variantIndex)}
                                     >
                                         Add Guide
                                     </Button>
@@ -625,7 +650,7 @@ const VariationsTable = ({setShowVariantModal}) => {
                                     color: 'primary.dark'
                                 }
                             }}
-                            onClick={() => handleOpenGuideDialog(combindex)}
+                            onClick={() => handleOpenGuideDialog(variantIndex)}
                         />
                     </Box>
                 </Tooltip>
@@ -633,32 +658,58 @@ const VariationsTable = ({setShowVariantModal}) => {
         );
     };
 
+    const handleSeeMore = () => {
+        setShowAll(!showAll);
+    };
+
     return (
         <Box>
-            {combinations?.map((comb, combindex) => {
-                const tableKey = comb.variant_name || comb.combinations[0]?.name1;
+            {product_variants?.map((variant, variantIndex) => {
+                const tableKey = variant.variant_name;
                 const tableVisibleColumns = getTableVisibleColumns(tableKey);
-                const availableColumns = getAvailableColumns(comb);
+                const availableColumns = getAvailableColumns(variant);
 
                 return (
-                    <Box key={combindex} sx={{ mb: 4 }}>
+                    <DraggableTableContainer
+                        key={variantIndex}
+                        index={variantIndex}
+                        onDragStart={handleTableDragStart}
+                        onDragOver={handleTableDragOver}
+                        onDrop={handleTableDrop}
+                        onDragEnd={handleTableDragEnd}
+                        isDragging={draggingTableIndex === variantIndex}
+                        isDragOver={dragOverTableIndex === variantIndex}
+                        sx={{ mb: 4 }}
+                    >
                         <Box sx={{
                             display: "flex",
                             justifyContent: "space-between",
                             alignItems: "center",
-                            mb: 2,
                             p: 2,
                             backgroundColor: '#f8f9fa',
-                            borderRadius: 1,
-                            border: '1px solid #e9ecef'
+                            borderBottom: '1px solid #e9ecef'
                         }}>
-                            <Box>
-                                <Typography variant="h6" fontWeight={600} color="primary">
-                                    {tableKey}
-                                </Typography>
-                                <Typography variant="body2" color="textSecondary">
-                                    {comb.combinations?.length || 0} attribute(s)
-                                </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <IconButton
+                                    className="drag-handle"
+                                    size="small"
+                                    sx={{
+                                        cursor: 'grab',
+                                        '&:active': {
+                                            cursor: 'grabbing',
+                                        }
+                                    }}
+                                >
+                                    <DragIndicatorIcon />
+                                </IconButton>
+                                <Box>
+                                    <Typography variant="h6" fontWeight={600} color="primary">
+                                        {tableKey}
+                                    </Typography>
+                                    <Typography variant="body2" color="textSecondary">
+                                        {variant.variant_attributes?.length || 0} attribute(s)
+                                    </Typography>
+                                </Box>
                             </Box>
                             <Box sx={{ display: 'flex', gap: 1 }}>
                                 <Button
@@ -721,111 +772,97 @@ const VariationsTable = ({setShowVariantModal}) => {
                             </Box>
                         </Popover>
 
-                        {/* Variations Table */}
-                        <TableContainer component={Paper} sx={{ border: '1px solid #e0e0e0', width: "100%" }}>
+                        {/* Variations Table - Images Only */}
+                        <TableContainer component={Paper} sx={{ border: 'none', width: "100%", borderRadius: 0 }}>
                             <Table width={"100%"}>
                                 <TableHead>
                                     <TableRow sx={{ backgroundColor: '#f5f5f5', width: "100%" }}>
                                         {tableVisibleColumns.drag && (
-                                            <TableCell align="center" sx={{ wordBreak: "keep-all", fontWeight: 600, py: 2 }}>
+                                            <TableCell width={69} align="center" sx={{ wordBreak: "keep-all", fontWeight: 600, py: 2 }}>
                                                 Drag
                                             </TableCell>
                                         )}
-                                        {tableVisibleColumns.attribute1 && comb.combinations[0]?.name1 && (
+                                        {tableVisibleColumns.attribute && (
                                             <AttributeCell
-                                                comb={comb}
-                                                combindex={combindex}
-                                                attributeName={comb.combinations[0]?.name1}
-                                                attributeKey="attribute1"
-                                            />
-                                        )}
-                                        {tableVisibleColumns.attribute2 && comb.combinations[0]?.name2 && (
-                                            <AttributeCell
-                                                comb={comb}
-                                                combindex={combindex}
-                                                attributeName={comb.combinations[0]?.name2}
-                                                attributeKey="attribute2"
+                                                variant={variant}
+                                                variantIndex={variantIndex}
+                                                attributeName="Attribute"
                                             />
                                         )}
                                         {tableVisibleColumns.multipleUpload && (
                                             <TableCell align="center" sx={{ wordBreak: "keep-all", fontWeight: 600, py: 2 }}>
-                                                Multiple Upload
+                                                Multi Upload
                                             </TableCell>
                                         )}
                                         {tableVisibleColumns.mainImage1 && (
                                             <ImageHeaderCell
                                                 columnKey="mainImage1"
                                                 displayName="Main Image 1"
-                                                combindex={combindex}
+                                                variantIndex={variantIndex}
                                             />
                                         )}
                                         {tableVisibleColumns.mainImage2 && (
                                             <ImageHeaderCell
                                                 columnKey="mainImage2"
                                                 displayName="Main Image 2"
-                                                combindex={combindex}
+                                                variantIndex={variantIndex}
                                             />
                                         )}
                                         {tableVisibleColumns.mainImage3 && (
                                             <ImageHeaderCell
                                                 columnKey="mainImage3"
                                                 displayName="Main Image 3"
-                                                combindex={combindex}
+                                                variantIndex={variantIndex}
                                             />
                                         )}
                                         {tableVisibleColumns.preview && (
                                             <ImageHeaderCell
                                                 columnKey="preview"
                                                 displayName="Preview"
-                                                combindex={combindex}
+                                                variantIndex={variantIndex}
                                             />
                                         )}
                                         {tableVisibleColumns.thumbnail && (
                                             <ImageHeaderCell
                                                 columnKey="thumbnail"
                                                 displayName="Thumbnail"
-                                                combindex={combindex}
+                                                variantIndex={variantIndex}
                                             />
-                                        )}
-                                        {(variationsData.length >= 2 ? formValues?.prices === comb.variant_name : true) && formValues?.isCheckedPrice && tableVisibleColumns.price && (
-                                            <TableCell align="center" sx={{ wordBreak: "keep-all", fontWeight: 600, py: 2 }}>
-                                                Price
-                                            </TableCell>
-                                        )}
-                                        {(variationsData.length >= 2 ? formValues?.quantities === comb.variant_name : true) && formValues?.isCheckedQuantity && tableVisibleColumns.quantity && (
-                                            <TableCell align="center" sx={{ wordBreak: "keep-all", fontWeight: 600, py: 2 }}>
-                                                Quantity
-                                            </TableCell>
-                                        )}
-                                        {tableVisibleColumns.visible && (
-                                            <TableCell align="center" sx={{ wordBreak: "keep-all", fontWeight: 600, py: 2 }}>
-                                                Visible
-                                            </TableCell>
                                         )}
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
                                     <VariationTableRow
-                                        comb={comb}
-                                        combindex={combindex}
-                                        formValues={formValues}
-                                        variationsData={variationsData}
-                                        combinationError={combinationError}
-                                        showAll={showAll}
-                                        setCombinationError={setCombinationError}
-                                        setShowAll={setShowAll}
-                                        handleToggle={handleToggle}
-                                        handleCombChange={handleCombChange}
-                                        handleImageUpload={handleImageUpload}
-                                        handleImageRemove={handleImageRemove}
-                                        handleEditImage={handleEditImage}
-                                        onRowReorder={handleRowReorder}
+                                        variant={variant}
+                                        variantIndex={variantIndex}
+                                        onRowReorder={handleProductVariantReorder}
                                         visibleColumns={tableVisibleColumns}
+                                        isSynced={isSynced}
                                     />
                                 </TableBody>
                             </Table>
                         </TableContainer>
-                    </Box>
+
+                        {/* See More/Less Button - if pagination is needed */}
+                        {variant.variant_attributes.length > 5 && (
+                            <Box align="center" sx={{ py: 2 }}>
+                                <Button
+                                    variant="outlined"
+                                    size="small"
+                                    sx={{
+                                        minWidth: '120px',
+                                        backgroundColor: '#e3f2fd',
+                                        '&:hover': {
+                                            backgroundColor: '#bbdefb'
+                                        }
+                                    }}
+                                    onClick={handleSeeMore}
+                                >
+                                    {showAll ? "See Less" : `See More (+${variant.variant_attributes.length - 5})`}
+                                </Button>
+                            </Box>
+                        )}
+                    </DraggableTableContainer>
                 );
             })}
 
@@ -837,7 +874,7 @@ const VariationsTable = ({setShowVariantModal}) => {
                 fullWidth
             >
                 <DialogTitle>
-                    {currentCombIndex !== null && combinations[currentCombIndex]?.guide?.length > 0 ? 'Edit Guide' : 'Add Guide'}
+                    {currentVariantIndex !== null && product_variants[currentVariantIndex]?.guide?.length > 0 ? 'Edit Guide' : 'Add Guide'}
                 </DialogTitle>
                 <DialogContent>
                     <Box sx={{ mt: 2 }}>
@@ -883,7 +920,6 @@ const VariationsTable = ({setShowVariantModal}) => {
                                             title="Click to open in new tab"
                                         >
                                             {isImageFile(currentGuide.guide_file) ? (
-                                                // Image Preview
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                                     <img
                                                         src={currentGuide.guide_file_url}
@@ -901,7 +937,6 @@ const VariationsTable = ({setShowVariantModal}) => {
                                                     <VisibilityIcon color="primary" fontSize="small" />
                                                 </Box>
                                             ) : (
-                                                // Document Preview
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                                     <InsertDriveFileIcon color="primary" fontSize="small" />
                                                     <Typography variant="body2" color="primary">

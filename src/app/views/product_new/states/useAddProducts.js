@@ -7,7 +7,6 @@ export const useProductFormStore = create(
         (set, get) => ({
             loading: false,
             draftLoading: false,
-
             loadingProductData: false,
 
             setLoading: (loading) => set({ loading }),
@@ -15,25 +14,24 @@ export const useProductFormStore = create(
             setLoadingProductData: (loadingProductData) => set({ loadingProductData }),
 
             brandList: [],
-            setBrandList: (brandList => set((state) => ({brandList}))),
+            setBrandList: (brandList => set((state) => ({ brandList }))),
 
             allCategory: [],
-            setAllCategory: (allCategory) => set((state) => ({allCategory})),
+            setAllCategory: (allCategory) => set((state) => ({ allCategory })),
 
             allVendors: [],
-            setAllVendors: (allVendors) => set((state) => ({allVendors})),
+            setAllVendors: (allVendors) => set((state) => ({ allVendors })),
 
             varientName: [],
-
             setVarientName: (varientName) => set((state) => ({
                 varientName: varientName
             })),
 
             shippingTemplateData: [],
-            setShippingTemplateData: (shippingTemplateData) => set((state) => ({shippingTemplateData})),
+            setShippingTemplateData: (shippingTemplateData) => set((state) => ({ shippingTemplateData })),
 
             exchangePolicy: [],
-            setExchangePolicy: (exchangePolicy) => set((state) => ({exchangePolicy})),
+            setExchangePolicy: (exchangePolicy) => set((state) => ({ exchangePolicy })),
 
             // NEW: Parent product data
             parentProductData: null,
@@ -116,9 +114,8 @@ export const useProductFormStore = create(
             },
 
             dynamicFields: [],
-
             setDynamicField: (dynamicFields) => set((state) => (
-                {dynamicFields: dynamicFields}
+                { dynamicFields: dynamicFields }
             )),
 
             // Form Values for variations
@@ -143,8 +140,11 @@ export const useProductFormStore = create(
                 customizations: []
             },
 
-            // Combinations
-            combinations: [],
+            // ========== NEW: PRODUCT VARIANTS (for images) ==========
+            product_variants: [], // NEW: Separate array for variant images
+
+            // ========== KEEP: COMBINATIONS (for price/quantity only) ==========
+            combinations: [], // Now only contains price/quantity data
 
             // Errors
             inputErrors: {
@@ -169,7 +169,8 @@ export const useProductFormStore = create(
             altText: [],
             keys: [],
 
-            // Actions
+            // ========== ACTIONS ==========
+
             setFormData: (updates) => set((state) => ({
                 formData: { ...state.formData, ...updates }
             })),
@@ -184,6 +185,57 @@ export const useProductFormStore = create(
 
             setCustomizationData: (customizationData) => set({ customizationData }),
 
+            // ========== NEW: PRODUCT VARIANTS ACTIONS ==========
+            setProductVariants: (product_variants) => set({ product_variants }),
+
+            // Initialize product_variants from selected variations
+            initializeProductVariants: (variationsData, allVariants) => {
+                const newProductVariants = [];
+                const existingVariantsMap = new Map();
+
+                // Create a map of existing product_variants for quick lookup
+                get().product_variants.forEach(variant => {
+                    existingVariantsMap.set(variant.variant_name, variant);
+                });
+
+                variationsData.forEach((variation) => {
+                    const variantData = allVariants.find(v => v.variant_name === variation.name);
+                    if (variantData) {
+                        // const existingVariant = existingVariantsMap.get(variation.name);
+
+                        // if (existingVariant) {
+                        //     newProductVariants.push(existingVariant);
+                        // } else {
+                        // Create new variant with default images
+                        const variantAttributes = variation.values.map(value => {
+                            const attributeData = variantData.variant_attribute.find(attr =>
+                                attr.attribute_value === value
+                            );
+
+                            return {
+                                attribute: value,
+                                main_images: attributeData?.main_images || [null, null, null],
+                                preview_image: attributeData?.preview_image || null,
+                                thumbnail: attributeData?.thumbnail || null,
+                                edit_preview_image: attributeData?.edit_preview_image || null,
+                                edit_main_image: attributeData?.edit_main_image || null,
+                                edit_main_image_data: attributeData?.edit_main_image_data || {},
+                                edit_preview_image_data: attributeData?.edit_preview_image_data || {},
+                            };
+                        });
+
+                        newProductVariants.push({
+                            variant_name: variation.name,
+                            variant_attributes: variantAttributes
+                        });
+                        // }
+                    }
+                });
+
+                set({ product_variants: newProductVariants });
+            },
+
+            // ========== KEEP: COMBINATIONS ACTIONS (price/quantity only) ==========
             setCombinations: (combinations) => set({ combinations }),
 
             setInputErrors: (updates) => set((state) => ({
@@ -194,12 +246,122 @@ export const useProductFormStore = create(
 
             setShowAll: (showAll) => set({ showAll }),
 
-            setTransformData: (transformData) => set((state) => ({ formData: {...state.formData, transformData}})),
+            setTransformData: (transformData) => set((state) => ({
+                formData: { ...state.formData, transformData }
+            })),
 
             setAltText: (altText) => set({ altText }),
 
             setKeys: (keys) => set({ keys }),
 
+            // ========== IMAGE HANDLERS (now work with product_variants) ==========
+            handleImageUpload: (variantIndex, attributeIndex, imageKey, event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const state = get();
+                const updatedProductVariants = [...state.product_variants];
+
+                const newProductVariants = updatedProductVariants.map((variant, vIndex) => {
+                    if (vIndex === variantIndex) {
+                        const updatedAttributes = [...variant.variant_attributes];
+                        const updatedAttribute = { ...updatedAttributes[attributeIndex] };
+
+                        if (imageKey.startsWith('main_images')) {
+                            const imgIndex = parseInt(imageKey.match(/\[(\d+)\]/)[1]);
+                            const mainImages = [...(updatedAttribute.main_images || [])];
+                            while (mainImages.length <= imgIndex) {
+                                mainImages.push(null);
+                            }
+                            mainImages[imgIndex] = file;
+                            updatedAttribute.main_images = mainImages;
+                        } else {
+                            updatedAttribute[imageKey] = file;
+                        }
+
+                        updatedAttributes[attributeIndex] = updatedAttribute;
+                        return {
+                            ...variant,
+                            variant_attributes: updatedAttributes
+                        };
+                    }
+                    return variant;
+                });
+
+                set({ product_variants: newProductVariants });
+            },
+
+            handleImageRemove: (variantIndex, attributeIndex, imageKey) => {
+                const state = get();
+                const updatedProductVariants = [...state.product_variants];
+
+                const newProductVariants = updatedProductVariants.map((variant, vIndex) => {
+                    if (vIndex === variantIndex) {
+                        const updatedAttributes = [...variant.variant_attributes];
+                        const updatedAttribute = { ...updatedAttributes[attributeIndex] };
+
+                        if (imageKey.startsWith('main_images')) {
+                            const imgIndex = parseInt(imageKey.match(/\[(\d+)\]/)[1]);
+                            const mainImages = [...(updatedAttribute.main_images || [])];
+                            if (mainImages[imgIndex]) {
+                                mainImages[imgIndex] = "";
+                                updatedAttribute.main_images = mainImages;
+                            }
+                        } else {
+                            updatedAttribute[imageKey] = "";
+                        }
+
+                        // Also remove any edit data for this image
+                        if (imageKey === 'main_images[0]') {
+                            updatedAttribute.edit_main_image = "";
+                            updatedAttribute.edit_main_image_data = "";
+                        } else if (imageKey === 'preview_image') {
+                            updatedAttribute.edit_preview_image = "";
+                            updatedAttribute.edit_preview_image_data = "";
+                        }
+
+                        updatedAttributes[attributeIndex] = updatedAttribute;
+                        return {
+                            ...variant,
+                            variant_attributes: updatedAttributes
+                        };
+                    }
+                    return variant;
+                });
+
+                set({ product_variants: newProductVariants });
+            },
+
+            handleEditImage: (variantIndex, attributeIndex, imageType, editedImage, imageIndex, editData) => {
+                const state = get();
+                const updatedProductVariants = [...state.product_variants];
+
+                const newProductVariants = updatedProductVariants.map((variant, vIndex) => {
+                    if (vIndex === variantIndex) {
+                        const updatedAttributes = [...variant.variant_attributes];
+                        const updatedAttribute = { ...updatedAttributes[attributeIndex] };
+
+                        if (imageType === 'main_images' && imageIndex === 0) {
+                            updatedAttribute.edit_main_image = editedImage;
+                            updatedAttribute.edit_main_image_data = editData;
+                        } else if (imageType === 'preview_image') {
+                            updatedAttribute.edit_preview_image = editedImage;
+                            updatedAttribute.edit_preview_image_data = editData;
+                        }
+
+                        updatedAttributes[attributeIndex] = updatedAttribute;
+                        return {
+                            ...variant,
+                            variant_attributes: updatedAttributes
+                        };
+                    }
+                    return variant;
+                });
+
+                set({ product_variants: newProductVariants });
+            },
+
+            // ========== COMBINATION HANDLERS (price/quantity only) ==========
             handleToggle: (combindex, index) => {
                 const state = get();
                 const updatedCombinations = [...state.combinations];
@@ -264,114 +426,88 @@ export const useProductFormStore = create(
                 set({ combinations: newCombinations });
             },
 
-            // Image Handling Functions
-            handleImageUpload: (combindex, rowIndex, imageKey, event) => {
-                const file = event.target.files[0];
-                if (!file) return;
-
+            // ========== SYNC FUNCTIONS: Reorder product_variants and sync to combinations ==========
+            handleProductVariantReorder: (variantIndex, sourceIndex, targetIndex) => {
                 const state = get();
-                const updatedCombinations = [...state.combinations];
+                const { product_variants, combinations } = state;
 
-                const newCombinations = updatedCombinations.map((comb, i) => {
-                    if (i === combindex) {
-                        const updatedRowCombinations = [...comb.combinations];
-                        const updatedRow = { ...updatedRowCombinations[rowIndex] };
+                console.log(`Reordering: variantIndex=${variantIndex}, sourceIndex=${sourceIndex}, targetIndex=${targetIndex}`);
 
-                        if (imageKey.startsWith('main_images')) {
-                            const index = parseInt(imageKey.match(/\[(\d+)\]/)[1]);
-                            const mainImages = [...(updatedRow.main_images || [])];
-                            while (mainImages.length <= index) {
-                                mainImages.push(null);
-                            }
-                            mainImages[index] = file;
-                            updatedRow.main_images = mainImages;
-                        } else {
-                            updatedRow[imageKey] = file;
-                        }
+                // Reorder product_variants (images table)
+                const updatedProductVariants = [...product_variants];
 
-                        updatedRowCombinations[rowIndex] = updatedRow;
-                        return {
-                            ...comb,
-                            combinations: updatedRowCombinations
-                        };
-                    }
-                    return comb;
+                // Check if variantIndex is valid
+                if (variantIndex >= updatedProductVariants.length) {
+                    console.error('Invalid variantIndex:', variantIndex);
+                    return;
+                }
+
+                const variantGroup = { ...updatedProductVariants[variantIndex] };
+                const updatedAttributes = [...variantGroup.variant_attributes];
+
+                // Validate source and target indices
+                if (sourceIndex >= updatedAttributes.length || targetIndex >= updatedAttributes.length) {
+                    console.error('Invalid source or target index:', { sourceIndex, targetIndex, attributesLength: updatedAttributes.length });
+                    return;
+                }
+
+                // Remove the item from source index and insert at target index
+                const [movedAttribute] = updatedAttributes.splice(sourceIndex, 1);
+                updatedAttributes.splice(targetIndex, 0, movedAttribute);
+
+                variantGroup.variant_attributes = updatedAttributes;
+                updatedProductVariants[variantIndex] = variantGroup;
+
+                // Now sync the same reordering to combinations (price/quantity table)
+                const updatedCombinations = [...combinations];
+                if (updatedCombinations[variantIndex]) {
+                    const combGroup = { ...updatedCombinations[variantIndex] };
+                    const updatedCombArray = [...combGroup.combinations];
+
+                    // Apply the same reordering to combinations
+                    const [movedComb] = updatedCombArray.splice(sourceIndex, 1);
+                    updatedCombArray.splice(targetIndex, 0, movedComb);
+
+                    combGroup.combinations = updatedCombArray;
+                    updatedCombinations[variantIndex] = combGroup;
+                }
+
+                set({
+                    product_variants: updatedProductVariants,
+                    combinations: updatedCombinations
                 });
-
-                set({ combinations: newCombinations });
             },
 
-            handleImageRemove: (combindex, rowIndex, imageKey) => {
+            // For reordering entire variant groups (if needed)
+            handleVariantGroupReorder: (sourceIndex, targetIndex) => {
                 const state = get();
-                const updatedCombinations = [...state.combinations];
+                const { product_variants, combinations } = state;
 
-                const newCombinations = updatedCombinations.map((comb, i) => {
-                    if (i === combindex) {
-                        const updatedRowCombinations = [...comb.combinations];
-                        const updatedRow = { ...updatedRowCombinations[rowIndex] };
+                // Reorder product_variants groups
+                const updatedProductVariants = [...product_variants];
+                const [movedVariant] = updatedProductVariants.splice(sourceIndex, 1);
+                updatedProductVariants.splice(targetIndex, 0, movedVariant);
 
-                        if (imageKey.startsWith('main_images')) {
-                            const index = parseInt(imageKey.match(/\[(\d+)\]/)[1]);
-                            const mainImages = [...(updatedRow.main_images || [])];
-                            if (mainImages[index]) {
-                                mainImages[index] = "";
-                                updatedRow.main_images = mainImages;
-                            }
-                        } else {
-                            updatedRow[imageKey] = "";
-                        }
-
-                        // Also remove any edit data for this image
-                        if (imageKey === 'main_images[0]') {
-                            updatedRow.edit_main_image = "";
-                            updatedRow.edit_main_image_data = "";
-                        } else if (imageKey === 'preview_image') {
-                            updatedRow.edit_preview_image = "";
-                            updatedRow.edit_preview_image_data = "";
-                        }
-
-                        updatedRowCombinations[rowIndex] = updatedRow;
-                        return {
-                            ...comb,
-                            combinations: updatedRowCombinations
-                        };
-                    }
-                    return comb;
+                set({
+                    product_variants: updatedProductVariants
                 });
-
-                set({ combinations: newCombinations });
             },
 
-            handleEditImage: (combindex, rowIndex, imageType, editedImage, imageIndex, editData) => {
+            handleCombinationGroupReorder: (sourceIndex, targetIndex) => {
                 const state = get();
-                const updatedCombinations = [...state.combinations];
+                const { combinations } = state;
 
-                const newCombinations = updatedCombinations.map((comb, i) => {
-                    if (i === combindex) {
-                        const updatedRowCombinations = [...comb.combinations];
-                        const updatedRow = { ...updatedRowCombinations[rowIndex] };
+                // Reorder combinations groups independently
+                const updatedCombinations = [...combinations];
+                const [movedCombGroup] = updatedCombinations.splice(sourceIndex, 1);
+                updatedCombinations.splice(targetIndex, 0, movedCombGroup);
 
-                        if (imageType === 'main_images' && imageIndex === 0) {
-                            updatedRow.edit_main_image = editedImage;
-                            updatedRow.edit_main_image_data = editData;
-                        } else if (imageType === 'preview_image') {
-                            updatedRow.edit_preview_image = editedImage;
-                            updatedRow.edit_preview_image_data = editData;
-                        }
-
-                        updatedRowCombinations[rowIndex] = updatedRow;
-                        return {
-                            ...comb,
-                            combinations: updatedRowCombinations
-                        };
-                    }
-                    return comb;
+                set({
+                    combinations: updatedCombinations
                 });
-
-                set({ combinations: newCombinations });
             },
 
-            // Initialize form with edit data
+            // ========== INITIALIZE FORM WITH EDIT DATA ==========
             initializeFormWithEditData: (editData, isCopied = false) => {
                 console.log("IS COPIED:", editData.sellerSku, editData.seller_sku);
 
@@ -391,6 +527,9 @@ export const useProductFormStore = create(
                     isCheckedQuantity: false
                 };
 
+                // Initialize product_variants from edit data if available
+                const product_variants = editData?.product_variants || [];
+
                 set({
                     formData: {
                         productTitle: editData?.product_title || "",
@@ -405,7 +544,7 @@ export const useProductFormStore = create(
                         popularGifts: editData?.popular_gifts || "No",
                         bestSelling: editData?.bestseller || "No",
                         stylesKeyWords: [{ value: editData?.style_name || "" }],
-                        searchTerms: editData?.size ||"",
+                        searchTerms: editData?.size || "",
                         serchTemsKeyArray: editData?.search_terms || [],
                         StyleName: editData?.style_name || "",
                         Shopingsweight: editData?.shipping_weight || "",
@@ -448,7 +587,7 @@ export const useProductFormStore = create(
                         color: editData?.color || "",
                         offeringCanBe: editData?.can_offer || "",
                         isGiftWrap: editData?.gift_wrap || "",
-                        transformData: editData?.zoom || {scale: 1, x: 0, y: 0},
+                        transformData: editData?.zoom || { scale: 1, x: 0, y: 0 },
                         reStockDate: editData?.restock_date ? dayjs(editData.restock_date) : null,
                         productionTime: editData?.production_time || "",
                         vendor: editData?.vendor_id || "",
@@ -462,12 +601,13 @@ export const useProductFormStore = create(
                     selectedVariations: variationsData?.map((item) => item?.name) || [],
                     customizationData: editData?.customizationData || { label: "", instructions: "", customizations: [] },
                     combinations: editData?.combinationData || [],
+                    product_variants: product_variants, // NEW: Initialize product_variants
                     keys: editData?.search_terms || [],
                     altText: editData?.altText || []
                 });
             },
 
-            // Reset form to initial state
+            // ========== RESET FORM ==========
             resetForm: () => set({
                 formData: {
                     productTitle: "",
@@ -500,7 +640,7 @@ export const useProductFormStore = create(
                     packageWidth: "",
                     launchData: null,
                     releaseDate: null,
-                    transformData: {scale: 1, x: 0, y: 0},
+                    transformData: { scale: 1, x: 0, y: 0 },
                     brandId: "brandId",
                     taxRatio: "6",
                     images: [],
@@ -551,6 +691,7 @@ export const useProductFormStore = create(
                 selectedVariations: [],
                 customizationData: { label: "", instructions: "", customizations: [] },
                 combinations: [],
+                product_variants: [], // NEW: Reset product_variants
                 inputErrors: {
                     productTitle: "",
                     subCategory: "",
@@ -569,10 +710,10 @@ export const useProductFormStore = create(
                 showAll: false,
                 altText: [],
                 keys: [],
-                parentProductData: null // NEW: Reset parent product data
+                parentProductData: null
             }),
 
-            // Validation helper
+            // ========== VALIDATION HELPER ==========
             validateForm: () => {
                 const state = get();
                 const errors = {};
@@ -596,7 +737,9 @@ export const useProductFormStore = create(
                 formData: state.formData,
                 formValues: state.formValues,
                 variationsData: state.variationsData,
-                customizationData: state.customizationData
+                customizationData: state.customizationData,
+                product_variants: state.product_variants, // NEW: Include in persistence
+                combinations: state.combinations
             })
         }
     )

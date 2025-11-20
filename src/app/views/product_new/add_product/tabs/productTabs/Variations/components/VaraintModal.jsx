@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useCallback} from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
     Modal,
     Box,
@@ -27,10 +27,10 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CheckIcon from "@mui/icons-material/Check";
 import BeenhereIcon from "@mui/icons-material/Beenhere";
-import {ApiService} from "app/services/ApiService";
-import {apiEndpoints} from "app/constant/apiEndpoints";
-import {localStorageKey} from "app/constant/localStorageKey";
-import {useProductFormStore} from "../../../../../states/useAddProducts";
+import { ApiService } from "app/services/ApiService";
+import { apiEndpoints } from "app/constant/apiEndpoints";
+import { localStorageKey } from "app/constant/localStorageKey";
+import { useProductFormStore } from "../../../../../states/useAddProducts";
 
 const modalStyle = {
     position: "absolute",
@@ -47,7 +47,7 @@ const modalStyle = {
     overflowY: 'auto'
 };
 
-const VariantModal = ({show, handleCloseVariant}) => {
+const VariantModal = ({ show, handleCloseVariant }) => {
     const {
         formData,
         variationsData,
@@ -56,15 +56,18 @@ const VariantModal = ({show, handleCloseVariant}) => {
         setSelectedVariations,
         combinations,
         setCombinations,
+        product_variants,
+        setProductVariants,
+        initializeProductVariants,
         setFormData,
         formValues,
         setFormValues,
         varientName,
-        parentProductData // NEW: Get parent product data from store
+        parentProductData
     } = useProductFormStore();
 
     const [selectedVariant, setSelectedVariant] = useState("");
-    const [attrValues, setAttrValues] = useState({name: "", values: []});
+    const [attrValues, setAttrValues] = useState({ name: "", values: [] });
     const [isEdit, setIsEdit] = useState(false);
     const [attrOptions, setAttrOptions] = useState([]);
     const [nameCombinations, setNameCombinations] = useState([]);
@@ -75,19 +78,14 @@ const VariantModal = ({show, handleCloseVariant}) => {
     const [customVariantName, setCustomVariantName] = useState("");
     const [customVariantOptions, setCustomVariantOptions] = useState([""]);
     const [customVariants, setCustomVariants] = useState([]);
-
-    // Image source selection states
-    const [imageSourceDialogOpen, setImageSourceDialogOpen] = useState(false);
-    const [pendingFormValues, setPendingFormValues] = useState(null);
-    const [imageSourceOptions, setImageSourceOptions] = useState([]);
-    const [selectedImageSource, setSelectedImageSource] = useState("");
+    const [editingCustomVariant, setEditingCustomVariant] = useState(null); // Track which custom variant is being edited
 
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
 
     // Combine predefined variants with custom variants
     const allVariants = [...varientName, ...customVariants];
 
-    // NEW: Function to get disabled variants including parent product variants
+    // Function to get disabled variants including parent product variants
     const getDisabledVariants = useCallback(() => {
         const disabledVariants = new Set();
 
@@ -97,8 +95,6 @@ const VariantModal = ({show, handleCloseVariant}) => {
         // Add parent product variants that have SKUs assigned
         if (parentProductData?.variant_id) {
             parentProductData.variant_id.forEach(variant => {
-                // Check if this variant has any SKUs assigned in the parent product
-                // If variant_id exists in parent, it means this variant is already used
                 disabledVariants.add(variant.variant_name);
             });
         }
@@ -106,7 +102,7 @@ const VariantModal = ({show, handleCloseVariant}) => {
         return disabledVariants;
     }, [selectedVariations, parentProductData]);
 
-    // Fixed generateNameCombinations without setState calls
+    // Generate name combinations for price/quantity selection
     const generateNameCombinations = useCallback(() => {
         const currentData = variationsData || [];
         const names = currentData.map(item => item.name);
@@ -119,7 +115,7 @@ const VariantModal = ({show, handleCloseVariant}) => {
         return combinations;
     }, [variationsData]);
 
-    // Update name combinations only when variations data changes
+    // Update name combinations when variations data changes
     useEffect(() => {
         const currentData = variationsData || [];
         if (currentData.length > 1) {
@@ -138,72 +134,65 @@ const VariantModal = ({show, handleCloseVariant}) => {
         }
     }, [variationsData, generateNameCombinations, formValues?.prices, formValues?.quantities]);
 
-    // FIXED: Helper function to find existing combination data that handles combined variants
-    const findExistingCombinationData = (newCombination, existingCombinations) => {
-        if (!existingCombinations || existingCombinations.length === 0) return null;
+    // ========== SIMPLE COMBINATION GENERATION (like old code) ==========
+    const generateCombinations = (data) => {
+        if (!data || data.length === 0) return [];
 
-        const newCombValues = newCombination.combValues || [];
+        const allCombinations = data.reduce((acc, variation, index) => {
+            const { name, values } = variation;
+            const safeValues = Array.isArray(values) ? values : values ? [values] : [];
 
-        // Try exact match first (for single variants and unchanged combinations)
-        const exactMatch = existingCombinations.find(existing => {
-            const existingValues = existing.combValues || [];
-            if (newCombValues.length !== existingValues.length) return false;
-            return newCombValues.every(value => existingValues.includes(value));
-        });
-
-        if (exactMatch) return exactMatch;
-
-        // If no exact match and we have combined variants, be more conservative
-        // Only match if ALL values from the existing combination are present in the new combination
-        if (newCombValues.length > 1) {
-            return existingCombinations.find(existing => {
-                const existingValues = existing.combValues || [];
-
-                // Only match if ALL existing values are present in the new combination
-                // This prevents over-matching where we take images from unrelated combinations
-                return existingValues.every(value => newCombValues.includes(value));
-            });
-        }
-
-        return null;
-    };
-
-    // Function to update image source for specific combinations
-    const updateCombinationImageSource = (combinations, sourceVariantName, targetVariantData) => {
-        return combinations.map(combination => {
-            const sourceVariantInfo = targetVariantData.find(v => v.variant_name === sourceVariantName);
-            if (!sourceVariantInfo) return combination;
-
-            // Find the attribute value in this combination for the source variant
-            const sourceValue = Object.entries(combination).find(([key, val]) =>
-                key.startsWith('name') && val === sourceVariantName
-            );
-
-            if (sourceValue) {
-                const valueKey = sourceValue[0].replace('name', 'value');
-                const attributeValue = combination[valueKey];
-
-                const attributeData = sourceVariantInfo.variant_attribute.find(
-                    attr => attr.attribute_value === attributeValue
-                );
-
-                // Only update images if they don't already exist in the combination
-                return {
-                    ...combination,
-                    main_images: combination.main_images?.some(img => img) ?
-                        combination.main_images :
-                        (attributeData?.main_images || [null, null, null]),
-                    preview_image: combination.preview_image || attributeData?.preview_image || null,
-                    thumbnail: combination.thumbnail || attributeData?.thumbnail || null,
-                    edit_main_image: combination.edit_main_image || attributeData?.edit_main_image || null,
-                    edit_preview_image: combination.edit_preview_image || attributeData?.edit_preview_image || null,
-                    edit_main_image_data: combination.edit_main_image_data || {},
-                    edit_preview_image_data: combination.edit_preview_image_data || {},
-                };
+            if (acc.length === 0) {
+                return safeValues?.map((value) => {
+                    return {
+                        [`value${index + 1}`]: value,
+                        [`name${index + 1}`]: name,
+                        price: "",
+                        qty: "",
+                        isVisible: true,
+                        priceInput: formValues?.prices,
+                        quantityInput: formValues?.quantities,
+                        isCheckedPrice: formValues?.isCheckedPrice,
+                        isCheckedQuantity: formValues?.isCheckedQuantity,
+                    };
+                });
             }
 
-            return combination;
-        });
+            return acc.flatMap((combination) =>
+                safeValues?.map((value) => {
+                    return {
+                        ...combination,
+                        [`value${index + 1}`]: value,
+                        [`name${index + 1}`]: name,
+                        price: "",
+                        qty: "",
+                        isVisible: true,
+                        priceInput: formValues?.prices,
+                        quantityInput: formValues?.quantities,
+                        isCheckedPrice: formValues?.isCheckedPrice,
+                        isCheckedQuantity: formValues?.isCheckedQuantity,
+                    };
+                })
+            );
+        }, []);
+
+        return allCombinations || [];
+    };
+
+    // Handle combined variants generation
+    const handleCombinedVariants = (variantNames, currentData) => {
+        const selectedVariationData = currentData.filter(variation =>
+            variantNames.includes(variation.name)
+        );
+
+        if (selectedVariationData.length === 0) return [];
+
+        let combinedResult = generateCombinations(selectedVariationData);
+
+        return [{
+            variant_name: variantNames.join(" and "),
+            combinations: combinedResult
+        }];
     };
 
     // Function to mark price/quantity variations in combinations
@@ -213,7 +202,7 @@ const VariantModal = ({show, handleCloseVariant}) => {
         }
 
         return combinationsData.map(variantGroup => {
-            const {variant_name, combinations} = variantGroup;
+            const { variant_name, combinations } = variantGroup;
 
             const updatedCombinations = combinations.map(combination => {
                 // Check if this combination belongs to a price variation
@@ -240,203 +229,217 @@ const VariantModal = ({show, handleCloseVariant}) => {
         });
     };
 
-    // Enhanced combination generation that preserves existing images - KEEP THIS AS IT'S WORKING
-    const generateCombinations = (data, variantData, existingCombinations = []) => {
-        if (!data || data.length === 0) return [];
+    // ========== UPDATED: handleGenerate with proper mixed case handling ==========
+    const handleGenerate = async () => {
+        const currentData = variationsData || [];
 
-        const allCombinations = data.reduce((acc, variation, index) => {
-            const {name, values} = variation;
-            const safeValues = Array.isArray(values) ? values : values ? [values] : [];
-
-            if (acc.length === 0) {
-                return safeValues?.map((value) => {
-                    const variantInfo = variantData.find((variant) => variant.variant_name === name);
-                    const attributeData = variantInfo?.variant_attribute?.find((attr) => attr.attribute_value === value);
-
-                    // Create new combination
-                    const newCombination = {
-                        [`value${index + 1}`]: value,
-                        [`name${index + 1}`]: name,
-                        combValues: [value],
-                        combIds: [(attributeData?._id || "")],
-                        price: "",
-                        qty: "",
-                        isVisible: true,
-                        priceInput: formValues?.prices,
-                        quantityInput: formValues?.quantities,
-                        isCheckedPrice: formValues?.isCheckedPrice,
-                        isCheckedQuantity: formValues?.isCheckedQuantity,
-                        main_images: attributeData?.main_images || [null, null, null],
-                        preview_image: attributeData?.preview_image || null,
-                        thumbnail: attributeData?.thumbnail || null,
-                        // Add flags to track which variations are used for price/quantity
-                        isPriceVariation: false,
-                        isQuantityVariation: false
-                    };
-
-                    // Check if this combination already exists with images
-                    const existingData = findExistingCombinationData(newCombination, existingCombinations);
-                    if (existingData) {
-                        // Preserve existing images if they exist
-                        return {
-                            ...newCombination,
-                            main_images: existingData.main_images || newCombination.main_images,
-                            preview_image: existingData.preview_image || newCombination.preview_image,
-                            thumbnail: existingData.thumbnail || newCombination.thumbnail,
-                            edit_main_image: existingData.edit_main_image || attributeData?.edit_main_image || null,
-                            edit_preview_image: existingData.edit_preview_image || attributeData?.edit_preview_image || null,
-                            edit_main_image_data: existingData.edit_main_image_data || {},
-                            edit_preview_image_data: existingData.edit_preview_image_data || {},
-                            price: existingData.price || newCombination.price,
-                            qty: existingData.qty || newCombination.qty,
-                            isVisible: existingData.isVisible !== undefined ? existingData.isVisible : newCombination.isVisible,
-                            isPriceVariation: existingData.isPriceVariation || newCombination.isPriceVariation,
-                            isQuantityVariation: existingData.isQuantityVariation || newCombination.isQuantityVariation
-                        };
-                    }
-
-                    return newCombination;
-                });
-            }
-
-            return acc.flatMap((combination) =>
-                safeValues?.map((value) => {
-                    const variantInfo = variantData.find((variant) => variant.variant_name === name);
-                    const attributeData = variantInfo?.variant_attribute?.find((attr) => attr.attribute_value === value);
-
-                    // Create new combination
-                    const newCombination = {
-                        ...combination,
-                        [`value${index + 1}`]: value,
-                        [`name${index + 1}`]: name,
-                        combValues: [...(combination.combValues || []), value],
-                        combIds: [...(combination.combIds || []), (attributeData?._id || "")],
-                        price: "",
-                        qty: "",
-                        isVisible: true,
-                        priceInput: formValues?.prices,
-                        quantityInput: formValues?.quantities,
-                        isCheckedPrice: formValues?.isCheckedPrice,
-                        isCheckedQuantity: formValues?.isCheckedQuantity,
-                        main_images: attributeData?.main_images || [null, null, null],
-                        preview_image: attributeData?.preview_image || null,
-                        thumbnail: attributeData?.thumbnail || null,
-                        // Add flags to track which variations are used for price/quantity
-                        isPriceVariation: false,
-                        isQuantityVariation: false
-                    };
-
-                    // Check if this combination already exists with images
-                    const existingData = findExistingCombinationData(newCombination, existingCombinations);
-                    if (existingData) {
-                        // Preserve existing images and data
-                        return {
-                            ...newCombination,
-                            main_images: existingData.main_images || newCombination.main_images,
-                            preview_image: existingData.preview_image || newCombination.preview_image,
-                            thumbnail: existingData.thumbnail || newCombination.thumbnail,
-                            edit_main_image: existingData.edit_main_image || attributeData?.edit_main_image || null,
-                            edit_preview_image: existingData.edit_preview_image || attributeData?.edit_preview_image || null,
-                            edit_main_image_data: existingData.edit_main_image_data || {},
-                            edit_preview_image_data: existingData.edit_preview_image_data || {},
-                            price: existingData.price || newCombination.price,
-                            qty: existingData.qty || newCombination.qty,
-                            isVisible: existingData.isVisible !== undefined ? existingData.isVisible : newCombination.isVisible,
-                            isPriceVariation: existingData.isPriceVariation || newCombination.isPriceVariation,
-                            isQuantityVariation: existingData.isQuantityVariation || newCombination.isQuantityVariation
-                        };
-                    }
-
-                    return newCombination;
-                })
-            );
-        }, []);
-
-        return allCombinations || [];
-    };
-
-    // FIXED: Function to handle combined variant generation
-    const handleCombinedVariants = (variantNames, currentData, allVariants, existingCombinations, imageSource = null) => {
-        const selectedVariationData = currentData.filter(variation =>
-            variantNames.includes(variation.name)
-        );
-
-        if (selectedVariationData.length === 0) return [];
-
-        // Get ALL existing combinations for proper image preservation
-        const allExistingCombinations = existingCombinations.flatMap(group => group.combinations || []);
-
-        let combinedResult = generateCombinations(selectedVariationData, allVariants, allExistingCombinations);
-
-        // Apply image source if specified - BUT DON'T OVERRIDE EXISTING IMAGES
-        if (imageSource) {
-            combinedResult = combinedResult.map(combination => {
-                // Check if this combination already has images
-                const hasExistingImages = combination.main_images?.some(img => img) ||
-                    combination.preview_image ||
-                    combination.thumbnail;
-
-                // If combination already has images, don't override them
-                if (hasExistingImages) {
-                    return combination;
-                }
-
-                const sourceVariantInfo = allVariants.find(v => v.variant_name === imageSource);
-                if (!sourceVariantInfo) return combination;
-
-                // Find the attribute value in this combination for the source variant
-                let attributeValue = null;
-
-                // Iterate through all possible name/value pairs to find the source variant
-                for (let i = 1; i <= 3; i++) {
-                    const nameKey = `name${i}`;
-                    const valueKey = `value${i}`;
-
-                    if (combination[nameKey] === imageSource) {
-                        attributeValue = combination[valueKey];
-                        break;
-                    }
-                }
-
-                if (attributeValue) {
-                    const attributeData = sourceVariantInfo.variant_attribute.find(
-                        attr => attr.attribute_value === attributeValue
-                    );
-
-                    // ONLY apply variant images if we found the attribute data
-                    if (attributeData) {
-                        return {
-                            ...combination,
-                            main_images: attributeData.main_images || [null, null, null],
-                            preview_image: attributeData.preview_image || null,
-                            thumbnail: attributeData.thumbnail || null,
-                            edit_main_image: attributeData.edit_main_image || null,
-                            edit_preview_image: attributeData.edit_preview_image || null,
-                        };
-                    }
-                }
-
-                return combination;
-            });
+        if (currentData.length === 0) {
+            console.log("No variations data to generate");
+            return;
         }
 
-        return [{
-            variant_name: variantNames.join(" and "),
-            combinations: combinedResult
-        }];
+        let data = [];
+
+        // Initialize product_variants FIRST
+        initializeProductVariants(currentData, allVariants);
+
+        // Handle the case when price/quantity variations are enabled
+        if ((formValues?.isCheckedPrice || formValues?.isCheckedQuantity) && (formValues?.prices || formValues?.quantities)) {
+
+            // Check if we have combined variants
+            const isPriceCombined = formValues?.prices?.includes("and");
+            const isQuantityCombined = formValues?.quantities?.includes("and");
+
+            if (isPriceCombined || isQuantityCombined) {
+                // Handle combined variants
+                const processedVariants = new Set();
+
+                // Process PRICE combinations (combined or single)
+                if (formValues?.isCheckedPrice && formValues?.prices) {
+                    if (isPriceCombined) {
+                        // Combined price variant
+                        const priceVariantNames = formValues?.prices.split("and").map(v => v.trim());
+                        const priceCombinedData = handleCombinedVariants(priceVariantNames, currentData);
+                        data.push(...priceCombinedData);
+                        priceVariantNames.forEach(v => processedVariants.add(v));
+                    } else {
+                        // Single price variant
+                        const priceVariantName = formValues?.prices;
+                        const priceVariationData = currentData.filter((item) => item.name === priceVariantName);
+                        let priceResult = generateCombinations(priceVariationData);
+                        data.push({
+                            variant_name: priceVariantName,
+                            combinations: priceResult,
+                        });
+                        processedVariants.add(priceVariantName);
+                    }
+                }
+
+                // Process QUANTITY combinations (combined or single)
+                if (formValues?.isCheckedQuantity && formValues?.quantities) {
+                    if (isQuantityCombined) {
+                        // Combined quantity variant
+                        const quantityVariantNames = formValues?.quantities.split("and").map(v => v.trim());
+
+                        // Check if this combined variant already exists in data
+                        const existingCombined = data.find(d => d.variant_name === formValues?.quantities);
+                        if (!existingCombined) {
+                            const quantityCombinedData = handleCombinedVariants(quantityVariantNames, currentData);
+                            data.push(...quantityCombinedData);
+                        }
+                        quantityVariantNames.forEach(v => processedVariants.add(v));
+                    } else {
+                        // Single quantity variant
+                        const quantityVariantName = formValues?.quantities;
+
+                        // Check if this single variant already exists in data
+                        const existingSingle = data.find(d => d.variant_name === quantityVariantName);
+                        if (!existingSingle) {
+                            const quantityVariationData = currentData.filter((item) => item.name === quantityVariantName);
+                            let quantityResult = generateCombinations(quantityVariationData);
+                            data.push({
+                                variant_name: quantityVariantName,
+                                combinations: quantityResult,
+                            });
+                        }
+                        processedVariants.add(quantityVariantName);
+                    }
+                }
+
+                // Handle individual variations that are not part of any price/quantity variation
+                const individualVariations = currentData.filter(item => !processedVariants.has(item.name));
+                for (const item of individualVariations) {
+                    let result = generateCombinations([item]);
+                    data.push({
+                        variant_name: item?.name,
+                        combinations: result,
+                    });
+                }
+            } else {
+                // Both are single variants (no "and" in either)
+                const priceVariantName = formValues?.prices;
+                const quantityVariantName = formValues?.quantities;
+
+                if (priceVariantName === quantityVariantName && formValues.isCheckedPrice && formValues.isCheckedQuantity) {
+                    // Same variant for both price and quantity
+                    const variationData = currentData.filter((item) => item.name === priceVariantName);
+                    let result = generateCombinations(variationData);
+                    data.push({
+                        variant_name: priceVariantName,
+                        combinations: result
+                    });
+
+                    // Handle remaining variations
+                    const remainingVariations = currentData.filter(item => item.name !== priceVariantName);
+                    for (const item of remainingVariations) {
+                        let remainingResult = generateCombinations([item]);
+                        data.push({
+                            variant_name: item?.name,
+                            combinations: remainingResult,
+                        });
+                    }
+                } else {
+                    // Different variants for price and quantity
+                    const processed = new Set();
+
+                    // Add price variant
+                    if (formValues.isCheckedPrice && priceVariantName) {
+                        const priceData = currentData.filter((item) => item.name === priceVariantName);
+                        let priceResult = generateCombinations(priceData);
+                        data.push({
+                            variant_name: priceVariantName,
+                            combinations: priceResult,
+                        });
+                        processed.add(priceVariantName);
+                    }
+
+                    // Add quantity variant (if different from price)
+                    if (formValues.isCheckedQuantity && quantityVariantName && !processed.has(quantityVariantName)) {
+                        const quantityData = currentData.filter((item) => item.name === quantityVariantName);
+                        let quantityResult = generateCombinations(quantityData);
+                        data.push({
+                            variant_name: quantityVariantName,
+                            combinations: quantityResult,
+                        });
+                        processed.add(quantityVariantName);
+                    }
+
+                    // Add remaining variations
+                    const remainingVariations = currentData.filter(item => !processed.has(item.name));
+                    for (const item of remainingVariations) {
+                        let remainingResult = generateCombinations([item]);
+                        data.push({
+                            variant_name: item?.name,
+                            combinations: remainingResult,
+                        });
+                    }
+                }
+            }
+        } else {
+            // No price/quantity variations enabled - generate all variations normally
+            for (const item of currentData) {
+                let result = generateCombinations([item]);
+                data.push({
+                    variant_name: item?.name,
+                    combinations: result,
+                });
+            }
+        }
+
+        console.log("Generated combinations:", data);
+
+        // Mark price/quantity variations properly
+        const finalCombinationsData = markPriceQuantityVariations(data, formValues);
+        setCombinations(finalCombinationsData);
+
+        // Update form data with selected variations
+        const parentMainIds = currentData
+            .map(variation => {
+                const variant = allVariants.find((item) => item.variant_name === variation.name);
+                return variant?.id && !variant.isCustom ? variant.id : null;
+            })
+            .filter(Boolean);
+
+        const allIds = currentData
+            .flatMap((variation) => {
+                const variant = allVariants.find((item) => item.variant_name === variation.name);
+                const safeValues = Array.isArray(variation.values) ? variation.values : [];
+
+                return safeValues.map((value) => {
+                    const attributeData = variant?.variant_attribute?.find((attr) => attr.attribute_value === value);
+                    return attributeData?._id && !variant.isCustom ? attributeData._id : null;
+                });
+            })
+            .filter(Boolean);
+
+        setFormData({
+            ParentMainId: Array.from(new Set([...(formData.ParentMainId || []), ...parentMainIds])),
+            varientName: Array.from(new Set([...(formData.varientName || []), ...allIds]))
+        });
+
+        handleCloseVariant();
     };
 
     // Custom Variant Dialog Functions
-    const handleOpenCustomVariantDialog = () => {
+    const handleOpenCustomVariantDialog = (variantToEdit = null) => {
+        setEditingCustomVariant(variantToEdit);
+        if (variantToEdit) {
+            // Editing existing custom variant
+            setCustomVariantName(variantToEdit.variant_name);
+            setCustomVariantOptions(variantToEdit.variant_attribute.map(attr => attr.attribute_value));
+        } else {
+            // Creating new custom variant
+            setCustomVariantName("");
+            setCustomVariantOptions([""]);
+        }
         setCustomVariantDialogOpen(true);
-        setCustomVariantName("");
-        setCustomVariantOptions([""]);
     };
 
     const handleCloseCustomVariantDialog = () => {
         setCustomVariantDialogOpen(false);
         setCustomVariantName("");
         setCustomVariantOptions([""]);
+        setEditingCustomVariant(null);
     };
 
     const handleAddOption = () => {
@@ -480,22 +483,63 @@ const VariantModal = ({show, handleCloseVariant}) => {
             isCustom: true
         };
 
-        // Add to custom variants list
-        setCustomVariants(prev => [...prev, newCustomVariant]);
+        if (editingCustomVariant) {
+            // Update existing custom variant
+            setCustomVariants(prev =>
+                prev.map(variant =>
+                    variant.variant_name === editingCustomVariant.variant_name
+                        ? newCustomVariant
+                        : variant
+                )
+            );
+
+            // Update variationsData if this variant is currently being used
+            const currentData = variationsData || [];
+            const updatedVariationsData = currentData.map(variation =>
+                variation.name === editingCustomVariant.variant_name
+                    ? { name: newCustomVariant.variant_name, values: validOptions }
+                    : variation
+            );
+            setVariationsData(updatedVariationsData);
+
+            // Update selectedVariations if name changed
+            if (editingCustomVariant.variant_name !== newCustomVariant.variant_name) {
+                setSelectedVariations(prev =>
+                    prev.map(variant =>
+                        variant === editingCustomVariant.variant_name
+                            ? newCustomVariant.variant_name
+                            : variant
+                    )
+                );
+            }
+        } else {
+            // Add new custom variant
+            setCustomVariants(prev => [...prev, newCustomVariant]);
+        }
 
         // Close dialog and reset
         handleCloseCustomVariantDialog();
 
-        // Auto-select the newly created variant
-        setSelectedVariations([...selectedVariations, newCustomVariant.variant_name]);
-        setSelectedVariant(newCustomVariant.variant_name);
+        if (!editingCustomVariant) {
+            // Auto-select the newly created variant only for new variants
+            setSelectedVariations([...selectedVariations, newCustomVariant.variant_name]);
+            setSelectedVariant(newCustomVariant.variant_name);
 
-        // Set attribute options for the new variant
-        setAttrOptions(validOptions);
-        setAttrValues({
-            name: newCustomVariant.variant_name,
-            values: [],
-        });
+            // Set attribute options for the new variant
+            setAttrOptions(validOptions);
+            setAttrValues({
+                name: newCustomVariant.variant_name,
+                values: [],
+            });
+        }
+    };
+
+    // Function to handle editing custom variant options
+    const handleEditCustomVariantOptions = (variantName) => {
+        const customVariant = customVariants.find(v => v.variant_name === variantName);
+        if (customVariant) {
+            handleOpenCustomVariantDialog(customVariant);
+        }
     };
 
     const handleTagHandler = (event, newValue) => {
@@ -520,7 +564,7 @@ const VariantModal = ({show, handleCloseVariant}) => {
     const handleCancel = () => {
         setShowVariantList(false);
         setSelectedVariant("");
-        setAttrValues({name: "", values: []});
+        setAttrValues({ name: "", values: [] });
         setIsEdit(false);
     };
 
@@ -528,12 +572,12 @@ const VariantModal = ({show, handleCloseVariant}) => {
         handleCloseVariant();
         setShowVariantList(false);
         setSelectedVariant("");
-        setAttrValues({name: "", values: []});
+        setAttrValues({ name: "", values: [] });
         setIsEdit(false);
     };
 
     const handleTagDelete = (option) => {
-        setAttrValues((prv) => ({...prv, values: prv.values.filter((item) => item !== option)}));
+        setAttrValues((prv) => ({ ...prv, values: prv.values.filter((item) => item !== option) }));
     };
 
     const handleDone = () => {
@@ -561,7 +605,7 @@ const VariantModal = ({show, handleCloseVariant}) => {
 
         setShowVariantList(false);
         setSelectedVariant("");
-        setAttrValues({name: "", values: []});
+        setAttrValues({ name: "", values: [] });
         setAttrOptions([]);
         setIsEdit(false);
     };
@@ -571,13 +615,19 @@ const VariantModal = ({show, handleCloseVariant}) => {
         const updatedData = currentData.filter(variation => variation.name !== selectedVariantName);
         setVariationsData(updatedData);
 
+        // Remove from custom variants if it's a custom variant
+        const isCustomVariant = customVariants.some(v => v.variant_name === selectedVariantName);
+        if (isCustomVariant) {
+            setCustomVariants(prev => prev.filter(v => v.variant_name !== selectedVariantName));
+        }
+
         const variant = allVariants.find((item) => item.variant_name === selectedVariantName);
         const parentMainName = variant?.variant_name;
         const allAttributeValues = variant?.variant_attribute?.map((attr) => attr.attribute_value) || [];
-        const allIds = variant?.variant_attribute.map((attr) => attr._id);
+        const allIds = variant?.variant_attribute?.map((attr) => attr._id) || [];
 
         setFormData({
-            ParentMainId: formData.ParentMainId.filter((id) => id !== variant._id),
+            ParentMainId: formData.ParentMainId.filter((id) => id !== variant?._id),
             varientName: formData.varientName.filter((id) => !allIds.includes(id)),
         });
 
@@ -586,249 +636,30 @@ const VariantModal = ({show, handleCloseVariant}) => {
         );
 
         setSelectedVariant("");
-        setAttrValues({name: "", values: []});
+        setAttrValues({ name: "", values: [] });
         setIsEdit(false);
         setShowVariantList(false);
     };
 
+    // ========== CLEANED UP: handleChange - Image Source Logic Removed ==========
     const handleChange = (e) => {
-        const {name, value, checked} = e.target;
+        const { name, value, checked } = e.target;
 
         if (name === "isCheckedPrice" || name === "isCheckedQuantity") {
-            setFormValues({[name]: checked});
-        } else if (name === "prices" || name === "quantities") {
-            // Check if this is a combined variation (contains "and")
-            if (value && value.includes("and")) {
-                // Store the pending form values and open image source dialog
-                setPendingFormValues({name, value});
+            setFormValues({ [name]: checked });
 
-                // Extract variant names from the combined value
-                const variantNames = value.split("and").map(v => v.trim());
-                setImageSourceOptions(variantNames);
-                setSelectedImageSource(variantNames[0]); // Default to first variant
-                setImageSourceDialogOpen(true);
-                if(name === "prices") {
-                    console.log("Pricies", name);
-                    setFormData({salePrice: 0})
-                }
-
-                if(name === "quantities") {
-                    setFormData({quantity: 0})
-                }
-            } else {
-                // Single variation, update directly - use Zustand's setFormValues correctly
-                setFormValues({[name]: value});
-            }
-        } else {
-            setFormValues({[name]: value});
-        }
-    };
-
-    // UPDATED: handleGenerate function with proper combined variant handling
-    const handleGenerate = async () => {
-        const currentData = variationsData || [];
-        const existingCombinationsData = combinations || [];
-
-        // if (currentData.length === 0) {
-        //     console.log("No variations data to generate");
-        //     return;
-        // }
-
-        let data = [];
-
-        // Get image source preferences
-        console.log("PendingFormValues", formValues);
-        const priceImageSource = formValues?.pricesImageSource;
-        const quantityImageSource = formValues?.quantitiesImageSource;
-
-        // Get ALL existing combinations for proper image preservation
-        const allExistingCombinations = existingCombinationsData.flatMap(group => group.combinations || []);
-
-        console.log("All Existing Combinations ", allExistingCombinations);
-
-        // Handle the case when price/quantity variations are enabled
-        if ((formValues?.isCheckedPrice || formValues?.isCheckedQuantity) && (formValues?.prices || formValues?.quantities)) {
-
-            // Check if we have combined variants
-            const isPriceCombined = formValues?.prices?.includes("and");
-            const isQuantityCombined = formValues?.quantities?.includes("and");
-
-            if (isPriceCombined || isQuantityCombined) {
-                // Handle combined variants
-
-                if (formValues?.prices === formValues?.quantities && formValues.isCheckedPrice && formValues.isCheckedQuantity) {
-                    // Same combined variant for both price and quantity
-                    const variantNames = formValues?.prices.split("and").map(v => v.trim());
-
-                    // Generate combined variant
-                    const combinedData = handleCombinedVariants(
-                        variantNames,
-                        currentData,
-                        allVariants,
-                        existingCombinationsData,
-                        priceImageSource || quantityImageSource
-                    );
-                    data.push(...combinedData);
-
-                    // Handle remaining individual variations
-                    const remainingVariations = currentData.filter(item => !variantNames.includes(item.name));
-                    for (const item of remainingVariations) {
-                        let result = generateCombinations([item], allVariants, allExistingCombinations);
-                        data.push({
-                            variant_name: item?.name,
-                            combinations: result,
-                        });
-                    }
-                } else {
-                    // Different combined variants for price and quantity
-                    const processedVariants = new Set();
-
-                    // Process price combined variant
-                    if (isPriceCombined && formValues.isCheckedPrice) {
-                        const priceVariantNames = formValues?.prices.split("and").map(v => v.trim());
-                        const priceCombinedData = handleCombinedVariants(
-                            priceVariantNames,
-                            currentData,
-                            allVariants,
-                            existingCombinationsData,
-                            priceImageSource
-                        );
-                        data.push(...priceCombinedData);
-
-                        // Mark these variants as processed
-                        priceVariantNames.forEach(v => processedVariants.add(v));
-                    }
-
-                    // Process quantity combined variant
-                    if (isQuantityCombined && formValues.isCheckedQuantity) {
-                        const quantityVariantNames = formValues?.quantities.split("and").map(v => v.trim());
-                        const quantityCombinedData = handleCombinedVariants(
-                            quantityVariantNames,
-                            currentData,
-                            allVariants,
-                            existingCombinationsData,
-                            quantityImageSource
-                        );
-                        data.push(...quantityCombinedData);
-
-                        // Mark these variants as processed
-                        quantityVariantNames.forEach(v => processedVariants.add(v));
-                    }
-
-                    // Handle individual variations that are not part of any combined variant
-                    const individualVariations = currentData.filter(item => !processedVariants.has(item.name));
-
-                    for (const item of individualVariations) {
-                        let result = generateCombinations([item], allVariants, allExistingCombinations);
-                        data.push({
-                            variant_name: item?.name,
-                            guide: [
-                                {
-                                    guide_name: selectedVariations.find((variant) => variant.variant_name === item?.name)?.guide_name || null,
-                                    guide_file: selectedVariations.find((variant) => variant.variant_name === item?.name)?.guide_file || null,
-                                    guide_description: selectedVariations.find((variant) => variant.variant_name === item?.name)?.guide_description || null,
-                                    guide_type: selectedVariations.find((variant) => variant.variant_name === item?.name)?.guide_type || null,
-                                }],
-                            combinations: result,
-                        });
-                    }
-                }
-            } else {
-                // Handle single variants (existing logic that's working)
-                const existsPrice = currentData.find(variation => variation.name === formValues?.prices);
-                const existsQuantity = currentData.find(variation => variation.name === formValues?.quantities);
-
-                if (existsPrice && existsQuantity) {
-                    // Both selected variations exist in the data - generate ALL variations
-                    for (const item of currentData) {
-                        let result = generateCombinations([item], allVariants, allExistingCombinations);
-                        data.push({
-                            variant_name: item?.name,
-                            combinations: result,
-                        });
-                    }
-                } else {
-                    // Handle cases when variations don't directly match
-                    if (formValues?.prices === formValues?.quantities && formValues.isCheckedPrice && formValues.isCheckedQuantity) {
-                        const variantName = formValues?.prices;
-                        const variationData = currentData.filter((item) => item.name === variantName);
-
-                        let result = generateCombinations(variationData, allVariants, allExistingCombinations);
-                        data.push({
-                            variant_name: variantName,
-                            combinations: result
-                        });
-
-                        // Handle remaining variations
-                        if (currentData.length > 1) {
-                            let remainingVariationData = currentData.filter((item) => item.name !== variantName);
-                            for (const item of remainingVariationData) {
-                                let remainingResult = generateCombinations([item], allVariants, allExistingCombinations);
-                                data.push({
-                                    variant_name: item?.name,
-                                    combinations: remainingResult,
-                                });
-                            }
-                        }
-                    } else {
-                        // Mixed cases - Generate ALL variations
-                        for (const item of currentData) {
-                            let result = generateCombinations([item], allVariants, allExistingCombinations);
-                            data.push({
-                                variant_name: item?.name,
-                                combinations: result,
-                            });
-                        }
-                    }
+            // Clear the corresponding form data when toggled on
+            if (checked) {
+                if (name === "isCheckedPrice") {
+                    setFormData(prev => ({ ...prev, salePrice: "" }));
+                } else if (name === "isCheckedQuantity") {
+                    setFormData(prev => ({ ...prev, quantity: "" }));
                 }
             }
         } else {
-            // No price/quantity variations enabled - generate all variations normally
-            for (const item of currentData) {
-                let result = generateCombinations([item], allVariants, allExistingCombinations);
-                data.push({
-                    variant_name: item?.name,
-                    combinations: result,
-                });
-            }
+            // Direct update for prices and quantities - no image source logic
+            setFormValues({ [name]: value });
         }
-
-        console.log("Generated combinations with preserved images:", data);
-
-        // Mark price/quantity variations properly
-        const finalCombinationsData = markPriceQuantityVariations(data, formValues);
-
-        console.log("Final combinations with price/quantity markings:", finalCombinationsData);
-        setCombinations(finalCombinationsData);
-
-        // Update form data with selected variations - Only include predefined variants
-        const parentMainIds = currentData
-            .map(variation => {
-                const variant = allVariants.find((item) => item.variant_name === variation.name);
-                // Only include predefined variants (those with IDs), exclude custom variants
-                return variant?.id && !variant.isCustom ? variant.id : null;
-            })
-            .filter(Boolean);
-
-        const allIds = currentData
-            .flatMap((variation) => {
-                const variant = allVariants.find((item) => item.variant_name === variation.name);
-                const safeValues = Array.isArray(variation.values) ? variation.values : [];
-
-                return safeValues.map((value) => {
-                    const attributeData = variant?.variant_attribute?.find((attr) => attr.attribute_value === value);
-                    // Only include predefined attributes (those with _id), exclude custom attributes
-                    return attributeData?._id && !variant.isCustom ? attributeData._id : null;
-                });
-            })
-            .filter(Boolean);
-
-        setFormData({
-            ParentMainId: Array.from(new Set([...(formData.ParentMainId || []), ...parentMainIds])),
-            varientName: Array.from(new Set([...(formData.varientName || []), ...allIds]))
-        });
-
-        handleCloseVariant();
     };
 
     useEffect(() => {
@@ -841,7 +672,7 @@ const VariantModal = ({show, handleCloseVariant}) => {
 
     const handleEditVariation = (item) => {
         setSelectedVariant(item?.name);
-        setAttrValues({name: item?.name, values: item?.values || []});
+        setAttrValues({ name: item?.name, values: item?.values || [] });
         setIsEdit(true);
         setShowVariantList(true);
     };
@@ -849,7 +680,7 @@ const VariantModal = ({show, handleCloseVariant}) => {
     const handleVariantSelect = (variantName) => {
         setSelectedVariations(Array.from(new Set([...(selectedVariations || []), variantName])));
         setSelectedVariant(variantName);
-        setAttrValues(prev => ({...prev, name: variantName, values: []}));
+        setAttrValues(prev => ({ ...prev, name: variantName, values: [] }));
     };
 
     // Get disabled variants
@@ -883,34 +714,54 @@ const VariantModal = ({show, handleCloseVariant}) => {
                                                 border: '1px solid #e0e0e0',
                                                 padding: '16px'
                                             }}>
-                                                <Typography fontWeight={500}>{item?.name}</Typography>
+                                                <Box display="flex" justifyContent="space-between" alignItems="center">
+                                                    <Typography fontWeight={500}>{item?.name}</Typography>
+                                                    {customVariants.some(v => v.variant_name === item.name) && (
+                                                        <Chip
+                                                            label="Custom"
+                                                            size="small"
+                                                            color="primary"
+                                                            variant="outlined"
+                                                        />
+                                                    )}
+                                                </Box>
                                                 <Typography variant="body2" color="textSecondary">
                                                     {item?.values?.length || 0} options
                                                 </Typography>
                                                 <Box mt={1} display="flex" justifyContent="space-between"
-                                                     alignItems="center">
+                                                    alignItems="center">
                                                     <Box>
                                                         {Array.isArray(item?.values) && item.values.map((data, valueIndex) => (
                                                             <Chip
                                                                 key={valueIndex}
                                                                 label={data}
                                                                 size="small"
-                                                                sx={{m: 0.5}}
+                                                                sx={{ m: 0.5 }}
                                                             />
                                                         ))}
                                                     </Box>
                                                     <Box display="flex">
+                                                        {/* Edit Custom Variant Options Button */}
+                                                        {/* {customVariants.some(v => v.variant_name === item.name) && (
+                                                            <IconButton
+                                                                size="small"
+                                                                onClick={() => handleEditCustomVariantOptions(item.name)}
+                                                                title="Edit variant options"
+                                                            >
+                                                                <EditIcon />
+                                                            </IconButton>
+                                                        )} */}
                                                         <IconButton
                                                             size="small"
                                                             onClick={() => handleEditVariation(item)}
                                                         >
-                                                            <EditIcon/>
+                                                            <EditIcon />
                                                         </IconButton>
                                                         <IconButton
                                                             size="small"
                                                             onClick={() => handleDeleteVariation(item?.name)}
                                                         >
-                                                            <DeleteIcon/>
+                                                            <DeleteIcon />
                                                         </IconButton>
                                                     </Box>
                                                 </Box>
@@ -919,12 +770,12 @@ const VariantModal = ({show, handleCloseVariant}) => {
                                     </Box>
                                 ) : (
                                     <Box textAlign={"center"} py={3}>
-                                        <BeenhereIcon sx={{fontSize: '55px', color: 'text.secondary', mb: 2}}/>
+                                        <BeenhereIcon sx={{ fontSize: '55px', color: 'text.secondary', mb: 2 }} />
                                         <Typography variant="h6" fontWeight={500} textAlign="center" gutterBottom>
                                             You don't have any variations
                                         </Typography>
                                         <Typography textAlign="center" color="textSecondary">
-                                            Use variations if your item is offered in different <br/> colours, size,
+                                            Use variations if your item is offered in different <br /> colours, size,
                                             materials, etc.
                                         </Typography>
                                     </Box>
@@ -933,16 +784,16 @@ const VariantModal = ({show, handleCloseVariant}) => {
                                 {(variationsData || []).length < 3 && (
                                     <Button
                                         variant="outlined"
-                                        startIcon={<AddIcon/>}
+                                        startIcon={<AddIcon />}
                                         onClick={() => setShowVariantList(true)}
-                                        sx={{mt: 2}}
+                                        sx={{ mt: 2 }}
                                     >
                                         Add a Variation
                                     </Button>
                                 )}
 
                                 {(variationsData || []).length > 0 && (
-                                    <Box py={2} sx={{borderTop: '1px solid #e0e0e0', mt: 2}}>
+                                    <Box py={2} sx={{ borderTop: '1px solid #e0e0e0', mt: 2 }}>
                                         <Box display="flex" alignItems="center" mb={2}>
                                             <Switch
                                                 name="isCheckedPrice"
@@ -952,7 +803,7 @@ const VariantModal = ({show, handleCloseVariant}) => {
                                             <Typography>Prices vary for each</Typography>
                                         </Box>
                                         {formValues?.isCheckedPrice && (variationsData || []).length > 1 && (
-                                            <FormControl fullWidth sx={{mb: 2}}>
+                                            <FormControl fullWidth sx={{ mb: 2 }}>
                                                 <TextField
                                                     select
                                                     label="Select Variation for Prices"
@@ -1006,7 +857,6 @@ const VariantModal = ({show, handleCloseVariant}) => {
                                     <Button
                                         variant="contained"
                                         onClick={handleGenerate}
-                                        // disabled={(variationsData || []).length === 0}
                                     >
                                         Apply
                                     </Button>
@@ -1029,39 +879,65 @@ const VariantModal = ({show, handleCloseVariant}) => {
                                         {allVariants?.map((item, index) => {
                                             const isDisabled = disabledVariants.has(item?.variant_name);
                                             const isSelected = (selectedVariations || []).includes(item?.variant_name);
+                                            const isCustom = item.isCustom;
                                             return (
-                                                <Button
-                                                    key={index}
-                                                    variant="outlined"
-                                                    sx={{
-                                                        m: 0.5,
-                                                        borderRadius: '20px',
-                                                        textTransform: 'none',
-                                                        // Different styling for parent-disabled variants
-                                                        ...(isDisabled && !isSelected && {
-                                                            borderColor: '#ccc',
-                                                            color: '#999',
-                                                            backgroundColor: '#f5f5f5',
-                                                            '&:hover': {
+                                                <Box key={index} sx={{ display: 'inline-block', m: 0.5, position: 'relative' }}>
+                                                    <Button
+                                                        variant="outlined"
+                                                        sx={{
+                                                            borderRadius: '20px',
+                                                            textTransform: 'none',
+                                                            // Different styling for parent-disabled variants
+                                                            ...(isDisabled && !isSelected && {
+                                                                borderColor: '#ccc',
+                                                                color: '#999',
                                                                 backgroundColor: '#f5f5f5',
-                                                                borderColor: '#ccc'
-                                                            }
-                                                        })
-                                                    }}
-                                                    onClick={() => handleVariantSelect(item?.variant_name)}
-                                                    disabled={isDisabled}
-                                                    startIcon={isDisabled ? <CheckIcon/> : null}
-                                                >
-                                                    {item?.variant_name}
-                                                    {isDisabled && !isSelected && " (Used in Parent)"}
-                                                </Button>
+                                                                '&:hover': {
+                                                                    backgroundColor: '#f5f5f5',
+                                                                    borderColor: '#ccc'
+                                                                }
+                                                            })
+                                                        }}
+                                                        onClick={() => handleVariantSelect(item?.variant_name)}
+                                                        disabled={isDisabled}
+                                                        startIcon={isDisabled ? <CheckIcon /> : null}
+                                                    >
+                                                        {item?.variant_name}
+                                                        {isCustom && " (Custom)"}
+                                                        {isDisabled && !isSelected && " (Used in Parent)"}
+                                                    </Button>
+                                                    {isCustom && (
+                                                        <IconButton
+                                                            size="small"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleEditCustomVariantOptions(item.variant_name);
+                                                            }}
+                                                            sx={{
+                                                                position: 'absolute',
+                                                                top: -8,
+                                                                right: -8,
+                                                                backgroundColor: 'white',
+                                                                border: '1px solid #ccc',
+                                                                width: 24,
+                                                                height: 24,
+                                                                '&:hover': {
+                                                                    backgroundColor: '#f5f5f5'
+                                                                }
+                                                            }}
+                                                            title="Edit custom variant options"
+                                                        >
+                                                            <EditIcon fontSize="small" />
+                                                        </IconButton>
+                                                    )}
+                                                </Box>
                                             );
                                         })}
                                     </Box>
                                     <Box my={2}>
                                         <Button
                                             variant="outlined"
-                                            onClick={handleOpenCustomVariantDialog}
+                                            onClick={() => handleOpenCustomVariantDialog()}
                                             sx={{
                                                 borderColor: '#1976d2',
                                                 color: '#1976d2',
@@ -1071,11 +947,11 @@ const VariantModal = ({show, handleCloseVariant}) => {
                                                 }
                                             }}
                                         >
-                                            <AddIcon sx={{mr: 1}}/>
+                                            <AddIcon sx={{ mr: 1 }} />
                                             Add Custom Variant
                                         </Button>
                                     </Box>
-                                    <Button onClick={handleCancel} sx={{mt: 2}}>
+                                    <Button onClick={handleCancel} sx={{ mt: 2 }}>
                                         Cancel
                                     </Button>
                                 </>
@@ -1083,6 +959,15 @@ const VariantModal = ({show, handleCloseVariant}) => {
                                 <>
                                     <Typography variant="h5" gutterBottom>
                                         {selectedVariant}
+                                        {customVariants.some(v => v.variant_name === selectedVariant) && (
+                                            <Chip
+                                                label="Custom"
+                                                size="small"
+                                                color="primary"
+                                                variant="outlined"
+                                                sx={{ ml: 1 }}
+                                            />
+                                        )}
                                     </Typography>
                                     <Typography variant="body2" color="textSecondary" mb={2}>
                                         Variation
@@ -1093,6 +978,25 @@ const VariantModal = ({show, handleCloseVariant}) => {
                                     <Typography color="textSecondary" mb={3}>
                                         Buyers can choose from the following options.
                                     </Typography>
+
+                                    {/* Edit Custom Variant Options Button */}
+                                    {customVariants.some(v => v.variant_name === selectedVariant) && (
+                                        <Box mb={2}>
+                                            <Button
+                                                variant="outlined"
+                                                size="small"
+                                                startIcon={<EditIcon />}
+                                                onClick={() => {
+                                                    const customVariant = customVariants.find(v => v.variant_name === selectedVariant);
+                                                    if (customVariant) {
+                                                        handleOpenCustomVariantDialog(customVariant);
+                                                    }
+                                                }}
+                                            >
+                                                Edit Variant Options
+                                            </Button>
+                                        </Box>
+                                    )}
 
                                     <Autocomplete
                                         multiple
@@ -1121,11 +1025,11 @@ const VariantModal = ({show, handleCloseVariant}) => {
                                                         },
                                                     }}
                                                 >
-                                                    <ListItemText primary={option}/>
+                                                    <ListItemText primary={option} />
                                                 </ListItem>
                                             );
                                         }}
-                                        sx={{mb: 2}}
+                                        sx={{ mb: 2 }}
                                     />
 
                                     <List>
@@ -1142,11 +1046,11 @@ const VariantModal = ({show, handleCloseVariant}) => {
                                                         edge="end"
                                                         onClick={() => handleTagDelete(option)}
                                                     >
-                                                        <DeleteIcon/>
+                                                        <DeleteIcon />
                                                     </IconButton>
                                                 }
                                             >
-                                                <ListItemText primary={option}/>
+                                                <ListItemText primary={option} />
                                             </ListItem>
                                         ))}
                                     </List>
@@ -1175,7 +1079,9 @@ const VariantModal = ({show, handleCloseVariant}) => {
 
             {/* Custom Variant Dialog */}
             <Dialog open={customVariantDialogOpen} onClose={handleCloseCustomVariantDialog} maxWidth="sm" fullWidth>
-                <DialogTitle>Add Custom Variant</DialogTitle>
+                <DialogTitle>
+                    {editingCustomVariant ? 'Edit Custom Variant' : 'Add Custom Variant'}
+                </DialogTitle>
                 <DialogContent>
                     <TextField
                         autoFocus
@@ -1186,7 +1092,7 @@ const VariantModal = ({show, handleCloseVariant}) => {
                         variant="outlined"
                         value={customVariantName}
                         onChange={(e) => setCustomVariantName(e.target.value)}
-                        sx={{mb: 2}}
+                        sx={{ mb: 2 }}
                     />
                     <Typography variant="subtitle1" gutterBottom>
                         Options (at least 2 required):
@@ -1199,80 +1105,23 @@ const VariantModal = ({show, handleCloseVariant}) => {
                                 placeholder={`Option ${index + 1}`}
                                 value={option}
                                 onChange={(e) => handleOptionChange(index, e.target.value)}
-                                sx={{mr: 1}}
+                                sx={{ mr: 1 }}
                             />
                             {customVariantOptions.length > 1 && (
                                 <IconButton onClick={() => handleRemoveOption(index)} color="error">
-                                    <DeleteIcon/>
+                                    <DeleteIcon />
                                 </IconButton>
                             )}
                         </Box>
                     ))}
-                    <Button onClick={handleAddOption} startIcon={<AddIcon/>} sx={{mt: 1}}>
+                    <Button onClick={handleAddOption} startIcon={<AddIcon />} sx={{ mt: 1 }}>
                         Add Option
                     </Button>
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={handleCloseCustomVariantDialog}>Cancel</Button>
                     <Button onClick={handleSaveCustomVariant} variant="contained">
-                        Save Variant
-                    </Button>
-                </DialogActions>
-            </Dialog>
-
-            {/* Image Source Selection Dialog */}
-            <Dialog open={imageSourceDialogOpen} onClose={() => setImageSourceDialogOpen(false)}>
-                <DialogTitle>Select Image Source</DialogTitle>
-                <DialogContent>
-                    <Typography variant="body2" gutterBottom>
-                        Which variation should provide the images for "{pendingFormValues?.value}" combinations?
-                    </Typography>
-                    <FormControl fullWidth sx={{mt: 2}}>
-                        <TextField
-                            select
-                            label="Image Source Variation"
-                            value={selectedImageSource}
-                            onChange={(e) => setSelectedImageSource(e.target.value)}
-                            size="small"
-                        >
-                            {imageSourceOptions.map((option, index) => (
-                                <MenuItem key={index} value={option}>
-                                    {option}
-                                </MenuItem>
-                            ))}
-                        </TextField>
-                    </FormControl>
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => {
-                        setImageSourceDialogOpen(false);
-                        setPendingFormValues(null);
-                    }}>Cancel</Button>
-                    <Button
-                        onClick={() => {
-                            console.log("PendingFormValues", pendingFormValues);
-                            if (pendingFormValues) {
-
-                                // Store the image source preference AND update the form value
-                                const imageSourceKey = `${pendingFormValues.name}ImageSource`;
-
-                                console.log("PendingFormValues", {[imageSourceKey]: selectedImageSource});
-
-                                // Use Zustand's setFormValues correctly - it replaces the entire object
-                                setFormValues({
-                                    ...formValues,
-                                    [pendingFormValues.name]: pendingFormValues.value,
-                                    [imageSourceKey]: selectedImageSource
-                                });
-
-                            }
-                            setImageSourceDialogOpen(false);
-                            setPendingFormValues(null);
-
-                        }}
-                        variant="contained"
-                    >
-                        Confirm
+                        {editingCustomVariant ? 'Update Variant' : 'Save Variant'}
                     </Button>
                 </DialogActions>
             </Dialog>
