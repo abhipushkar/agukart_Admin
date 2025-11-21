@@ -332,194 +332,115 @@ const VariantModal = ({ show, handleCloseVariant }) => {
         setAffectedQuantity(false);
     };
 
-    // ========== NEW: Helper function to preserve combination order and data ==========
-    const preserveCombinationOrderAndData = (newCombinations, existingCombinations) => {
+    // ========== NEW: Helper function to merge combination data ==========
+    const mergeCombinationData = (newCombinations, existingCombinations, variantNames) => {
         if (!existingCombinations || existingCombinations.length === 0) {
             return newCombinations;
         }
 
-        // Create maps for quick lookup
+        // Create a map of existing combinations for quick lookup
         const existingCombinationsMap = new Map();
-        const existingCombinationsOrderMap = new Map();
 
-        // Store the order of existing combinations
-        existingCombinations.forEach((combGroup, index) => {
-            existingCombinationsOrderMap.set(combGroup.variant_name, index);
-            existingCombinationsMap.set(combGroup.variant_name, combGroup);
+        existingCombinations.forEach(comb => {
+            // Create a unique key based on variant values
+            const keyParts = [];
+            variantNames.forEach((variantName, index) => {
+                const valueKey = `value${index + 1}`;
+                const nameKey = `name${index + 1}`;
+                if (comb[valueKey] && comb[nameKey] === variantName) {
+                    keyParts.push(`${variantName}:${comb[valueKey]}`);
+                }
+            });
+            const key = keyParts.join('|');
+            if (key) {
+                existingCombinationsMap.set(key, comb);
+            }
         });
 
-        // Sort new combinations to match existing order where possible
-        const sortedNewCombinations = [...newCombinations].sort((a, b) => {
-            const orderA = existingCombinationsOrderMap.has(a.variant_name) ? existingCombinationsOrderMap.get(a.variant_name) : Infinity;
-            const orderB = existingCombinationsOrderMap.has(b.variant_name) ? existingCombinationsOrderMap.get(b.variant_name) : Infinity;
-            return orderA - orderB;
-        });
+        // Merge new combinations with existing data
+        return newCombinations.map(newComb => {
+            // Create the same key for the new combination
+            const keyParts = [];
+            variantNames.forEach((variantName, index) => {
+                const valueKey = `value${index + 1}`;
+                const nameKey = `name${index + 1}`;
+                if (newComb[valueKey] && newComb[nameKey] === variantName) {
+                    keyParts.push(`${variantName}:${newComb[valueKey]}`);
+                }
+            });
+            const key = keyParts.join('|');
 
-        // Merge combinations while preserving order, price/quantity data, and row order
-        return sortedNewCombinations.map(newCombGroup => {
-            const existingCombGroup = existingCombinationsMap.get(newCombGroup.variant_name);
+            const existingComb = existingCombinationsMap.get(key);
 
-            if (existingCombGroup && newCombGroup.combinations && existingCombGroup.combinations) {
-                // Create maps for row order preservation
-                const existingRowOrderMap = new Map();
-                existingCombGroup.combinations.forEach((comb, index) => {
-                    // Create a unique key based on all variant values
-                    const keyParts = [];
-                    for (let i = 1; i <= 3; i++) {
-                        const valueKey = `value${i}`;
-                        const nameKey = `name${i}`;
-                        if (comb[valueKey] && comb[nameKey]) {
-                            keyParts.push(`${comb[nameKey]}:${comb[valueKey]}`);
-                        }
-                    }
-                    const key = keyParts.join('|');
-                    if (key) {
-                        existingRowOrderMap.set(key, { comb, index });
-                    }
-                });
-
-                // Sort new combinations to match existing row order
-                const sortedNewCombinations = [...newCombGroup.combinations].sort((a, b) => {
-                    // Create keys for comparison
-                    const keyPartsA = [];
-                    const keyPartsB = [];
-                    for (let i = 1; i <= 3; i++) {
-                        const valueKey = `value${i}`;
-                        const nameKey = `name${i}`;
-                        if (a[valueKey] && a[nameKey]) {
-                            keyPartsA.push(`${a[nameKey]}:${a[valueKey]}`);
-                        }
-                        if (b[valueKey] && b[nameKey]) {
-                            keyPartsB.push(`${b[nameKey]}:${b[valueKey]}`);
-                        }
-                    }
-                    const keyA = keyPartsA.join('|');
-                    const keyB = keyPartsB.join('|');
-
-                    const orderA = existingRowOrderMap.has(keyA) ? existingRowOrderMap.get(keyA).index : Infinity;
-                    const orderB = existingRowOrderMap.has(keyB) ? existingRowOrderMap.get(keyB).index : Infinity;
-
-                    return orderA - orderB;
-                });
-
-                // Merge data while preserving order
-                const mergedCombinations = sortedNewCombinations.map(newComb => {
-                    // Create the same key for the new combination
-                    const keyParts = [];
-                    for (let i = 1; i <= 3; i++) {
-                        const valueKey = `value${i}`;
-                        const nameKey = `name${i}`;
-                        if (newComb[valueKey] && newComb[nameKey]) {
-                            keyParts.push(`${newComb[nameKey]}:${newComb[valueKey]}`);
-                        }
-                    }
-                    const key = keyParts.join('|');
-
-                    const existingRowData = existingRowOrderMap.get(key);
-
-                    if (existingRowData) {
-                        const existingComb = existingRowData.comb;
-                        // Preserve existing price, quantity, and visibility data
-                        return {
-                            ...newComb,
-                            price: existingComb.price || newComb.price,
-                            qty: existingComb.qty || newComb.qty,
-                            isVisible: existingComb.hasOwnProperty('isVisible') ? existingComb.isVisible : newComb.isVisible,
-                        };
-                    }
-
-                    return newComb;
-                });
-
+            if (existingComb) {
+                // Preserve existing price, quantity, and visibility data
                 return {
-                    ...newCombGroup,
-                    combinations: mergedCombinations
+                    ...newComb,
+                    price: existingComb.price || newComb.price,
+                    qty: existingComb.qty || newComb.qty,
+                    isVisible: existingComb.hasOwnProperty('isVisible') ? existingComb.isVisible : newComb.isVisible,
+                    // Preserve any other existing properties
+                    ...Object.fromEntries(
+                        Object.entries(existingComb).filter(([key]) =>
+                            !['value1', 'value2', 'name1', 'name2', 'priceInput', 'quantityInput', 'isCheckedPrice', 'isCheckedQuantity'].includes(key)
+                        )
+                    )
                 };
             }
 
-            return newCombGroup;
+            return newComb;
         });
     };
 
-    // ========== NEW: Helper function to preserve product_variants order ==========
-    const preserveProductVariantsOrder = (existingProductVariants, currentVariationsData) => {
-        if (!existingProductVariants || existingProductVariants.length === 0) {
-            return product_variants;
-        }
+    // ========== SIMPLER FIX: Helper function to preserve product_variants data ==========
+    const preserveProductVariantsData = (newCombinations, existingProductVariants, currentVariationsData) => {
+        console.log("Preserving product variants data...");
 
-        // Create maps for order preservation
-        const existingVariantsOrderMap = new Map();
-        const existingVariantsMap = new Map();
-
-        // Store the order of existing product_variants
-        existingProductVariants.forEach((variant, index) => {
-            existingVariantsOrderMap.set(variant.variant_name, index);
-            existingVariantsMap.set(variant.variant_name, variant);
-        });
-
-        // Get current product_variants after initialization
+        // Always use the current product_variants from the store (which includes newly initialized variants)
+        // and just ensure the structure matches the new combinations
         const currentProductVariants = [...product_variants];
 
-        // Sort current product_variants to match existing order where possible
-        const sortedProductVariants = [...currentProductVariants].sort((a, b) => {
-            const orderA = existingVariantsOrderMap.has(a.variant_name) ? existingVariantsOrderMap.get(a.variant_name) : Infinity;
-            const orderB = existingVariantsOrderMap.has(b.variant_name) ? existingVariantsOrderMap.get(b.variant_name) : Infinity;
-            return orderA - orderB;
-        });
+        const finalVariants = newCombinations.map(combGroup => {
+            const variantName = combGroup.variant_name;
+            const existingVariant = currentProductVariants.find(v => v.variant_name === variantName);
 
-        // For each variant, preserve the row order
-        return sortedProductVariants.map(currentVariant => {
-            const existingVariant = existingVariantsMap.get(currentVariant.variant_name);
+            if (existingVariant) {
+                return existingVariant;
+            } else {
+                // Create new variant from current variations data
+                const currentVariantData = currentVariationsData.find(v => v.name === variantName);
+                const currentAttributes = currentVariantData?.values || [];
 
-            if (existingVariant && currentVariant.variant_attributes && existingVariant.variant_attributes) {
-                // Create maps for row order preservation
-                const existingRowOrderMap = new Map();
-                existingVariant.variant_attributes.forEach((attribute, index) => {
-                    existingRowOrderMap.set(attribute.attribute, { attribute, index });
-                });
-
-                // Sort current attributes to match existing row order
-                const sortedAttributes = [...currentVariant.variant_attributes].sort((a, b) => {
-                    const orderA = existingRowOrderMap.has(a.attribute) ? existingRowOrderMap.get(a.attribute).index : Infinity;
-                    const orderB = existingRowOrderMap.has(b.attribute) ? existingRowOrderMap.get(b.attribute).index : Infinity;
-                    return orderA - orderB;
-                });
-
-                // Merge attribute data while preserving images and other data
-                const mergedAttributes = sortedAttributes.map(currentAttribute => {
-                    const existingRowData = existingRowOrderMap.get(currentAttribute.attribute);
-
-                    if (existingRowData) {
-                        const existingAttribute = existingRowData.attribute;
-                        // Preserve all existing image data and other properties
-                        return {
-                            ...currentAttribute,
-                            main_images: existingAttribute.main_images || currentAttribute.main_images,
-                            preview_image: existingAttribute.preview_image || currentAttribute.preview_image,
-                            thumbnail: existingAttribute.thumbnail || currentAttribute.thumbnail,
-                            edit_preview_image: existingAttribute.edit_preview_image || currentAttribute.edit_preview_image,
-                            edit_main_image: existingAttribute.edit_main_image || currentAttribute.edit_main_image,
-                            edit_main_image_data: existingAttribute.edit_main_image_data || currentAttribute.edit_main_image_data,
-                            edit_preview_image_data: existingAttribute.edit_preview_image_data || currentAttribute.edit_preview_image_data,
-                        };
-                    }
-
-                    return currentAttribute;
-                });
+                const newAttributes = currentAttributes.map(attr => ({
+                    attribute: attr,
+                    main_images: [null, null, null],
+                    preview_image: null,
+                    thumbnail: null,
+                    edit_preview_image: null,
+                    edit_main_image: null,
+                    edit_main_image_data: {},
+                    edit_preview_image_data: {},
+                }));
 
                 return {
-                    ...currentVariant,
-                    variant_attributes: mergedAttributes
+                    variant_name: variantName,
+                    variant_attributes: newAttributes
                 };
             }
-
-            return currentVariant;
         });
+
+        console.log("Final product variants:", finalVariants);
+        return finalVariants;
     };
 
-    // ========== FIXED: handleGenerate with proper order preservation ==========
+    // ========== FIXED: handleGenerate with proper data preservation ==========
     const handleGenerate = async () => {
         const currentData = variationsData || [];
+
+        // if (currentData.length === 0) {
+        //     console.log("No variations data to generate");
+        //     return;
+        // }
 
         let data = [];
         const processedVariants = new Set();
@@ -622,12 +543,13 @@ const VariantModal = ({ show, handleCloseVariant }) => {
         const finalCombinationsData = markPriceQuantityVariations(data, formValues);
         console.log("Final combinations after marking:", finalCombinationsData);
 
-        // PRESERVE EXISTING ORDER AND DATA
-        const preservedCombinations = preserveCombinationOrderAndData(finalCombinationsData, combinations);
-        const preservedProductVariants = preserveProductVariantsOrder(product_variants, currentData);
+        // PRESERVE EXISTING COMBINATION DATA (price/quantity values)
+        const preservedCombinations = preserveCombinationData(finalCombinationsData, combinations);
 
         setCombinations(preservedCombinations);
-        setProductVariants(preservedProductVariants);
+
+        // NO NEED TO TOUCH product_variants - they are already properly handled by initializeProductVariants
+        // and should remain as separate variants
 
         // Update form data with selected variations
         const parentMainIds = currentData
@@ -655,6 +577,80 @@ const VariantModal = ({ show, handleCloseVariant }) => {
         });
 
         handleCloseVariant();
+    };
+
+    // ========== NEW: Helper function to preserve only combination data ==========
+    const preserveCombinationData = (newCombinations, existingCombinations) => {
+        if (!existingCombinations || existingCombinations.length === 0) {
+            return newCombinations;
+        }
+
+        const existingCombinationsMap = new Map();
+
+        // Create a map of existing combinations for quick lookup
+        existingCombinations.forEach(combGroup => {
+            existingCombinationsMap.set(combGroup.variant_name, combGroup);
+        });
+
+        // Merge new combinations with existing data
+        return newCombinations.map(newCombGroup => {
+            const existingCombGroup = existingCombinationsMap.get(newCombGroup.variant_name);
+
+            if (existingCombGroup && newCombGroup.combinations && existingCombGroup.combinations) {
+                // Create a map of existing combinations by their values
+                const existingCombMap = new Map();
+                existingCombGroup.combinations.forEach(comb => {
+                    // Create a unique key based on all variant values
+                    const keyParts = [];
+                    for (let i = 1; i <= 3; i++) {
+                        const valueKey = `value${i}`;
+                        const nameKey = `name${i}`;
+                        if (comb[valueKey] && comb[nameKey]) {
+                            keyParts.push(`${comb[nameKey]}:${comb[valueKey]}`);
+                        }
+                    }
+                    const key = keyParts.join('|');
+                    if (key) {
+                        existingCombMap.set(key, comb);
+                    }
+                });
+
+                // Merge combinations while preserving price/quantity data
+                const mergedCombinations = newCombGroup.combinations.map(newComb => {
+                    // Create the same key for the new combination
+                    const keyParts = [];
+                    for (let i = 1; i <= 3; i++) {
+                        const valueKey = `value${i}`;
+                        const nameKey = `name${i}`;
+                        if (newComb[valueKey] && newComb[nameKey]) {
+                            keyParts.push(`${newComb[nameKey]}:${newComb[valueKey]}`);
+                        }
+                    }
+                    const key = keyParts.join('|');
+
+                    const existingComb = existingCombMap.get(key);
+
+                    if (existingComb) {
+                        // Preserve existing price, quantity, and visibility data
+                        return {
+                            ...newComb,
+                            price: existingComb.price || newComb.price,
+                            qty: existingComb.qty || newComb.qty,
+                            isVisible: existingComb.hasOwnProperty('isVisible') ? existingComb.isVisible : newComb.isVisible,
+                        };
+                    }
+
+                    return newComb;
+                });
+
+                return {
+                    ...newCombGroup,
+                    combinations: mergedCombinations
+                };
+            }
+
+            return newCombGroup;
+        });
     };
 
     // Custom Variant Dialog Functions
