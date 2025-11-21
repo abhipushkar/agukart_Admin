@@ -188,7 +188,7 @@ export const useProductFormStore = create(
             // ========== NEW: PRODUCT VARIANTS ACTIONS ==========
             setProductVariants: (product_variants) => set({ product_variants }),
 
-            // Initialize product_variants from selected variations
+            // Initialize product_variants from selected variations - UPDATED FOR DATA PRESERVATION
             initializeProductVariants: (variationsData, allVariants) => {
                 const newProductVariants = [];
                 const existingVariantsMap = new Map();
@@ -201,34 +201,65 @@ export const useProductFormStore = create(
                 variationsData.forEach((variation) => {
                     const variantData = allVariants.find(v => v.variant_name === variation.name);
                     if (variantData) {
-                        // const existingVariant = existingVariantsMap.get(variation.name);
+                        const existingVariant = existingVariantsMap.get(variation.name);
 
-                        // if (existingVariant) {
-                        //     newProductVariants.push(existingVariant);
-                        // } else {
-                        // Create new variant with default images
-                        const variantAttributes = variation.values.map(value => {
-                            const attributeData = variantData.variant_attribute.find(attr =>
-                                attr.attribute_value === value
-                            );
+                        if (existingVariant) {
+                            // Preserve existing variant, but update attributes if needed
+                            const updatedAttributes = variation.values.map(value => {
+                                const existingAttribute = existingVariant.variant_attributes.find(attr =>
+                                    attr.attribute === value
+                                );
 
-                            return {
-                                attribute: value,
-                                main_images: attributeData?.main_images || [null, null, null],
-                                preview_image: attributeData?.preview_image || null,
-                                thumbnail: attributeData?.thumbnail || null,
-                                edit_preview_image: attributeData?.edit_preview_image || null,
-                                edit_main_image: attributeData?.edit_main_image || null,
-                                edit_main_image_data: attributeData?.edit_main_image_data || {},
-                                edit_preview_image_data: attributeData?.edit_preview_image_data || {},
-                            };
-                        });
+                                if (existingAttribute) {
+                                    // Preserve all existing image data
+                                    return existingAttribute;
+                                } else {
+                                    // New attribute - create with default images
+                                    const attributeData = variantData.variant_attribute.find(attr =>
+                                        attr.attribute_value === value
+                                    );
 
-                        newProductVariants.push({
-                            variant_name: variation.name,
-                            variant_attributes: variantAttributes
-                        });
-                        // }
+                                    return {
+                                        attribute: value,
+                                        main_images: attributeData?.main_images || [null, null, null],
+                                        preview_image: attributeData?.preview_image || null,
+                                        thumbnail: attributeData?.thumbnail || null,
+                                        edit_preview_image: attributeData?.edit_preview_image || null,
+                                        edit_main_image: attributeData?.edit_main_image || null,
+                                        edit_main_image_data: attributeData?.edit_main_image_data || {},
+                                        edit_preview_image_data: attributeData?.edit_preview_image_data || {},
+                                    };
+                                }
+                            });
+
+                            newProductVariants.push({
+                                variant_name: variation.name,
+                                variant_attributes: updatedAttributes
+                            });
+                        } else {
+                            // Create new variant with default images
+                            const variantAttributes = variation.values.map(value => {
+                                const attributeData = variantData.variant_attribute.find(attr =>
+                                    attr.attribute_value === value
+                                );
+
+                                return {
+                                    attribute: value,
+                                    main_images: attributeData?.main_images || [null, null, null],
+                                    preview_image: attributeData?.preview_image || null,
+                                    thumbnail: attributeData?.thumbnail || null,
+                                    edit_preview_image: attributeData?.edit_preview_image || null,
+                                    edit_main_image: attributeData?.edit_main_image || null,
+                                    edit_main_image_data: attributeData?.edit_main_image_data || {},
+                                    edit_preview_image_data: attributeData?.edit_preview_image_data || {},
+                                };
+                            });
+
+                            newProductVariants.push({
+                                variant_name: variation.name,
+                                variant_attributes: variantAttributes
+                            });
+                        }
                     }
                 });
 

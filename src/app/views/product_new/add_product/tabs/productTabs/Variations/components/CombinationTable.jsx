@@ -198,7 +198,7 @@ const CombinationsTable = ({ isSynced }) => {
                                 <TableHead>
                                     <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
                                         <TableCell align="center" sx={{ fontWeight: 600 }}>
-                                            {comb.combinations[combindex].name1}
+                                            {comb.combinations[combindex]?.name1}
                                         </TableCell>
                                         {comb.combinations[0]?.name2 && (
                                             <TableCell align="center" sx={{ fontWeight: 600 }}>

@@ -27,6 +27,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CheckIcon from "@mui/icons-material/Check";
 import BeenhereIcon from "@mui/icons-material/Beenhere";
+import WarningIcon from "@mui/icons-material/Warning";
 import { ApiService } from "app/services/ApiService";
 import { apiEndpoints } from "app/constant/apiEndpoints";
 import { localStorageKey } from "app/constant/localStorageKey";
@@ -78,7 +79,13 @@ const VariantModal = ({ show, handleCloseVariant }) => {
     const [customVariantName, setCustomVariantName] = useState("");
     const [customVariantOptions, setCustomVariantOptions] = useState([""]);
     const [customVariants, setCustomVariants] = useState([]);
-    const [editingCustomVariant, setEditingCustomVariant] = useState(null); // Track which custom variant is being edited
+    const [editingCustomVariant, setEditingCustomVariant] = useState(null);
+
+    // Warning dialog state
+    const [deleteWarningDialogOpen, setDeleteWarningDialogOpen] = useState(false);
+    const [variantToDelete, setVariantToDelete] = useState(null);
+    const [affectedPrice, setAffectedPrice] = useState(false);
+    const [affectedQuantity, setAffectedQuantity] = useState(false);
 
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
 
@@ -246,19 +253,190 @@ const VariantModal = ({ show, handleCloseVariant }) => {
         });
     };
 
-    // ========== FIXED: handleGenerate with proper combined variant handling ==========
+    // ========== NEW: Check if variant is used in price/quantity variations ==========
+    const checkVariantUsage = (variantName) => {
+        const isPriceUsed = formValues?.isCheckedPrice &&
+            (formValues?.prices === variantName ||
+                (formValues?.prices?.includes("and") && formValues.prices.includes(variantName)));
+
+        const isQuantityUsed = formValues?.isCheckedQuantity &&
+            (formValues?.quantities === variantName ||
+                (formValues?.quantities?.includes("and") && formValues.quantities.includes(variantName)));
+
+        return {
+            isUsed: isPriceUsed || isQuantityUsed,
+            affectsPrice: isPriceUsed,
+            affectsQuantity: isQuantityUsed
+        };
+    };
+
+    // ========== NEW: Handle variant deletion with warning ==========
+    const handleDeleteVariationWithWarning = (selectedVariantName) => {
+        const usage = checkVariantUsage(selectedVariantName);
+
+        if (usage.isUsed) {
+            // Show warning dialog
+            setVariantToDelete(selectedVariantName);
+            setAffectedPrice(usage.affectsPrice);
+            setAffectedQuantity(usage.affectsQuantity);
+            setDeleteWarningDialogOpen(true);
+        } else {
+            // Delete directly if not used in price/quantity
+            handleDeleteVariation(selectedVariantName);
+        }
+    };
+
+    // ========== NEW: Confirm deletion and turn off affected switches ==========
+    const handleConfirmDelete = () => {
+        if (variantToDelete) {
+            // Turn off the affected switches
+            const updatedFormValues = { ...formValues };
+
+            if (affectedPrice) {
+                updatedFormValues.isCheckedPrice = false;
+                updatedFormValues.prices = "";
+            }
+
+            if (affectedQuantity) {
+                updatedFormValues.isCheckedQuantity = false;
+                updatedFormValues.quantities = "";
+            }
+
+            setFormValues(updatedFormValues);
+
+            // Now delete the variant
+            handleDeleteVariation(variantToDelete);
+
+            // Close warning dialog
+            setDeleteWarningDialogOpen(false);
+            setVariantToDelete(null);
+            setAffectedPrice(false);
+            setAffectedQuantity(false);
+        }
+    };
+
+    // ========== NEW: Cancel deletion ==========
+    const handleCancelDelete = () => {
+        setDeleteWarningDialogOpen(false);
+        setVariantToDelete(null);
+        setAffectedPrice(false);
+        setAffectedQuantity(false);
+    };
+
+    // ========== NEW: Helper function to merge combination data ==========
+    const mergeCombinationData = (newCombinations, existingCombinations, variantNames) => {
+        if (!existingCombinations || existingCombinations.length === 0) {
+            return newCombinations;
+        }
+
+        // Create a map of existing combinations for quick lookup
+        const existingCombinationsMap = new Map();
+
+        existingCombinations.forEach(comb => {
+            // Create a unique key based on variant values
+            const keyParts = [];
+            variantNames.forEach((variantName, index) => {
+                const valueKey = `value${index + 1}`;
+                const nameKey = `name${index + 1}`;
+                if (comb[valueKey] && comb[nameKey] === variantName) {
+                    keyParts.push(`${variantName}:${comb[valueKey]}`);
+                }
+            });
+            const key = keyParts.join('|');
+            if (key) {
+                existingCombinationsMap.set(key, comb);
+            }
+        });
+
+        // Merge new combinations with existing data
+        return newCombinations.map(newComb => {
+            // Create the same key for the new combination
+            const keyParts = [];
+            variantNames.forEach((variantName, index) => {
+                const valueKey = `value${index + 1}`;
+                const nameKey = `name${index + 1}`;
+                if (newComb[valueKey] && newComb[nameKey] === variantName) {
+                    keyParts.push(`${variantName}:${newComb[valueKey]}`);
+                }
+            });
+            const key = keyParts.join('|');
+
+            const existingComb = existingCombinationsMap.get(key);
+
+            if (existingComb) {
+                // Preserve existing price, quantity, and visibility data
+                return {
+                    ...newComb,
+                    price: existingComb.price || newComb.price,
+                    qty: existingComb.qty || newComb.qty,
+                    isVisible: existingComb.hasOwnProperty('isVisible') ? existingComb.isVisible : newComb.isVisible,
+                    // Preserve any other existing properties
+                    ...Object.fromEntries(
+                        Object.entries(existingComb).filter(([key]) =>
+                            !['value1', 'value2', 'name1', 'name2', 'priceInput', 'quantityInput', 'isCheckedPrice', 'isCheckedQuantity'].includes(key)
+                        )
+                    )
+                };
+            }
+
+            return newComb;
+        });
+    };
+
+    // ========== SIMPLER FIX: Helper function to preserve product_variants data ==========
+    const preserveProductVariantsData = (newCombinations, existingProductVariants, currentVariationsData) => {
+        console.log("Preserving product variants data...");
+
+        // Always use the current product_variants from the store (which includes newly initialized variants)
+        // and just ensure the structure matches the new combinations
+        const currentProductVariants = [...product_variants];
+
+        const finalVariants = newCombinations.map(combGroup => {
+            const variantName = combGroup.variant_name;
+            const existingVariant = currentProductVariants.find(v => v.variant_name === variantName);
+
+            if (existingVariant) {
+                return existingVariant;
+            } else {
+                // Create new variant from current variations data
+                const currentVariantData = currentVariationsData.find(v => v.name === variantName);
+                const currentAttributes = currentVariantData?.values || [];
+
+                const newAttributes = currentAttributes.map(attr => ({
+                    attribute: attr,
+                    main_images: [null, null, null],
+                    preview_image: null,
+                    thumbnail: null,
+                    edit_preview_image: null,
+                    edit_main_image: null,
+                    edit_main_image_data: {},
+                    edit_preview_image_data: {},
+                }));
+
+                return {
+                    variant_name: variantName,
+                    variant_attributes: newAttributes
+                };
+            }
+        });
+
+        console.log("Final product variants:", finalVariants);
+        return finalVariants;
+    };
+
+    // ========== FIXED: handleGenerate with proper data preservation ==========
     const handleGenerate = async () => {
         const currentData = variationsData || [];
 
-        if (currentData.length === 0) {
-            console.log("No variations data to generate");
-            return;
-        }
+        // if (currentData.length === 0) {
+        //     console.log("No variations data to generate");
+        //     return;
+        // }
 
         let data = [];
         const processedVariants = new Set();
 
-        // Initialize product_variants FIRST
+        // Initialize product_variants FIRST - this creates SEPARATE variants only
         initializeProductVariants(currentData, allVariants);
 
         // Handle the case when price/quantity variations are enabled
@@ -355,7 +533,14 @@ const VariantModal = ({ show, handleCloseVariant }) => {
         // Mark price/quantity variations properly
         const finalCombinationsData = markPriceQuantityVariations(data, formValues);
         console.log("Final combinations after marking:", finalCombinationsData);
-        setCombinations(finalCombinationsData);
+
+        // PRESERVE EXISTING COMBINATION DATA (price/quantity values)
+        const preservedCombinations = preserveCombinationData(finalCombinationsData, combinations);
+
+        setCombinations(preservedCombinations);
+
+        // NO NEED TO TOUCH product_variants - they are already properly handled by initializeProductVariants
+        // and should remain as separate variants
 
         // Update form data with selected variations
         const parentMainIds = currentData
@@ -383,6 +568,80 @@ const VariantModal = ({ show, handleCloseVariant }) => {
         });
 
         handleCloseVariant();
+    };
+
+    // ========== NEW: Helper function to preserve only combination data ==========
+    const preserveCombinationData = (newCombinations, existingCombinations) => {
+        if (!existingCombinations || existingCombinations.length === 0) {
+            return newCombinations;
+        }
+
+        const existingCombinationsMap = new Map();
+
+        // Create a map of existing combinations for quick lookup
+        existingCombinations.forEach(combGroup => {
+            existingCombinationsMap.set(combGroup.variant_name, combGroup);
+        });
+
+        // Merge new combinations with existing data
+        return newCombinations.map(newCombGroup => {
+            const existingCombGroup = existingCombinationsMap.get(newCombGroup.variant_name);
+
+            if (existingCombGroup && newCombGroup.combinations && existingCombGroup.combinations) {
+                // Create a map of existing combinations by their values
+                const existingCombMap = new Map();
+                existingCombGroup.combinations.forEach(comb => {
+                    // Create a unique key based on all variant values
+                    const keyParts = [];
+                    for (let i = 1; i <= 3; i++) {
+                        const valueKey = `value${i}`;
+                        const nameKey = `name${i}`;
+                        if (comb[valueKey] && comb[nameKey]) {
+                            keyParts.push(`${comb[nameKey]}:${comb[valueKey]}`);
+                        }
+                    }
+                    const key = keyParts.join('|');
+                    if (key) {
+                        existingCombMap.set(key, comb);
+                    }
+                });
+
+                // Merge combinations while preserving price/quantity data
+                const mergedCombinations = newCombGroup.combinations.map(newComb => {
+                    // Create the same key for the new combination
+                    const keyParts = [];
+                    for (let i = 1; i <= 3; i++) {
+                        const valueKey = `value${i}`;
+                        const nameKey = `name${i}`;
+                        if (newComb[valueKey] && newComb[nameKey]) {
+                            keyParts.push(`${newComb[nameKey]}:${newComb[valueKey]}`);
+                        }
+                    }
+                    const key = keyParts.join('|');
+
+                    const existingComb = existingCombMap.get(key);
+
+                    if (existingComb) {
+                        // Preserve existing price, quantity, and visibility data
+                        return {
+                            ...newComb,
+                            price: existingComb.price || newComb.price,
+                            qty: existingComb.qty || newComb.qty,
+                            isVisible: existingComb.hasOwnProperty('isVisible') ? existingComb.isVisible : newComb.isVisible,
+                        };
+                    }
+
+                    return newComb;
+                });
+
+                return {
+                    ...newCombGroup,
+                    combinations: mergedCombinations
+                };
+            }
+
+            return newCombGroup;
+        });
     };
 
     // Custom Variant Dialog Functions
@@ -575,6 +834,7 @@ const VariantModal = ({ show, handleCloseVariant }) => {
         setIsEdit(false);
     };
 
+    // ========== UPDATED: Handle delete variation with warning ==========
     const handleDeleteVariation = (selectedVariantName) => {
         const currentData = variationsData || [];
         const updatedData = currentData.filter(variation => variation.name !== selectedVariantName);
@@ -706,16 +966,6 @@ const VariantModal = ({ show, handleCloseVariant }) => {
                                                         ))}
                                                     </Box>
                                                     <Box display="flex">
-                                                        {/* Edit Custom Variant Options Button */}
-                                                        {/* {customVariants.some(v => v.variant_name === item.name) && (
-                                                            <IconButton
-                                                                size="small"
-                                                                onClick={() => handleEditCustomVariantOptions(item.name)}
-                                                                title="Edit variant options"
-                                                            >
-                                                                <EditIcon />
-                                                            </IconButton>
-                                                        )} */}
                                                         <IconButton
                                                             size="small"
                                                             onClick={() => handleEditVariation(item)}
@@ -724,7 +974,7 @@ const VariantModal = ({ show, handleCloseVariant }) => {
                                                         </IconButton>
                                                         <IconButton
                                                             size="small"
-                                                            onClick={() => handleDeleteVariation(item?.name)}
+                                                            onClick={() => handleDeleteVariationWithWarning(item?.name)}
                                                         >
                                                             <DeleteIcon />
                                                         </IconButton>
@@ -1022,7 +1272,7 @@ const VariantModal = ({ show, handleCloseVariant }) => {
 
                                     <Box display="flex" justifyContent="space-between" mt={4}>
                                         <Button
-                                            onClick={() => handleDeleteVariation(selectedVariant)}
+                                            onClick={() => handleDeleteVariationWithWarning(selectedVariant)}
                                             color="error"
                                         >
                                             Delete
@@ -1087,6 +1337,48 @@ const VariantModal = ({ show, handleCloseVariant }) => {
                     <Button onClick={handleCloseCustomVariantDialog}>Cancel</Button>
                     <Button onClick={handleSaveCustomVariant} variant="contained">
                         {editingCustomVariant ? 'Update Variant' : 'Save Variant'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Delete Warning Dialog */}
+            <Dialog open={deleteWarningDialogOpen} onClose={handleCancelDelete} maxWidth="sm" fullWidth>
+                <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <WarningIcon color="warning" />
+                    <Typography variant="h6">Delete Variant</Typography>
+                </DialogTitle>
+                <DialogContent>
+                    <Typography variant="body1" gutterBottom>
+                        You are about to delete the variant "<strong>{variantToDelete}</strong>".
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                        This variant is currently being used in:
+                    </Typography>
+                    <Box sx={{ ml: 2, mt: 1 }}>
+                        {affectedPrice && (
+                            <Typography variant="body2" color="warning.main">
+                                • Price variations
+                            </Typography>
+                        )}
+                        {affectedQuantity && (
+                            <Typography variant="body2" color="warning.main">
+                                • Quantity variations
+                            </Typography>
+                        )}
+                    </Box>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                        To delete this variant, the affected variation settings will be turned off.
+                    </Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCancelDelete}>Cancel</Button>
+                    <Button
+                        onClick={handleConfirmDelete}
+                        variant="contained"
+                        color="error"
+                        startIcon={<DeleteIcon />}
+                    >
+                        Delete Anyway
                     </Button>
                 </DialogActions>
             </Dialog>

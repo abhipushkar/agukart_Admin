@@ -18,6 +18,7 @@ const DraggableTableRow = ({
     ...props
 }) => {
     const handleDragStart = (e) => {
+        e.stopPropagation(); // Important: stop propagation
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/plain', index.toString());
         onDragStart(e, index);
@@ -25,12 +26,14 @@ const DraggableTableRow = ({
 
     const handleDragOver = (e) => {
         e.preventDefault();
+        e.stopPropagation(); // Important: stop propagation
         e.dataTransfer.dropEffect = 'move';
         onDragOver(e, index);
     };
 
     const handleDrop = (e) => {
         e.preventDefault();
+        e.stopPropagation(); // Important: stop propagation
         onDrop(e, index);
     };
 
@@ -93,6 +96,7 @@ const VariationTableRow = ({
     const [dragOverIndex, setDragOverIndex] = useState(null);
 
     const handleDragStart = (e, index) => {
+        console.log(`Drag Start: variantIndex=${variantIndex}, index=${index}`);
         setDraggingIndex(index);
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/plain', index.toString());
@@ -107,17 +111,18 @@ const VariationTableRow = ({
     };
 
     const handleDragEnd = () => {
+        console.log(`Drag End: variantIndex=${variantIndex}`);
         setDraggingIndex(null);
         setDragOverIndex(null);
     };
 
-    const handleSeeMore = () => {
-        setShowAll(!showAll);
-    };
-
     const handleDrop = (e, targetIndex) => {
         e.preventDefault();
+
+        // Get the source index from the drag data
         const sourceIndex = parseInt(e.dataTransfer.getData('text/plain'));
+
+        console.log(`Row Drop: variantIndex=${variantIndex}, sourceIndex=${sourceIndex}, targetIndex=${targetIndex}`);
 
         // Validate indices and ensure they are different
         if (sourceIndex !== targetIndex &&
@@ -125,28 +130,32 @@ const VariationTableRow = ({
             !isNaN(targetIndex) &&
             sourceIndex >= 0 &&
             targetIndex >= 0 &&
+            sourceIndex < variant.variant_attributes.length &&
+            targetIndex < variant.variant_attributes.length &&
             onRowReorder) {
 
-            // Call the reorder function from parent props
+            console.log(`Calling onRowReorder with: variantIndex=${variantIndex}, sourceIndex=${sourceIndex}, targetIndex=${targetIndex}`);
+
+            // Call the reorder function passed from parent (handleProductVariantReorder)
             onRowReorder(variantIndex, sourceIndex, targetIndex);
+        } else {
+            console.log('Drop validation failed:', {
+                sourceIndex,
+                targetIndex,
+                hasOnRowReorder: !!onRowReorder,
+                areDifferent: sourceIndex !== targetIndex,
+                areValid: !isNaN(sourceIndex) && !isNaN(targetIndex),
+                arePositive: sourceIndex >= 0 && targetIndex >= 0,
+                withinBounds: sourceIndex < variant.variant_attributes.length && targetIndex < variant.variant_attributes.length
+            });
         }
 
         setDraggingIndex(null);
         setDragOverIndex(null);
     };
 
-    // Calculate total number of columns for colspan
-    const getTotalVisibleColumns = () => {
-        let count = 0;
-        if (visibleColumns.drag) count++;
-        if (visibleColumns.attribute) count++;
-        if (visibleColumns.multipleUpload) count++;
-        if (visibleColumns.mainImage1) count++;
-        if (visibleColumns.mainImage2) count++;
-        if (visibleColumns.mainImage3) count++;
-        if (visibleColumns.preview) count++;
-        if (visibleColumns.thumbnail) count++;
-        return count;
+    const handleSeeMore = () => {
+        setShowAll(!showAll);
     };
 
     // Handle bulk image upload for product_variants
@@ -170,6 +179,20 @@ const VariationTableRow = ({
 
     // Get items to show (for pagination if needed)
     const itemsToShow = showAll ? variant.variant_attributes || [] : (variant.variant_attributes || []).slice(0, 5);
+
+    // Calculate total number of columns for colspan
+    const getTotalVisibleColumns = () => {
+        let count = 0;
+        if (visibleColumns.drag) count++;
+        if (visibleColumns.attribute) count++;
+        if (visibleColumns.multipleUpload) count++;
+        if (visibleColumns.mainImage1) count++;
+        if (visibleColumns.mainImage2) count++;
+        if (visibleColumns.mainImage3) count++;
+        if (visibleColumns.preview) count++;
+        if (visibleColumns.thumbnail) count++;
+        return count;
+    };
 
     return (
         <>
@@ -197,6 +220,12 @@ const VariationTableRow = ({
                                             cursor: 'grabbing',
                                         }
                                     }}
+                                    // Add drag handlers to the icon button as well
+                                    draggable
+                                    onDragStart={(e) => {
+                                        e.stopPropagation();
+                                        handleDragStart(e, attributeIndex);
+                                    }}
                                 >
                                     <DragIndicatorIcon />
                                 </IconButton>
@@ -213,9 +242,9 @@ const VariationTableRow = ({
                     {visibleColumns.multipleUpload && (
                         <TableCell align="center">
                             <BulkUploadCell
-                                item={attribute} // Pass attribute as item
+                                item={attribute}
                                 index={attributeIndex}
-                                combindex={variantIndex} // Pass variantIndex as combindex
+                                combindex={variantIndex}
                                 onBulkImageUpload={handleBulkImageUpload}
                             />
                         </TableCell>
@@ -225,12 +254,12 @@ const VariationTableRow = ({
                     {visibleColumns.mainImage1 && (
                         <TableCell align="center">
                             <ImageCell
-                                item={attribute} // Pass attribute as item
+                                item={attribute}
                                 index={attributeIndex}
                                 imageType="main_images"
                                 imageIndex={0}
                                 editData={attribute.edit_main_image_data || null}
-                                combindex={variantIndex} // Pass variantIndex as combindex
+                                combindex={variantIndex}
                                 onImageUpload={handleImageUpload}
                                 onImageRemove={handleImageRemove}
                                 onImageEdit={handleEditImage}
@@ -243,11 +272,11 @@ const VariationTableRow = ({
                     {visibleColumns.mainImage2 && (
                         <TableCell align="center">
                             <ImageCell
-                                item={attribute} // Pass attribute as item
+                                item={attribute}
                                 index={attributeIndex}
                                 imageType="main_images"
                                 imageIndex={1}
-                                combindex={variantIndex} // Pass variantIndex as combindex
+                                combindex={variantIndex}
                                 onImageUpload={handleImageUpload}
                                 onImageRemove={handleImageRemove}
                                 onImageEdit={handleEditImage}
@@ -260,11 +289,11 @@ const VariationTableRow = ({
                     {visibleColumns.mainImage3 && (
                         <TableCell align="center">
                             <ImageCell
-                                item={attribute} // Pass attribute as item
+                                item={attribute}
                                 index={attributeIndex}
                                 imageType="main_images"
                                 imageIndex={2}
-                                combindex={variantIndex} // Pass variantIndex as combindex
+                                combindex={variantIndex}
                                 onImageUpload={handleImageUpload}
                                 onImageRemove={handleImageRemove}
                                 onImageEdit={handleEditImage}
@@ -277,11 +306,11 @@ const VariationTableRow = ({
                     {visibleColumns.preview && (
                         <TableCell align="center">
                             <ImageCell
-                                item={attribute} // Pass attribute as item
+                                item={attribute}
                                 index={attributeIndex}
                                 imageType="preview_image"
                                 editData={attribute.edit_preview_image_data || null}
-                                combindex={variantIndex} // Pass variantIndex as combindex
+                                combindex={variantIndex}
                                 onImageUpload={handleImageUpload}
                                 onImageRemove={handleImageRemove}
                                 onImageEdit={handleEditImage}
@@ -294,10 +323,10 @@ const VariationTableRow = ({
                     {visibleColumns.thumbnail && (
                         <TableCell align="center">
                             <ImageCell
-                                item={attribute} // Pass attribute as item
+                                item={attribute}
                                 index={attributeIndex}
                                 imageType="thumbnail"
-                                combindex={variantIndex} // Pass variantIndex as combindex
+                                combindex={variantIndex}
                                 onImageUpload={handleImageUpload}
                                 onImageRemove={handleImageRemove}
                                 onImageEdit={handleEditImage}
@@ -308,7 +337,27 @@ const VariationTableRow = ({
                 </DraggableTableRow>
             ))}
 
-
+            {/* See More/Less Button */}
+            {variant.variant_attributes.length > 5 && (
+                <TableRow>
+                    <TableCell colSpan={getTotalVisibleColumns()} align="center" sx={{ py: 2 }}>
+                        <Button
+                            variant="outlined"
+                            size="small"
+                            sx={{
+                                minWidth: '120px',
+                                backgroundColor: '#e3f2fd',
+                                '&:hover': {
+                                    backgroundColor: '#bbdefb'
+                                }
+                            }}
+                            onClick={handleSeeMore}
+                        >
+                            {showAll ? "See Less" : `See More (+${variant.variant_attributes.length - 5})`}
+                        </Button>
+                    </TableCell>
+                </TableRow>
+            )}
         </>
     );
 };
