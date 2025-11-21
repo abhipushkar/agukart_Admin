@@ -1,183 +1,187 @@
-<h1><a href="https://ui-lib.com/downloads/matx-react-dashboard/">Matx React Material Design Admin Dashboard Template</a></h1>
+# Agukart - Handicrafts & Jewelry E-commerce App
 
-<a href="https://matx-react-free.netlify.app/">
-  <img alt="Matx React Admin" src="https://ui-lib.com/blog/wp-content/uploads/2021/09/matx-github.png" />
-</a>
+Agukart is a modern e-commerce platform specializing in authentic handicrafts and exquisite jewelry made from various stones and materials. Built with React and Material-UI, this application provides a seamless shopping experience for customers seeking unique, handcrafted items.
 
-<p>MatX is a full-featured React Material UI Admin Dashboard template. MatX is built with React, Redux & Material UI We implemented all the features you might need to start a new Web application. The free version includes all Material UI components, Form elements, and validation, JWT authentication, Sign in, sign up pages,  Vertical navigation, Lazy loading, Code splitting.</p>
+![Agukart Banner](https://ui-lib.com/blog/wp-content/uploads/2021/09/matx-github.png)
 
-<h2>Features</h2>
-<table>
-<tr>
-<th>MatX Free</th>
-<th>MatX Pro</th>
-</tr>
-<tr>
-<td>
-<a href="https://matx-react-free.netlify.app/">Live Preview</a> <br>
-<a href="https://ui-lib.com/downloads/matx-react-dashboard/">Download MatX</a>
-</td>
-<td>
-<a href="http://matx-react.ui-lib.com/">Live Preview</a> <br>
-<a href="https://ui-lib.com/downloads/matx-pro-react-admin/">Get MatX Pro</a>
-</td>
-</tr>
-<tr>
-<td valign="top">
-<ul>
-  <li>JWT authentication</li>
-  <li>Role based authentication</li>
-  <li>Lazy loading components</li>
-  <li>Code splitting</li>
-  <li>Dashboard Analytics</li>
-  <li>UI kits
-    <ul>
-      <li>Autocomplete</li>
-      <li>Buttons</li>
-      <li>Checkbox</li>
-      <li>Dialog</li>
-      <li>Expansion panel</li>
-      <li>Menu</li>
-      <li>Progress</li>
-      <li>Datetime picker</li>
-      <li>Radio</li>
-      <li>Switch</li>
-      <li>Slider</li>
-      <li>Snackbar</li>
-      <li>Data table</li>
-    </ul>
-  </li>
-  <li>Forms
-    <ul>
-      <li>Basic</li>
-      <li>Rich text editor</li>
-    </ul>
-  </li>
-  <li>eChart</li>
-  <li>Session pages
-    <ul>
-      <li>Sign in</li>
-      <li>Sign up</li>
-      <li>Forgot password</li>
-      <li>Error page</li>
-    </ul>
-  </li>
-  <li>Drag and drop</li>
-  <li>Google map</li>
-  <li>Utilities
-    <ul>
-      <li>Color</li>
-      <li>Spacing</li>
-      <li>Typography</li>
-      <li>Display</li>
-    </ul>
-  </li>
-  <li>Multi level menu</li>
-</ul>
-</td>
-<td valign="top">
-<ul>
-  <li>All features of Matx free +</li>
-  <li>Firebase authentication</li>
-  <li>Auth0 authentication</li>
-  <li>Horizontal navigation</li>
-  <li>Pages
-    <ul>
-        <li>Customer List</li>
-        <li>Customer View/Add/Edit</li>
-        <li>Product List</li>
-        <li>Customer View/Add/Edit</li>
-        <li>Order List</li>
-        <li>Order View/Add/Edit</li>
-        <li>Help center</li>
-        <li>FAQ</li>
-        <li>Pricings</li>
-        <li>User List/Grid/Row</li>
-    </ul>
+## 🎯 About Agukart
 
-  </li>
-  <li>Forms
-    <ul>
-      <li>Order form</li>
-      <li>Invoice form</li>
-      <li>Property listing form</li>
-      <li>Single upload</li>
-      <li>Multiple upload</li>
-      <li>Wizard</li>
-    </ul>
-  </li>
-  <li>Working Apps
-    <ul>
-      <li>CRUD table</li>
-      <li>Shop/eCommerce</li>
-      <li>Scrum board</li>
-      <li>Invoice builder</li>
-      <li>Event calendar</li>
-      <li>Chat</li>
-      <li>Inbox</li>
-      <li>Todo</li>
-    </ul>
-  </li>
-  <li>Lists
-    <ul>
-      <li>Row/Grid List</li>
-      <li>Infinite scroll list</li>
-    </ul>
-  </li>
-  <li>Charts
-    <ul>
-      <li>eChart</li>
-      <li>Rechart</li>
-      <li>Victory chart</li>
-      <li>React vis</li>
-    </ul>
-  </li>
-  <li>Account setting</li>
-  <li>User profile</li>
-  <li>6 month support</li>
+Agukart brings together traditional craftsmanship and modern e-commerce technology. Our platform showcases a diverse collection of:
+- **Handcrafted Jewelry** featuring precious stones, beads, and metals
+- **Artisanal Handicrafts** from skilled craftspeople
+- **Traditional Artworks** preserving cultural heritage
+- **Custom-made Pieces** for personalized shopping experiences
 
-</ul>
-</td>
-</tr>
-</table>
+## ✨ Features
 
-<h2>Version 4 changes</h2>
+### 🛍️ E-commerce Capabilities
+- **Product Catalog** with advanced filtering
+- **Shopping Cart & Wishlist** functionality
+- **Secure Checkout Process**
+- **Order Tracking & History**
+- **Customer Reviews & Ratings**
+- **Product Recommendations**
 
-- Updated all packages
-- Added Auth0 and Firebase authentication system
+### 🔐 Authentication & Security
+- JWT authentication system
+- Role-based access control
+- Secure payment processing
+- User profile management
 
-<h2>Version 3 changes</h2>
+### 🎨 User Experience
+- **Material Design** components
+- **Responsive Design** for all devices
+- **Fast Loading** with lazy loading components
+- **Intuitive Navigation** with multi-level menus
+- **Dark/Light Theme** options
 
-- Added Material UI – Styled api (v5)
-- Added Material UI updated components from MUI@version 5
-- Added React Apex Chart
-- Updated JWT authentication
-- Updated Charts
-- Removed CSS Utilities (replaced by MUI)
-- Removed SASS Integrigration (replaced by Styled API)
-- Removed Victory chart (Replaced by React Apex Chart)
+### 📱 Admin Features
+- **Dashboard Analytics** with sales insights
+- **Product Management** (add, edit, delete)
+- **Inventory Tracking**
+- **Order Management**
+- **Customer Management**
+- **Sales Reports**
 
-<h2 id="availablescripts">Getting started</h2>
+## 🚀 Getting Started
 
-<p>In the project directory, you can run:</p>
+### Prerequisites
+- Node.js (version 14 or higher)
+- npm or yarn package manager
 
-<h3 id="npmstart"><code>npm start</code></h3>
+### Installation
 
-<p>Runs the app in the development mode.<br>
-Open <a href="http://localhost:3000">http://localhost:3000</a> to view it in the browser.</p>
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/your-username/agukart-ecommerce.git
+   cd agukart-ecommerce
+   ```
 
-<p>The page will reload if you make edits.<br>
-You will also see any lint errors in the console.</p>
+2. **Install dependencies**
+   ```bash
+   npm install
+   # or
+   yarn install
+   ```
 
-<h3 id="npmrunbuild"><code>npm run build</code></h3>
+3. **Start the development server**
+   ```bash
+   npm start
+   # or
+   yarn start
+   ```
 
-<p>Builds the app for production to the <code>build</code> folder.<br>
-It correctly bundles React in production mode and optimizes the build for the best performance.</p>
+4. **Open your browser**
+   Navigate to [http://localhost:3000](http://localhost:3000) to view the application.
 
-<p>The build is minified and the filenames include the hashes.<br>
-Your app is ready to be deployed!</p>
+### Building for Production
 
-<h3>Download</h3>
-Download From <a href="https://ui-lib.com/downloads/matx-react-dashboard/">official website</a>
+```bash
+npm run build
+# or
+yarn build
+```
 
-<h3>For questions and support mail us at <a href="mailto:support@ui-lib.com">support@ui-lib.com</a></h3>
+This creates a `build` folder with optimized production files ready for deployment.
+
+## 🏗️ Project Structure
+
+```
+agukart-ecommerce/
+├── src/
+│   ├── components/     # Reusable UI components
+│   ├── pages/         # Main application pages
+│   ├── store/         # Redux store configuration
+│   ├── routes/        # Application routing
+│   ├── utils/         # Helper functions
+│   └── assets/        # Images, icons, and static files
+├── public/            # Public assets
+└── package.json       # Project dependencies
+```
+
+## 🛠️ Technology Stack
+
+- **Frontend Framework**: React 18+
+- **UI Library**: Material-UI (MUI)
+- **State Management**: Redux Toolkit
+- **Routing**: React Router
+- **HTTP Client**: Axios
+- **Charts**: React ApexCharts
+- **Forms**: React Hook Form
+- **Icons**: Material Icons
+
+## 📦 Key Dependencies
+
+```json
+{
+  "react": "^18.2.0",
+  "@mui/material": "^5.0.0",
+  "redux": "^4.2.0",
+  "react-router-dom": "^6.0.0",
+  "axios": "^1.0.0",
+  "apexcharts": "^3.35.0"
+}
+```
+
+## 🔧 Configuration
+
+### Environment Variables
+Create a `.env` file in the root directory:
+
+```env
+REACT_APP_API_URL=your_api_url
+REACT_APP_STRIPE_PUBLISHABLE_KEY=your_stripe_key
+REACT_APP_GOOGLE_ANALYTICS_ID=your_ga_id
+```
+
+## 🎨 Customization
+
+### Theming
+Modify the theme in `src/theme/` to match Agukart's brand colors:
+
+```javascript
+const agukartTheme = createTheme({
+  palette: {
+    primary: {
+      main: '#your-brand-color',
+    },
+    secondary: {
+      main: '#your-accent-color',
+    },
+  },
+});
+```
+
+### Adding New Products
+Update the product configuration in `src/data/` to include new categories and product types.
+
+## 🤝 Contributing
+
+We welcome contributions to improve Agukart! Please follow these steps:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+
+## 🆘 Support
+
+For technical support or questions about Agukart:
+- 📧 Email: [support@agukart.com](mailto:support@agukart.com)
+- 🐛 Issues: [GitHub Issues](https://github.com/your-username/agukart-ecommerce/issues)
+- 📚 Documentation: [Agukart Docs](https://docs.agukart.com)
+
+## 🙏 Acknowledgments
+
+- Built using [MatX React Template](https://ui-lib.com/downloads/matx-react-dashboard/)
+- Material-UI components and design system
+- React community for excellent tools and libraries
+
+---
+
+**Agukart** - Where Tradition Meets Modern E-commerce 🛍️✨
