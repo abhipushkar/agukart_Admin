@@ -281,7 +281,7 @@ const VariationsTable = ({ setShowVariantModal, isSynced }) => {
     const getAvailableColumns = (variant) => {
         const columns = [
             { key: 'drag', label: 'Drag', alwaysVisible: true },
-            { key: 'attribute', label: 'Attribute', alwaysVisible: true },
+            { key: variant.variant_name, label: variant.variant_name, alwaysVisible: true },
             { key: 'multipleUpload', label: 'Multiple Upload', alwaysVisible: false },
             { key: 'mainImage1', label: 'Main Image 1', alwaysVisible: false },
             { key: 'mainImage2', label: 'Main Image 2', alwaysVisible: false },
@@ -786,7 +786,7 @@ const VariationsTable = ({ setShowVariantModal, isSynced }) => {
                                             <AttributeCell
                                                 variant={variant}
                                                 variantIndex={variantIndex}
-                                                attributeName="Attribute"
+                                                attributeName={variant.variant_name}
                                             />
                                         )}
                                         {tableVisibleColumns.multipleUpload && (

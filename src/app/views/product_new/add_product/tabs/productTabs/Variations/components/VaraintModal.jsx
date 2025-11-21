@@ -96,13 +96,22 @@ const VariantModal = ({ show, handleCloseVariant }) => {
     const getDisabledVariants = useCallback(() => {
         const disabledVariants = new Set();
 
+        // Ensure selectedVariations is always an array
+        const safeSelectedVariations = Array.isArray(selectedVariations) ? selectedVariations : [];
+
         // Add already selected variations
-        (selectedVariations || []).forEach(variant => disabledVariants.add(variant));
+        safeSelectedVariations.forEach(variant => {
+            if (variant && typeof variant === 'string') {
+                disabledVariants.add(variant);
+            }
+        });
 
         // Add parent product variants that have SKUs assigned
         if (parentProductData?.variant_id) {
             parentProductData.variant_id.forEach(variant => {
-                disabledVariants.add(variant.variant_name);
+                if (variant?.variant_name) {
+                    disabledVariants.add(variant.variant_name);
+                }
             });
         }
 
@@ -728,8 +737,10 @@ const VariantModal = ({ show, handleCloseVariant }) => {
 
             // Update selectedVariations if name changed
             if (editingCustomVariant.variant_name !== newCustomVariant.variant_name) {
-                setSelectedVariations(prev =>
-                    prev.map(variant =>
+                // Ensure selectedVariations is always treated as an array
+                const safeSelectedVariations = Array.isArray(selectedVariations) ? selectedVariations : [];
+                setSelectedVariations(
+                    safeSelectedVariations.map(variant =>
                         variant === editingCustomVariant.variant_name
                             ? newCustomVariant.variant_name
                             : variant
@@ -746,7 +757,9 @@ const VariantModal = ({ show, handleCloseVariant }) => {
 
         if (!editingCustomVariant) {
             // Auto-select the newly created variant only for new variants
-            setSelectedVariations([...selectedVariations, newCustomVariant.variant_name]);
+            // Ensure selectedVariations is always treated as an array
+            const safeSelectedVariations = Array.isArray(selectedVariations) ? selectedVariations : [];
+            setSelectedVariations([...safeSelectedVariations, newCustomVariant.variant_name]);
             setSelectedVariant(newCustomVariant.variant_name);
 
             // Set attribute options for the new variant
@@ -856,8 +869,10 @@ const VariantModal = ({ show, handleCloseVariant }) => {
             varientName: formData.varientName.filter((id) => !allIds.includes(id)),
         });
 
+        // Ensure selectedVariations is always treated as an array
+        const safeSelectedVariations = Array.isArray(selectedVariations) ? selectedVariations : [];
         setSelectedVariations(
-            (selectedVariations || []).filter(variation => variation !== selectedVariantName)
+            safeSelectedVariations.filter(variation => variation !== selectedVariantName)
         );
 
         setSelectedVariant("");
@@ -903,7 +918,9 @@ const VariantModal = ({ show, handleCloseVariant }) => {
     };
 
     const handleVariantSelect = (variantName) => {
-        setSelectedVariations(Array.from(new Set([...(selectedVariations || []), variantName])));
+        // Ensure selectedVariations is always treated as an array
+        const safeSelectedVariations = Array.isArray(selectedVariations) ? selectedVariations : [];
+        setSelectedVariations(Array.from(new Set([...safeSelectedVariations, variantName])));
         setSelectedVariant(variantName);
         setAttrValues(prev => ({ ...prev, name: variantName, values: [] }));
     };
@@ -1093,7 +1110,9 @@ const VariantModal = ({ show, handleCloseVariant }) => {
                                     <Box my={2}>
                                         {allVariants?.map((item, index) => {
                                             const isDisabled = disabledVariants.has(item?.variant_name);
-                                            const isSelected = (selectedVariations || []).includes(item?.variant_name);
+                                            // Ensure selectedVariations is always treated as an array
+                                            const safeSelectedVariations = Array.isArray(selectedVariations) ? selectedVariations : [];
+                                            const isSelected = safeSelectedVariations.includes(item?.variant_name);
                                             const isCustom = item.isCustom;
                                             return (
                                                 <Box key={index} sx={{ display: 'inline-block', m: 0.5, position: 'relative' }}>
