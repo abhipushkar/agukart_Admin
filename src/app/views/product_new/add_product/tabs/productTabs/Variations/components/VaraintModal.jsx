@@ -28,6 +28,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import CheckIcon from "@mui/icons-material/Check";
 import BeenhereIcon from "@mui/icons-material/Beenhere";
 import WarningIcon from "@mui/icons-material/Warning";
+import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import { ApiService } from "app/services/ApiService";
 import { apiEndpoints } from "app/constant/apiEndpoints";
 import { localStorageKey } from "app/constant/localStorageKey";
@@ -73,6 +74,7 @@ const VariantModal = ({ show, handleCloseVariant }) => {
     const [attrOptions, setAttrOptions] = useState([]);
     const [nameCombinations, setNameCombinations] = useState([]);
     const [showVariantList, setShowVariantList] = useState(false);
+    const [draggedIndex, setDraggedIndex] = useState(null);
 
     // Custom variant states
     const [customVariantDialogOpen, setCustomVariantDialogOpen] = useState(false);
@@ -91,6 +93,68 @@ const VariantModal = ({ show, handleCloseVariant }) => {
 
     // Combine predefined variants with custom variants
     const allVariants = [...varientName, ...customVariants];
+
+    // Check if there are any combined variants
+    const hasCombinedVariants = useCallback(() => {
+        return combinations?.some(comb => comb.isCombined) || false;
+    }, [combinations]);
+
+    // Drag and drop handlers
+    const handleDragStart = (e, index) => {
+        if (hasCombinedVariants()) return; // Disable drag if combined variants exist
+        setDraggedIndex(index);
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
+    const handleDragOver = (e, index) => {
+        e.preventDefault();
+        if (hasCombinedVariants()) return; // Disable drag if combined variants exist
+        e.dataTransfer.dropEffect = 'move';
+    };
+
+    const handleDrop = (e, targetIndex) => {
+        e.preventDefault();
+        if (hasCombinedVariants() || draggedIndex === null) return; // Disable drag if combined variants exist
+
+        const currentData = [...variationsData];
+        const draggedItem = currentData[draggedIndex];
+
+        // Remove dragged item
+        currentData.splice(draggedIndex, 1);
+        // Insert at target position
+        currentData.splice(targetIndex, 0, draggedItem);
+
+        setVariationsData(currentData);
+        setDraggedIndex(null);
+
+        // Also reorder product_variants and combinations to maintain consistency
+        reorderAssociatedData(draggedIndex, targetIndex);
+    };
+
+    const handleDragEnd = () => {
+        setDraggedIndex(null);
+    };
+
+    // Reorder product_variants and combinations when variations are reordered
+    const reorderAssociatedData = (fromIndex, toIndex) => {
+        // Reorder product_variants
+        if (product_variants && product_variants.length > 0) {
+            const reorderedProductVariants = [...product_variants];
+            const draggedVariant = reorderedProductVariants[fromIndex];
+            reorderedProductVariants.splice(fromIndex, 1);
+            reorderedProductVariants.splice(toIndex, 0, draggedVariant);
+            setProductVariants(reorderedProductVariants);
+        }
+
+        // Reorder combinations
+        if (combinations && combinations.length > 0) {
+            const reorderedCombinations = [...combinations];
+            const draggedCombination = reorderedCombinations[fromIndex];
+            reorderedCombinations.splice(fromIndex, 1);
+            reorderedCombinations.splice(toIndex, 0, draggedCombination);
+            setCombinations(reorderedCombinations);
+        }
+    };
 
     // Function to get disabled variants including parent product variants
     const getDisabledVariants = useCallback(() => {
@@ -197,8 +261,11 @@ const VariantModal = ({ show, handleCloseVariant }) => {
 
     // ========== FIXED: Handle combined variants generation ==========
     const handleCombinedVariants = (variantNames, currentData) => {
+        // Fix: Trim and normalize variant names for comparison
+        const normalizedVariantNames = variantNames.map(name => name.trim());
+
         const selectedVariationData = currentData.filter(variation =>
-            variantNames.includes(variation.name)
+            normalizedVariantNames.includes(variation.name.trim())
         );
 
         if (selectedVariationData.length === 0) return [];
@@ -207,10 +274,10 @@ const VariantModal = ({ show, handleCloseVariant }) => {
         let combinedResult = generateCombinations(selectedVariationData);
 
         return [{
-            variant_name: variantNames.join(" and "),
+            variant_name: normalizedVariantNames.join(" and "),
             combinations: combinedResult,
             isCombined: true,
-            componentVariants: variantNames
+            componentVariants: normalizedVariantNames
         }];
     };
 
@@ -332,254 +399,7 @@ const VariantModal = ({ show, handleCloseVariant }) => {
         setAffectedQuantity(false);
     };
 
-    // ========== NEW: Helper function to merge combination data ==========
-    const mergeCombinationData = (newCombinations, existingCombinations, variantNames) => {
-        if (!existingCombinations || existingCombinations.length === 0) {
-            return newCombinations;
-        }
-
-        // Create a map of existing combinations for quick lookup
-        const existingCombinationsMap = new Map();
-
-        existingCombinations.forEach(comb => {
-            // Create a unique key based on variant values
-            const keyParts = [];
-            variantNames.forEach((variantName, index) => {
-                const valueKey = `value${index + 1}`;
-                const nameKey = `name${index + 1}`;
-                if (comb[valueKey] && comb[nameKey] === variantName) {
-                    keyParts.push(`${variantName}:${comb[valueKey]}`);
-                }
-            });
-            const key = keyParts.join('|');
-            if (key) {
-                existingCombinationsMap.set(key, comb);
-            }
-        });
-
-        // Merge new combinations with existing data
-        return newCombinations.map(newComb => {
-            // Create the same key for the new combination
-            const keyParts = [];
-            variantNames.forEach((variantName, index) => {
-                const valueKey = `value${index + 1}`;
-                const nameKey = `name${index + 1}`;
-                if (newComb[valueKey] && newComb[nameKey] === variantName) {
-                    keyParts.push(`${variantName}:${newComb[valueKey]}`);
-                }
-            });
-            const key = keyParts.join('|');
-
-            const existingComb = existingCombinationsMap.get(key);
-
-            if (existingComb) {
-                // Preserve existing price, quantity, and visibility data
-                return {
-                    ...newComb,
-                    price: existingComb.price || newComb.price,
-                    qty: existingComb.qty || newComb.qty,
-                    isVisible: existingComb.hasOwnProperty('isVisible') ? existingComb.isVisible : newComb.isVisible,
-                    // Preserve any other existing properties
-                    ...Object.fromEntries(
-                        Object.entries(existingComb).filter(([key]) =>
-                            !['value1', 'value2', 'name1', 'name2', 'priceInput', 'quantityInput', 'isCheckedPrice', 'isCheckedQuantity'].includes(key)
-                        )
-                    )
-                };
-            }
-
-            return newComb;
-        });
-    };
-
-    // ========== SIMPLER FIX: Helper function to preserve product_variants data ==========
-    const preserveProductVariantsData = (newCombinations, existingProductVariants, currentVariationsData) => {
-        console.log("Preserving product variants data...");
-
-        // Always use the current product_variants from the store (which includes newly initialized variants)
-        // and just ensure the structure matches the new combinations
-        const currentProductVariants = [...product_variants];
-
-        const finalVariants = newCombinations.map(combGroup => {
-            const variantName = combGroup.variant_name;
-            const existingVariant = currentProductVariants.find(v => v.variant_name === variantName);
-
-            if (existingVariant) {
-                return existingVariant;
-            } else {
-                // Create new variant from current variations data
-                const currentVariantData = currentVariationsData.find(v => v.name === variantName);
-                const currentAttributes = currentVariantData?.values || [];
-
-                const newAttributes = currentAttributes.map(attr => ({
-                    attribute: attr,
-                    main_images: [null, null, null],
-                    preview_image: null,
-                    thumbnail: null,
-                    edit_preview_image: null,
-                    edit_main_image: null,
-                    edit_main_image_data: {},
-                    edit_preview_image_data: {},
-                }));
-
-                return {
-                    variant_name: variantName,
-                    variant_attributes: newAttributes
-                };
-            }
-        });
-
-        console.log("Final product variants:", finalVariants);
-        return finalVariants;
-    };
-
-    // ========== FIXED: handleGenerate with proper data preservation ==========
-    const handleGenerate = async () => {
-        const currentData = variationsData || [];
-
-        // if (currentData.length === 0) {
-        //     console.log("No variations data to generate");
-        //     return;
-        // }
-
-        let data = [];
-        const processedVariants = new Set();
-
-        // Initialize product_variants FIRST - this creates SEPARATE variants only
-        initializeProductVariants(currentData, allVariants);
-
-        // Handle the case when price/quantity variations are enabled
-        if ((formValues?.isCheckedPrice || formValues?.isCheckedQuantity) && (formValues?.prices || formValues?.quantities)) {
-
-            // Check if we have combined variants
-            const isPriceCombined = formValues?.prices?.includes("and");
-            const isQuantityCombined = formValues?.quantities?.includes("and");
-
-            // Process PRICE combinations (combined or single)
-            if (formValues?.isCheckedPrice && formValues?.prices) {
-                if (isPriceCombined) {
-                    // Combined price variant
-                    const priceVariantNames = formValues?.prices.split(" and ").map(v => v.trim());
-                    const priceCombinedData = handleCombinedVariants(priceVariantNames, currentData);
-                    data.push(...priceCombinedData);
-                    priceVariantNames.forEach(v => processedVariants.add(v));
-                } else {
-                    // Single price variant
-                    const priceVariantName = formValues?.prices;
-                    const priceVariationData = currentData.filter((item) => item.name === priceVariantName);
-                    let priceResult = generateCombinations(priceVariationData);
-                    data.push({
-                        variant_name: priceVariantName,
-                        combinations: priceResult,
-                        isCombined: false
-                    });
-                    processedVariants.add(priceVariantName);
-                }
-            }
-
-            // Process QUANTITY combinations (combined or single)
-            if (formValues?.isCheckedQuantity && formValues?.quantities) {
-                if (isQuantityCombined) {
-                    // Combined quantity variant
-                    const quantityVariantNames = formValues?.quantities.split(" and ").map(v => v.trim());
-
-                    // Check if this combined variant already exists in data
-                    const existingCombinedIndex = data.findIndex(d =>
-                        d.isCombined && d.variant_name === formValues?.quantities
-                    );
-
-                    if (existingCombinedIndex === -1) {
-                        const quantityCombinedData = handleCombinedVariants(quantityVariantNames, currentData);
-                        data.push(...quantityCombinedData);
-                    }
-                    quantityVariantNames.forEach(v => processedVariants.add(v));
-                } else {
-                    // Single quantity variant
-                    const quantityVariantName = formValues?.quantities;
-
-                    // Check if this single variant already exists in data
-                    const existingSingleIndex = data.findIndex(d =>
-                        !d.isCombined && d.variant_name === quantityVariantName
-                    );
-
-                    if (existingSingleIndex === -1) {
-                        const quantityVariationData = currentData.filter((item) => item.name === quantityVariantName);
-                        let quantityResult = generateCombinations(quantityVariationData);
-                        data.push({
-                            variant_name: quantityVariantName,
-                            combinations: quantityResult,
-                            isCombined: false
-                        });
-                    }
-                    processedVariants.add(quantityVariantName);
-                }
-            }
-
-            // Handle individual variations that are not part of any price/quantity variation
-            const individualVariations = currentData.filter(item => !processedVariants.has(item.name));
-            for (const item of individualVariations) {
-                let result = generateCombinations([item]);
-                data.push({
-                    variant_name: item?.name,
-                    combinations: result,
-                    isCombined: false
-                });
-            }
-        } else {
-            // No price/quantity variations enabled - generate all variations normally
-            for (const item of currentData) {
-                let result = generateCombinations([item]);
-                data.push({
-                    variant_name: item?.name,
-                    combinations: result,
-                    isCombined: false
-                });
-            }
-        }
-
-        console.log("Generated combinations before marking:", data);
-
-        // Mark price/quantity variations properly
-        const finalCombinationsData = markPriceQuantityVariations(data, formValues);
-        console.log("Final combinations after marking:", finalCombinationsData);
-
-        // PRESERVE EXISTING COMBINATION DATA (price/quantity values)
-        const preservedCombinations = preserveCombinationData(finalCombinationsData, combinations);
-
-        setCombinations(preservedCombinations);
-
-        // NO NEED TO TOUCH product_variants - they are already properly handled by initializeProductVariants
-        // and should remain as separate variants
-
-        // Update form data with selected variations
-        const parentMainIds = currentData
-            .map(variation => {
-                const variant = allVariants.find((item) => item.variant_name === variation.name);
-                return variant?.id && !variant.isCustom ? variant.id : null;
-            })
-            .filter(Boolean);
-
-        const allIds = currentData
-            .flatMap((variation) => {
-                const variant = allVariants.find((item) => item.variant_name === variation.name);
-                const safeValues = Array.isArray(variation.values) ? variation.values : [];
-
-                return safeValues.map((value) => {
-                    const attributeData = variant?.variant_attribute?.find((attr) => attr.attribute_value === value);
-                    return attributeData?._id && !variant.isCustom ? attributeData._id : null;
-                });
-            })
-            .filter(Boolean);
-
-        setFormData({
-            ParentMainId: Array.from(new Set([...(formData.ParentMainId || []), ...parentMainIds])),
-            varientName: Array.from(new Set([...(formData.varientName || []), ...allIds]))
-        });
-
-        handleCloseVariant();
-    };
-
-    // ========== NEW: Helper function to preserve only combination data ==========
+    // ========== FIXED: Helper function to preserve combination data ==========
     const preserveCombinationData = (newCombinations, existingCombinations) => {
         if (!existingCombinations || existingCombinations.length === 0) {
             return newCombinations;
@@ -651,6 +471,189 @@ const VariantModal = ({ show, handleCloseVariant }) => {
 
             return newCombGroup;
         });
+    };
+
+    // ========== FIXED: handleGenerate with proper combined variant handling ==========
+    const handleGenerate = async () => {
+        const currentData = variationsData || [];
+
+        let data = [];
+        const processedVariants = new Set();
+
+        // Initialize product_variants FIRST - this creates SEPARATE variants only
+        initializeProductVariants(currentData, allVariants);
+
+        // Separate arrays for single variants and combined variants
+        let singleVariantsData = [];
+        let combinedVariantsData = [];
+
+        // Handle the case when price/quantity variations are enabled
+        if ((formValues?.isCheckedPrice || formValues?.isCheckedQuantity) && (formValues?.prices || formValues?.quantities)) {
+
+            // Check if we have combined variants
+            const isPriceCombined = formValues?.prices?.includes(" and ");
+            const isQuantityCombined = formValues?.quantities?.includes(" and ");
+
+            // Process PRICE combinations (combined or single)
+            if (formValues?.isCheckedPrice && formValues?.prices) {
+                if (isPriceCombined) {
+                    // Combined price variant - FIXED: Trim variant names
+                    const priceVariantNames = formValues?.prices.split(" and ").map(v => v.trim());
+                    const priceCombinedData = handleCombinedVariants(priceVariantNames, currentData);
+
+                    // FIXED: Only add if we have valid combinations
+                    if (priceCombinedData.length > 0 && priceCombinedData[0].combinations.length > 0) {
+                        // Push combined variants to separate array
+                        combinedVariantsData.push(...priceCombinedData);
+                        priceVariantNames.forEach(v => processedVariants.add(v.trim()));
+                    }
+                } else {
+                    // Single price variant - maintain original order
+                    const priceVariantName = formValues?.prices?.trim();
+                    const priceVariationData = currentData.filter((item) => item.name.trim() === priceVariantName);
+
+                    if (priceVariationData.length > 0) {
+                        let priceResult = generateCombinations(priceVariationData);
+                        // Find the original index to maintain order
+                        const originalIndex = currentData.findIndex(item => item.name.trim() === priceVariantName);
+                        singleVariantsData.push({
+                            variant_name: priceVariantName,
+                            combinations: priceResult,
+                            isCombined: false,
+                            originalIndex: originalIndex // Store original position
+                        });
+                        processedVariants.add(priceVariantName);
+                    }
+                }
+            }
+
+            // Process QUANTITY combinations (combined or single)
+            if (formValues?.isCheckedQuantity && formValues?.quantities) {
+                if (isQuantityCombined) {
+                    // Combined quantity variant - FIXED: Trim variant names
+                    const quantityVariantNames = formValues?.quantities.split(" and ").map(v => v.trim());
+
+                    // Check if this combined variant already exists in data
+                    const existingCombinedIndex = combinedVariantsData.findIndex(d =>
+                        d.isCombined && d.variant_name === formValues?.quantities
+                    );
+
+                    if (existingCombinedIndex === -1) {
+                        const quantityCombinedData = handleCombinedVariants(quantityVariantNames, currentData);
+
+                        // FIXED: Only add if we have valid combinations
+                        if (quantityCombinedData.length > 0 && quantityCombinedData[0].combinations.length > 0) {
+                            // Push combined variants to separate array
+                            combinedVariantsData.push(...quantityCombinedData);
+                        }
+                    }
+                    quantityVariantNames.forEach(v => processedVariants.add(v.trim()));
+                } else {
+                    // Single quantity variant - maintain original order
+                    const quantityVariantName = formValues?.quantities?.trim();
+
+                    // Check if this single variant already exists in data
+                    const existingSingleIndex = singleVariantsData.findIndex(d =>
+                        !d.isCombined && d.variant_name === quantityVariantName
+                    );
+
+                    if (existingSingleIndex === -1) {
+                        const quantityVariationData = currentData.filter((item) => item.name.trim() === quantityVariantName);
+
+                        if (quantityVariationData.length > 0) {
+                            let quantityResult = generateCombinations(quantityVariationData);
+                            // Find the original index to maintain order
+                            const originalIndex = currentData.findIndex(item => item.name.trim() === quantityVariantName);
+                            singleVariantsData.push({
+                                variant_name: quantityVariantName,
+                                combinations: quantityResult,
+                                isCombined: false,
+                                originalIndex: originalIndex // Store original position
+                            });
+                        }
+                    }
+                    processedVariants.add(quantityVariantName);
+                }
+            }
+
+            // FIXED: Handle individual variations that are not part of any price/quantity variation
+            // Maintain original order for all single variants
+            const individualVariations = currentData.filter(item =>
+                !processedVariants.has(item.name.trim())
+            );
+
+            for (const item of individualVariations) {
+                let result = generateCombinations([item]);
+                // Find the original index to maintain order
+                const originalIndex = currentData.findIndex(variation => variation.name.trim() === item.name.trim());
+                singleVariantsData.push({
+                    variant_name: item?.name,
+                    combinations: result,
+                    isCombined: false,
+                    originalIndex: originalIndex // Store original position
+                });
+            }
+        } else {
+            // No price/quantity variations enabled - generate all variations normally, maintaining original order
+            for (const item of currentData) {
+                let result = generateCombinations([item]);
+                // Find the original index to maintain order
+                const originalIndex = currentData.findIndex(variation => variation.name === item.name);
+                singleVariantsData.push({
+                    variant_name: item?.name,
+                    combinations: result,
+                    isCombined: false,
+                    originalIndex: originalIndex // Store original position
+                });
+            }
+        }
+
+        // FIXED: Sort single variants by original position to maintain order
+        singleVariantsData.sort((a, b) => a.originalIndex - b.originalIndex);
+
+        // FIXED: Combine data with combined variants at the end
+        data = [...singleVariantsData, ...combinedVariantsData];
+
+        // Remove the originalIndex property before setting state (clean up)
+        const cleanedData = data.map(({ originalIndex, ...item }) => item);
+
+        console.log("Generated combinations before marking:", cleanedData);
+
+        // Mark price/quantity variations properly
+        const finalCombinationsData = markPriceQuantityVariations(cleanedData, formValues);
+        console.log("Final combinations after marking:", finalCombinationsData);
+
+        // PRESERVE EXISTING COMBINATION DATA (price/quantity values)
+        const preservedCombinations = preserveCombinationData(finalCombinationsData, combinations);
+
+        setCombinations(preservedCombinations);
+
+        // Update form data with selected variations
+        const parentMainIds = currentData
+            .map(variation => {
+                const variant = allVariants.find((item) => item.variant_name === variation.name);
+                return variant?.id && !variant.isCustom ? variant.id : null;
+            })
+            .filter(Boolean);
+
+        const allIds = currentData
+            .flatMap((variation) => {
+                const variant = allVariants.find((item) => item.variant_name === variation.name);
+                const safeValues = Array.isArray(variation.values) ? variation.values : [];
+
+                return safeValues.map((value) => {
+                    const attributeData = variant?.variant_attribute?.find((attr) => attr.attribute_value === value);
+                    return attributeData?._id && !variant.isCustom ? attributeData._id : null;
+                });
+            })
+            .filter(Boolean);
+
+        setFormData({
+            ParentMainId: Array.from(new Set([...(formData.ParentMainId || []), ...parentMainIds])),
+            varientName: Array.from(new Set([...(formData.varientName || []), ...allIds]))
+        });
+
+        handleCloseVariant();
     };
 
     // Custom Variant Dialog Functions
@@ -950,55 +953,91 @@ const VariantModal = ({ show, handleCloseVariant }) => {
                             <>
                                 {variationsData && variationsData.length > 0 ? (
                                     <Box>
-                                        {(variationsData || []).map((item, i) => (
-                                            <Card key={i} sx={{
-                                                marginBottom: '16px',
-                                                border: '1px solid #e0e0e0',
-                                                padding: '16px'
-                                            }}>
-                                                <Box display="flex" justifyContent="space-between" alignItems="center">
-                                                    <Typography fontWeight={500}>{item?.name}</Typography>
-                                                    {customVariants.some(v => v.variant_name === item.name) && (
-                                                        <Chip
-                                                            label="Custom"
-                                                            size="small"
-                                                            color="primary"
-                                                            variant="outlined"
-                                                        />
-                                                    )}
-                                                </Box>
-                                                <Typography variant="body2" color="textSecondary">
-                                                    {item?.values?.length || 0} options
-                                                </Typography>
-                                                <Box mt={1} display="flex" justifyContent="space-between"
-                                                    alignItems="center">
-                                                    <Box>
-                                                        {Array.isArray(item?.values) && item.values.map((data, valueIndex) => (
+                                        {(variationsData || []).map((item, i) => {
+                                            const isDraggable = !hasCombinedVariants();
+                                            return (
+                                                <Card
+                                                    key={i}
+                                                    sx={{
+                                                        marginBottom: '16px',
+                                                        border: '1px solid #e0e0e0',
+                                                        padding: '16px',
+                                                        cursor: isDraggable ? 'grab' : 'default',
+                                                        opacity: draggedIndex === i ? 0.5 : 1,
+                                                        transition: 'all 0.2s ease',
+                                                        '&:hover': {
+                                                            boxShadow: isDraggable ? 2 : 0,
+                                                            borderColor: isDraggable ? '#1976d2' : '#e0e0e0'
+                                                        },
+                                                        '&:active': {
+                                                            cursor: isDraggable ? 'grabbing' : 'default'
+                                                        }
+                                                    }}
+                                                    draggable={isDraggable}
+                                                    onDragStart={(e) => handleDragStart(e, i)}
+                                                    onDragOver={(e) => handleDragOver(e, i)}
+                                                    onDrop={(e) => handleDrop(e, i)}
+                                                    onDragEnd={handleDragEnd}
+                                                >
+                                                    <Box display="flex" justifyContent="space-between" alignItems="center">
+                                                        <Box display="flex" alignItems="center">
+                                                            {isDraggable && (
+                                                                <DragIndicatorIcon
+                                                                    sx={{
+                                                                        mr: 1,
+                                                                        color: 'text.secondary',
+                                                                        cursor: 'grab'
+                                                                    }}
+                                                                />
+                                                            )}
+                                                            <Typography fontWeight={500}>{item?.name}</Typography>
+                                                        </Box>
+                                                        {customVariants.some(v => v.variant_name === item.name) && (
                                                             <Chip
-                                                                key={valueIndex}
-                                                                label={data}
+                                                                label="Custom"
                                                                 size="small"
-                                                                sx={{ m: 0.5 }}
+                                                                color="primary"
+                                                                variant="outlined"
                                                             />
-                                                        ))}
+                                                        )}
                                                     </Box>
-                                                    <Box display="flex">
-                                                        <IconButton
-                                                            size="small"
-                                                            onClick={() => handleEditVariation(item)}
-                                                        >
-                                                            <EditIcon />
-                                                        </IconButton>
-                                                        <IconButton
-                                                            size="small"
-                                                            onClick={() => handleDeleteVariationWithWarning(item?.name)}
-                                                        >
-                                                            <DeleteIcon />
-                                                        </IconButton>
+                                                    <Typography variant="body2" color="textSecondary">
+                                                        {item?.values?.length || 0} options
+                                                    </Typography>
+                                                    <Box mt={1} display="flex" justifyContent="space-between" alignItems="center">
+                                                        <Box>
+                                                            {Array.isArray(item?.values) && item.values.map((data, valueIndex) => (
+                                                                <Chip
+                                                                    key={valueIndex}
+                                                                    label={data}
+                                                                    size="small"
+                                                                    sx={{ m: 0.5 }}
+                                                                />
+                                                            ))}
+                                                        </Box>
+                                                        <Box display="flex">
+                                                            <IconButton
+                                                                size="small"
+                                                                onClick={() => handleEditVariation(item)}
+                                                            >
+                                                                <EditIcon />
+                                                            </IconButton>
+                                                            <IconButton
+                                                                size="small"
+                                                                onClick={() => handleDeleteVariationWithWarning(item?.name)}
+                                                            >
+                                                                <DeleteIcon />
+                                                            </IconButton>
+                                                        </Box>
                                                     </Box>
-                                                </Box>
-                                            </Card>
-                                        ))}
+                                                    {hasCombinedVariants() && (
+                                                        <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                                                            Drag & drop disabled when combined variants exist
+                                                        </Typography>
+                                                    )}
+                                                </Card>
+                                            );
+                                        })}
                                     </Box>
                                 ) : (
                                     <Box textAlign={"center"} py={3}>
