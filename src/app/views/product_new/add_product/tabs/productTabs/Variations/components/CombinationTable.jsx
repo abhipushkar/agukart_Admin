@@ -149,6 +149,9 @@ const CombinationsTable = ({ isSynced }) => {
             {combinations.map((comb, combindex) => {
                 const itemsToShow = showAll ? comb.combinations : comb.combinations.slice(0, 5);
 
+                console.log("Combinations", comb.combinations[1].isVisible);
+
+
                 return (
                     <DraggableCombinationTable
                         key={combindex}
@@ -234,7 +237,7 @@ const CombinationsTable = ({ isSynced }) => {
                                                 </TableCell>
                                             )}
                                             {(variationsData.length >= 2 ? formValues?.prices === comb.variant_name : true) &&
-                                                formValues?.isCheckedPrice && (
+                                                (formValues?.isCheckedPrice === true || formValues?.isCheckedPrice === 'true') && (
                                                     <TableCell align="center">
                                                         <TextField
                                                             type="text"
@@ -248,7 +251,7 @@ const CombinationsTable = ({ isSynced }) => {
                                                     </TableCell>
                                                 )}
                                             {(variationsData.length >= 2 ? formValues?.quantities === comb.variant_name : true) &&
-                                                formValues?.isCheckedQuantity && (
+                                                (formValues?.isCheckedQuantity === true || formValues?.isCheckedQuantity === 'true') && (
                                                     <TableCell align="center">
                                                         <TextField
                                                             type="text"
@@ -263,7 +266,7 @@ const CombinationsTable = ({ isSynced }) => {
                                                 )}
                                             <TableCell align="center">
                                                 <Switch
-                                                    checked={item.isVisible || false}
+                                                    checked={item.isVisible === "true" || item.isVisible === true || false}
                                                     onChange={() => handleToggle(combindex, index)}
                                                     size="small"
                                                 />

@@ -336,28 +336,6 @@ const VariationTableRow = ({
                     )}
                 </DraggableTableRow>
             ))}
-
-            {/* See More/Less Button */}
-            {variant.variant_attributes.length > 5 && (
-                <TableRow>
-                    <TableCell colSpan={getTotalVisibleColumns()} align="center" sx={{ py: 2 }}>
-                        <Button
-                            variant="outlined"
-                            size="small"
-                            sx={{
-                                minWidth: '120px',
-                                backgroundColor: '#e3f2fd',
-                                '&:hover': {
-                                    backgroundColor: '#bbdefb'
-                                }
-                            }}
-                            onClick={handleSeeMore}
-                        >
-                            {showAll ? "See Less" : `See More (+${variant.variant_attributes.length - 5})`}
-                        </Button>
-                    </TableCell>
-                </TableRow>
-            )}
         </>
     );
 };

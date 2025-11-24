@@ -76,6 +76,10 @@ const VariantModal = ({ show, handleCloseVariant }) => {
     const [showVariantList, setShowVariantList] = useState(false);
     const [draggedIndex, setDraggedIndex] = useState(null);
 
+    // Drag and drop states for Autocomplete list
+    const [draggedOptionIndex, setDraggedOptionIndex] = useState(null);
+    const [isDraggingOption, setIsDraggingOption] = useState(false);
+
     // Custom variant states
     const [customVariantDialogOpen, setCustomVariantDialogOpen] = useState(false);
     const [customVariantName, setCustomVariantName] = useState("");
@@ -99,7 +103,62 @@ const VariantModal = ({ show, handleCloseVariant }) => {
         return combinations?.some(comb => comb.isCombined) || false;
     }, [combinations]);
 
-    // Drag and drop handlers
+    // ========== DRAG AND DROP FOR AUTOCOMPLETE LIST ==========
+    const handleOptionDragStart = (e, index) => {
+        setDraggedOptionIndex(index);
+        setIsDraggingOption(true);
+        e.dataTransfer.effectAllowed = 'move';
+
+        // Add a small delay to ensure the drag image is captured properly
+        setTimeout(() => {
+            e.target.style.opacity = '0.4';
+        }, 0);
+    };
+
+    const handleOptionDragOver = (e, index) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    };
+
+    const handleOptionDrop = (e, targetIndex) => {
+        e.preventDefault();
+        if (draggedOptionIndex === null || draggedOptionIndex === targetIndex) {
+            setIsDraggingOption(false);
+            setDraggedOptionIndex(null);
+            return;
+        }
+
+        const currentValues = [...attrValues.values];
+        const draggedItem = currentValues[draggedOptionIndex];
+
+        // Remove dragged item
+        currentValues.splice(draggedOptionIndex, 1);
+        // Insert at target position
+        currentValues.splice(targetIndex, 0, draggedItem);
+
+        setAttrValues(prev => ({
+            ...prev,
+            values: currentValues
+        }));
+
+        setDraggedOptionIndex(null);
+        setIsDraggingOption(false);
+
+        // Reset opacity
+        if (e.target) {
+            e.target.style.opacity = '1';
+        }
+    };
+
+    const handleOptionDragEnd = (e) => {
+        setIsDraggingOption(false);
+        setDraggedOptionIndex(null);
+        if (e.target) {
+            e.target.style.opacity = '1';
+        }
+    };
+
+    // Drag and drop handlers for variations
     const handleDragStart = (e, index) => {
         if (hasCombinedVariants()) return; // Disable drag if combined variants exist
         setDraggedIndex(index);
@@ -222,11 +281,18 @@ const VariantModal = ({ show, handleCloseVariant }) => {
             const { name, values } = variation;
             const safeValues = Array.isArray(values) ? values : values ? [values] : [];
 
+
             if (acc.length === 0) {
                 return safeValues?.map((value) => {
+                    const filteredId = varientName
+                        .find((variant) => variant.variant_name === name)
+                        ?.variant_attribute.find((attr) => attr.attribute_value === value)?._id;
+
                     return {
                         [`value${index + 1}`]: value,
                         [`name${index + 1}`]: name,
+                        combValues: [value],
+                        combIds: [filteredId],
                         price: "",
                         qty: "",
                         isVisible: true,
@@ -240,10 +306,16 @@ const VariantModal = ({ show, handleCloseVariant }) => {
 
             return acc.flatMap((combination) =>
                 safeValues?.map((value) => {
+                    const filteredId = varientName
+                        .find((variant) => variant.variant_name === name)
+                        ?.variant_attribute.find((attr) => attr.attribute_value === value)?._id;
+
                     return {
                         ...combination,
                         [`value${index + 1}`]: value,
                         [`name${index + 1}`]: name,
+                        combValues: [...(combination.combValues || []), value],
+                        combIds: [...(combination.combIds || []), filteredId],
                         price: "",
                         qty: "",
                         isVisible: true,
@@ -1277,13 +1349,21 @@ const VariantModal = ({ show, handleCloseVariant }) => {
                                         disableCloseOnSelect
                                         options={[...(attrOptions || []), `Add All Options (${attrOptions?.length || 0})`]}
                                         getOptionLabel={(option) => option}
-                                        value={attrValues.values || []}
+                                        value={[]}
                                         onChange={handleTagHandler}
                                         renderInput={(params) => (
                                             <TextField
                                                 {...params}
                                                 label="Enter an option..."
                                                 placeholder="Enter an option..."
+                                                sx={{
+                                                    "& .MuiInputBase-root": {
+                                                        padding: "0 11px",
+                                                    },
+                                                    "& .MuiFormLabel-root": {
+                                                        top: "-7px",
+                                                    },
+                                                }}
                                             />
                                         )}
                                         renderOption={(props, option) => {
@@ -1305,6 +1385,7 @@ const VariantModal = ({ show, handleCloseVariant }) => {
                                         sx={{ mb: 2 }}
                                     />
 
+                                    {/* ========== UPDATED: Drag and Drop List for Options ========== */}
                                     <List>
                                         {(attrValues?.values || []).map((option, index) => (
                                             <ListItem
@@ -1313,27 +1394,65 @@ const VariantModal = ({ show, handleCloseVariant }) => {
                                                     border: "1px solid #e0e0e0",
                                                     borderRadius: "4px",
                                                     marginBottom: "8px",
+                                                    cursor: 'grab',
+                                                    transition: 'all 0.2s ease',
+                                                    backgroundColor: draggedOptionIndex === index ? 'rgba(25, 118, 210, 0.08)' : 'white',
+                                                    opacity: draggedOptionIndex === index ? 0.7 : 1,
+                                                    '&:hover': {
+                                                        backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                                                        boxShadow: 1
+                                                    },
+                                                    '&:active': {
+                                                        cursor: 'grabbing'
+                                                    }
                                                 }}
+                                                draggable
+                                                onDragStart={(e) => handleOptionDragStart(e, index)}
+                                                onDragOver={(e) => handleOptionDragOver(e, index)}
+                                                onDrop={(e) => handleOptionDrop(e, index)}
+                                                onDragEnd={handleOptionDragEnd}
                                                 secondaryAction={
-                                                    <IconButton
-                                                        edge="end"
-                                                        onClick={() => handleTagDelete(option)}
-                                                    >
-                                                        <DeleteIcon />
-                                                    </IconButton>
+                                                    <Box display="flex" alignItems="center">
+                                                        <DragIndicatorIcon
+                                                            sx={{
+                                                                mr: 1,
+                                                                color: 'text.secondary',
+                                                                cursor: 'grab'
+                                                            }}
+                                                        />
+                                                        <IconButton
+                                                            edge="end"
+                                                            onClick={() => handleTagDelete(option)}
+                                                        >
+                                                            <DeleteIcon />
+                                                        </IconButton>
+                                                    </Box>
                                                 }
                                             >
-                                                <ListItemText primary={option} />
+                                                <ListItemText
+                                                    primary={
+                                                        <Box display="flex" alignItems="center">
+                                                            <DragIndicatorIcon
+                                                                sx={{
+                                                                    mr: 1,
+                                                                    color: 'text.secondary',
+                                                                    opacity: 0.6
+                                                                }}
+                                                            />
+                                                            {option}
+                                                        </Box>
+                                                    }
+                                                />
                                             </ListItem>
                                         ))}
                                     </List>
 
                                     <Box display="flex" justifyContent="space-between" mt={4}>
                                         <Button
-                                            onClick={() => handleDeleteVariationWithWarning(selectedVariant)}
+                                            onClick={() => handleCancel()}
                                             color="error"
                                         >
-                                            Delete
+                                            Back
                                         </Button>
                                         <Button
                                             variant="contained"
