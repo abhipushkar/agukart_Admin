@@ -6,6 +6,8 @@ import {
     Button,
     MenuItem,
     Stack,
+    Tab,
+    Tabs,
     Typography
 } from "@mui/material";
 import ControlPointIcon from "@mui/icons-material/ControlPoint";
@@ -25,21 +27,22 @@ import { useEffect } from "react";
 import { useState } from "react";
 import dayjs from "dayjs";
 import ConfirmModal from "app/components/ConfirmModal";
-
+import ProductVariationsTable from "./ProductVariationTable";
+import { TabContext, TabPanel } from "@mui/lab";
 
 const ParentProductIdentity = ({ productId }) => {
     const [formData, setFormData] = React.useState({
-        productTitle: "",       
+        productTitle: "",
         description: "",
         subCategory: "",
         sellerSku: "",
-        zoom: {scale: 1, x: 0, y: 0},
+        zoom: { scale: 1, x: 0, y: 0 },
         Innervariations: {},
         variantData: [],
         variant_id: [],
         variant_name: [],
         images: [],
-        vendor: null, // Added vendor field
+        vendor: null,
     });
 
     const [inputFields, setInputFields] = React.useState([
@@ -63,7 +66,7 @@ const ParentProductIdentity = ({ productId }) => {
     const [sellerSky, setSellerSku] = React.useState([]);
 
     const [combinationMap, setCombinationMap] = useState(new Map());
-    const [usedSkus, setUsedSkus] = useState(new Set()); // Track used SKUs
+    const [usedSkus, setUsedSkus] = useState(new Set());
 
     const [inputErrors, setInputErrors] = React.useState({
         productTitle: "",
@@ -74,11 +77,14 @@ const ParentProductIdentity = ({ productId }) => {
         sellerSku: "",
         innervariation: "",
         parentImage: "",
-        vendor: "" // Added vendor error
+        vendor: ""
     });
 
-    const [vendors, setVendors] = React.useState([]); // Added vendors state
-    const [vendorLoading, setVendorLoading] = React.useState(false); // Added vendor loading state
+    const [vendors, setVendors] = React.useState([]);
+    const [vendorLoading, setVendorLoading] = React.useState(false);
+
+    // State for product variations
+    const [productVariations, setProductVariations] = useState([]);
 
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
 
@@ -86,6 +92,11 @@ const ParentProductIdentity = ({ productId }) => {
     const [type, setType] = useState("");
     const [route, setRoute] = useState(null);
     const [msg, setMsg] = useState(null);
+    const [currentTab, setCurrentTab] = useState("combination");
+
+    function handleTabChanges(event, newValue) {
+        setCurrentTab(newValue);
+    }
 
     const logOut = () => {
         localStorage.removeItem(localStorageKey.auth_key);
@@ -135,7 +146,6 @@ const ParentProductIdentity = ({ productId }) => {
         }
     };
 
-    // Get vendors list
     const getVendors = async () => {
         try {
             setVendorLoading(true);
@@ -150,7 +160,6 @@ const ParentProductIdentity = ({ productId }) => {
         }
     };
 
-    // Helper function to trim string values
     const trimValue = (value) => {
         if (typeof value === 'string') {
             return value.trim();
@@ -166,22 +175,15 @@ const ParentProductIdentity = ({ productId }) => {
         }));
     };
 
-    // Vendor change handler
     const handleVendorChange = (event, newValue) => {
         setFormData((prev) => ({
             ...prev,
             vendor: newValue
         }));
         setInputErrors((prev) => ({ ...prev, vendor: "" }));
-        
-        // Clear SKU errors when vendor changes as validation needs to be rechecked
         setSkuErrors({});
-        
-        // Clear existing variant data as vendor change might affect product associations
         setVariantArrValue(prev => prev.map(item => ({
             ...item,
-            _id: "",
-            product_id: "",
             isExistingProduct: false
         })));
     };
@@ -203,7 +205,7 @@ const ParentProductIdentity = ({ productId }) => {
         getBrandList();
         getVaraintList();
         getChildCategory();
-        getVendors(); // Load vendors on component mount
+        getVendors();
     }, []);
 
     React.useEffect(() => {
@@ -336,6 +338,60 @@ const ParentProductIdentity = ({ productId }) => {
         setVariantArrValue(preservedVariantData);
         setSellerSku(preservedSellerSky);
 
+        // Sync product variations when inner variations change
+        const updatedProductVariations = formData.variantData.map(variant => {
+            const innerVariants = updatedInnervariations[variant.variant_name] || [];
+
+            // Find existing variant data to preserve images AND guide
+            const existingVariant = productVariations.find(pv => pv.variant_name === variant.variant_name);
+
+            if (existingVariant) {
+                // Preserve existing attributes and their images
+                const updatedAttributes = innerVariants.map(innerVariant => {
+                    const existingAttribute = existingVariant.variant_attributes.find(attr =>
+                        attr.attribute === innerVariant.attribute_value
+                    );
+
+                    if (existingAttribute) {
+                        return existingAttribute;
+                    } else {
+                        return {
+                            attribute: innerVariant.attribute_value,
+                            main_images: [null, null, null],
+                            preview_image: innerVariant.preview_image || "",
+                            thumbnail: innerVariant.thumbnail || "",
+                            edit_main_image: null,
+                            edit_preview_image: innerVariant.edit_preview_image || "",
+                            edit_main_image_data: innerVariant.edit_main_image_data || {},
+                            edit_preview_image_data: innerVariant.edit_preview_image_data || {},
+                        };
+                    }
+                });
+
+                return {
+                    variant_name: variant.variant_name,
+                    variant_attributes: updatedAttributes,
+                    guide: existingVariant.guide || [] // PRESERVE GUIDE DATA
+                };
+            } else {
+                return {
+                    variant_name: variant.variant_name,
+                    variant_attributes: innerVariants.map(innerVariant => ({
+                        attribute: innerVariant.attribute_value,
+                        main_images: [null, null, null],
+                        preview_image: innerVariant.preview_image || "",
+                        thumbnail: innerVariant.thumbnail || "",
+                        edit_main_image: null,
+                        edit_preview_image: innerVariant.edit_preview_image || "",
+                        edit_main_image_data: innerVariant.edit_main_image_data || {},
+                        edit_preview_image_data: innerVariant.edit_preview_image_data || {},
+                    }))
+                };
+            }
+        });
+
+        setProductVariations(updatedProductVariations);
+
         setInputErrors((prev) => ({ ...prev, innervariation: "" }));
     };
 
@@ -369,7 +425,6 @@ const ParentProductIdentity = ({ productId }) => {
         return null;
     };
 
-    // NEW: Check for duplicate SKUs
     const checkForDuplicateSkus = (sku, index) => {
         if (!sku) return null;
 
@@ -392,9 +447,8 @@ const ParentProductIdentity = ({ productId }) => {
         if (formData.variantData.length === 0) errors.variations = "Please Select At least one Variant";
         if (Object.keys(formData.Innervariations).length === 0) errors.innervariation = "Please Select At least one Innervariations Variant";
         if (images.length === 0) errors.parentImage = "Images Is Required";
-        if (!formData.vendor) errors.vendor = "Vendor is Required"; // Added vendor validation
+        if (!formData.vendor) errors.vendor = "Vendor is Required";
 
-        // Check for SKU errors
         const hasSkuErrors = Object.values(skuErrors).some(error => error);
         if (hasSkuErrors) {
             toast.error("Please fix SKU validation errors before submitting");
@@ -436,6 +490,88 @@ const ParentProductIdentity = ({ productId }) => {
         });
     };
 
+    // Function to convert product variations to FormData
+    const prepareProductVariationsFormData = () => {
+        const formDataObj = new FormData();
+
+        productVariations.forEach((variant, variantIndex) => {
+            formDataObj.append(`product_variation[${variantIndex}][variant_name]`, variant.variant_name);
+
+            // Handle guide data
+            let guideData = variant.guide;
+            if (guideData) {
+                // If guide is an object, convert to array
+                if (!Array.isArray(guideData)) {
+                    guideData = [guideData];
+                }
+
+                if (guideData.length > 0) {
+                    const guide = guideData[0];
+                    formDataObj.append(`product_variation[${variantIndex}][guide][guide_name]`, guide.guide_name || "");
+                    formDataObj.append(`product_variation[${variantIndex}][guide][guide_description]`, guide.guide_description || "");
+                    formDataObj.append(`product_variation[${variantIndex}][guide][guide_type]`, guide.guide_type || "");
+
+                    if (guide.guide_file && guide.guide_file instanceof File) {
+                        formDataObj.append(`product_variation[${variantIndex}][guide][guide_file]`, guide.guide_file);
+                    } else if (guide.guide_file && typeof guide.guide_file === 'string') {
+                        formDataObj.append(`product_variation[${variantIndex}][guide][guide_file]`, guide.guide_file);
+                    }
+                }
+            }
+
+            variant.variant_attributes.forEach((attribute, attrIndex) => {
+                formDataObj.append(`product_variation[${variantIndex}][variant_attributes][${attrIndex}][attribute]`, attribute.attribute);
+
+                // Handle main images
+                if (attribute.main_images) {
+                    attribute.main_images.forEach((image, imgIndex) => {
+                        if (image && image instanceof File) {
+                            formDataObj.append(`product_variation[${variantIndex}][variant_attributes][${attrIndex}][main_images][${imgIndex}]`, image);
+                        } else if (image && typeof image === 'string') {
+                            formDataObj.append(`product_variation[${variantIndex}][variant_attributes][${attrIndex}][main_images][${imgIndex}]`, image);
+                        }
+                    });
+                }
+
+                // Handle preview image
+                if (attribute.preview_image && attribute.preview_image instanceof File) {
+                    formDataObj.append(`product_variation[${variantIndex}][variant_attributes][${attrIndex}][preview_image]`, attribute.preview_image);
+                } else if (attribute.preview_image && typeof attribute.preview_image === 'string') {
+                    formDataObj.append(`product_variation[${variantIndex}][variant_attributes][${attrIndex}][preview_image]`, attribute.preview_image);
+                }
+
+                // Handle thumbnail
+                if (attribute.thumbnail && attribute.thumbnail instanceof File) {
+                    formDataObj.append(`product_variation[${variantIndex}][variant_attributes][${attrIndex}][thumbnail]`, attribute.thumbnail);
+                } else if (attribute.thumbnail && typeof attribute.thumbnail === 'string') {
+                    formDataObj.append(`product_variation[${variantIndex}][variant_attributes][${attrIndex}][thumbnail]`, attribute.thumbnail);
+                }
+
+                // Handle edited images
+                if (attribute.edit_main_image && attribute.edit_main_image instanceof File) {
+                    formDataObj.append(`product_variation[${variantIndex}][variant_attributes][${attrIndex}][edit_main_image]`, attribute.edit_main_image);
+                }
+
+                if (attribute.edit_preview_image && attribute.edit_preview_image instanceof File) {
+                    formDataObj.append(`product_variation[${variantIndex}][variant_attributes][${attrIndex}][edit_preview_image]`, attribute.edit_preview_image);
+                }
+
+                // Handle edit data
+                if (attribute.edit_main_image_data) {
+                    formDataObj.append(`product_variation[${variantIndex}][variant_attributes][${attrIndex}][edit_main_image_data]`,
+                        typeof attribute.edit_main_image_data === "string" ? attribute.edit_main_image_data : JSON.stringify(attribute.edit_main_image_data));
+                }
+
+                if (attribute.edit_preview_image_data) {
+                    formDataObj.append(`product_variation[${variantIndex}][variant_attributes][${attrIndex}][edit_preview_image_data]`,
+                        typeof attribute.edit_preview_image_data === "string" ? attribute.edit_preview_image_data : JSON.stringify(attribute.edit_preview_image_data));
+                }
+            });
+        });
+
+        return formDataObj;
+    };
+
     const parentsubmitHandle = async () => {
         if (!validateForm()) {
             toast.error("Please fill all required fields");
@@ -460,8 +596,6 @@ const ParentProductIdentity = ({ productId }) => {
 
         function validateProductArray(combine) {
             return combine.every((product, index) => {
-                // For existing products (with product_id), only SKU is required
-                // For new products, all fields are required
                 const isExistingProduct = product.product_id && product.product_id !== "";
                 const isValid = isExistingProduct
                     ? product.sku_code
@@ -480,30 +614,43 @@ const ParentProductIdentity = ({ productId }) => {
         const check = validateProductArray(combine);
         if (!check) return;
 
-        const param = {
-            _id: productId ? productId : "new",
-            product_title: trimValue(formData.productTitle),
-            description: trimValue(formData.description),
-            seller_sku: trimValue(formData.sellerSku),
-            variant_id: formData.variant_id,
-            variant_attribute_id: varientAttribute,
-            combinations: trimArrayValues(combine),
-            sub_category: formData?.subCategory || "",
-            sku: trimArrayValues(sellerSky),
-            zoom: formData.zoom,
-            vendor_id: formData.vendor?._id || "", // Added vendor_id to payload
-        };
-
         try {
             setIsSubmitLoader(true);
+
+            // Create FormData for the main product data
+            const formDataObj = new FormData();
+
+            // Append all product data
+            formDataObj.append("_id", productId ? productId : "new");
+            formDataObj.append("product_title", trimValue(formData.productTitle));
+            formDataObj.append("description", trimValue(formData.description));
+            formDataObj.append("seller_sku", trimValue(formData.sellerSku));
+            formDataObj.append("sub_category", formData?.subCategory || "");
+            formDataObj.append("vendor_id", formData.vendor?._id || "");
+            formDataObj.append("zoom", JSON.stringify(formData.zoom));
+
+            // Append arrays as JSON strings
+            formDataObj.append("variant_id", JSON.stringify(formData.variant_id));
+            formDataObj.append("variant_attribute_id", JSON.stringify(varientAttribute));
+            formDataObj.append("combinations", JSON.stringify(trimArrayValues(combine)));
+            formDataObj.append("sku", JSON.stringify(trimArrayValues(sellerSky)));
+
+            // Append product variations data
+            const variationsFormData = prepareProductVariationsFormData();
+            for (let [key, value] of variationsFormData.entries()) {
+                formDataObj.append(key, value);
+            }
+
+            // Submit main product data with variations using postImage
             const urlWithParam = `${apiEndpoints.AddParentProduct}`;
-            const ImagesurlWithParam = `${apiEndpoints.ParentImagesAddParentProduct}`;
-            const res = await ApiService.post(urlWithParam, param, auth_key);
+            const res = await ApiService.postImage(urlWithParam, formDataObj, auth_key);
+
             if (res.status === 200) {
+                // Handle parent product image separately if it exists
                 if (images?.[0]?.file) {
-                    const formData = new FormData();
-                    formData.append("_id", parentId ? parentId : res?.data?.parent_product._id);
-                    formData.append(
+                    const imageFormData = new FormData();
+                    imageFormData.append("_id", parentId ? parentId : res?.data?.parent_product._id);
+                    imageFormData.append(
                         "file",
                         productId
                             ? images?.[0]?.file
@@ -511,7 +658,8 @@ const ParentProductIdentity = ({ productId }) => {
                                 : images?.[0]?.src
                             : images?.[0]?.file
                     );
-                    await ApiService.postImage(ImagesurlWithParam, formData, auth_key);
+                    const ImagesurlWithParam = `${apiEndpoints.ParentImagesAddParentProduct}`;
+                    await ApiService.postImage(ImagesurlWithParam, imageFormData, auth_key);
                 }
 
                 setFormData({
@@ -519,14 +667,16 @@ const ParentProductIdentity = ({ productId }) => {
                     description: "",
                     subCategory: "",
                     sellerSku: "",
-                    zoom: {scale: 1, x: 0, y: 0},
+                    zoom: { scale: 1, x: 0, y: 0 },
                     Innervariations: {},
                     variantData: [],
                     variant_id: [],
                     variant_name: [],
                     images: [],
-                    vendor: null, // Reset vendor
+                    vendor: null,
                 });
+
+                setProductVariations([]);
 
                 setRoute(ROUTE_CONSTANT.catalog.product.list);
                 handleOpen("success", res?.data);
@@ -536,6 +686,16 @@ const ParentProductIdentity = ({ productId }) => {
         } finally {
             setIsSubmitLoader(false);
         }
+    };
+
+    const handleProductVariationGuideUpdate = (variantIndex, guideData) => {
+        const updatedProductVariations = [...productVariations];
+        const variant = { ...updatedProductVariations[variantIndex] };
+
+        variant.guide = [guideData];
+        updatedProductVariations[variantIndex] = variant;
+
+        setProductVariations(updatedProductVariations);
     };
 
     const inputFileRef = React.useRef(null);
@@ -565,6 +725,171 @@ const ParentProductIdentity = ({ productId }) => {
     const [parentId, setParentId] = useState("");
     const [imgName, setImgName] = useState();
 
+    // Product Variation Handlers
+    const handleProductVariationImageUpload = (variantIndex, attributeIndex, imageKey, event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const updatedProductVariations = [...productVariations];
+        const variant = { ...updatedProductVariations[variantIndex] };
+        const attributes = [...variant.variant_attributes];
+        const attribute = { ...attributes[attributeIndex] };
+
+        if (imageKey.startsWith('main_images')) {
+            const imgIndex = parseInt(imageKey.match(/\[(\d+)\]/)[1]);
+            const mainImages = [...(attribute.main_images || [])];
+            while (mainImages.length <= imgIndex) {
+                mainImages.push(null);
+            }
+            mainImages[imgIndex] = file;
+            attribute.main_images = mainImages;
+        } else {
+            attribute[imageKey] = file;
+        }
+
+        attributes[attributeIndex] = attribute;
+        variant.variant_attributes = attributes;
+        updatedProductVariations[variantIndex] = variant;
+
+        setProductVariations(updatedProductVariations);
+    };
+
+    const handleProductVariationImageRemove = (variantIndex, attributeIndex, imageKey) => {
+        const updatedProductVariations = [...productVariations];
+        const variant = { ...updatedProductVariations[variantIndex] };
+        const attributes = [...variant.variant_attributes];
+        const attribute = { ...attributes[attributeIndex] };
+
+        if (imageKey.startsWith('main_images')) {
+            const imgIndex = parseInt(imageKey.match(/\[(\d+)\]/)[1]);
+            const mainImages = [...(attribute.main_images || [])];
+            if (mainImages[imgIndex]) {
+                mainImages[imgIndex] = "";
+                attribute.main_images = mainImages;
+            }
+        } else {
+            attribute[imageKey] = "";
+        }
+
+        // Remove edit data
+        if (imageKey === 'main_images[0]') {
+            attribute.edit_main_image = "";
+            attribute.edit_main_image_data = "";
+        } else if (imageKey === 'preview_image') {
+            attribute.edit_preview_image = "";
+            attribute.edit_preview_image_data = "";
+        }
+
+        attributes[attributeIndex] = attribute;
+        variant.variant_attributes = attributes;
+        updatedProductVariations[variantIndex] = variant;
+
+        setProductVariations(updatedProductVariations);
+    };
+
+    const handleProductVariationImageEdit = (variantIndex, attributeIndex, imageType, editedImage, imageIndex, editData) => {
+        const updatedProductVariations = [...productVariations];
+        const variant = { ...updatedProductVariations[variantIndex] };
+        const attributes = [...variant.variant_attributes];
+        const attribute = { ...attributes[attributeIndex] };
+
+        if (imageType === 'main_images' && imageIndex === 0) {
+            attribute.edit_main_image = editedImage;
+            attribute.edit_main_image_data = editData;
+        } else if (imageType === 'preview_image') {
+            attribute.edit_preview_image = editedImage;
+            attribute.edit_preview_image_data = editData;
+        }
+
+        attributes[attributeIndex] = attribute;
+        variant.variant_attributes = attributes;
+        updatedProductVariations[variantIndex] = variant;
+
+        setProductVariations(updatedProductVariations);
+    };
+
+    const handleProductVariationReorder = (variantIndex, sourceIndex, targetIndex) => {
+        const updatedProductVariations = [...productVariations];
+        const variant = { ...updatedProductVariations[variantIndex] };
+        const attributes = [...variant.variant_attributes];
+
+        // Validate indices
+        if (sourceIndex >= attributes.length || targetIndex >= attributes.length) {
+            console.error('Invalid source or target index');
+            return;
+        }
+
+        const [movedAttribute] = attributes.splice(sourceIndex, 1);
+        attributes.splice(targetIndex, 0, movedAttribute);
+
+        variant.variant_attributes = attributes;
+        updatedProductVariations[variantIndex] = variant;
+
+        setProductVariations(updatedProductVariations);
+    };
+
+    // console.log("Product Variant ", productVariations);
+
+    // FIXED: Enhanced function to sync variant attributes with existing data - NOW PRESERVES GUIDE DATA
+    const syncVariantAttributesWithExistingData = (filteredData, existingProductVariations) => {
+        return formData.variantData.map(variant => {
+            const innerVariants = filteredData[variant.variant_name] || [];
+
+            // Find existing variant data
+            const existingVariant = existingProductVariations.find(pv => pv.variant_name === variant.variant_name);
+
+            if (existingVariant) {
+                // Merge existing attributes with new inner variants
+                const mergedAttributes = innerVariants.map(innerVariant => {
+                    // Find if this attribute already exists in the existing data
+                    const existingAttribute = existingVariant.variant_attributes.find(attr =>
+                        attr.attribute === innerVariant.attribute_value
+                    );
+
+                    if (existingAttribute) {
+                        // Preserve all existing data including thumbnails
+                        return {
+                            ...existingAttribute,
+                            attribute: innerVariant.attribute_value
+                        };
+                    } else {
+                        // Create new attribute with data from variant_attribute_id
+                        return {
+                            attribute: innerVariant.attribute_value,
+                            main_images: [null, null, null],
+                            preview_image: innerVariant.preview_image || "",
+                            thumbnail: innerVariant.thumbnail || "",
+                            edit_main_image: null,
+                            edit_preview_image: innerVariant.edit_preview_image || "",
+                            edit_main_image_data: innerVariant.edit_main_image_data || {},
+                            edit_preview_image_data: innerVariant.edit_preview_image_data || {},
+                        };
+                    }
+                });
+
+                return {
+                    ...existingVariant, // This preserves the guide data
+                    variant_attributes: mergedAttributes
+                };
+            } else {
+                // Create new variant with data from variant_attribute_id
+                return {
+                    variant_name: variant.variant_name,
+                    variant_attributes: innerVariants.map(innerVariant => ({
+                        attribute: innerVariant.attribute_value,
+                        main_images: [null, null, null],
+                        preview_image: innerVariant.preview_image || "",
+                        thumbnail: innerVariant.thumbnail || "",
+                        edit_main_image: null,
+                        edit_preview_image: innerVariant.edit_preview_image || "",
+                        edit_main_image_data: innerVariant.edit_main_image_data || {},
+                        edit_preview_image_data: innerVariant.edit_preview_image_data || {},
+                    }))
+                };
+            }
+        });
+    };
+
     const getParentProductDetail = async () => {
         try {
             const res = await ApiService.get(
@@ -575,7 +900,6 @@ const ParentProductIdentity = ({ productId }) => {
                 const resData = res?.data?.data;
                 setImgName(resData?.image);
 
-                // Find vendor from vendors list if vendor_id exists
                 const vendor = resData?.vendor_id ? vendors.find(v => v._id === resData.vendor_id) : null;
 
                 setFormData((prev) => ({
@@ -584,15 +908,29 @@ const ParentProductIdentity = ({ productId }) => {
                     description: resData?.description || "",
                     sellerSku: resData?.seller_sku || "",
                     images: [{ src: `${res?.data?.base_url}${resData?.image}` }],
-                    zoom: resData?.zoom || {scale: 1, x: 0, y: 0},
+                    zoom: resData?.zoom || { scale: 1, x: 0, y: 0 },
                     variant_id: resData?.variant_id?.map((option) => option?._id) || [],
                     variant_name: resData?.variant_id?.map((option) => option?.variant_name) || [],
                     subCategory: resData?.sub_category || "",
-                    vendor: vendor || null // Set vendor
+                    vendor: vendor || null
                 }));
 
                 setParentId(resData?._id);
                 setVarientAttribute(resData?.variant_attribute_id.map((option) => option._id) || []);
+
+                // FIX: Convert guide object to array format
+                const fixedProductVariants = resData?.product_variants?.map(variant => {
+                    if (variant.guide && !Array.isArray(variant.guide)) {
+                        return {
+                            ...variant,
+                            guide: [variant.guide] // Convert object to array
+                        };
+                    }
+                    return variant;
+                }) || [];
+
+                console.log("Fixed Product Variant Res", fixedProductVariants);
+                setProductVariations(fixedProductVariants);
 
                 if (resData?.sku && resData?.sku.length > 0) {
                     const arr = resData.sku.map(async (sku, i) => {
@@ -628,12 +966,12 @@ const ParentProductIdentity = ({ productId }) => {
                             return {
                                 ...obj,
                                 _id: obj.product_id,
+                                product_id: obj.product_id,
                                 sale_end_date,
                                 sale_start_date,
                                 price: obj.price || "",
                                 sale_price: obj.sale_price || "",
                                 qty: obj.qty || "",
-                                // Add flag to indicate if this is an existing product
                                 isExistingProduct: true
                             };
                         }
@@ -688,8 +1026,9 @@ const ParentProductIdentity = ({ productId }) => {
         }
     }, [formData?.variant_id, varintList]);
 
+    // FIXED: This useEffect was overwriting the product variations data INCLUDING GUIDE DATA
     useEffect(() => {
-        if (varientAttribute && formData?.variantData) {
+        if (varientAttribute && formData?.variantData && formData.variantData.length > 0) {
             const filteredData = formData.variantData.reduce((acc, item) => {
                 if (item?.variant_attribute) {
                     const filteredAttributes = item.variant_attribute.filter((variant) =>
@@ -705,32 +1044,98 @@ const ParentProductIdentity = ({ productId }) => {
 
             setFormData((prev) => ({ ...prev, Innervariations: filteredData }));
 
+            // Only sync product variations if we don't have existing data (for new products)
+            // OR if we need to update based on filtered data changes
             if (Object.keys(filteredData).length > 0) {
-                const initialCombinations = generateCombinations(filteredData);
-                updateCombinationMap(initialCombinations);
+                // Check if we have existing product variations (from API response)
+                const hasExistingProductVariations = productVariations.length > 0;
 
-                if (variantArrValues.length === 0) {
-                    const initialVariantData = initialCombinations.map(() => ({
-                        _id: "",
-                        product_id: "",
-                        sale_price: "",
-                        price: "",
-                        sale_start_date: "",
-                        sale_end_date: "",
-                        qty: ""
-                    }));
-                    setVariantArrValue(initialVariantData);
-                    setSellerSku(Array(initialCombinations.length).fill(""));
+                if (!hasExistingProductVariations) {
+                    // For new products, create initial product variations
+                    const newProductVariations = formData.variantData.map(variant => {
+                        const innerVariants = filteredData[variant.variant_name] || [];
+
+                        return {
+                            variant_name: variant.variant_name,
+                            variant_attributes: innerVariants.map(innerVariant => ({
+                                attribute: innerVariant.attribute_value,
+                                main_images: [null, null, null],
+                                preview_image: innerVariant.preview_image || "",
+                                thumbnail: innerVariant.thumbnail || "",
+                                edit_main_image: null,
+                                edit_preview_image: innerVariant.edit_preview_image || "",
+                                edit_main_image_data: innerVariant.edit_main_image_data || {},
+                                edit_preview_image_data: innerVariant.edit_preview_image_data || {},
+                            }))
+                        };
+                    });
+                    setProductVariations(newProductVariations);
+                } else {
+                    // For existing products, check if we need to sync
+                    // Only sync if the attribute set has actually changed (not for drag & drop reordering)
+                    const currentAttributeSet = new Set();
+                    productVariations.forEach(variant => {
+                        variant.variant_attributes.forEach(attr => {
+                            currentAttributeSet.add(attr.attribute);
+                        });
+                    });
+
+                    const newAttributeSet = new Set();
+                    Object.values(filteredData).forEach(attributes => {
+                        attributes.forEach(attr => {
+                            newAttributeSet.add(attr.attribute_value);
+                        });
+                    });
+
+                    // Only sync if attributes have been added or removed, not just reordered
+                    const attributesChanged =
+                        currentAttributeSet.size !== newAttributeSet.size ||
+                        [...currentAttributeSet].some(attr => !newAttributeSet.has(attr)) ||
+                        [...newAttributeSet].some(attr => !currentAttributeSet.has(attr));
+
+                    console.log("🔄 Attribute sync check:", {
+                        currentAttributes: [...currentAttributeSet],
+                        newAttributes: [...newAttributeSet],
+                        attributesChanged
+                    });
+
+                    if (attributesChanged) {
+                        console.log("🔄 Attributes changed, syncing...");
+                        const syncedProductVariations = syncVariantAttributesWithExistingData(filteredData, productVariations);
+                        setProductVariations(syncedProductVariations);
+                    } else {
+                        console.log("🔄 Only reordering detected, preserving current order");
+                        // Don't update productVariations - preserve the drag & drop order
+                    }
+                }
+
+                if (Object.keys(filteredData).length > 0) {
+                    const initialCombinations = generateCombinations(filteredData);
+                    updateCombinationMap(initialCombinations);
+
+                    if (variantArrValues.length === 0) {
+                        const initialVariantData = initialCombinations.map(() => ({
+                            _id: "",
+                            product_id: "",
+                            sale_price: "",
+                            price: "",
+                            sale_start_date: "",
+                            sale_end_date: "",
+                            qty: ""
+                        }));
+                        setVariantArrValue(initialVariantData);
+                        setSellerSku(Array(initialCombinations.length).fill(""));
+                    }
                 }
             }
         }
-    }, [formData?.variantData]);
+    }, [varientAttribute, formData?.variantData]);
 
     useEffect(() => {
         if (productId) {
             getParentProductDetail();
         }
-    }, [vendors]); // Added vendors dependency to ensure vendors are loaded before setting vendor
+    }, [vendors]);
 
     const currentCombinations = getCurrentCombinations();
 
@@ -779,9 +1184,9 @@ const ParentProductIdentity = ({ productId }) => {
                                 <span
                                     style={{ color: "red", fontSize: "15px", marginRight: "3px", marginLeft: "3px" }}
                                 >
-                  {" "}
+                                    {" "}
                                     *
-                </span>
+                                </span>
                                 :
                             </Box>
                             <Box
@@ -846,9 +1251,9 @@ const ParentProductIdentity = ({ productId }) => {
                                 <span
                                     style={{ color: "red", fontSize: "15px", marginRight: "3px", marginLeft: "3px" }}
                                 >
-                  {" "}
+                                    {" "}
                                     *
-                </span>
+                                </span>
                                 :
                             </Box>
                             <Box
@@ -909,9 +1314,9 @@ const ParentProductIdentity = ({ productId }) => {
                                 <span
                                     style={{ color: "red", fontSize: "15px", marginRight: "3px", marginLeft: "3px" }}
                                 >
-                  {" "}
+                                    {" "}
                                     *
-                </span>
+                                </span>
                                 :
                             </Box>
                             <Box
@@ -1016,9 +1421,9 @@ const ParentProductIdentity = ({ productId }) => {
                                 <span
                                     style={{ color: "red", fontSize: "15px", marginRight: "3px", marginLeft: "3px" }}
                                 >
-                  {" "}
+                                    {" "}
                                     *
-                </span>
+                                </span>
                                 :
                             </Box>
                             <Box
@@ -1133,19 +1538,19 @@ const ParentProductIdentity = ({ productId }) => {
                                 {images.length > 0
                                     ? ""
                                     : inputErrors.parentImage && (
-                                    <Typography
-                                        sx={{
-                                            fontSize: "12px",
-                                            display: "block",
-                                            color: "#FF3D57",
-                                            marginLeft: "14px",
-                                            marginRight: "14px",
-                                            marginTop: "3px"
-                                        }}
-                                    >
-                                        {inputErrors.parentImage}
-                                    </Typography>
-                                )}
+                                        <Typography
+                                            sx={{
+                                                fontSize: "12px",
+                                                display: "block",
+                                                color: "#FF3D57",
+                                                marginLeft: "14px",
+                                                marginRight: "14px",
+                                                marginTop: "3px"
+                                            }}
+                                        >
+                                            {inputErrors.parentImage}
+                                        </Typography>
+                                    )}
                             </Box>
                         </Box>
                         <Box
@@ -1170,9 +1575,9 @@ const ParentProductIdentity = ({ productId }) => {
                                 <span
                                     style={{ color: "red", fontSize: "15px", marginRight: "3px", marginLeft: "3px" }}
                                 >
-                  {" "}
+                                    {" "}
                                     *
-                </span>
+                                </span>
                                 :
                             </Box>
                             <Box width={"100%"}>
@@ -1307,26 +1712,53 @@ const ParentProductIdentity = ({ productId }) => {
                                 </Stack>
                             ))}
                         </Stack>
-                        {Object.keys(formData?.Innervariations).length > 0 ? (
-                            <ProductParentTable
-                                variantArrValues={variantArrValues}
-                                setVariantArrValue={setVariantArrValue}
-                                combinations={currentCombinations}
-                                formdataaaaa={formData.variant_name}
-                                sellerSky={sellerSky}
-                                setSellerSku={setSellerSku}
-                                setIsconponentLoader={setIsconponentLoader}
-                                skuErrors={skuErrors}
-                                setSkuErrors={setSkuErrors}
-                                loadingSkus={loadingSkus}
-                                setLoadingSkus={setLoadingSkus}
-                                parentVariants={formData.variantData}
-                                checkForDuplicateSkus={checkForDuplicateSkus}
-                                selectedVendor={formData.vendor} // Pass selected vendor to table
-                            />
-                        ) : (
-                            <></>
-                        )}
+                        <Tabs value={currentTab} onChange={handleTabChanges}>
+                            <Tab key={"Variant Combinations"} label={"Variant Combinations"} value={"combination"} />
+                            <Tab key={"Product Variants"} label={"Product Variants"} value={"variants"} />
+                        </Tabs>
+                        <TabContext value={currentTab} key={currentTab}>
+                            <TabPanel key={"Variant Combinations"} value={"combination"}>
+                                {Object.keys(formData?.Innervariations).length > 0 && (
+                                    <>
+                                        <ProductParentTable
+                                            variantArrValues={variantArrValues}
+                                            setVariantArrValue={setVariantArrValue}
+                                            combinations={currentCombinations}
+                                            formdataaaaa={formData.variant_name}
+                                            sellerSky={sellerSky}
+                                            setSellerSku={setSellerSku}
+                                            setIsconponentLoader={setIsconponentLoader}
+                                            skuErrors={skuErrors}
+                                            setSkuErrors={setSkuErrors}
+                                            loadingSkus={loadingSkus}
+                                            setLoadingSkus={setLoadingSkus}
+                                            parentVariants={formData.variantData}
+                                            checkForDuplicateSkus={checkForDuplicateSkus}
+                                            selectedVendor={formData.vendor}
+                                        />
+                                    </>
+                                )}
+                            </TabPanel>
+                            <TabPanel key={"Product Variants"} value={"variants"}>
+                                {/* Product Variations Table */}
+                                {productVariations.length > 0 && (
+                                    <Box sx={{ mt: 4 }}>
+                                        <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, color: "primary.main" }}>
+                                            Product Variations
+                                        </Typography>
+                                        <ProductVariationsTable
+                                            productVariations={productVariations}
+                                            onImageUpload={handleProductVariationImageUpload}
+                                            onImageRemove={handleProductVariationImageRemove}
+                                            onImageEdit={handleProductVariationImageEdit}
+                                            onRowReorder={handleProductVariationReorder}
+                                            onGuideUpdate={handleProductVariationGuideUpdate}
+                                        />
+                                    </Box>
+                                )}
+                            </TabPanel>
+                        </TabContext>
+
                         <Box
                             sx={{
                                 display: "flex",
