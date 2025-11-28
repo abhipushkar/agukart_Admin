@@ -229,12 +229,25 @@ const ParentProductIdentity = ({ productId }) => {
     }, [formData.variant_name, formData.Innervariations]);
 
     const varintHandler = (event, value) => {
+        const previousVariantNames = formData.variant_name;
+        const newVariantNames = value.map((option) => option.variant_name);
+
         setFormData((prev) => ({
             ...prev,
             variantData: value,
             variant_id: value.map((option) => option.id),
-            variant_name: value.map((option) => option.variant_name)
+            variant_name: newVariantNames
         }));
+
+        // Remove product variations for deselected variants
+        const removedVariants = previousVariantNames.filter(name => !newVariantNames.includes(name));
+        if (removedVariants.length > 0) {
+            const updatedProductVariations = productVariations.filter(
+                variation => !removedVariants.includes(variation.variant_name)
+            );
+            setProductVariations(updatedProductVariations);
+        }
+
         setInputErrors((prev) => ({ ...prev, variations: "" }));
     };
 
@@ -314,6 +327,7 @@ const ParentProductIdentity = ({ productId }) => {
     };
 
     const InnervariationsHandle = (variantId) => (event, newValue) => {
+        const previousAttributes = formData.Innervariations[variantId] || [];
         const updatedInnervariations = {
             ...formData.Innervariations,
             [variantId]: newValue
@@ -346,16 +360,32 @@ const ParentProductIdentity = ({ productId }) => {
             const existingVariant = productVariations.find(pv => pv.variant_name === variant.variant_name);
 
             if (existingVariant) {
-                // Preserve existing attributes and their images
-                const updatedAttributes = innerVariants.map(innerVariant => {
-                    const existingAttribute = existingVariant.variant_attributes.find(attr =>
+                // Remove attributes that are no longer selected
+                const previousAttributeValues = previousAttributes.map(attr => attr.attribute_value);
+                const currentAttributeValues = innerVariants.map(attr => attr.attribute_value);
+                const removedAttributes = previousAttributeValues.filter(attr => !currentAttributeValues.includes(attr));
+
+                let updatedAttributes = [];
+
+                if (removedAttributes.length > 0) {
+                    // Filter out removed attributes
+                    updatedAttributes = existingVariant.variant_attributes.filter(
+                        attr => !removedAttributes.includes(attr.attribute)
+                    );
+                } else {
+                    // Preserve existing order and add new attributes
+                    updatedAttributes = [...existingVariant.variant_attributes];
+                }
+
+                // Add new attributes that don't exist yet
+                innerVariants.forEach(innerVariant => {
+                    const existingAttribute = updatedAttributes.find(attr =>
                         attr.attribute === innerVariant.attribute_value
                     );
 
-                    if (existingAttribute) {
-                        return existingAttribute;
-                    } else {
-                        return {
+                    if (!existingAttribute) {
+                        updatedAttributes.push({
+                            _id: innerVariant._id, // Include attribute ID
                             attribute: innerVariant.attribute_value,
                             main_images: [null, null, null],
                             preview_image: innerVariant.preview_image || "",
@@ -364,19 +394,22 @@ const ParentProductIdentity = ({ productId }) => {
                             edit_preview_image: innerVariant.edit_preview_image || "",
                             edit_main_image_data: innerVariant.edit_main_image_data || {},
                             edit_preview_image_data: innerVariant.edit_preview_image_data || {},
-                        };
+                        });
                     }
                 });
 
                 return {
-                    variant_name: variant.variant_name,
+                    _id: variant._id, // Include variant ID
+                    ...existingVariant,
                     variant_attributes: updatedAttributes,
                     guide: existingVariant.guide || [] // PRESERVE GUIDE DATA
                 };
             } else {
                 return {
+                    _id: variant._id, // Include variant ID
                     variant_name: variant.variant_name,
                     variant_attributes: innerVariants.map(innerVariant => ({
+                        _id: innerVariant._id, // Include attribute ID
                         attribute: innerVariant.attribute_value,
                         main_images: [null, null, null],
                         preview_image: innerVariant.preview_image || "",
@@ -391,7 +424,6 @@ const ParentProductIdentity = ({ productId }) => {
         });
 
         setProductVariations(updatedProductVariations);
-
         setInputErrors((prev) => ({ ...prev, innervariation: "" }));
     };
 
@@ -495,6 +527,10 @@ const ParentProductIdentity = ({ productId }) => {
         const formDataObj = new FormData();
 
         productVariations.forEach((variant, variantIndex) => {
+            // Include variant ID
+            if (variant._id) {
+                formDataObj.append(`product_variation[${variantIndex}][_id]`, variant._id);
+            }
             formDataObj.append(`product_variation[${variantIndex}][variant_name]`, variant.variant_name);
 
             // Handle guide data
@@ -520,6 +556,10 @@ const ParentProductIdentity = ({ productId }) => {
             }
 
             variant.variant_attributes.forEach((attribute, attrIndex) => {
+                // Include attribute ID
+                if (attribute._id) {
+                    formDataObj.append(`product_variation[${variantIndex}][variant_attributes][${attrIndex}][_id]`, attribute._id);
+                }
                 formDataObj.append(`product_variation[${variantIndex}][variant_attributes][${attrIndex}][attribute]`, attribute.attribute);
 
                 // Handle main images
@@ -855,6 +895,7 @@ const ParentProductIdentity = ({ productId }) => {
                     } else {
                         // Create new attribute with data from variant_attribute_id
                         return {
+                            _id: innerVariant._id,
                             attribute: innerVariant.attribute_value,
                             main_images: [null, null, null],
                             preview_image: innerVariant.preview_image || "",
@@ -874,8 +915,10 @@ const ParentProductIdentity = ({ productId }) => {
             } else {
                 // Create new variant with data from variant_attribute_id
                 return {
+                    _id: variant._id,
                     variant_name: variant.variant_name,
                     variant_attributes: innerVariants.map(innerVariant => ({
+                        _id: innerVariant._id,
                         attribute: innerVariant.attribute_value,
                         main_images: [null, null, null],
                         preview_image: innerVariant.preview_image || "",
@@ -1056,8 +1099,10 @@ const ParentProductIdentity = ({ productId }) => {
                         const innerVariants = filteredData[variant.variant_name] || [];
 
                         return {
+                            _id: variant._id, // Include variant ID
                             variant_name: variant.variant_name,
                             variant_attributes: innerVariants.map(innerVariant => ({
+                                _id: innerVariant._id, // Include attribute ID
                                 attribute: innerVariant.attribute_value,
                                 main_images: [null, null, null],
                                 preview_image: innerVariant.preview_image || "",
@@ -1127,7 +1172,13 @@ const ParentProductIdentity = ({ productId }) => {
                         setSellerSku(Array(initialCombinations.length).fill(""));
                     }
                 }
+            } else {
+                // If no filtered data, clear product variations
+                setProductVariations([]);
             }
+        } else {
+            // If no variant data, clear product variations
+            setProductVariations([]);
         }
     }, [varientAttribute, formData?.variantData]);
 
