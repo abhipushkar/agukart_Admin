@@ -6,7 +6,7 @@ import { useEffect } from "react";
 import { ApiService } from "app/services/ApiService";
 import { apiEndpoints } from "app/constant/apiEndpoints";
 import { localStorageKey } from "app/constant/localStorageKey";
-import { Box,MenuItem, Tab, Tabs, TextField, Typography } from "@mui/material";
+import { Box, MenuItem, Tab, Tabs, TextField, Typography } from "@mui/material";
 import { dashboardDateRange } from "app/data/Index";
 import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
@@ -20,9 +20,9 @@ const Graph = () => {
   });
   const [tab, setTab] = useState("visit");
   console.log({ tab }, "ghf");
-  const [xAxisGraphData,setXAxisGraphData] = useState([]);
+  const [xAxisGraphData, setXAxisGraphData] = useState([]);
   const [yAxisGraphData, setYAxisGraphData] = useState([]);
-  const [countGraphData,setCountGraphData] = useState({});
+  const [countGraphData, setCountGraphData] = useState({});
   const auth_key = localStorage.getItem(localStorageKey.auth_key);
 
   const options = {
@@ -33,7 +33,7 @@ const Graph = () => {
     },
 
     xAxis: {
-      categories:xAxisGraphData,
+      categories: xAxisGraphData,
       labels: {
         style: {
           color: "#bec5cc",
@@ -110,78 +110,80 @@ const Graph = () => {
       }));
     }
   };
-  const getGraphData = async () => {
-    try {
-      const res = await ApiService.get(
-        `${apiEndpoints.getGraphData}?startDate=${date?.from}&endDate=${date?.to}&type=${tab}`,
-        auth_key
-      );
-      if (res?.data?.success) {
-        console.log(res?.data, "fdtgfgfgfgfgfg");
-        const startDate = dayjs(date?.from);
-        const endDate = dayjs(date?.to);
-        const diff = endDate.diff(startDate);
-        const duration = dayjs.duration(diff);
-        const days = duration.asDays();
-        let xAxisGraphData = [];
-        let yAxisGraphData = [];
-        console.log(days,"fgjhtjhtjtjtjt")
-        if(tab == "conversion rate"){
-          if(days <= 1){
-            xAxisGraphData = res?.data?.data?.map((item) => `${item?.hour} hr`);
-            yAxisGraphData = res?.data?.data?.map((item) => item?.conversionRate);
-          }else if(days <= 30){
-            xAxisGraphData = res?.data?.data?.map((item) => `${item?.day} ${new Date(item?.year, item?.month - 1).toLocaleString('default', { month: 'long' })}`);
-            yAxisGraphData = res?.data?.data?.map((item) => item?.conversionRate);
-          }else{
-            xAxisGraphData = res?.data?.data?.map((item) => `${new Date(item?.year, item?.month - 1).toLocaleString('default', { month: 'long' })} ${item?.year}`);
-            yAxisGraphData = res?.data?.data?.map((item) => item?.conversionRate);
-          }
-        }else{
-          if(days <= 1){
-            xAxisGraphData = res?.data?.data?.map((item) => `${item?.hour} hr`);
-            yAxisGraphData = res?.data?.data?.map((item) => item?.total);
-          }else if(days <= 30){
-            xAxisGraphData = res?.data?.data?.map((item) => `${item?.day} ${new Date(item?.year, item?.month - 1).toLocaleString('default', { month: 'long' })}`);
-            yAxisGraphData = res?.data?.data?.map((item) => item?.total);
-          }else{
-            xAxisGraphData = res?.data?.data?.map((item) => `${new Date(item?.year, item?.month - 1).toLocaleString('default', { month: 'long' })} ${item?.year}`);
-            yAxisGraphData = res?.data?.data?.map((item) => item?.total);
-          }
-        }
-        setXAxisGraphData(xAxisGraphData || []);
-        setYAxisGraphData(yAxisGraphData || []);
-      } else {
-        setYAxisGraphData([]);
-      }
-    } catch (err) {
-      console.log(err);
-    }
-  };
+
 
   useEffect(() => {
-    getGraphData();
-  }, [date,tab]);
-
-  const getCountGraphData = async()=>{
-    try {
-      const res = await ApiService.get(
-        `${apiEndpoints.getCountGraphData}?startDate=${date?.from}&endDate=${date?.to}`,
-        auth_key
-      );
-      if (res?.data?.success) {
-        setCountGraphData(res?.data?.data)
-      } else {
-        setCountGraphData({});
+    const getGraphData = async () => {
+      try {
+        const res = await ApiService.get(
+          `${apiEndpoints.getGraphData}?startDate=${date?.from}&endDate=${date?.to}&type=${tab}`,
+          auth_key
+        );
+        if (res?.data?.success) {
+          console.log(res?.data, "fdtgfgfgfgfgfg");
+          const startDate = dayjs(date?.from);
+          const endDate = dayjs(date?.to);
+          const diff = endDate.diff(startDate);
+          const duration = dayjs.duration(diff);
+          const days = duration.asDays();
+          let xAxisGraphData = [];
+          let yAxisGraphData = [];
+          console.log(days, "fgjhtjhtjtjtjt")
+          if (tab === "conversion rate") {
+            if (days <= 1) {
+              xAxisGraphData = res?.data?.data?.map((item) => `${item?.hour} hr`);
+              yAxisGraphData = res?.data?.data?.map((item) => item?.conversionRate);
+            } else if (days <= 30) {
+              xAxisGraphData = res?.data?.data?.map((item) => `${item?.day} ${new Date(item?.year, item?.month - 1).toLocaleString('default', { month: 'long' })}`);
+              yAxisGraphData = res?.data?.data?.map((item) => item?.conversionRate);
+            } else {
+              xAxisGraphData = res?.data?.data?.map((item) => `${new Date(item?.year, item?.month - 1).toLocaleString('default', { month: 'long' })} ${item?.year}`);
+              yAxisGraphData = res?.data?.data?.map((item) => item?.conversionRate);
+            }
+          } else {
+            if (days <= 1) {
+              xAxisGraphData = res?.data?.data?.map((item) => `${item?.hour} hr`);
+              yAxisGraphData = res?.data?.data?.map((item) => item?.total);
+            } else if (days <= 30) {
+              xAxisGraphData = res?.data?.data?.map((item) => `${item?.day} ${new Date(item?.year, item?.month - 1).toLocaleString('default', { month: 'long' })}`);
+              yAxisGraphData = res?.data?.data?.map((item) => item?.total);
+            } else {
+              xAxisGraphData = res?.data?.data?.map((item) => `${new Date(item?.year, item?.month - 1).toLocaleString('default', { month: 'long' })} ${item?.year}`);
+              yAxisGraphData = res?.data?.data?.map((item) => item?.total);
+            }
+          }
+          setXAxisGraphData(xAxisGraphData || []);
+          setYAxisGraphData(yAxisGraphData || []);
+        } else {
+          setYAxisGraphData([]);
+        }
+      } catch (err) {
+        console.error(err);
       }
-    } catch (err) {
-      console.log(err);
-    }
-  }
+    };
 
-  useEffect(()=>{
+    getGraphData();
+  }, [auth_key, date, tab]);
+
+  useEffect(() => {
+    const getCountGraphData = async () => {
+      try {
+        const res = await ApiService.get(
+          `${apiEndpoints.getCountGraphData}?startDate=${date?.from}&endDate=${date?.to}`,
+          auth_key
+        );
+        if (res?.data?.success) {
+          setCountGraphData(res?.data?.data)
+        } else {
+          setCountGraphData({});
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
     getCountGraphData();
-  },[date])
+  }, [auth_key, date])
 
   return (
     <>
@@ -219,7 +221,7 @@ const Graph = () => {
                   <Typography variant="subtitle1" fontWeight="bold" fontSize="1.25rem" color="text.primary">
                     Visit
                   </Typography>
-                  <Typography variant="body2"  fontSize="1.1rem"  color="text.primary">
+                  <Typography variant="body2" fontSize="1.1rem" color="text.primary">
                     {countGraphData.visit}
                   </Typography>
                 </Box>

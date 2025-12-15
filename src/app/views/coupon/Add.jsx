@@ -14,15 +14,13 @@ import { useEffect } from "react";
 import ConfirmModal from "app/components/ConfirmModal";
 import ClearIcon from "@mui/icons-material/Clear";
 import { useProfileData } from "app/contexts/profileContext";
-import { set } from "lodash";
+import { useCallback } from "react";
 
 
 const Add = () => {
-    const [query, setQuery] = useSearchParams();
+    const [query] = useSearchParams();
     const queryId = query.get("id");
-    console.log(queryId, "queryId");
-    const { logUserData, setLogUserData } = useProfileData();
-    console.log(logUserData, "logUserData")
+    const { logUserData } = useProfileData();
     const navigate = useNavigate();
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
     const formatDateToLocalInput = (date, hours = 0, minutes = 0) => {
@@ -50,7 +48,7 @@ const Add = () => {
         expiryDate: formatDateToLocalInput(new Date(), 12, 0),
         description: ""
     });
-    console.log({formValues})
+    console.log({ formValues })
     const [errors, setErrors] = useState({
         puchasedItem: "",
         tags: "",
@@ -69,11 +67,11 @@ const Add = () => {
     const [toggleProductWise, setToggleProductWise] = useState(false);
     const [toggleEntireCalalog, setToggleEntireCalalog] = useState(false);
 
-    const [open, setOpen] = React.useState(false);
+    const [open, setOpen] = useState(false);
     const [type, setType] = useState("");
     const [route, setRoute] = useState(null);
     const [msg, setMsg] = useState(null);
-    const [allCategory, setAllCategory] = useState([]);
+    const [allCategory] = useState([]);
     console.log(allCategory, "allCategory");
     console.log({ formValues })
 
@@ -84,14 +82,14 @@ const Add = () => {
         setRoute(ROUTE_CONSTANT.login);
     };
 
-    const handleOpen = (type, msg) => {
+    const handleOpen = useCallback((type, msg) => {
         setMsg(msg?.message);
         setOpen(true);
         setType(type);
         if (msg?.response?.status === 401) {
             logOut();
         }
-    };
+    }, []);
 
     const handleClose = () => {
         setOpen(false);
@@ -105,14 +103,14 @@ const Add = () => {
     const handleChange = (e) => {
         const { name, value } = e.target;
         console.log({ name, value });
-        if (name == "puchasedItem" && value == "Product Wise") {
+        if (name === "puchasedItem" && value === "Product Wise") {
             setToggleProductWise(true);
             setToggleEntireCalalog(false);
             setFormValues((prev) => ({ ...prev, tags: [] }));
             setFormValues((prev) => ({ ...prev, [name]: value }));
             setErrors((prv) => ({ ...prv, [name]: "" }));
         }
-        else if (name == "puchasedItem" && value == "Entire Catalog") {
+        else if (name === "puchasedItem" && value === "Entire Catalog") {
             setToggleEntireCalalog(true);
             setToggleProductWise(false);
             setFormValues((prev) => ({ ...prev, tags: [] }));
@@ -128,7 +126,7 @@ const Add = () => {
     const handleAddCoupon = async () => {
         const newErrors = {};
         if (!formValues.puchasedItem) newErrors.puchasedItem = "Purchased Item is required";
-        if (formValues.puchasedItem == "Product Wise" && !formValues.tags.length > 0) newErrors.tags = "Tags is required";
+        if (formValues.puchasedItem === "Product Wise" && !formValues.tags.length > 0) newErrors.tags = "Tags is required";
         if (!formValues.title) newErrors.title = "Coupon Title is required";
         if (!formValues.discountType) newErrors.discountType = "Discount Type is required";
         if (formValues.discountType === "percentage" && formValues.discountAmout > 100) newErrors.discountAmout = "Discount Amount cannot be more than 100 when Discount Type is Percentage";
@@ -170,7 +168,7 @@ const Add = () => {
                 if (res?.status === 200) {
                     console.log("res---", res);
                     // if (!queryId) {
-                        setRoute(ROUTE_CONSTANT.catalog.coupon.list);
+                    setRoute(ROUTE_CONSTANT.catalog.coupon.list);
                     // }
                     handleOpen("success", res?.data);
                 }
@@ -185,54 +183,55 @@ const Add = () => {
         const localDate = new Date(date.getTime() - offset * 60000);
         return localDate.toISOString().slice(0, 16);
     };
-    const getCoupon = async () => {
-        try {
-            const res = await ApiService.get(`${apiEndpoints.getCouponById}/${queryId}`, auth_key);
-            if (res?.status === 200) {
-                console.log("res-----", res);
-                const resData = res?.data?.coupon;
-                setFormValues((prev) => ({
-                    ...prev,
-                    puchasedItem: resData?.purchased_items,
-                    tags: resData?.product_id,
-                    title: resData?.coupon_title,
-                    coupon_code: resData?.coupon_code,
-                    discountType: resData?.discount_type,
-                    discountAmout: resData?.discount_amount,
-                    discountMAxAmount: resData?.max_discount,
-                    noOfTimes: resData?.no_of_times,
-                    valid: resData?.valid_for,
-                    startDate: formatDateTimeLocal(resData.start_date),
-                    expiryDate: formatDateTimeLocal(resData.expiry_date),
-                    description: resData?.coupon_description
-                }));
-                if (resData?.purchased_items == "Product Wise") {
-                    setToggleProductWise(true);
-                } else if (resData?.purchased_items == "Entire Catalog") {
-                    setToggleEntireCalalog(true);
-                }
-            }
-        } catch (error) {
-            handleOpen("error", error?.response?.data || error);
-        }
-    };
 
     useEffect(() => {
+        const getCoupon = async () => {
+            try {
+                const res = await ApiService.get(`${apiEndpoints.getCouponById}/${queryId}`, auth_key);
+                if (res?.status === 200) {
+                    console.log("res-----", res);
+                    const resData = res?.data?.coupon;
+                    setFormValues((prev) => ({
+                        ...prev,
+                        puchasedItem: resData?.purchased_items,
+                        tags: resData?.product_id,
+                        title: resData?.coupon_title,
+                        coupon_code: resData?.coupon_code,
+                        discountType: resData?.discount_type,
+                        discountAmout: resData?.discount_amount,
+                        discountMAxAmount: resData?.max_discount,
+                        noOfTimes: resData?.no_of_times,
+                        valid: resData?.valid_for,
+                        startDate: formatDateTimeLocal(resData.start_date),
+                        expiryDate: formatDateTimeLocal(resData.expiry_date),
+                        description: resData?.coupon_description
+                    }));
+                    if (resData?.purchased_items === "Product Wise") {
+                        setToggleProductWise(true);
+                    } else if (resData?.purchased_items === "Entire Catalog") {
+                        setToggleEntireCalalog(true);
+                    }
+                }
+            } catch (error) {
+                handleOpen("error", error?.response?.data || error);
+            }
+        };
+
         if (queryId) {
             getCoupon();
         }
-    }, [queryId]);
+    }, [auth_key, handleOpen, queryId]);
 
-    const handleTagHandler = (event, newValue) => {
+    const handleTagHandler = (_, newValue) => {
         // Process each value in newValue array and split using comma, space, or newline
         const processedValues = newValue
-            .flatMap(value => 
-            typeof value === "string" 
-                ? value.split(/[\s,]+/).map(v => v.trim())  // Split by space, comma, or newline
-                : [value]
+            .flatMap(value =>
+                typeof value === "string"
+                    ? value.split(/[\s,]+/).map(v => v.trim())  // Split by space, comma, or newline
+                    : [value]
             )
             .filter(v => v); // Remove empty values
-        
+
         setFormValues((prev) => ({
             ...prev,
             tags: [...new Set(processedValues)], // Remove duplicates
@@ -935,7 +934,7 @@ const Add = () => {
                             </Typography>
                         )}
                     </Box>
-                     <Box
+                    <Box
                         sx={{
                             display: "flex",
                             marginBottom: "20px",
@@ -1020,58 +1019,58 @@ const Add = () => {
                         </Box>
                         <Box width="50%">
                             <TextField
-                            error={errors.startDate && true}
-                            helperText={errors.startDate}
-                            onBlur={() => {
-                                if (!formValues.startDate) {
-                                setErrors((prv) => ({ ...prv, startDate: "Start Date & Time is Required" }));
-                                }
-                            }}
-                            type="datetime-local"
-                            name="startDate"
-                            label="Start Date & Time *"
-                            onChange={handleChange}
-                            value={formValues.startDate}
-                            InputLabelProps={{
-                                shrink: true
-                            }}
-                            sx={{
-                                width: "100%",
-                                "& .MuiInputBase-root": {
-                                height: "40px"
-                                },
-                                "& .MuiFormLabel-root": {
-                                top: "-7px"
-                                }
-                            }}
+                                error={errors.startDate && true}
+                                helperText={errors.startDate}
+                                onBlur={() => {
+                                    if (!formValues.startDate) {
+                                        setErrors((prv) => ({ ...prv, startDate: "Start Date & Time is Required" }));
+                                    }
+                                }}
+                                type="datetime-local"
+                                name="startDate"
+                                label="Start Date & Time *"
+                                onChange={handleChange}
+                                value={formValues.startDate}
+                                InputLabelProps={{
+                                    shrink: true
+                                }}
+                                sx={{
+                                    width: "100%",
+                                    "& .MuiInputBase-root": {
+                                        height: "40px"
+                                    },
+                                    "& .MuiFormLabel-root": {
+                                        top: "-7px"
+                                    }
+                                }}
                             />
                         </Box>
                         <Box width="50%">
                             <TextField
-                            error={errors.expiryDate && true}
-                            helperText={errors.expiryDate}
-                            onBlur={() => {
-                                if (!formValues.expiryDate) {
-                                setErrors((prv) => ({ ...prv, expiryDate: "Expiry Date & Time is Required" }));
-                                }
-                            }}
-                            type="datetime-local"
-                            name="expiryDate"
-                            label="Expiry Date & Time *"
-                            onChange={handleChange}
-                            value={formValues.expiryDate}
-                            InputLabelProps={{
-                                shrink: true
-                            }}
-                            sx={{
-                                width: "100%",
-                                "& .MuiInputBase-root": {
-                                height: "40px"
-                                },
-                                "& .MuiFormLabel-root": {
-                                top: "-7px"
-                                }
-                            }}
+                                error={errors.expiryDate && true}
+                                helperText={errors.expiryDate}
+                                onBlur={() => {
+                                    if (!formValues.expiryDate) {
+                                        setErrors((prv) => ({ ...prv, expiryDate: "Expiry Date & Time is Required" }));
+                                    }
+                                }}
+                                type="datetime-local"
+                                name="expiryDate"
+                                label="Expiry Date & Time *"
+                                onChange={handleChange}
+                                value={formValues.expiryDate}
+                                InputLabelProps={{
+                                    shrink: true
+                                }}
+                                sx={{
+                                    width: "100%",
+                                    "& .MuiInputBase-root": {
+                                        height: "40px"
+                                    },
+                                    "& .MuiFormLabel-root": {
+                                        top: "-7px"
+                                    }
+                                }}
                             />
                         </Box>
                     </Box>

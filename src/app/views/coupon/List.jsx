@@ -29,12 +29,10 @@ import { localStorageKey } from "app/constant/localStorageKey";
 import { apiEndpoints } from "app/constant/apiEndpoints";
 import { exportToExcel } from "app/utils/excelExport";
 import { Breadcrumb } from "app/components";
-import styled from "@emotion/styled";
 import ConfirmModal from "app/components/ConfirmModal";
 import OutlinedInput from "@mui/material/OutlinedInput";
 import ListItemText from "@mui/material/ListItemText";
 import Checkbox from "@mui/material/Checkbox";
-import { toast } from "react-toastify";
 
 const ITEM_HEIGHT = 48;
 const ITEM_PADDING_TOP = 8;
@@ -48,7 +46,7 @@ const MenuProps = {
   }
 };
 
-const names = ["Coupon Title", "Coupon Code", "Discount Type","Discount Amount", "Max Discount", "Start Date", "Expiry Date"];
+const names = ["Coupon Title", "Coupon Code", "Discount Type", "Discount Amount", "Max Discount", "Start Date", "Expiry Date"];
 
 const label = { inputProps: { "aria-label": "Switch demo" } };
 
@@ -96,14 +94,14 @@ const List = () => {
     setRoute(ROUTE_CONSTANT.login)
   };
 
-  const handleOpen = (type, msg) => {
+  const handleOpen = useCallback((type, msg) => {
     setMsg(msg?.message);
     setOpen(true);
     setType(type);
     if (msg?.response?.status === 401) {
       logOut()
     }
-  };
+  }, []);
 
   const handleClose = () => {
     setOpen(false);
@@ -169,16 +167,7 @@ const List = () => {
         handleOpen("error", error?.response?.data || error);
       }
     }
-  }, [auth_key, getcouponList, statusData]);
-
-  const Container = styled("div")(({ theme }) => ({
-    margin: "30px",
-    [theme.breakpoints.down("sm")]: { margin: "16px" },
-    "& .breadcrumb": {
-      marginBottom: "30px",
-      [theme.breakpoints.down("sm")]: { marginBottom: "16px" }
-    }
-  }));
+  }, [auth_key, getcouponList, handleOpen, statusData]);
 
   const paginatedcouponList = useMemo(() => {
     return rowsPerPage > 0
@@ -186,44 +175,48 @@ const List = () => {
       : couponList;
   }, [couponList, page, rowsPerPage]);
 
-  const filterHandler = () => {
-    const filteredItems = SearchList.filter((item) =>
-      item.coupon_code.toLowerCase().includes(search.toLowerCase()) ||
-      item.coupon_title.toLowerCase().includes(search.toLowerCase()) ||
-      item.discount_type.toLowerCase().includes(search.toLowerCase())
-    ).sort((a, b) => {
-      const aIndex = Math.min(
-        a.coupon_code.toLowerCase().indexOf(search.toLowerCase()),
-        a.coupon_title.toLowerCase().indexOf(search.toLowerCase()),
-        a.discount_type.toLowerCase().indexOf(search.toLowerCase())
-      );
-      const bIndex = Math.min(
-        b.coupon_code.toLowerCase().indexOf(search.toLowerCase()),
-        b.coupon_title.toLowerCase().indexOf(search.toLowerCase()),
-        b.discount_type.toLowerCase().indexOf(search.toLowerCase())
-      );
-      return aIndex - bIndex || a.coupon_code.localeCompare(b.coupon_code);
-    });
-
-    const filteredItemsWithSNo = filteredItems.map((item, index) => {
-      return { ...item, "S.No": index + 1 };
-    });
-    setCouponList(filteredItemsWithSNo);
-  };
 
 
-  const asyncFilter = async () => {
-    await getcouponList();
-    await filterHandler();
-  };
+
+
 
   useEffect(() => {
+    const filterHandler = () => {
+      const filteredItems = SearchList.filter((item) =>
+        item.coupon_code.toLowerCase().includes(search.toLowerCase()) ||
+        item.coupon_title.toLowerCase().includes(search.toLowerCase()) ||
+        item.discount_type.toLowerCase().includes(search.toLowerCase())
+      ).sort((a, b) => {
+        const aIndex = Math.min(
+          a.coupon_code.toLowerCase().indexOf(search.toLowerCase()),
+          a.coupon_title.toLowerCase().indexOf(search.toLowerCase()),
+          a.discount_type.toLowerCase().indexOf(search.toLowerCase())
+        );
+        const bIndex = Math.min(
+          b.coupon_code.toLowerCase().indexOf(search.toLowerCase()),
+          b.coupon_title.toLowerCase().indexOf(search.toLowerCase()),
+          b.discount_type.toLowerCase().indexOf(search.toLowerCase())
+        );
+        return aIndex - bIndex || a.coupon_code.localeCompare(b.coupon_code);
+      });
+
+      const filteredItemsWithSNo = filteredItems.map((item, index) => {
+        return { ...item, "S.No": index + 1 };
+      });
+      setCouponList(filteredItemsWithSNo);
+    };
+
+    const asyncFilter = async () => {
+      await getcouponList();
+      filterHandler();
+    };
+
     if (search) {
       asyncFilter();
     } else {
       getcouponList();
     }
-  }, [search]);
+  }, [SearchList, getcouponList, search]);
 
   const [order, setOrder] = useState("none");
   const [orderBy, setOrderBy] = useState(null);
@@ -251,7 +244,7 @@ const List = () => {
         handleOpen("error", error);
       }
     }
-  }, [auth_key, coupon_id, getcouponList]);
+  }, [auth_key, coupon_id, getcouponList, handleOpen]);
 
   const sortComparator = (a, b, orderBy) => {
     if (typeof a[orderBy] === "string" && typeof b[orderBy] === "string") {
