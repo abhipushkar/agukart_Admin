@@ -1,7 +1,7 @@
-import { ROUTE_CONSTANT } from "./constant/routeContanst";
+import {ROUTE_CONSTANT} from "./constant/routeContanst";
 
 export const vendorNavigations = [
-    { name: "Dashboard", path: ROUTE_CONSTANT.dashboard, icon: "dashboard" },
+    {name: "Dashboard", path: ROUTE_CONSTANT.dashboard, icon: "dashboard"},
     {
         name: "Message",
         icon: "message",
@@ -11,7 +11,7 @@ export const vendorNavigations = [
         name: "Shipping",
         icon: "group_add",
         children: [
-            { name: "Shipping Settings", iconText: "CT", path: ROUTE_CONSTANT.Shipping.ShippingSettings.list },
+            {name: "Shipping Settings", iconText: "CT", path: ROUTE_CONSTANT.Shipping.ShippingSettings.list},
         ]
     },
     {
@@ -28,8 +28,8 @@ export const vendorNavigations = [
         name: "Catalog",
         icon: "book",
         children: [
-            { name: "Category", iconText: "CT", path: ROUTE_CONSTANT.catalog.category.list },
-            { name: "Admin Category", iconText: "CT", path: ROUTE_CONSTANT.catalog.adminCategory.list },
+            {name: "Category", iconText: "CT", path: ROUTE_CONSTANT.catalog.category.list},
+            {name: "Admin Category", iconText: "CT", path: ROUTE_CONSTANT.catalog.adminCategory.list},
 
             {
                 name: "Brand",
@@ -69,14 +69,6 @@ export const vendorNavigations = [
         path: ROUTE_CONSTANT.policySetting.list
     },
     {
-        name: "Profile",
-        icon: "person",
-        children: [
-            { name: "Edit Profile", iconText: "EP", path: ROUTE_CONSTANT.vendor.editVendorProfile },
-            { name: "Banner Images", iconText: "BI", path: ROUTE_CONSTANT.vendorBannerImage.list },
-        ]
-    },
-    {
         name: "Business Reports",
         icon: "settings",
         children: [
@@ -85,7 +77,7 @@ export const vendorNavigations = [
                 iconText: "CT",
                 path: ROUTE_CONSTANT.businessReport.salesAndTrafficReport
             },
-            { name: "Shop Sales Report", iconText: "CT", path: ROUTE_CONSTANT.businessReport.shopSalesReport },
+            {name: "Shop Sales Report", iconText: "CT", path: ROUTE_CONSTANT.businessReport.shopSalesReport},
             {
                 name: "Sales By Child Item",
                 iconText: "CT",
@@ -96,9 +88,9 @@ export const vendorNavigations = [
                 iconText: "CT",
                 path: ROUTE_CONSTANT.businessReport.salesAndTrafficByParentItem
             },
-            { name: "New User Report", iconText: "CT", path: ROUTE_CONSTANT.businessReport.newUserReport },
-            { name: "Customer Report", iconText: "CT", path: ROUTE_CONSTANT.businessReport.customerReport },
-            { name: "Gift Card Report", iconText: "CT", path: ROUTE_CONSTANT.businessReport.giftCardReport },
+            {name: "New User Report", iconText: "CT", path: ROUTE_CONSTANT.businessReport.newUserReport},
+            {name: "Customer Report", iconText: "CT", path: ROUTE_CONSTANT.businessReport.customerReport},
+            {name: "Gift Card Report", iconText: "CT", path: ROUTE_CONSTANT.businessReport.giftCardReport},
         ]
     },
     {
@@ -106,7 +98,7 @@ export const vendorNavigations = [
         icon: "message",
         path: ROUTE_CONSTANT.reviews
     },
-    { name: "Logout", icon: "logout" },
+    {name: "Logout", icon: "logout"},
 ]
 
 export const managerNavigations = [
@@ -239,7 +231,7 @@ export const managerNavigations = [
 ];
 
 export const navigations = [
-    { name: "Dashboard", path: ROUTE_CONSTANT.dashboard, icon: "dashboard" },
+    {name: "Dashboard", path: ROUTE_CONSTANT.dashboard, icon: "dashboard"},
 
     // { label: "PAGES", type: "label" },
     // {
@@ -274,15 +266,15 @@ export const navigations = [
         name: "Affiliate Users",
         icon: "group_add",
         children: [
-            { name: "Users", iconText: "CT", path: ROUTE_CONSTANT.affiliateUser.users.list },
-            { name: "Monthly Reports", iconText: "CT", path: ROUTE_CONSTANT.affiliateUser.monthlyReports.list },
+            {name: "Users", iconText: "CT", path: ROUTE_CONSTANT.affiliateUser.users.list},
+            {name: "Monthly Reports", iconText: "CT", path: ROUTE_CONSTANT.affiliateUser.monthlyReports.list},
         ]
     },
     {
         name: "Shipping",
         icon: "group_add",
         children: [
-            { name: "Shipping Settings", iconText: "CT", path: ROUTE_CONSTANT.Shipping.ShippingSettings.list },
+            {name: "Shipping Settings", iconText: "CT", path: ROUTE_CONSTANT.Shipping.ShippingSettings.list},
         ]
     },
     {
@@ -294,16 +286,16 @@ export const navigations = [
         name: "Vendor",
         icon: "group_add",
         children: [
-            { name: "Add", iconText: "CT", path: ROUTE_CONSTANT.vendor.add },
-            { name: "List", iconText: "CT", path: ROUTE_CONSTANT.vendor.list },
+            {name: "Add", iconText: "CT", path: ROUTE_CONSTANT.vendor.add},
+            {name: "List", iconText: "CT", path: ROUTE_CONSTANT.vendor.list},
         ]
     },
     {
         name: "Manager",
         icon: "group_add",
         children: [
-            { name: "Add", iconText: "CT", path: ROUTE_CONSTANT.manager.add },
-            { name: "List", iconText: "CT", path: ROUTE_CONSTANT.manager.list },
+            {name: "Add", iconText: "CT", path: ROUTE_CONSTANT.manager.add},
+            {name: "List", iconText: "CT", path: ROUTE_CONSTANT.manager.list},
         ]
     },
     {
@@ -320,8 +312,8 @@ export const navigations = [
         name: "Catalog",
         icon: "book",
         children: [
-            { name: "Category", iconText: "CT", path: ROUTE_CONSTANT.catalog.category.list },
-            { name: "Admin Category", iconText: "CT", path: ROUTE_CONSTANT.catalog.adminCategory.list },
+            {name: "Category", iconText: "CT", path: ROUTE_CONSTANT.catalog.category.list},
+            {name: "Admin Category", iconText: "CT", path: ROUTE_CONSTANT.catalog.adminCategory.list},
             {
                 name: "Brand",
                 iconText: "book",
@@ -348,18 +340,18 @@ export const navigations = [
         name: "Gift Card",
         icon: "gift",
         children: [
-            { name: "Category", iconText: "CT", path: ROUTE_CONSTANT.giftCard.category.list },
-            { name: "Gift", iconText: "CT", path: ROUTE_CONSTANT.giftCard.gift.list },
-            { name: "Banner List", iconText: "CT", path: ROUTE_CONSTANT.giftCard.bannerList.list },
-            { name: "Description", iconText: "CT", path: ROUTE_CONSTANT.giftCard.description },
-            { name: "Purchaes History", iconText: "CT", path: ROUTE_CONSTANT.giftCard.purchaesHistory },
+            {name: "Category", iconText: "CT", path: ROUTE_CONSTANT.giftCard.category.list},
+            {name: "Gift", iconText: "CT", path: ROUTE_CONSTANT.giftCard.gift.list},
+            {name: "Banner List", iconText: "CT", path: ROUTE_CONSTANT.giftCard.bannerList.list},
+            {name: "Description", iconText: "CT", path: ROUTE_CONSTANT.giftCard.description},
+            {name: "Purchaes History", iconText: "CT", path: ROUTE_CONSTANT.giftCard.purchaesHistory},
         ]
     },
     {
         name: "Blog",
         icon: "article",
         children: [
-            { name: "Add Tag", iconText: "CT", path: ROUTE_CONSTANT.tag.add },
+            {name: "Add Tag", iconText: "CT", path: ROUTE_CONSTANT.tag.add},
             {
                 name: "View Tag",
                 iconText: "product",
@@ -391,7 +383,7 @@ export const navigations = [
                 iconText: "CT",
                 path: ROUTE_CONSTANT.businessReport.salesAndTrafficReport
             },
-            { name: "Shop Sales Report", iconText: "CT", path: ROUTE_CONSTANT.businessReport.shopSalesReport },
+            {name: "Shop Sales Report", iconText: "CT", path: ROUTE_CONSTANT.businessReport.shopSalesReport},
             {
                 name: "Sales By Child Item",
                 iconText: "CT",
@@ -402,17 +394,17 @@ export const navigations = [
                 iconText: "CT",
                 path: ROUTE_CONSTANT.businessReport.salesAndTrafficByParentItem
             },
-            { name: "New User Report", iconText: "CT", path: ROUTE_CONSTANT.businessReport.newUserReport },
-            { name: "Customer Report", iconText: "CT", path: ROUTE_CONSTANT.businessReport.customerReport },
-            { name: "Gift Card Report", iconText: "CT", path: ROUTE_CONSTANT.businessReport.giftCardReport },
+            {name: "New User Report", iconText: "CT", path: ROUTE_CONSTANT.businessReport.newUserReport},
+            {name: "Customer Report", iconText: "CT", path: ROUTE_CONSTANT.businessReport.customerReport},
+            {name: "Gift Card Report", iconText: "CT", path: ROUTE_CONSTANT.businessReport.giftCardReport},
         ]
     },
     {
         name: "Report",
         icon: "settings",
         children: [
-            { name: "Shop Report", iconText: "CT", path: ROUTE_CONSTANT.report.shopReport },
-            { name: "Product Report", iconText: "CT", path: ROUTE_CONSTANT.report.productReport },
+            {name: "Shop Report", iconText: "CT", path: ROUTE_CONSTANT.report.shopReport},
+            {name: "Product Report", iconText: "CT", path: ROUTE_CONSTANT.report.productReport},
         ]
     },
     {
@@ -429,23 +421,23 @@ export const navigations = [
         name: "Setting",
         icon: "settings",
         children: [
-            { name: "Homepage", iconText: "CT", path: ROUTE_CONSTANT.setting.homepage },
-            { name: "Country Access Settings", iconText: "CT", path: ROUTE_CONSTANT.setting.countryAccessSettings },
-            { name: "About", iconText: "CT", path: ROUTE_CONSTANT.setting.about },
-            { name: "Affiliate", iconText: "CT", path: ROUTE_CONSTANT.setting.affiliate },
-            { name: "Contact Shop", iconText: "CT", path: ROUTE_CONSTANT.setting.contactShop },
-            { name: "Contact Us", iconText: "CT", path: ROUTE_CONSTANT.setting.contactUs },
-            { name: "Our Top Brands", iconText: "CT", path: ROUTE_CONSTANT.setting.ourTopBrands },
-            { name: "Our Top Store", iconText: "CT", path: ROUTE_CONSTANT.setting.ourTopStore },
-            { name: "Wholesale", iconText: "CT", path: ROUTE_CONSTANT.setting.wholesale },
+            {name: "Homepage", iconText: "CT", path: ROUTE_CONSTANT.setting.homepage},
+            {name: "Country Access Settings", iconText: "CT", path: ROUTE_CONSTANT.setting.countryAccessSettings},
+            {name: "About", iconText: "CT", path: ROUTE_CONSTANT.setting.about},
+            {name: "Affiliate", iconText: "CT", path: ROUTE_CONSTANT.setting.affiliate},
+            {name: "Contact Shop", iconText: "CT", path: ROUTE_CONSTANT.setting.contactShop},
+            {name: "Contact Us", iconText: "CT", path: ROUTE_CONSTANT.setting.contactUs},
+            {name: "Our Top Brands", iconText: "CT", path: ROUTE_CONSTANT.setting.ourTopBrands},
+            {name: "Our Top Store", iconText: "CT", path: ROUTE_CONSTANT.setting.ourTopStore},
+            {name: "Wholesale", iconText: "CT", path: ROUTE_CONSTANT.setting.wholesale},
         ]
     },
     {
         name: "Information",
         icon: "information",
         children: [
-            { name: "Privacy Policy", iconText: "CT", path: ROUTE_CONSTANT.information.privacyPolicy },
-            { name: "Terms & Condition", iconText: "CT", path: ROUTE_CONSTANT.information.termsCondition },
+            {name: "Privacy Policy", iconText: "CT", path: ROUTE_CONSTANT.information.privacyPolicy},
+            {name: "Terms & Condition", iconText: "CT", path: ROUTE_CONSTANT.information.termsCondition},
         ]
     },
     // {
@@ -453,7 +445,7 @@ export const navigations = [
     //   icon: "article",
     //   path: ROUTE_CONSTANT.blog.list
     // },
-    { name: "Logout", icon: "logout" }
+    {name: "Logout", icon: "logout"}
 
     // { label: "Components", type: "label" },
     // {

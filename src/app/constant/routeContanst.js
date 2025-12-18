@@ -1,3 +1,6 @@
+import ShopReport from "app/views/Report/ShopReport";
+import Wholesale from "app/views/setting/Wholesale";
+
 export const ROUTE_CONSTANT = {
     login: "/login",
     dashboard: "/dashboard",
@@ -132,11 +135,7 @@ export const ROUTE_CONSTANT = {
     },
     vendor: {
         list: "/pages/vendor/list",
-        add: "/pages/vendor/add",
-        editVendorProfile: "/pages/vendor/edit-profile"
-    },
-    vendorBannerImage: {
-        list: "/pages/vendor/banner-image",
+        add: "/pages/vendor/add"
     },
     manager: {
         list: "/pages/manager/list",

@@ -1,10 +1,8 @@
 import { ROUTE_CONSTANT } from "app/constant/routeContanst";
 import Add from "./Add";
 import List from "./List";
-import EditVendorProfile from "./EditVendorProfile";
 
 export const VendorRoutes = [
   { name: "vendor", path: ROUTE_CONSTANT.vendor.add, element: <Add /> },
-  { name: "vendor", path: ROUTE_CONSTANT.vendor.list, element: <List /> },
-  { name: "edit_vendor_profile", path: ROUTE_CONSTANT.vendor.editVendorProfile, element: <EditVendorProfile /> }
+  { name: "vendor", path: ROUTE_CONSTANT.vendor.list, element: <List /> }
 ];
