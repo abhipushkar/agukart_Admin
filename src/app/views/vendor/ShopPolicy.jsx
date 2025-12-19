@@ -1,8 +1,6 @@
 import { Box, Button, CircularProgress, Typography } from "@mui/material";
 import React from "react";
-import { useState } from "react";
 import QuillDesShopPolicy from "./vendorShopPolicyEditor/QuillDesShopPolicy";
-import TextEditor from "app/components/TextEditor/TextEditor";
 
 const ShopPolicy = ({
   formValues,
@@ -39,18 +37,18 @@ const ShopPolicy = ({
           </Box>
           {/* <TextEditor name="shopPolicy" value={formValues?.shopPolicy} setFormValues={setFormValues}/> */}
           {errors.shopPolicy && (
-              <Typography
-                sx={{
-                  fontSize: "12px",
-                  color: "#FF3D57",
-                  marginLeft: "14px",
-                  marginRight: "14px",
-                  marginTop: "3px"
-                }}
-              >
-                {errors.shopPolicy}
-              </Typography>
-            )}
+            <Typography
+              sx={{
+                fontSize: "12px",
+                color: "#FF3D57",
+                marginLeft: "14px",
+                marginRight: "14px",
+                marginTop: "3px"
+              }}
+            >
+              {errors.shopPolicy}
+            </Typography>
+          )}
         </Box>
         <Typography component="div" mt={2} textAlign="end">
           {queryId && (

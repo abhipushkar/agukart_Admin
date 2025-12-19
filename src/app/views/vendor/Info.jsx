@@ -59,7 +59,7 @@ const Info = ({
             <Grid lg={6} md={6} xs={12} mb={1}>
               <Box sx={{ display: { lg: "flex", md: "flex", xs: "block" }, alignItems: "center" }}>
                 <Typography variant="h6" mr={2}>
-                  Shop Name : 
+                  Shop Name :
                 </Typography>
                 <List sx={{ display: "flex", alignItems: "center" }}>
                   <ListItem sx={{ width: "auto", padding: "0", marginRight: "16px" }}>

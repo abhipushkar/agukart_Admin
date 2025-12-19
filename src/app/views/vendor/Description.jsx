@@ -1,8 +1,6 @@
 import { Box, Button, CircularProgress, Typography } from "@mui/material";
 import React from "react";
-import { useState } from "react";
 import QuillDes from "app/components/ReactQuillTextEditor/ReactQuillTextEditor/QuilDes";
-import TextEditor from "app/components/TextEditor/TextEditor";
 
 const Description = ({
   formValues,

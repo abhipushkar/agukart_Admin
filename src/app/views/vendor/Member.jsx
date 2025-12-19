@@ -25,7 +25,6 @@ const Member = ({
   formValues,
   setFormValues,
   errors,
-  setErrors,
   handleValidate,
   setValue,
   setCheckMember,
@@ -588,50 +587,50 @@ const Member = ({
             </Typography>
           </Box>
         )}
-      <Typography component="div" mt={2} textAlign="end">
-        {queryId && (
+        <Typography component="div" mt={2} textAlign="end">
+          {queryId && (
+            <Button
+              endIcon={loading ? <CircularProgress size={15} color="inherit" /> : null}
+              disabled={loading}
+              onClick={handleVendorSave}
+              sx={{
+                backgroundColor: "#000",
+                color: "#fff",
+                border: "none",
+                borderRadius: "8px",
+                padding: "8px 18px",
+                fontWeight: 500,
+                textTransform: "capitalize",
+                marginRight: 2,
+                "&:hover": {
+                  backgroundColor: "#333",
+                },
+                "&:disabled": {
+                  backgroundColor: "#888",
+                },
+              }}
+            >
+              Save
+            </Button>
+          )}
           <Button
-            endIcon={loading ? <CircularProgress size={15} color="inherit" /> : null}
-            disabled={loading}
-            onClick={handleVendorSave}
+            onClick={handleNext}
             sx={{
-              backgroundColor: "#000",
+              backgroundColor: "#43a047", // green
               color: "#fff",
               border: "none",
               borderRadius: "8px",
               padding: "8px 18px",
               fontWeight: 500,
               textTransform: "capitalize",
-              marginRight: 2,
               "&:hover": {
-                backgroundColor: "#333",
-              },
-              "&:disabled": {
-                backgroundColor: "#888",
+                backgroundColor: "#388e3c",
               },
             }}
           >
-            Save
+            Next
           </Button>
-        )}
-        <Button
-          onClick={handleNext}
-          sx={{
-            backgroundColor: "#43a047", // green
-            color: "#fff",
-            border: "none",
-            borderRadius: "8px",
-            padding: "8px 18px",
-            fontWeight: 500,
-            textTransform: "capitalize",
-            "&:hover": {
-              backgroundColor: "#388e3c",
-            },
-          }}
-        >
-          Next
-        </Button>
-      </Typography>
+        </Typography>
 
       </Box>
       <ConfirmModal

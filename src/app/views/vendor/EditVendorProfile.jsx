@@ -193,7 +193,7 @@ const EditVendorProfile = () => {
                 }
                 break;
 
-            case "shopPolicy":
+            case "shop":
                 if (!formValues.shopPolicy) newErrors.shopPolicy = "shop policy is required";
                 setErrors(newErrors);
                 if (Object.keys(newErrors).length === 0) {
@@ -240,7 +240,7 @@ const EditVendorProfile = () => {
                 }
                 break;
 
-            case "shopPolicy":
+            case "shop":
                 if (checkShopPolicy === true) {
                     if (handleValidate(value)) {
                         setValue(newValue);
@@ -388,7 +388,7 @@ const EditVendorProfile = () => {
                             aria-label="scrollable auto tabs example"
                         >
                             <Tab label="Shop Info" value="info" />
-                            <Tab label="Shop Policy" value="shopPolicy" />
+                            <Tab label="Shop Policy" value="shop" />
                             <Tab label="Members" value="members" />
                             <Tab label="Description" value="description" />
                             <Tab label="story" value="story" />
@@ -407,15 +407,16 @@ const EditVendorProfile = () => {
                                     imgUrls={imgUrls}
                                     setImgUrls={setImgUrls}
                                     setCheckInfo={setCheckInfo}
-                                    setInfoTab={() => { }} // No info tab to enable
+                                    setShopTab={() => { }}
+                                    // setInfoTab={() => { }} // No info tab to enable
                                     queryId={queryId}
                                     loading={loading}
                                     handleVendorSave={handleSave}
                                 />
                             </TabPanel>
                         )}
-                        {value === "shopPolicy" && (
-                            <TabPanel value="shopPolicy">
+                        {value === "shop" && (
+                            <TabPanel value="shop">
                                 <ShopPolicy
                                     formValues={formValues}
                                     errors={errors}

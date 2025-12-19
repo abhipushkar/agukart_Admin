@@ -16,7 +16,6 @@ import { apiEndpoints } from "app/constant/apiEndpoints";
 import { ApiService } from "app/services/ApiService";
 import { ROUTE_CONSTANT } from "app/constant/routeContanst";
 import { useNavigate } from "react-router-dom";
-import { toast } from "react-toastify";
 import { localStorageKey } from "app/constant/localStorageKey";
 import ConfirmModal from "app/components/ConfirmModal";
 import { REACT_APP_WEB_URL } from "config";
@@ -39,7 +38,7 @@ const Story = ({
   handleVendorSave,
   setIsDeleteVideo
 }) => {
-  console.log({shopData,showVideo})
+  console.log({ shopData, showVideo })
   const navigate = useNavigate();
   const videoRef = useRef();
   const inputFileRefs = useRef([]);
