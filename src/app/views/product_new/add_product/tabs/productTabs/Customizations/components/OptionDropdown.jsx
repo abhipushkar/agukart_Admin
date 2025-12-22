@@ -46,7 +46,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import { styled } from "@mui/material/styles";
 import Cropper from 'react-easy-crop';
 import { getCroppedImg } from './cropUtil';
-import {useProductFormStore} from "../../../../../states/useAddProducts";
+import { useProductFormStore } from "../../../../../states/useAddProducts";
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 
@@ -67,8 +67,8 @@ const quillModules = {
     toolbar: [
         [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
         ['bold', 'italic', 'underline', 'strike'],
-        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-        [{ 'indent': '-1'}, { 'indent': '+1' }],
+        [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+        [{ 'indent': '-1' }, { 'indent': '+1' }],
         ['link', 'image'],
         ['clean']
     ],
@@ -83,16 +83,16 @@ const quillFormats = [
 
 // Draggable Table Row Component
 const DraggableTableRow = ({
-                               children,
-                               index,
-                               onDragStart,
-                               onDragOver,
-                               onDrop,
-                               onDragEnd,
-                               isDragging,
-                               isDragOver,
-                               ...props
-                           }) => {
+    children,
+    index,
+    onDragStart,
+    onDragOver,
+    onDrop,
+    onDragEnd,
+    isDragging,
+    isDragOver,
+    ...props
+}) => {
     const ref = useRef(null);
 
     const handleDragStart = (e) => {
@@ -950,9 +950,9 @@ const OptionDropdown = ({ index }) => {
                             component="label"
                             variant="outlined"
                             size="small"
-                            sx={{mb: 1, aspectRatio: "1/1", width: "30px"}}
+                            sx={{ mb: 1, aspectRatio: "1/1", width: "30px" }}
                         >
-                            <AddPhotoAlternateIcon/>
+                            <AddPhotoAlternateIcon />
                             <VisuallyHiddenInput
                                 type="file"
                                 onChange={(e) => handleImageUpload(optionIndex, imageKey, e, imageIndex)}
@@ -1121,9 +1121,9 @@ const OptionDropdown = ({ index }) => {
                 <Typography variant="h6" gutterBottom>
                     Configuration
                 </Typography>
-                <Box sx={{display: 'flex', flexDirection: 'column', gap: 2, width: "100%"}}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, width: "100%" }}>
                     <Box sx={{ display: 'flex', flexDirection: 'row', gap: 2, width: "100%" }}>
-                        <Box sx={{width: "100%"}}>
+                        <Box sx={{ width: "100%" }}>
                             <Typography variant="subtitle2" gutterBottom>
                                 Label
                             </Typography>
@@ -1140,7 +1140,7 @@ const OptionDropdown = ({ index }) => {
                             </Typography>
                         </Box>
 
-                        <Box sx={{width: "100%"}}>
+                        <Box sx={{ width: "100%" }}>
                             <Typography variant="subtitle2" gutterBottom>
                                 Instructions (Optional)
                             </Typography>
@@ -1166,6 +1166,7 @@ const OptionDropdown = ({ index }) => {
                             />
                         }
                         label="Make this customization compulsory"
+                        sx={{ width: "fit-content" }}
                     />
                 </Box>
 
@@ -1181,11 +1182,11 @@ const OptionDropdown = ({ index }) => {
                             startIcon={<EditIcon />}
                             onClick={handleOpenGuideDialog}
                         >
-                            {customization.guide.guide_name ? 'Edit Guide' : 'Add Guide'}
+                            {customization?.guide?.guide_name ? 'Edit Guide' : 'Add Guide'}
                         </Button>
                     </Box>
 
-                    {customization.guide ? (
+                    {customization?.guide ? (
                         renderGuidePreview()
                     ) : (
                         <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
