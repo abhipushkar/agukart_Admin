@@ -31,7 +31,7 @@ import { IconButton } from "@mui/material";
 import { REACT_APP_WEB_URL } from "config";
 
 export default function ProductListTable({
-    statusFilter,
+  statusFilter,
   categ,
   productList,
   personName,
@@ -97,19 +97,19 @@ export default function ProductListTable({
     setMsg(null);
   };
 
-  const handleSortChange = async(e,item,index)=>{
+  const handleSortChange = async (e, item, index) => {
     const { name, value } = e.target;
-    try{
-       let payload = {
-          [name]: value, 
-          _id: item?._id
-        };
+    try {
+      let payload = {
+        [name]: value,
+        _id: item?._id
+      };
 
-        const res = await ApiService.post(apiEndpoints.updateSortOrderProduct, payload, auth_key);
-        if (res?.status === 200) {
-          getAllProductList();
-        }
-    }catch(error){
+      const res = await ApiService.post(apiEndpoints.updateSortOrderProduct, payload, auth_key);
+      if (res?.status === 200) {
+        getAllProductList();
+      }
+    } catch (error) {
       console.log(error);
     }
   }
@@ -140,21 +140,21 @@ export default function ProductListTable({
         handleOpen("error", error?.response?.data || error);
       }
     }
-  }, [auth_key,getAllProductList,statusData]);
+  }, [auth_key, getAllProductList, statusData]);
 
-   const handleBadgeChange = async (badgeData) => {
-      if (badgeData) {
-        try {
-          const payload = badgeData;
-          const res = await ApiService.post(apiEndpoints.changeProductBadge, payload, auth_key);
-          if (res.status === 200) {
-            getAllProductList();
-          }
-        } catch (error) {
-          handleOpen("error", error?.response?.data || error);
+  const handleBadgeChange = async (badgeData) => {
+    if (badgeData) {
+      try {
+        const payload = badgeData;
+        const res = await ApiService.post(apiEndpoints.changeProductBadge, payload, auth_key);
+        if (res.status === 200) {
+          getAllProductList();
         }
+      } catch (error) {
+        handleOpen("error", error?.response?.data || error);
       }
     }
+  }
 
   const handlePopularGiftStatusChange = useCallback(async () => {
     if (statusData) {
@@ -168,7 +168,7 @@ export default function ProductListTable({
         handleOpen("error", error?.response?.data || error);
       }
     }
-  }, [auth_key,getAllProductList, statusData]);
+  }, [auth_key, getAllProductList, statusData]);
 
   const handleFeaturedStatusChange = useCallback(async (data) => {
     if (data) {
@@ -182,7 +182,7 @@ export default function ProductListTable({
         handleOpen("error", error?.response?.data || error);
       }
     }
-  }, [auth_key,getAllProductList]);
+  }, [auth_key, getAllProductList]);
 
   const formatDate = (isoString) => {
     const date = new Date(isoString);
@@ -379,14 +379,14 @@ export default function ProductListTable({
   useEffect(() => {
     const sortedData = orderBy
       ? [...productList].sort((a, b) =>
-          order === "asc" ? sortComparator(a, b, orderBy) : sortComparator(b, a, orderBy)
-        )
+        order === "asc" ? sortComparator(a, b, orderBy) : sortComparator(b, a, orderBy)
+      )
       : productList;
 
     setProductList(sortedData);
   }, [order, orderBy]);
 
-  const handleProductDelete = async(productId) => {
+  const handleProductDelete = async (productId) => {
     try {
       const id = productId;
       const res = await ApiService.get(`${apiEndpoints.deleteProduct}/${id}`, auth_key);
@@ -399,8 +399,8 @@ export default function ProductListTable({
     }
   }
 
-  const VIEW_W = 200; 
-  const VIEW_H = 200; 
+  const VIEW_W = 200;
+  const VIEW_H = 200;
   const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
   const clampPan = ({ scale = 1, x = 0, y = 0 }) => {
     const maxX = ((VIEW_W * scale) - VIEW_W) / 2;
@@ -491,7 +491,7 @@ export default function ProductListTable({
                   Product Id
                 </TableCell>
               )}
-              {!personName?.includes("SKU") &&(
+              {!personName?.includes("SKU") && (
                 <TableCell
                   sx={{
                     wordBreak: "keep-all"
@@ -559,7 +559,7 @@ export default function ProductListTable({
                   </TableSortLabel>
                 </TableCell>
               )}
-                {!personName?.includes("Sort Order") && (
+              {!personName?.includes("Sort Order") && (
                 <TableCell
                   sx={{
                     wordBreak: "keep-all"
@@ -610,7 +610,7 @@ export default function ProductListTable({
                   </TableSortLabel>
                 </TableCell>
               )} */}
-                {!personName?.includes("Badge") && (
+              {!personName?.includes("Badge") && (
                 <TableCell
                   sx={{
                     wordBreak: "keep-all"
@@ -623,7 +623,7 @@ export default function ProductListTable({
                     direction={orderBy === "badge" ? order : "asc"}
                     onClick={() => handleRequestSort("badge")}
                   >
-                   Badge
+                    Badge
                   </TableSortLabel>
                 </TableCell>
               )}
@@ -659,25 +659,25 @@ export default function ProductListTable({
           </TableHead>
           {
             loading ? (
-            <TableBody>
-              <TableRow>
-                <TableCell colSpan={12}>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexDirection: "column",
-                      padding: "48px",
-                      width: "100%",
-                      minHeight: "200px",
-                    }}
-                  >
-                    <CircularProgress size={40} />
-                  </Box>
-                </TableCell>
-              </TableRow>
-            </TableBody>
+              <TableBody>
+                <TableRow>
+                  <TableCell colSpan={12}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexDirection: "column",
+                        padding: "48px",
+                        width: "100%",
+                        minHeight: "200px",
+                      }}
+                    >
+                      <CircularProgress size={40} />
+                    </Box>
+                  </TableCell>
+                </TableRow>
+              </TableBody>
             ) : (
               <>
                 {productList.length > 0 && productList[0] !== "No Product Found" ? (
@@ -744,7 +744,7 @@ export default function ProductListTable({
                                     )}
                                     {row?.type === "product"
                                       ? row?.status
-                                      : `${row?.type} ${statusFilter !== "all" ? row?.childCountData[0]?.count :  ""}(${row.productData?.length})`}
+                                      : `${row?.type} ${statusFilter !== "all" ? row?.childCountData[0]?.count : ""}(${row.productData?.length})`}
                                   </>
                                 </Box>
                               </TableCell>
@@ -791,7 +791,7 @@ export default function ProductListTable({
                                         width: "100%",
                                         height: "100%",
                                         objectFit: "contain",
-                                        transformOrigin: "center center", 
+                                        transformOrigin: "center center",
                                         transition: "transform 0.15s ease-out",
                                         willChange: "transform",
                                         backfaceVisibility: "hidden",
@@ -814,16 +814,16 @@ export default function ProductListTable({
                                 }}
                                 align="center"
                               >
-                                  {row?.type === "product" ? (
-                                    <IconButton 
-                                      onClick={(e) => {
-                                        handleFeaturedStatusChange({ _id: row._id, featured: !row?.featured})
-                                      }}
-                                      color={row?.featured ? "error" : "default"} 
-                                    >
-                                      {row?.featured ? <Favorite /> : <FavoriteBorder />}
-                                    </IconButton>
-                                  ) : "-"}
+                                {row?.type === "product" ? (
+                                  <IconButton
+                                    onClick={(e) => {
+                                      handleFeaturedStatusChange({ _id: row._id, featured: !row?.featured })
+                                    }}
+                                    color={row?.featured ? "error" : "default"}
+                                  >
+                                    {row?.featured ? <Favorite /> : <FavoriteBorder />}
+                                  </IconButton>
+                                ) : "-"}
                               </TableCell>
                             )}
                             {!personName?.includes("Product Id") && (
@@ -848,7 +848,7 @@ export default function ProductListTable({
                                 ) : (
                                   capitalizeFirstLetter(row?.seller_sku)
                                 )}
-                                
+
                               </TableCell>
                             )}
                             {!personName?.includes("Product Title") && (
@@ -862,7 +862,7 @@ export default function ProductListTable({
                                 align="center"
                               >
                                 <a
-                                  href={`${REACT_APP_WEB_URL}/products?id=${row?._id}`}
+                                  href={`${REACT_APP_WEB_URL}/products/${row?._id}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   style={{ color: "inherit", textDecoration: "none" }}
@@ -988,8 +988,8 @@ export default function ProductListTable({
                                       value={row?.product_bedge || ""}
                                       onClick={(e) => e.stopPropagation()}
                                       onChange={(e) => {
-                                        console.log(e.target.value,"hcccc");
-                                        handleBadgeChange({ product_id : row._id, badge: e.target.value })
+                                        console.log(e.target.value, "hcccc");
+                                        handleBadgeChange({ product_id: row._id, badge: e.target.value })
                                       }}
                                       displayEmpty
                                     >
@@ -1089,7 +1089,7 @@ export default function ProductListTable({
                                 >
                                   <MenuItem>
                                     <a
-                                      href={row?.type === "variations"? `${ROUTE_CONSTANT.catalog.product.parentProducts}?id=${row._id}`: `${ROUTE_CONSTANT.catalog.product.add}?id=${row._id}`}
+                                      href={row?.type === "variations" ? `${ROUTE_CONSTANT.catalog.product.parentProducts}?id=${row._id}` : `${ROUTE_CONSTANT.catalog.product.add}?id=${row._id}`}
                                       className="w-full h-full block"
                                     >
                                       Edit
@@ -1182,7 +1182,7 @@ export default function ProductListTable({
                                               width: "100%",
                                               height: "100%",
                                               objectFit: "contain",
-                                              transformOrigin: "center center", 
+                                              transformOrigin: "center center",
                                               ...(() => {
                                                 const { x, y, scale } = clampPan(item?.zoom || {});
                                                 return {
@@ -1205,11 +1205,11 @@ export default function ProductListTable({
                                         }}
                                         align="center"
                                       >
-                                        <IconButton 
+                                        <IconButton
                                           onClick={(e) => {
-                                            handleFeaturedStatusChange({ _id: item._id, featured: !item?.featured})
+                                            handleFeaturedStatusChange({ _id: item._id, featured: !item?.featured })
                                           }}
-                                          color={item?.featured ? "error" : "default"} 
+                                          color={item?.featured ? "error" : "default"}
                                         >
                                           {item?.featured ? <Favorite /> : <FavoriteBorder />}
                                         </IconButton>
@@ -1217,23 +1217,23 @@ export default function ProductListTable({
                                     )}
                                     {
                                       !personName?.includes("Product Id") && <TableCell
-                                      sx={{
-                                        wordBreak: "keep-all"
-                                      }}
-                                      align="center"
-                                    >
-                                      {item?._id}
-                                    </TableCell>
+                                        sx={{
+                                          wordBreak: "keep-all"
+                                        }}
+                                        align="center"
+                                      >
+                                        {item?._id}
+                                      </TableCell>
                                     }
                                     {
                                       !personName?.includes("SKU") && <TableCell
-                                      sx={{
-                                        wordBreak: "keep-all"
-                                      }}
-                                      align="center"
-                                    >
-                                      {capitalizeFirstLetter(item?.sku_code)}
-                                    </TableCell>
+                                        sx={{
+                                          wordBreak: "keep-all"
+                                        }}
+                                        align="center"
+                                      >
+                                        {capitalizeFirstLetter(item?.sku_code)}
+                                      </TableCell>
                                     }
                                     <TableCell
                                       sx={{
@@ -1245,7 +1245,7 @@ export default function ProductListTable({
                                       align="center"
                                     >
                                       <a
-                                        href={`${REACT_APP_WEB_URL}/products?id=${item?._id}`}
+                                        href={`${REACT_APP_WEB_URL}/products/${item?._id}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         style={{ color: "inherit", textDecoration: "none" }}
@@ -1347,8 +1347,8 @@ export default function ProductListTable({
                                             value={item?.product_bedge || ""}
                                             onClick={(e) => e.stopPropagation()}
                                             onChange={(e) => {
-                                              console.log(e.target.value,"hcccc");
-                                              handleBadgeChange({ product_id : item._id, badge: e.target.value })
+                                              console.log(e.target.value, "hcccc");
+                                              handleBadgeChange({ product_id: item._id, badge: e.target.value })
                                             }}
                                             displayEmpty
                                           >
@@ -1432,7 +1432,7 @@ export default function ProductListTable({
                                         >
                                           <MenuItem>
                                             <a
-                                              href={item?.type === "variations" ? `${ROUTE_CONSTANT.catalog.product.parentProducts}?id=${item?._id}`: `${ROUTE_CONSTANT.catalog.product.add}?id=${item?._id}`}
+                                              href={item?.type === "variations" ? `${ROUTE_CONSTANT.catalog.product.parentProducts}?id=${item?._id}` : `${ROUTE_CONSTANT.catalog.product.add}?id=${item?._id}`}
                                               className="w-full h-full block"
                                             >
                                               Edit

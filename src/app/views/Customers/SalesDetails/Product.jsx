@@ -87,7 +87,7 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen }) => {
                     marginRight={2}
                 >
                     <a
-                        href={`${REACT_APP_WEB_URL}/products?id=${saleData?.product_id}`}
+                        href={`${REACT_APP_WEB_URL}/products/${saleData?.product_id}`}
                         target="_blank"
                     >
                         <img

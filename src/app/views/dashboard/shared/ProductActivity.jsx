@@ -95,12 +95,11 @@ const ProductActivity = () => {
                   ?.replace(/<\/?[^>]+(>|$)/g, "")
                   ?.replace(/&nbsp;/g, " ");
 
-                const relativeTimeText = `${dayjs(activity.createdAt).fromNow()} • ${
-                  activity?.vendordata?.shop_name ||
+                const relativeTimeText = `${dayjs(activity.createdAt).fromNow()} • ${activity?.vendordata?.shop_name ||
                   activity?.productdata?.product_title
                     ?.replace(/<\/?[^>]+(>|$)/g, "")
                     ?.replace(/&nbsp;/g, " ")
-                }`;
+                  }`;
 
                 return (
                   <React.Fragment key={index}>
@@ -131,7 +130,7 @@ const ProductActivity = () => {
                                 display: "inline",
                               }}
                               onClick={() => {
-                                const url = `${activity?.type === "product" ? `${REACT_APP_WEB_URL}/products?id=${activity?.productdata?._id}` : `${REACT_APP_WEB_URL}/store/${activity?.vendordata?.slug}`}`;
+                                const url = `${activity?.type === "product" ? `${REACT_APP_WEB_URL}/products/${activity?.productdata?._id}` : `${REACT_APP_WEB_URL}/store/${activity?.vendordata?.slug}`}`;
                                 window.open(url, "_blank", "noopener,noreferrer");
                               }}
                             >

@@ -190,10 +190,10 @@ const TopSellingProduct = () => {
                           cursor: "pointer",
                           textDecoration: "underline"
                         }}
-                        onClick={()=>{
-                            const url = `${REACT_APP_WEB_URL}/products?id=${item?._id}`;
-                            window.open(url, "_blank", "noopener,noreferrer");
-                          }
+                        onClick={() => {
+                          const url = `${REACT_APP_WEB_URL}/products/${item?._id}`;
+                          window.open(url, "_blank", "noopener,noreferrer");
+                        }
                         }
                       >
                         {item?.name?.replace(/<\/?[^>]+(>|$)/g, "")}
@@ -215,7 +215,7 @@ const TopSellingProduct = () => {
 
         {topSellingProducts?.length > 0 && hasMore && (
           <Box textAlign="center" mt={2}>
-            <Button disabled={loading} startIcon={loading && <CircularProgress size={20} />}  variant="outlined" onClick={handleShowMore}>
+            <Button disabled={loading} startIcon={loading && <CircularProgress size={20} />} variant="outlined" onClick={handleShowMore}>
               Show More
             </Button>
           </Box>

@@ -20,7 +20,7 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item }) => {
     const navigate = useNavigate();
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
     const [stock, setStock] = useState(0);
-    const [combinationStockId,setCombinationStockId] = useState([]);
+    const [combinationStockId, setCombinationStockId] = useState([]);
     const [openPop, setOpenPop] = useState(false);
     const popClose = () => {
         setOpenPop(false);
@@ -84,7 +84,7 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item }) => {
                     setStock(+saleData?.productMain?.qty);
                 }
             } else {
-                console.log(data,"Rthryhryhrt")
+                console.log(data, "Rthryhryhrt")
                 data.forEach((item) => {
                     if (item.isVisible && item?.isCheckedQuantity) {
                         if (+item.qty > 0) {
@@ -116,7 +116,7 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item }) => {
                     marginRight={2}
                 >
                     <a
-                        href={`${REACT_APP_WEB_URL}/products?id=${saleData?.product_id}`}
+                        href={`${REACT_APP_WEB_URL}/products/${saleData?.product_id}`}
                         target="_blank"
 
                     >
