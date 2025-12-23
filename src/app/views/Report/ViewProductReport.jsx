@@ -218,7 +218,7 @@ const ViewProductReport = () => {
                     </div>
                     <div style={{ marginBottom: "6px" }}>
                       Product URL :{" "}
-                      <Typography variant="span">{`${REACT_APP_WEB_URL}products?id=${reportData?.productdetail?._id}`}</Typography>
+                      <Typography variant="span">{`${REACT_APP_WEB_URL}products/${reportData?.productdetail?._id}`}</Typography>
                     </div>
                   </Grid>
                   <Grid item xs={12} md={4}>

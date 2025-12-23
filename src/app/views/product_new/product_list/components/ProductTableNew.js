@@ -1,4 +1,4 @@
-import React, {useState, useCallback, useRef} from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
     Table,
     TableBody,
@@ -25,16 +25,16 @@ import {
     KeyboardArrowDown,
     ArrowDropDown, Star, StarOutline
 } from '@mui/icons-material';
-import {REACT_APP_WEB_URL} from 'config';
-import {ROUTE_CONSTANT} from 'app/constant/routeContanst';
-import {toast} from 'react-toastify';
-import {useProductStore} from "../../states/useProductStore";
+import { REACT_APP_WEB_URL } from 'config';
+import { ROUTE_CONSTANT } from 'app/constant/routeContanst';
+import { toast } from 'react-toastify';
+import { useProductStore } from "../../states/useProductStore";
 import debounce from 'lodash.debounce';
 
 // Stats Sub-table Component
 const StatsSubTable = () => (
     <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-        <Table size="small" sx={{width: '100%', backgroundColor: '#f9f9f9', minWidth: '150px'}}>
+        <Table size="small" sx={{ width: '100%', backgroundColor: '#f9f9f9', minWidth: '150px' }}>
             <TableHead>
                 <TableRow>
                     <TableCell sx={{
@@ -82,58 +82,58 @@ const StatsSubTable = () => (
                         Sales
                     </TableCell>
                     <TableCell
-                        sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', width: '50%', textAlign: 'center'}}>
+                        sx={{ border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', width: '50%', textAlign: 'center' }}>
                         -
                     </TableCell>
                     <TableCell
-                        sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', width: '50%', textAlign: 'center'}}>
+                        sx={{ border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', width: '50%', textAlign: 'center' }}>
                         -
                     </TableCell>
                 </TableRow>
                 <TableRow>
                     <TableCell
-                        sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', fontWeight: 'bold', textAlign: 'center'}}>
+                        sx={{ border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', fontWeight: 'bold', textAlign: 'center' }}>
                         Unit Sold
                     </TableCell>
-                    <TableCell sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', textAlign: 'center'}}>
+                    <TableCell sx={{ border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', textAlign: 'center' }}>
                         -
                     </TableCell>
-                    <TableCell sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', textAlign: 'center'}}>
+                    <TableCell sx={{ border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', textAlign: 'center' }}>
                         -
                     </TableCell>
                 </TableRow>
                 <TableRow>
                     <TableCell
-                        sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', fontWeight: 'bold', textAlign: 'center'}}>
+                        sx={{ border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', fontWeight: 'bold', textAlign: 'center' }}>
                         Now in Cart
                     </TableCell>
-                    <TableCell sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', textAlign: 'center'}}>
+                    <TableCell sx={{ border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', textAlign: 'center' }}>
                         -
-                    </TableCell><TableCell sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', textAlign: 'center'}}>
-                    -
-                </TableCell>
+                    </TableCell><TableCell sx={{ border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', textAlign: 'center' }}>
+                        -
+                    </TableCell>
                 </TableRow>
                 <TableRow>
                     <TableCell
-                        sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', fontWeight: 'bold', textAlign: 'center'}}>
+                        sx={{ border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', fontWeight: 'bold', textAlign: 'center' }}>
                         Views
                     </TableCell>
-                    <TableCell sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', textAlign: 'center'}}>
+                    <TableCell sx={{ border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', textAlign: 'center' }}>
                         -
                     </TableCell>
-                    <TableCell sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', textAlign: 'center'}}>
+                    <TableCell sx={{ border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', textAlign: 'center' }}>
                         -
                     </TableCell>
                 </TableRow>
                 <TableRow>
                     <TableCell
-                        sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', fontWeight: 'bold', textAlign: 'center'}}>
+                        sx={{ border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', fontWeight: 'bold', textAlign: 'center' }}>
                         Favorites
                     </TableCell>
-                    <TableCell sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', textAlign: 'center'}}>
+                    <TableCell sx={{ border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', textAlign: 'center' }}>
                         -
                     </TableCell>
-                    <TableCell sx={{border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', textAlign: 'center'}}>
+                    <TableCell sx={{ border: '1px solid #e0e0e0', padding: '3px 6px', fontSize: '0.65rem', textAlign: 'center' }}>
                         -
                     </TableCell>
                 </TableRow>
@@ -143,32 +143,32 @@ const StatsSubTable = () => (
 );
 
 // Common Settings Column Component (without Badge)
-const CommonSettingsColumn = ({product, isProduct, onFieldChange, actionLoading, filters}) => {
+const CommonSettingsColumn = ({ product, isProduct, onFieldChange, actionLoading, filters }) => {
     const [localData, setLocalData] = useState({
         sale_price: product.sale_price || '',
         sort_order: product.sort_order || ''
     });
 
     const handleFieldChange = (field, value) => {
-        setLocalData(prev => ({...prev, [field]: value}));
+        setLocalData(prev => ({ ...prev, [field]: value }));
         onFieldChange(field, value);
     };
 
     if (!isProduct) {
         return (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-                <Typography variant="body2" sx={{fontSize: '0.75rem'}}>-</Typography>
+                <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>-</Typography>
             </Box>
         );
     }
 
     return (
-        <Box sx={{display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'center', justifyContent: 'center'}}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'center', justifyContent: 'center' }}>
             {/* Sale Price */}
             {!filters.hiddenColumns.includes('Sale Price') && (
-                <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center'}}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
                     <Typography variant="body2"
-                                sx={{fontWeight: 'bold', textWrap: "noWrap", minWidth: '50px', fontSize: '0.7rem'}}>
+                        sx={{ fontWeight: 'bold', textWrap: "noWrap", minWidth: '50px', fontSize: '0.7rem' }}>
                         Sale Price:
                     </Typography>
                     <TextField
@@ -176,7 +176,7 @@ const CommonSettingsColumn = ({product, isProduct, onFieldChange, actionLoading,
                         value={localData.sale_price}
                         onChange={(e) => handleFieldChange('sale_price', e.target.value)}
                         size="small"
-                        sx={{width: '70px', '& .MuiInputBase-input': {fontSize: '0.75rem', padding: '4px 8px', textAlign: 'center'}}}
+                        sx={{ width: '70px', '& .MuiInputBase-input': { fontSize: '0.75rem', padding: '4px 8px', textAlign: 'center' } }}
                         disabled={actionLoading}
                     />
                 </Box>
@@ -184,9 +184,9 @@ const CommonSettingsColumn = ({product, isProduct, onFieldChange, actionLoading,
 
             {/* Sort Order */}
             {!filters.hiddenColumns.includes('Sort Order') && (
-                <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center'}}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
                     <Typography variant="body2"
-                                sx={{fontWeight: 'bold', textWrap: "noWrap", minWidth: '50px', fontSize: '0.7rem'}}>
+                        sx={{ fontWeight: 'bold', textWrap: "noWrap", minWidth: '50px', fontSize: '0.7rem' }}>
                         Sort Order:
                     </Typography>
                     <TextField
@@ -194,7 +194,7 @@ const CommonSettingsColumn = ({product, isProduct, onFieldChange, actionLoading,
                         value={localData.sort_order}
                         onChange={(e) => handleFieldChange('sort_order', e.target.value)}
                         size="small"
-                        sx={{width: '70px', '& .MuiInputBase-input': {fontSize: '0.75rem', padding: '4px 8px', textAlign: 'center'}}}
+                        sx={{ width: '70px', '& .MuiInputBase-input': { fontSize: '0.75rem', padding: '4px 8px', textAlign: 'center' } }}
                         disabled={actionLoading}
                     />
                 </Box>
@@ -204,31 +204,31 @@ const CommonSettingsColumn = ({product, isProduct, onFieldChange, actionLoading,
 };
 
 // Image Badge Column Component
-const ImageBadgeColumn = ({product, isProduct, onBadgeChange, actionLoading, filters}) => {
+const ImageBadgeColumn = ({ product, isProduct, onBadgeChange, actionLoading, filters }) => {
     if (!isProduct || filters.hiddenColumns.includes('Image Badge')) {
         return (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-                <Typography variant="body2" sx={{fontSize: '0.75rem'}}>-</Typography>
+                <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>-</Typography>
             </Box>
         );
     }
 
     return (
         <Box sx={{ display: 'flex', flexDirection: "column", justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-            <FormControl size="small" sx={{minWidth: '150px', px: 2}} disabled={actionLoading}>
+            <FormControl size="small" sx={{ minWidth: '150px', px: 2 }} disabled={actionLoading}>
                 <RadioGroup
                     value={product.product_bedge || ''}
                     onChange={(e) => onBadgeChange(e.target.value)}
                     row
-                    sx={{fontSize: '0.75rem', height: '32px', justifyContent: 'start'}}
+                    sx={{ fontSize: '0.75rem', height: '32px', justifyContent: 'start' }}
                 >
-                    <FormControlLabel value="" sx={{fontSize: '0.75rem'}} control={<Radio/>} label={"None"}/>
-                    <FormControlLabel value="Agu's Pics" sx={{fontSize: '0.75rem'}} control={<Radio/>}
-                                      label={"Agu's Pics"}/>
-                    <FormControlLabel value="Popular Now" sx={{fontSize: '0.75rem'}} control={<Radio/>}
-                                      label={"Popular Now"}/>
-                    <FormControlLabel value="Best Seller" sx={{fontSize: '0.75rem'}} control={<Radio/>}
-                                      label={"Best Seller"}/>
+                    <FormControlLabel value="" sx={{ fontSize: '0.75rem' }} control={<Radio />} label={"None"} />
+                    <FormControlLabel value="Agu's Pics" sx={{ fontSize: '0.75rem' }} control={<Radio />}
+                        label={"Agu's Pics"} />
+                    <FormControlLabel value="Popular Now" sx={{ fontSize: '0.75rem' }} control={<Radio />}
+                        label={"Popular Now"} />
+                    <FormControlLabel value="Best Seller" sx={{ fontSize: '0.75rem' }} control={<Radio />}
+                        label={"Best Seller"} />
                 </RadioGroup>
             </FormControl>
             <Box height={140}></Box>
@@ -237,7 +237,7 @@ const ImageBadgeColumn = ({product, isProduct, onBadgeChange, actionLoading, fil
 };
 
 // Product Row Component
-const ProductRow = ({product, index}) => {
+const ProductRow = ({ product, index }) => {
     const {
         actionLoading,
         selection,
@@ -339,7 +339,7 @@ const ProductRow = ({product, index}) => {
     const VIEW_W = 200;
     const VIEW_H = 200;
     const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
-    const clampPan = ({scale = 1, x = 0, y = 0}) => {
+    const clampPan = ({ scale = 1, x = 0, y = 0 }) => {
         const maxX = ((VIEW_W * scale) - VIEW_W) / 2;
         const maxY = ((VIEW_H * scale) - VIEW_H) / 2;
         return {
@@ -363,34 +363,34 @@ const ProductRow = ({product, index}) => {
                 }}
             >
                 {/* Checkbox - Fixed 60px */}
-                <TableCell sx={{width: '60px', minWidth: '60px', maxWidth: '60px', padding: '4px'}}>
+                <TableCell sx={{ width: '60px', minWidth: '60px', maxWidth: '60px', padding: '4px' }}>
                     <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                         <Checkbox
                             checked={isSelected}
                             onChange={() => toggleProductSelection(product._id, product.productData || [])}
                             size="small"
                             disabled={actionLoading}
-                            sx={{padding: '4px'}}
+                            sx={{ padding: '4px' }}
                         />
                     </Box>
                 </TableCell>
 
                 {/* Status - Contractible */}
                 {!filters.hiddenColumns.includes('Status') && (
-                    <TableCell sx={{padding: '4px'}}>
-                        <Box sx={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5}}>
+                    <TableCell sx={{ padding: '4px' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
                             {hasVariations && (
                                 <IconButton
                                     size="small"
                                     onClick={() => toggleExpandedRow(product._id)}
                                     disabled={actionLoading}
-                                    sx={{padding: '2px'}}
+                                    sx={{ padding: '2px' }}
                                 >
-                                    {isExpanded ? <KeyboardArrowDown fontSize="small"/> :
-                                        <KeyboardArrowRight fontSize="small"/>}
+                                    {isExpanded ? <KeyboardArrowDown fontSize="small" /> :
+                                        <KeyboardArrowRight fontSize="small" />}
                                 </IconButton>
                             )}
-                            <Typography variant="body2" sx={{fontSize: '0.75rem'}}>
+                            <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
                                 {isProduct ? product.status : `${product.type} \n${product.totalChildCount}(${product.productData?.length || 0})`}
                             </Typography>
                         </Box>
@@ -399,7 +399,7 @@ const ProductRow = ({product, index}) => {
 
                 {/* Image - Fixed 200px */}
                 {!filters.hiddenColumns.includes('Image') && (
-                    <TableCell sx={{width: '200px', minWidth: '200px', maxWidth: '200px', padding: '4px'}}>
+                    <TableCell sx={{ width: '200px', minWidth: '200px', maxWidth: '200px', padding: '4px' }}>
                         <Box
                             sx={{
                                 height: "200px",
@@ -426,7 +426,7 @@ const ProductRow = ({product, index}) => {
                                     willChange: "transform",
                                     backfaceVisibility: "hidden",
                                     ...(() => {
-                                        const {x, y, scale} = clampPan(product?.zoom || {});
+                                        const { x, y, scale } = clampPan(product?.zoom || {});
                                         return {
                                             transform: `translate3d(${x}px, ${y}px, 0) scale(${scale})`,
                                         };
@@ -439,7 +439,7 @@ const ProductRow = ({product, index}) => {
 
                 {/* Image Badge - New Column */}
                 {!filters.hiddenColumns.includes('Image Badge') && (
-                    <TableCell sx={{padding: '4px', minWidth: '120px'}}>
+                    <TableCell sx={{ padding: '4px', minWidth: '120px' }}>
                         <ImageBadgeColumn
                             product={product}
                             isProduct={isProduct}
@@ -452,21 +452,21 @@ const ProductRow = ({product, index}) => {
 
                 {/* Product Information - Only show if at least one sub-column is visible */}
                 {showProductInfoColumn && (
-                    <TableCell sx={{padding: '4px 16px', minWidth: '150px'}}>
-                        <Box sx={{display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-start', justifyContent: 'flex-start'}}>
+                    <TableCell sx={{ padding: '4px 16px', minWidth: '150px' }}>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-start', justifyContent: 'flex-start' }}>
                             {/* Featured inside Product Information */}
                             {!filters.hiddenColumns.includes('Featured') && (
-                                <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center'}}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
                                     <IconButton
                                         size="small"
                                         color={product.featured ? "info" : "default"}
                                         onClick={handleToggleFeatured}
                                         disabled={actionLoading}
-                                        sx={{padding: '2px'}}
+                                        sx={{ padding: '2px' }}
                                     >
-                                        {product.featured ? <Star fontSize="small"/> : <StarOutline fontSize="small"/>}
+                                        {product.featured ? <Star fontSize="small" /> : <StarOutline fontSize="small" />}
                                     </IconButton>
-                                    <Typography variant="body2" sx={{fontSize: '0.7rem', fontWeight: 'bold'}}>
+                                    <Typography variant="body2" sx={{ fontSize: '0.7rem', fontWeight: 'bold' }}>
                                         Featured
                                     </Typography>
                                 </Box>
@@ -474,9 +474,9 @@ const ProductRow = ({product, index}) => {
 
                             {/* Product Title */}
                             {!filters.hiddenColumns.includes('Product Title') && (
-                                <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center'}}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
                                     <a
-                                        href={`${REACT_APP_WEB_URL}/products?id=${product._id}`}
+                                        href={`${REACT_APP_WEB_URL}/products/${product._id}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         style={{
@@ -498,13 +498,13 @@ const ProductRow = ({product, index}) => {
 
                             {/* Shop Name */}
                             {!hasVariations && !filters.hiddenColumns.includes('Shop Name') && (
-                                <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center'}}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
                                     <Typography variant="body2"
-                                                sx={{fontWeight: 'bold', minWidth: '45px', fontSize: '0.7rem'}}>
+                                        sx={{ fontWeight: 'bold', minWidth: '45px', fontSize: '0.7rem' }}>
                                         Shop Name:
                                     </Typography>
                                     <Typography variant="body2"
-                                                sx={{fontFamily: 'monospace', fontSize: '0.65rem', wordBreak: 'break-all'}}>
+                                        sx={{ fontFamily: 'monospace', fontSize: '0.65rem', wordBreak: 'break-all' }}>
                                         {product.shop_name || "-"}
                                     </Typography>
                                 </Box>
@@ -512,9 +512,9 @@ const ProductRow = ({product, index}) => {
 
                             {/* Product ID */}
                             {!filters.hiddenColumns.includes('Product Id') && (
-                                <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center'}}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
                                     <Typography variant="body2"
-                                                sx={{fontWeight: 'bold', minWidth: '45px', fontSize: '0.7rem'}}>
+                                        sx={{ fontWeight: 'bold', minWidth: '45px', fontSize: '0.7rem' }}>
                                         ID:
                                     </Typography>
                                     <Typography variant="body2" sx={{
@@ -529,12 +529,12 @@ const ProductRow = ({product, index}) => {
 
                             {/* SKU */}
                             {!filters.hiddenColumns.includes('SKU') && (
-                                <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center'}}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
                                     <Typography variant="body2"
-                                                sx={{fontWeight: 'bold', minWidth: '45px', fontSize: '0.7rem'}}>
+                                        sx={{ fontWeight: 'bold', minWidth: '45px', fontSize: '0.7rem' }}>
                                         SKU:
                                     </Typography>
-                                    <Typography variant="body2" sx={{fontSize: '0.75rem'}}>
+                                    <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
                                         {capitalizeFirstLetter(isProduct ? product.sku_code : product.seller_sku)}
                                     </Typography>
                                 </Box>
@@ -545,8 +545,8 @@ const ProductRow = ({product, index}) => {
 
                 {/* Available Quantity - Contractible */}
                 {!filters.hiddenColumns.includes('Available') && (
-                    <TableCell sx={{padding: '4px', minWidth: '80px'}}>
-                        <Typography variant="body2" sx={{fontSize: '0.75rem'}}>
+                    <TableCell sx={{ padding: '4px', minWidth: '80px' }}>
+                        <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
                             {isProduct ? product.qty : '-'}
                         </Typography>
                     </TableCell>
@@ -554,7 +554,7 @@ const ProductRow = ({product, index}) => {
 
                 {/* Common Settings Column - Only show if at least one sub-column is visible */}
                 {showCommonSettingsColumn && (
-                    <TableCell sx={{padding: '4px', minWidth: '150px'}}>
+                    <TableCell sx={{ padding: '4px', minWidth: '150px' }}>
                         <CommonSettingsColumn
                             product={product}
                             isProduct={isProduct}
@@ -566,13 +566,13 @@ const ProductRow = ({product, index}) => {
                 )}
 
                 {/* Performance Stats - Fixed 200px */}
-                <TableCell sx={{width: '200px', minWidth: '200px', maxWidth: '200px', padding: '4px'}}>
-                    <StatsSubTable/>
+                <TableCell sx={{ width: '200px', minWidth: '200px', maxWidth: '200px', padding: '4px' }}>
+                    <StatsSubTable />
                 </TableCell>
 
                 {/* Actions - Contractible */}
-                <TableCell sx={{padding: '4px', minWidth: '120px'}}>
-                    <Box sx={{display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                <TableCell sx={{ padding: '4px', minWidth: '120px' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <Button
                             variant="contained"
                             sx={{
@@ -582,7 +582,7 @@ const ProductRow = ({product, index}) => {
                                 boxShadow: 'none',
                                 background: '#fff',
                                 color: '#000',
-                                '&:hover': {color: '#fff', boxShadow: 'none'},
+                                '&:hover': { color: '#fff', boxShadow: 'none' },
                                 fontSize: '0.7rem',
                                 padding: '2px 8px',
                                 minWidth: 'auto'
@@ -606,7 +606,7 @@ const ProductRow = ({product, index}) => {
                             onClick={(e) => setActionAnchorEl(e.currentTarget)}
                             disabled={actionLoading}
                         >
-                            <ArrowDropDown fontSize="small"/>
+                            <ArrowDropDown fontSize="small" />
                         </Button>
 
                         <Menu
@@ -619,25 +619,25 @@ const ProductRow = ({product, index}) => {
                                     ? `${ROUTE_CONSTANT.catalog.product.parentProducts}?id=${product._id}`
                                     : `${ROUTE_CONSTANT.catalog.product.add}?id=${product._id}`
                             }
-                               className="w-full h-full block"
-                               style={{textDecoration: 'none', color: 'inherit'}}>
-                                <MenuItem sx={{fontSize: '0.8rem'}}>
+                                className="w-full h-full block"
+                                style={{ textDecoration: 'none', color: 'inherit' }}>
+                                <MenuItem sx={{ fontSize: '0.8rem' }}>
                                     Edit
                                 </MenuItem>
                             </a>
                             <a
                                 href={`${ROUTE_CONSTANT.catalog.product.add}?_id=${product._id}&listing=copy`}
                                 className="w-full h-full block"
-                                style={{textDecoration: 'none', color: 'inherit'}}
+                                style={{ textDecoration: 'none', color: 'inherit' }}
                             >
-                                <MenuItem sx={{fontSize: '0.8rem'}}>
+                                <MenuItem sx={{ fontSize: '0.8rem' }}>
                                     Copy Listing
                                 </MenuItem>
                             </a>
 
                             {filters.status === "delete" && designation_id === "2" ? <MenuItem onClick={handleDelete}
-                                                                                               sx={{fontSize: '0.8rem'}}>Delete</MenuItem> : filters.status !== "delete" &&
-                                <MenuItem onClick={handleDelete} sx={{fontSize: '0.8rem'}}>Delete</MenuItem>}
+                                sx={{ fontSize: '0.8rem' }}>Delete</MenuItem> : filters.status !== "delete" &&
+                            <MenuItem onClick={handleDelete} sx={{ fontSize: '0.8rem' }}>Delete</MenuItem>}
                         </Menu>
                     </Box>
                 </TableCell>
@@ -656,7 +656,7 @@ const ProductRow = ({product, index}) => {
 };
 
 // Variation Row Component
-const VariationRow = ({variation, parentProduct}) => {
+const VariationRow = ({ variation, parentProduct }) => {
     const {
         actionLoading,
         selection,
@@ -743,7 +743,7 @@ const VariationRow = ({variation, parentProduct}) => {
     const VIEW_W = 200;
     const VIEW_H = 200;
     const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
-    const clampPan = ({scale = 1, x = 0, y = 0}) => {
+    const clampPan = ({ scale = 1, x = 0, y = 0 }) => {
         const maxX = ((VIEW_W * scale) - VIEW_W) / 2;
         const maxY = ((VIEW_H * scale) - VIEW_H) / 2;
         return {
@@ -778,26 +778,26 @@ const VariationRow = ({variation, parentProduct}) => {
                 }
             }}
         >
-            <TableCell sx={{width: '60px', minWidth: '60px', maxWidth: '60px', padding: '4px'}}>
+            <TableCell sx={{ width: '60px', minWidth: '60px', maxWidth: '60px', padding: '4px' }}>
                 <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                     <Checkbox
                         checked={isSelected}
                         onChange={() => toggleProductSelection(variation._id, [])}
                         size="small"
                         disabled={actionLoading}
-                        sx={{padding: '4px'}}
+                        sx={{ padding: '4px' }}
                     />
                 </Box>
             </TableCell>
 
             {!filters.hiddenColumns.includes('Status') && (
-                <TableCell sx={{padding: '4px'}}>
-                    <Typography variant="body2" sx={{fontSize: '0.75rem'}}>{variation.productStatus}</Typography>
+                <TableCell sx={{ padding: '4px' }}>
+                    <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>{variation.productStatus}</Typography>
                 </TableCell>
             )}
 
             {!filters.hiddenColumns.includes('Image') && (
-                <TableCell sx={{width: '200px', minWidth: '200px', maxWidth: '200px', padding: '4px'}}>
+                <TableCell sx={{ width: '200px', minWidth: '200px', maxWidth: '200px', padding: '4px' }}>
                     <Box
                         sx={{
                             height: "200px",
@@ -824,7 +824,7 @@ const VariationRow = ({variation, parentProduct}) => {
                                 willChange: "transform",
                                 backfaceVisibility: "hidden",
                                 ...(() => {
-                                    const {x, y, scale} = clampPan(variation?.zoom || {});
+                                    const { x, y, scale } = clampPan(variation?.zoom || {});
                                     return {
                                         transform: `translate3d(${x}px, ${y}px, 0) scale(${scale})`,
                                     };
@@ -837,7 +837,7 @@ const VariationRow = ({variation, parentProduct}) => {
 
             {/* Image Badge for Variation */}
             {!filters.hiddenColumns.includes('Image Badge') && (
-                <TableCell sx={{padding: '4px', minWidth: '120px'}}>
+                <TableCell sx={{ padding: '4px', minWidth: '120px' }}>
                     <ImageBadgeColumn
                         product={variation}
                         isProduct={true}
@@ -850,21 +850,21 @@ const VariationRow = ({variation, parentProduct}) => {
 
             {/* Product Information for Variation */}
             {showProductInfoColumn && (
-                <TableCell sx={{padding: '4px 8px', minWidth: '150px'}}>
-                    <Box sx={{display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-start', justifyContent: 'flex-start'}}>
+                <TableCell sx={{ padding: '4px 8px', minWidth: '150px' }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-start', justifyContent: 'flex-start' }}>
                         {/* Featured inside Product Information */}
                         {!filters.hiddenColumns.includes('Featured') && (
-                            <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center'}}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
                                 <IconButton
                                     size="small"
                                     color={variation.featured ? "info" : "default"}
                                     onClick={handleToggleFeatured}
                                     disabled={actionLoading}
-                                    sx={{padding: '2px'}}
+                                    sx={{ padding: '2px' }}
                                 >
-                                    {variation.featured ? <Star fontSize="small"/> : <StarOutline fontSize="small"/>}
+                                    {variation.featured ? <Star fontSize="small" /> : <StarOutline fontSize="small" />}
                                 </IconButton>
-                                <Typography variant="body2" sx={{fontSize: '0.7rem', fontWeight: 'bold'}}>
+                                <Typography variant="body2" sx={{ fontSize: '0.7rem', fontWeight: 'bold' }}>
                                     Featured
                                 </Typography>
                             </Box>
@@ -872,9 +872,9 @@ const VariationRow = ({variation, parentProduct}) => {
 
                         {/* Product Title */}
                         {!filters.hiddenColumns.includes('Product Title') && (
-                            <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center'}}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
                                 <a
-                                    href={`${REACT_APP_WEB_URL}/products?id=${variation._id}`}
+                                    href={`${REACT_APP_WEB_URL}/products/${variation._id}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     style={{
@@ -896,13 +896,13 @@ const VariationRow = ({variation, parentProduct}) => {
 
                         {/* Shop Name */}
                         {!filters.hiddenColumns.includes('Shop Name') && (
-                            <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center'}}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
                                 <Typography variant="body2"
-                                            sx={{fontWeight: 'bold', minWidth: '45px', fontSize: '0.7rem'}}>
+                                    sx={{ fontWeight: 'bold', minWidth: '45px', fontSize: '0.7rem' }}>
                                     Shop Name:
                                 </Typography>
                                 <Typography variant="body2"
-                                            sx={{fontFamily: 'monospace', fontSize: '0.65rem', wordBreak: 'break-all'}}>
+                                    sx={{ fontFamily: 'monospace', fontSize: '0.65rem', wordBreak: 'break-all' }}>
                                     {variation.shop_name || "-"}
                                 </Typography>
                             </Box>
@@ -910,13 +910,13 @@ const VariationRow = ({variation, parentProduct}) => {
 
                         {/* Product ID */}
                         {!filters.hiddenColumns.includes('Product Id') && (
-                            <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center'}}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
                                 <Typography variant="body2"
-                                            sx={{fontWeight: 'bold', minWidth: '45px', fontSize: '0.7rem'}}>
+                                    sx={{ fontWeight: 'bold', minWidth: '45px', fontSize: '0.7rem' }}>
                                     ID:
                                 </Typography>
                                 <Typography variant="body2"
-                                            sx={{fontFamily: 'monospace', fontSize: '0.65rem', wordBreak: 'break-all'}}>
+                                    sx={{ fontFamily: 'monospace', fontSize: '0.65rem', wordBreak: 'break-all' }}>
                                     {variation._id}
                                 </Typography>
                             </Box>
@@ -924,12 +924,12 @@ const VariationRow = ({variation, parentProduct}) => {
 
                         {/* SKU */}
                         {!filters.hiddenColumns.includes('SKU') && (
-                            <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center'}}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
                                 <Typography variant="body2"
-                                            sx={{fontWeight: 'bold', minWidth: '45px', fontSize: '0.7rem'}}>
+                                    sx={{ fontWeight: 'bold', minWidth: '45px', fontSize: '0.7rem' }}>
                                     SKU:
                                 </Typography>
-                                <Typography variant="body2" sx={{fontSize: '0.75rem'}}>
+                                <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
                                     {capitalizeFirstLetter(variation.sku_code)}
                                 </Typography>
                             </Box>
@@ -939,14 +939,14 @@ const VariationRow = ({variation, parentProduct}) => {
             )}
 
             {!filters.hiddenColumns.includes('Available') && (
-                <TableCell sx={{padding: '4px', minWidth: '80px'}}>
-                    <Typography variant="body2" sx={{fontSize: '0.75rem'}}>{variation.qty}</Typography>
+                <TableCell sx={{ padding: '4px', minWidth: '80px' }}>
+                    <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>{variation.qty}</Typography>
                 </TableCell>
             )}
 
             {/* Common Settings for Variation */}
             {showCommonSettingsColumn && (
-                <TableCell sx={{padding: '4px', minWidth: '150px'}}>
+                <TableCell sx={{ padding: '4px', minWidth: '150px' }}>
                     <CommonSettingsColumn
                         product={variation}
                         isProduct={true}
@@ -958,13 +958,13 @@ const VariationRow = ({variation, parentProduct}) => {
             )}
 
             {/* Performance Stats */}
-            <TableCell sx={{width: '200px', minWidth: '200px', maxWidth: '200px', padding: '4px'}}>
-                <StatsSubTable/>
+            <TableCell sx={{ width: '200px', minWidth: '200px', maxWidth: '200px', padding: '4px' }}>
+                <StatsSubTable />
             </TableCell>
 
             {/* Actions */}
-            <TableCell sx={{padding: '4px', minWidth: '120px'}}>
-                <Box sx={{display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+            <TableCell sx={{ padding: '4px', minWidth: '120px' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Button
                         variant="contained"
                         sx={{
@@ -974,7 +974,7 @@ const VariationRow = ({variation, parentProduct}) => {
                             boxShadow: 'none',
                             background: '#fff',
                             color: '#000',
-                            '&:hover': {color: '#fff', boxShadow: 'none'},
+                            '&:hover': { color: '#fff', boxShadow: 'none' },
                             fontSize: '0.7rem',
                             padding: '2px 8px',
                             minWidth: 'auto'
@@ -998,7 +998,7 @@ const VariationRow = ({variation, parentProduct}) => {
                         onClick={(e) => setActionAnchorEl(e.currentTarget)}
                         disabled={actionLoading}
                     >
-                        <ArrowDropDown fontSize="small"/>
+                        <ArrowDropDown fontSize="small" />
                     </Button>
 
                     <Menu
@@ -1009,22 +1009,22 @@ const VariationRow = ({variation, parentProduct}) => {
                         <a
                             href={`${ROUTE_CONSTANT.catalog.product.add}?id=${variation._id}`}
                             className="w-full h-full block"
-                            style={{textDecoration: 'none', color: 'inherit'}}
+                            style={{ textDecoration: 'none', color: 'inherit' }}
                         >
-                            <MenuItem sx={{fontSize: '0.8rem'}}>
+                            <MenuItem sx={{ fontSize: '0.8rem' }}>
                                 Edit
                             </MenuItem>
                         </a>
                         <a
                             href={`${ROUTE_CONSTANT.catalog.product.add}?_id=${variation._id}&listing=copy`}
                             className="w-full h-full block"
-                            style={{textDecoration: 'none', color: 'inherit'}}
+                            style={{ textDecoration: 'none', color: 'inherit' }}
                         >
-                            <MenuItem sx={{fontSize: '0.8rem'}}>
+                            <MenuItem sx={{ fontSize: '0.8rem' }}>
                                 Copy Listing
                             </MenuItem>
                         </a>
-                        <MenuItem onClick={handleDelete} sx={{fontSize: '0.8rem'}}>Delete</MenuItem>
+                        <MenuItem onClick={handleDelete} sx={{ fontSize: '0.8rem' }}>Delete</MenuItem>
                     </Menu>
                 </Box>
             </TableCell>
@@ -1052,10 +1052,10 @@ const ProductTableNew = () => {
         !filters.hiddenColumns.includes('Sort Order');
 
     const columnHeaders = [
-        {key: 'checkbox', label: '', align: 'center', fixed: true, width: '60px'},
-        {key: 'Status', label: 'Status', align: 'center', hideable: true, fixed: true, width: "100px"},
-        {key: 'Image', label: 'Images', align: 'center', hideable: true, fixed: true, width: '200px'},
-        {key: 'Image Badge', label: 'Image Badge', align: 'center', hideable: true, fixed: true, width: "170px"},
+        { key: 'checkbox', label: '', align: 'center', fixed: true, width: '60px' },
+        { key: 'Status', label: 'Status', align: 'center', hideable: true, fixed: true, width: "100px" },
+        { key: 'Image', label: 'Images', align: 'center', hideable: true, fixed: true, width: '200px' },
+        { key: 'Image Badge', label: 'Image Badge', align: 'center', hideable: true, fixed: true, width: "170px" },
         {
             key: 'ProductInfo',
             label: 'Product Information',
@@ -1063,7 +1063,7 @@ const ProductTableNew = () => {
             fixed: false,
             conditional: showProductInfoColumn
         },
-        {key: 'Available', label: 'Available', align: 'center', hideable: true, fixed: true, width: "100px"},
+        { key: 'Available', label: 'Available', align: 'center', hideable: true, fixed: true, width: "100px" },
         {
             key: 'CommonSettings',
             label: 'Settings',
@@ -1072,14 +1072,14 @@ const ProductTableNew = () => {
             width: "150px",
             conditional: showCommonSettingsColumn
         },
-        {key: 'Performance', label: 'Performance Stats', align: 'center', fixed: true, width: '300px'},
-        {key: 'Action', label: 'Action', align: 'center', fixed: true, width: "100px"},
+        { key: 'Performance', label: 'Performance Stats', align: 'center', fixed: true, width: '300px' },
+        { key: 'Action', label: 'Action', align: 'center', fixed: true, width: "100px" },
     ];
 
     if (loading) {
         return (
-            <Box sx={{display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200}}>
-                <CircularProgress/>
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
+                <CircularProgress />
             </Box>
         );
     }
@@ -1115,11 +1115,11 @@ const ProductTableNew = () => {
                         alignItems: 'center'
                     }}
                 >
-                    <CircularProgress/>
+                    <CircularProgress />
                 </Box>
             )}
 
-            <Table sx={{minWidth: '100%'}} size="small">
+            <Table sx={{ minWidth: '100%' }} size="small">
                 <TableHead>
                     <TableRow>
                         {columnHeaders.map((column) => {
@@ -1165,7 +1165,7 @@ const ProductTableNew = () => {
                     ) : (
                         <TableRow>
                             <TableCell colSpan={columnHeaders.length} align="center">
-                                <Typography variant="body1" sx={{p: 3}}>
+                                <Typography variant="body1" sx={{ p: 3 }}>
                                     No products found
                                 </Typography>
                             </TableCell>
