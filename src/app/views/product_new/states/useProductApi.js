@@ -402,6 +402,11 @@ export const useProductAPI = () => {
                                         `customizationData[customizations][${cIndex}][optionList][${oIndex}][main_images][${imgIndex}]`,
                                         image
                                     );
+                                } else {
+                                    fData.append(
+                                        `customizationData[customizations][${cIndex}][optionList][${oIndex}][main_images][${imgIndex}]`,
+                                        ""
+                                    );
                                 }
                             });
                         }
