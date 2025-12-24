@@ -177,7 +177,7 @@ export const useProductAPI = () => {
                                 } else {
                                     fData.append(
                                         `product_variants[${vIndex}][variant_attributes][${aIndex}][main_images][${imgIndex}]`,
-                                        ""
+                                        null
                                     );
                                 }
                             });
@@ -405,7 +405,7 @@ export const useProductAPI = () => {
                                 } else {
                                     fData.append(
                                         `customizationData[customizations][${cIndex}][optionList][${oIndex}][main_images][${imgIndex}]`,
-                                        ""
+                                        null
                                     );
                                 }
                             });
