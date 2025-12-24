@@ -388,13 +388,13 @@ export const useProductAPI = () => {
                             option.main_images.forEach((image, imgIndex) => {
                                 if (image instanceof File) {
                                     fData.append(
-                                        `customizationData[customizations][${cIndex}][optionList][${oIndex}][main_images][]`,
+                                        `customizationData[customizations][${cIndex}][optionList][${oIndex}][main_images][${imgIndex}]`,
                                         image
                                     );
                                 } else if (typeof image === "string") {
                                     // Append empty string for removed images
                                     fData.append(
-                                        `customizationData[customizations][${cIndex}][optionList][${oIndex}][main_images][]`,
+                                        `customizationData[customizations][${cIndex}][optionList][${oIndex}][main_images][${imgIndex}]`,
                                         image
                                     );
                                 }
