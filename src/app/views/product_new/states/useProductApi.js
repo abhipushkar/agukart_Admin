@@ -163,6 +163,7 @@ export const useProductAPI = () => {
 
                         // Handle main_images array
                         if (attribute.main_images && Array.isArray(attribute.main_images)) {
+
                             attribute.main_images.forEach((image, imgIndex) => {
                                 if (image instanceof File) {
                                     fData.append(
@@ -172,12 +173,12 @@ export const useProductAPI = () => {
                                 } else if (typeof image === "string") {
                                     fData.append(
                                         `product_variants[${vIndex}][variant_attributes][${aIndex}][main_images][${imgIndex}]`,
-                                        image
+                                        image === "" ? null : image
                                     );
                                 } else {
                                     fData.append(
                                         `product_variants[${vIndex}][variant_attributes][${aIndex}][main_images][${imgIndex}]`,
-                                        "null"
+                                        null
                                     );
                                 }
                             });
@@ -400,12 +401,12 @@ export const useProductAPI = () => {
                                     // Append empty string for removed images
                                     fData.append(
                                         `customizationData[customizations][${cIndex}][optionList][${oIndex}][main_images][${imgIndex}]`,
-                                        image
+                                        image === "" ? null : image
                                     );
                                 } else {
                                     fData.append(
                                         `customizationData[customizations][${cIndex}][optionList][${oIndex}][main_images][${imgIndex}]`,
-                                        "null"
+                                        null
                                     );
                                 }
                             });
