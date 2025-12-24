@@ -174,6 +174,11 @@ export const useProductAPI = () => {
                                         `product_variants[${vIndex}][variant_attributes][${aIndex}][main_images][${imgIndex}]`,
                                         image
                                     );
+                                } else {
+                                    fData.append(
+                                        `product_variants[${vIndex}][variant_attributes][${aIndex}][main_images][${imgIndex}]`,
+                                        ""
+                                    );
                                 }
                             });
                         }
