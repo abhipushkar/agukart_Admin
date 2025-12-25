@@ -37,6 +37,43 @@ export const useProductFormStore = create(
             parentProductData: null,
             setParentProductData: (parentProductData) => set({ parentProductData }),
 
+            deletedVariantImages: {},
+            setDeletedVariantImages: (deletedVariantImages) => set({ deletedVariantImages }),
+
+            deletedCustomizationImages: {},
+            setDeletedCustomizationImages: (deletedCustomizationImages) => set({ deletedCustomizationImages }),
+
+            // ========== CUSTOMIZATION DELETE TRACKING ==========
+            trackCustomizationImageDelete: (customizationIndex, optionIndex, imageIndex) => {
+                const state = get();
+                const deletedCustomizationImages = { ...state.deletedCustomizationImages };
+
+                const deleteKey = `${customizationIndex}-${optionIndex}`;
+                if (!deletedCustomizationImages[deleteKey]) {
+                    deletedCustomizationImages[deleteKey] = [];
+                }
+                if (!deletedCustomizationImages[deleteKey].includes(imageIndex)) {
+                    deletedCustomizationImages[deleteKey].push(imageIndex);
+                }
+
+                set({ deletedCustomizationImages });
+            },
+
+            clearCustomizationImageDelete: (customizationIndex, optionIndex, imageIndex) => {
+                const state = get();
+                const deletedCustomizationImages = { ...state.deletedCustomizationImages };
+
+                const deleteKey = `${customizationIndex}-${optionIndex}`;
+                if (deletedCustomizationImages[deleteKey]) {
+                    deletedCustomizationImages[deleteKey] = deletedCustomizationImages[deleteKey].filter(idx => idx !== imageIndex);
+                    if (deletedCustomizationImages[deleteKey].length === 0) {
+                        delete deletedCustomizationImages[deleteKey];
+                    }
+                }
+
+                set({ deletedCustomizationImages });
+            },
+
             // Form Data (main state)
             formData: {
                 productTitle: "",
@@ -292,6 +329,7 @@ export const useProductFormStore = create(
 
                 const state = get();
                 const updatedProductVariants = [...state.product_variants];
+                const deletedVariantImages = { ...state.deletedVariantImages };
 
                 const newProductVariants = updatedProductVariants.map((variant, vIndex) => {
                     if (vIndex === variantIndex) {
@@ -306,6 +344,15 @@ export const useProductFormStore = create(
                             }
                             mainImages[imgIndex] = file;
                             updatedAttribute.main_images = mainImages;
+
+                            // If user uploads to a previously deleted index, remove it from delete tracking
+                            const deleteKey = `${variantIndex}-${attributeIndex}`;
+                            if (deletedVariantImages[deleteKey] && deletedVariantImages[deleteKey].includes(imgIndex)) {
+                                deletedVariantImages[deleteKey] = deletedVariantImages[deleteKey].filter(idx => idx !== imgIndex);
+                                if (deletedVariantImages[deleteKey].length === 0) {
+                                    delete deletedVariantImages[deleteKey];
+                                }
+                            }
                         } else {
                             updatedAttribute[imageKey] = file;
                         }
@@ -319,12 +366,16 @@ export const useProductFormStore = create(
                     return variant;
                 });
 
-                set({ product_variants: newProductVariants });
+                set({
+                    product_variants: newProductVariants,
+                    deletedVariantImages
+                });
             },
 
             handleImageRemove: (variantIndex, attributeIndex, imageKey) => {
                 const state = get();
                 const updatedProductVariants = [...state.product_variants];
+                const deletedVariantImages = { ...state.deletedVariantImages };
 
                 const newProductVariants = updatedProductVariants.map((variant, vIndex) => {
                     if (vIndex === variantIndex) {
@@ -334,7 +385,18 @@ export const useProductFormStore = create(
                         if (imageKey.startsWith('main_images')) {
                             const imgIndex = parseInt(imageKey.match(/\[(\d+)\]/)[1]);
                             const mainImages = [...(updatedAttribute.main_images || [])];
+
                             if (mainImages[imgIndex]) {
+                                // Track the deleted index
+                                const deleteKey = `${variantIndex}-${attributeIndex}`;
+                                if (!deletedVariantImages[deleteKey]) {
+                                    deletedVariantImages[deleteKey] = [];
+                                }
+                                if (!deletedVariantImages[deleteKey].includes(imgIndex)) {
+                                    deletedVariantImages[deleteKey].push(imgIndex);
+                                }
+
+                                // Clear the image
                                 mainImages[imgIndex] = "";
                                 updatedAttribute.main_images = mainImages;
                             }
@@ -360,7 +422,10 @@ export const useProductFormStore = create(
                     return variant;
                 });
 
-                set({ product_variants: newProductVariants });
+                set({
+                    product_variants: newProductVariants,
+                    deletedVariantImages
+                });
             },
 
             handleEditImage: (variantIndex, attributeIndex, imageType, editedImage, imageIndex, editData) => {
@@ -512,7 +577,7 @@ export const useProductFormStore = create(
             // For reordering entire variant groups (if needed)
             handleVariantGroupReorder: (sourceIndex, targetIndex) => {
                 const state = get();
-                const { product_variants, combinations } = state;
+                const { product_variants } = state;
 
                 // Reorder product_variants groups
                 const updatedProductVariants = [...product_variants];
@@ -567,6 +632,7 @@ export const useProductFormStore = create(
                         productType: editData?.product_type || "productType",
                         subCategory: editData?.category || "",
                         parentProduct: editData.parent_id,
+                        deletedVariantImages: {},
                         variations: editData?.variant_attribute_id || [],
                         brandName: editData?.brand_id || "",
                         productDescription: editData?.description || "",
@@ -645,6 +711,7 @@ export const useProductFormStore = create(
                     productType: "productType",
                     subCategory: "",
                     variations: [],
+                    deletedVariantImages: {},
                     brandName: "",
                     productDescription: "",
                     bulletPoints: "",

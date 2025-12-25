@@ -15,6 +15,7 @@ export const useProductAPI = () => {
     // ---------------- helper to build FormData ----------------
     const buildProductFormData = (payload, product_variants, combinations, customizationData) => {
         const fData = new FormData();
+        const { deletedVariantImages } = useProductFormStore.getState();
 
         // fields that can be null/dates
         const dateKeys = [
@@ -24,6 +25,15 @@ export const useProductAPI = () => {
             "release_date",
             "restock_date",
         ];
+
+        if (deletedVariantImages && Object.keys(deletedVariantImages).length > 0) {
+            fData.append("deleted_variant_images", JSON.stringify(deletedVariantImages));
+        }
+
+        const { deletedCustomizationImages } = useProductFormStore.getState();
+        if (deletedCustomizationImages && Object.keys(deletedCustomizationImages).length > 0) {
+            fData.append("deleted_customization_images", JSON.stringify(deletedCustomizationImages));
+        }
 
         Object.keys(payload).forEach((key) => {
             let value = payload[key];

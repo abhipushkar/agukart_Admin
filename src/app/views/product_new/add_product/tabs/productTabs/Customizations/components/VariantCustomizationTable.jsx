@@ -48,7 +48,7 @@ import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import Cropper from 'react-easy-crop';
 import { getCroppedImg } from './cropUtil';
-import {useProductFormStore} from "../../../../../states/useAddProducts";
+import { useProductFormStore } from "../../../../../states/useAddProducts";
 
 const VisuallyHiddenInput = styled("input")({
     clip: "rect(0 0 0 0)",
@@ -67,8 +67,8 @@ const quillModules = {
     toolbar: [
         [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
         ['bold', 'italic', 'underline', 'strike'],
-        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-        [{ 'indent': '-1'}, { 'indent': '+1' }],
+        [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+        [{ 'indent': '-1' }, { 'indent': '+1' }],
         ['link', 'image'],
         ['clean']
     ],
@@ -83,16 +83,16 @@ const quillFormats = [
 
 // Draggable Table Row Component
 const DraggableTableRow = ({
-                               children,
-                               index,
-                               onDragStart,
-                               onDragOver,
-                               onDrop,
-                               onDragEnd,
-                               isDragging,
-                               isDragOver,
-                               ...props
-                           }) => {
+    children,
+    index,
+    onDragStart,
+    onDragOver,
+    onDrop,
+    onDragEnd,
+    isDragging,
+    isDragOver,
+    ...props
+}) => {
     const ref = useRef(null);
 
     const handleDragStart = (e) => {
@@ -165,7 +165,9 @@ const DraggableTableRow = ({
 };
 
 const VariantCustomizationTable = ({ index }) => {
-    const { customizationData, setCustomizationData, varientName } = useProductFormStore();
+    const { customizationData, setCustomizationData, varientName,
+        trackCustomizationImageDelete,
+        clearCustomizationImageDelete } = useProductFormStore();
 
     const customization = customizationData?.customizations?.[index];
     const [cropDialogOpen, setCropDialogOpen] = useState(false);
@@ -470,6 +472,9 @@ const VariantCustomizationTable = ({ index }) => {
                 updatedOption.edit_main_image = "";
                 updatedOption.edit_main_image_data = null;
             }
+
+            // Clear delete tracking if re-uploading to a previously deleted index - NEW
+            clearCustomizationImageDelete(index, optionIndex, imgIndex);
         } else {
             updatedOption = {
                 ...updatedOption,
@@ -495,6 +500,7 @@ const VariantCustomizationTable = ({ index }) => {
         });
     };
 
+
     // Fixed bulk image upload function
     const handleBulkImageUpload = (optionIndex, event) => {
         const files = Array.from(event.target.files);
@@ -513,6 +519,9 @@ const VariantCustomizationTable = ({ index }) => {
         files.slice(0, 3).forEach((file, imgIndex) => {
             if (imgIndex < 3) {
                 newMainImages[imgIndex] = file;
+
+                // Clear delete tracking for each uploaded image - NEW
+                clearCustomizationImageDelete(index, optionIndex, imgIndex);
             }
         });
 
@@ -538,7 +547,6 @@ const VariantCustomizationTable = ({ index }) => {
             customizations: updatedCustomizations
         });
 
-        // Reset the input value to allow uploading the same files again
         event.target.value = '';
     };
 
@@ -558,6 +566,9 @@ const VariantCustomizationTable = ({ index }) => {
                 ...updatedOption,
                 main_images: newMainImages
             };
+
+            // Track the deleted index - NEW
+            trackCustomizationImageDelete(index, optionIndex, imgIndex);
         } else {
             updatedOption = {
                 ...updatedOption,
@@ -951,9 +962,9 @@ const VariantCustomizationTable = ({ index }) => {
                             component="label"
                             variant="outlined"
                             size="small"
-                            sx={{mb: 1, aspectRatio: "1/1", width: "30px"}}
+                            sx={{ mb: 1, aspectRatio: "1/1", width: "30px" }}
                         >
-                            <AddPhotoAlternateIcon/>
+                            <AddPhotoAlternateIcon />
                             <VisuallyHiddenInput
                                 type="file"
                                 onChange={(e) => handleImageUpload(optionIndex, imageKey, e, imageIndex)}
@@ -1022,9 +1033,9 @@ const VariantCustomizationTable = ({ index }) => {
                 <Typography variant="h6" gutterBottom>
                     Configuration
                 </Typography>
-                <Box sx={{display: 'flex', flexDirection: 'column', gap: 2, width: "100%"}}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, width: "100%" }}>
                     <Box sx={{ display: 'flex', flexDirection: 'row', gap: 2, width: "100%" }}>
-                        <Box sx={{width: "100%"}}>
+                        <Box sx={{ width: "100%" }}>
                             <Typography variant="subtitle2" gutterBottom>
                                 Label
                             </Typography>
@@ -1040,7 +1051,7 @@ const VariantCustomizationTable = ({ index }) => {
                             </Typography>
                         </Box>
 
-                        <Box sx={{width: "100%"}}>
+                        <Box sx={{ width: "100%" }}>
                             <Typography variant="subtitle2" gutterBottom>
                                 Instructions (Optional)
                             </Typography>

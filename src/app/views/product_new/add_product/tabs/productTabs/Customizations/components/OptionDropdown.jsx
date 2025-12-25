@@ -22,13 +22,10 @@ import {
     Switch,
     Slider,
     Chip, Card, CardContent,
-    Divider
 } from "@mui/material";
-import { DndProvider, useDrag, useDrop } from "react-dnd";
+import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
-import FilterListIcon from "@mui/icons-material/FilterList";
 import DeleteIcon from "@mui/icons-material/Delete";
-import AddAPhotoIcon from "@mui/icons-material/AddAPhoto";
 import AddToPhotosIcon from "@mui/icons-material/AddToPhotos";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 import CropIcon from "@mui/icons-material/Crop";
@@ -164,7 +161,7 @@ const DraggableTableRow = ({
 };
 
 const OptionDropdown = ({ index }) => {
-    const { customizationData, setCustomizationData } = useProductFormStore();
+    const { customizationData, setCustomizationData, trackCustomizationImageDelete, clearCustomizationImageDelete } = useProductFormStore();
     const [open, setOpen] = useState(false);
     const [addManyOptions, setAddManyOptions] = useState([]);
 
@@ -371,6 +368,9 @@ const OptionDropdown = ({ index }) => {
                 updatedOption.edit_main_image = "";
                 updatedOption.edit_main_image_data = null;
             }
+
+            // Clear delete tracking if re-uploading to a previously deleted index - NEW
+            clearCustomizationImageDelete(index, optionIndex, imgIndex);
         } else {
             updatedOption = {
                 ...updatedOption,
@@ -412,6 +412,9 @@ const OptionDropdown = ({ index }) => {
         files.slice(0, 3).forEach((file, imgIndex) => {
             if (imgIndex < 3) {
                 newMainImages[imgIndex] = file;
+
+                // Clear delete tracking for each uploaded image - NEW
+                clearCustomizationImageDelete(index, optionIndex, imgIndex);
             }
         });
 
@@ -441,6 +444,7 @@ const OptionDropdown = ({ index }) => {
         event.target.value = '';
     };
 
+
     const handleImageRemove = (optionIndex, imageType, imageIndex = null) => {
         const updatedCustomizations = [...customizationData.customizations];
         const updatedOptionList = [...updatedCustomizations[index].optionList];
@@ -457,6 +461,9 @@ const OptionDropdown = ({ index }) => {
                 ...updatedOption,
                 main_images: newMainImages
             };
+
+            // Track the deleted index - NEW
+            trackCustomizationImageDelete(index, optionIndex, imgIndex);
         } else {
             updatedOption = {
                 ...updatedOption,
