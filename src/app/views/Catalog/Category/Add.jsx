@@ -1,6 +1,6 @@
-import React, {useState, useEffect} from "react";
-import {ROUTE_CONSTANT} from "app/constant/routeContanst";
-import {Formik, Form, Field, ErrorMessage, FieldArray} from "formik";
+import React, { useState, useEffect } from "react";
+import { ROUTE_CONSTANT } from "app/constant/routeContanst";
+import { Formik, Form, Field, ErrorMessage, FieldArray } from "formik";
 import * as Yup from "yup";
 import {
     TextField,
@@ -26,20 +26,20 @@ import {
     CardContent
 } from "@mui/material";
 
-import {ThemeProvider, createTheme} from "@mui/material/styles";
+import { ThemeProvider, createTheme } from "@mui/material/styles";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
-import {toast} from "react-toastify";
-import {useNavigate, useSearchParams} from "react-router-dom";
+import { toast } from "react-toastify";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import styled from "@emotion/styled";
-import {ApiService} from "app/services/ApiService";
-import {apiEndpoints} from "app/constant/apiEndpoints";
-import {localStorageKey} from "app/constant/localStorageKey";
+import { ApiService } from "app/services/ApiService";
+import { apiEndpoints } from "app/constant/apiEndpoints";
+import { localStorageKey } from "app/constant/localStorageKey";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import AppsIcon from "@mui/icons-material/Apps";
 
 import ArrowRight from "@mui/icons-material/ArrowRight";
 
-import {Dropdown, DropdownMenuItem, DropdownNestedMenuItem} from "./DropDown";
+import { Dropdown, DropdownMenuItem, DropdownNestedMenuItem } from "./DropDown";
 
 import PropTypes from "prop-types";
 import CloseIcon from "@mui/icons-material/Close";
@@ -47,18 +47,18 @@ import ClearIcon from "@mui/icons-material/Clear";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 
-import {autocompleteClasses} from "@mui/material/Autocomplete";
+import { autocompleteClasses } from "@mui/material/Autocomplete";
 
 import Autocomplete from "@mui/material/Autocomplete";
-import {TextRotateVerticalRounded} from "@mui/icons-material";
+import { TextRotateVerticalRounded } from "@mui/icons-material";
 import ConfirmModal from "app/components/ConfirmModal";
 
 function Tag(props) {
-    const {label, onDelete, ...other} = props;
+    const { label, onDelete, ...other } = props;
     return (
         <div {...other}>
             <span>{label}</span>
-            <CloseIcon onClick={onDelete}/>
+            <CloseIcon onClick={onDelete} />
         </div>
     );
 }
@@ -70,12 +70,12 @@ Tag.propTypes = {
 
 const theme = createTheme();
 
-const StyledContainer = styled("div")(({theme}) => ({
+const StyledContainer = styled("div")(({ theme }) => ({
     margin: "30px",
-    [theme.breakpoints.down("sm")]: {margin: "16px"},
+    [theme.breakpoints.down("sm")]: { margin: "16px" },
     "& .breadcrumb": {
         marginBottom: "30px",
-        [theme.breakpoints.down("sm")]: {marginBottom: "16px"}
+        [theme.breakpoints.down("sm")]: { marginBottom: "16px" }
     }
 }));
 
@@ -103,7 +103,7 @@ const Add = () => {
     const [allActiveCategory, setAllActiveCategory] = useState([]);
     const [selectedCatLable, setSelectedCatLable] = useState("Select Category");
     const [selectedCatId, setSelectedCatId] = useState("");
-    console.log({selectedCatId})
+    console.log({ selectedCatId })
     const [loading, setLoading] = useState(false);
     const [imagePreview, setImagePreview] = useState(null);
     const [render, setRander] = useState(true);
@@ -136,20 +136,6 @@ const Add = () => {
         metaTitle: Yup.string().required("Meta Title is required"),
         metaKeywords: Yup.string().required("Meta Keywords is required"),
         metaDescription: Yup.string().required("Meta Description is required"),
-        conditionType: Yup.string().oneOf(["all", "any"], "Condition type is required"),
-        conditions: Yup.array().of(
-            Yup.object().shape({
-                field: Yup.string().required("Field is required"),
-                operator: Yup.string().required("Operator is required"),
-                value: Yup.mixed().test('required', 'Value is required', function (value) {
-                    const {field} = this.parent;
-                    if (field && !value) {
-                        return false;
-                    }
-                    return true;
-                })
-            })
-        ).min(1, "At least one condition is required")
     });
 
     const [selectedVariant, setSelectedVariant] = useState([]);
@@ -289,7 +275,7 @@ const Add = () => {
 
     // Improved processInitialConditions function
     const processInitialConditions = (conditions) => {
-        if (!conditions || !Array.isArray(conditions)) return [{field: "", operator: "", value: ""}];
+        if (!conditions || !Array.isArray(conditions)) return [{ field: "", operator: "", value: "" }];
 
         return conditions.map(condition => {
             let value = condition.value;
@@ -345,7 +331,7 @@ const Add = () => {
         }
 
         try {
-            const res = await ApiService.post(`${apiEndpoints.getCategoryFullDetails}`, {categoryIds}, auth_key);
+            const res = await ApiService.post(`${apiEndpoints.getCategoryFullDetails}`, { categoryIds }, auth_key);
 
             if (res.data?.success && res.data?.data) {
                 const categoriesData = res.data.data;
@@ -445,7 +431,7 @@ const Add = () => {
         const variant_id = SelectedEditVariant.map((variant) => {
             return variant._id;
         });
-        payload = {...payload, variant_id: variant_id};
+        payload = { ...payload, variant_id: variant_id };
 
         try {
             setLoading(true);
@@ -474,12 +460,8 @@ const Add = () => {
     const handleUploadImage = async (id, msg) => {
         try {
             const formData = new FormData();
-            {
-                image && formData.append("file", image);
-            }
-            {
-                topRatedImg && formData.append("image", topRatedImg);
-            }
+            image && formData.append("file", image);
+            topRatedImg && formData.append("image", topRatedImg);
             formData.append("_id", id);
             const res = await ApiService.postImage(apiEndpoints.addCategoryImage, formData, auth_key);
             if (res?.status === 200) {
@@ -570,11 +552,11 @@ const Add = () => {
         try {
             if (getCatData?.parent_id) {
                 const res = await ApiService.get(apiEndpoints.getParentCatgory, auth_key);
-                console.log({res});
+                console.log({ res });
 
                 if (res.status === 200) {
                     const find = res?.data?.data.find((item) => item._id === getCatData?.parent_id);
-                    console.log({find});
+                    console.log({ find });
                     if (find?.title?.includes(">")) {
                         setSelectedCatLable(find.title);
                     } else {
@@ -607,7 +589,7 @@ const Add = () => {
         try {
             const res = await ApiService.get(apiEndpoints.getAllActiveCategory, auth_key);
             if (res?.status === 200) {
-                setAllActiveCategory([{subs: res?.data?.subCatgory}]);
+                setAllActiveCategory([{ subs: res?.data?.subCatgory }]);
                 setRander(false);
             }
         } catch (error) {
@@ -737,7 +719,7 @@ const Add = () => {
                         }}
                         label={items?.title}
                         menu={returnJSX(items?.subs || []) || []}
-                        rightIcon={<ArrowRight/>}
+                        rightIcon={<ArrowRight />}
                     />
                 );
             }
@@ -780,14 +762,14 @@ const Add = () => {
         const obj = findObjectByTitle(allActiveCategory, selectedCatLable);
     }, [selectedCatLable]);
 
-    console.log({getCatData});
+    console.log({ getCatData });
 
     const getParentCategory = async (id) => {
         try {
             const res = await ApiService.get(apiEndpoints.getParentCatgory, auth_key);
             if (res.status === 200) {
                 const findSubCatgory = res?.data?.data.find((cat) => cat._id === id);
-                console.log({findSubCatgory});
+                console.log({ findSubCatgory });
                 setSelectedCatLable(findSubCatgory?.title);
             }
         } catch (error) {
@@ -856,8 +838,8 @@ const Add = () => {
                     onChange={(e) => setFieldValue(`conditions.${index}.value`, e.target.value)}
                     placeholder="Enter value"
                     sx={{
-                        "& .MuiInputBase-root": {height: "40px"},
-                        "& .MuiFormLabel-root": {top: "-7px"},
+                        "& .MuiInputBase-root": { height: "40px" },
+                        "& .MuiFormLabel-root": { top: "-7px" },
                     }}
                 />
             );
@@ -872,13 +854,13 @@ const Add = () => {
                 const selectedSubAttribute = subAttributes.find(sub => sub._id === condition.value?.subAttributeId);
 
                 return (
-                    <Box sx={{display: 'flex', flexDirection: 'column', gap: 1}}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                         {/* Attribute Selection */}
                         <FormControl fullWidth>
                             <TextField
                                 select
                                 sx={{
-                                    "& .MuiInputBase-root": {height: "40px"}
+                                    "& .MuiInputBase-root": { height: "40px" }
                                 }}
                                 value={condition.value?.attributeId || ""}
                                 onChange={(e) => {
@@ -906,7 +888,7 @@ const Add = () => {
                                 <TextField
                                     select
                                     sx={{
-                                        "& .MuiInputBase-root": {height: "40px"}
+                                        "& .MuiInputBase-root": { height: "40px" }
                                     }}
                                     value={condition.value?.subAttributeId || ""}
                                     onChange={(e) => {
@@ -943,7 +925,7 @@ const Add = () => {
             const selectedValuesCount = condition.value?.valueIds?.length || 0;
 
             return (
-                <Box sx={{display: 'flex', flexDirection: selectedValuesCount > 1 ? 'column' : 'row', gap: 1}}>
+                <Box sx={{ display: 'flex', flexDirection: selectedValuesCount > 1 ? 'column' : 'row', gap: 1 }}>
                     <FormControl fullWidth>
                         <TextField
                             select
@@ -983,7 +965,7 @@ const Add = () => {
             const selectedAttributesCount = condition.value?.attributeIds?.length || 0;
 
             return (
-                <Box sx={{display: 'flex', flexDirection: selectedAttributesCount > 1 ? 'column' : 'row', gap: 1}}>
+                <Box sx={{ display: 'flex', flexDirection: selectedAttributesCount > 1 ? 'column' : 'row', gap: 1 }}>
                     <FormControl fullWidth>
                         <TextField
                             select
@@ -1073,7 +1055,7 @@ const Add = () => {
         );
     };
 
-// Helper function to render attribute value input based on attribute type
+    // Helper function to render attribute value input based on attribute type
     const renderAttributeValueInput = (attribute, condition, index, setFieldValue) => {
         if (!attribute) {
             return (
@@ -1081,7 +1063,7 @@ const Add = () => {
                     label="Select Attribute First"
                     disabled
                     sx={{
-                        "& .MuiInputBase-root": {height: "40px"}
+                        "& .MuiInputBase-root": { height: "40px" }
                     }}
                 />
             );
@@ -1126,15 +1108,15 @@ const Add = () => {
 
             case "Yes/No":
                 const yesNoOptions = [
-                    {_id: "yes", value: "Yes"},
-                    {_id: "no", value: "No"}
+                    { _id: "yes", value: "Yes" },
+                    { _id: "no", value: "No" }
                 ];
 
                 return (
                     <TextField
                         select
                         sx={{
-                            "& .MuiInputBase-root": {height: "40px"}
+                            "& .MuiInputBase-root": { height: "40px" }
                         }}
                         value={condition.value?.valueIds?.[0] || ""}
                         onChange={(e) => {
@@ -1158,7 +1140,7 @@ const Add = () => {
                     <TextField
                         select
                         sx={{
-                            "& .MuiInputBase-root": {height: "40px"}
+                            "& .MuiInputBase-root": { height: "40px" }
                         }}
                         value={""}
                         onChange={(e) => {
@@ -1175,7 +1157,7 @@ const Add = () => {
         }
     };
 
-// Helper function to render sub-attribute value input
+    // Helper function to render sub-attribute value input
     const renderSubAttributeValueInput = (subAttribute, condition, index, setFieldValue) => {
         const subAttributeValues = subAttribute.values || [];
 
@@ -1215,15 +1197,15 @@ const Add = () => {
 
             case "Yes/No":
                 const yesNoOptions = [
-                    {_id: "yes", value: "Yes"},
-                    {_id: "no", value: "No"}
+                    { _id: "yes", value: "Yes" },
+                    { _id: "no", value: "No" }
                 ];
 
                 return (
                     <TextField
                         select
                         sx={{
-                            "& .MuiInputBase-root": {height: "40px"}
+                            "& .MuiInputBase-root": { height: "40px" }
                         }}
                         value={condition.value?.valueIds?.[0] || ""}
                         onChange={(e) => {
@@ -1247,7 +1229,7 @@ const Add = () => {
                     <TextField
                         select
                         sx={{
-                            "& .MuiInputBase-root": {height: "40px"}
+                            "& .MuiInputBase-root": { height: "40px" }
                         }}
                         value={""}
                         onChange={(e) => {
@@ -1275,20 +1257,20 @@ const Add = () => {
         <ThemeProvider theme={theme}>
             <MuiContainer>
                 <StyledContainer>
-                    <Box sx={{py: "16px", marginBottom: "20px"}} component={Paper}>
-                        <Stack sx={{ml: "24px", mb: "12px"}} gap={1} direction={"row"}>
+                    <Box sx={{ py: "16px", marginBottom: "20px" }} component={Paper}>
+                        <Stack sx={{ ml: "24px", mb: "12px" }} gap={1} direction={"row"}>
                             <Box>
-                                <AppsIcon/>
+                                <AppsIcon />
                             </Box>
                             <Box>
-                                <Typography sx={{fontWeight: "600", fontSize: "18px"}}>Go To</Typography>
+                                <Typography sx={{ fontWeight: "600", fontSize: "18px" }}>Go To</Typography>
                             </Box>
                         </Stack>
-                        <Divider/>
-                        <Box sx={{ml: "24px", mt: "16px"}}>
+                        <Divider />
+                        <Box sx={{ ml: "24px", mt: "16px" }}>
                             <Button
                                 onClick={() => navigate(ROUTE_CONSTANT.catalog.category.list)}
-                                startIcon={<AppsIcon/>}
+                                startIcon={<AppsIcon />}
                                 variant="contained"
                             >
                                 Category List
@@ -1308,13 +1290,13 @@ const Add = () => {
                             conditionType: queryId ? getCatData?.conditionType || "all" : "all",
                             conditions: queryId && getCatData?.conditions?.length > 0
                                 ? processInitialConditions(getCatData.conditions)
-                                : [{field: "", operator: "", value: ""}]
+                                : [{ field: "", operator: "", value: "" }]
                         }}
                         enableReinitialize={true}
                         validationSchema={validationSchema}
                         onSubmit={handleSubmit}
                     >
-                        {({setFieldValue, resetForm, values, handleChange, errors, touched}) => {
+                        {({ setFieldValue, resetForm, values, handleChange, errors, touched }) => {
                             console.log("values", values);
                             const handleTagHandler = (event, newValue) => {
                                 const processedValues = newValue
@@ -1329,15 +1311,15 @@ const Add = () => {
 
                             return <Form>
                                 {/* Category and Title in row */}
-                                <Grid container spacing={2} sx={{marginBottom: 4}}>
+                                <Grid container spacing={2} sx={{ marginBottom: 4 }}>
                                     <Grid item xs={12} sm={6}>
-                                        <Box sx={{display: 'flex', alignItems: 'center', gap: 2}}>
-                                            <Typography sx={{minWidth: '120px', fontWeight: 'bold'}}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                            <Typography sx={{ minWidth: '120px', fontWeight: 'bold' }}>
                                                 Category:
                                             </Typography>
-                                            <Box sx={{flex: 1}}>
+                                            <Box sx={{ flex: 1 }}>
                                                 {allActiveCategory.length === 0 ? (
-                                                    <Stack sx={{position: "relative"}}>
+                                                    <Stack sx={{ position: "relative" }}>
                                                         <TextField
                                                             sx={{
                                                                 bgcolor: "#F0F0F0",
@@ -1363,14 +1345,14 @@ const Add = () => {
                                                         return (
                                                             <Dropdown
                                                                 trigger={
-                                                                    <Stack sx={{position: "relative"}}>
+                                                                    <Stack sx={{ position: "relative" }}>
                                                                         <TextField
                                                                             sx={{
                                                                                 bgcolor: "#F0F0F0",
                                                                                 cursor: "pointer",
                                                                                 height: "40px",
                                                                                 outline: "none",
-                                                                                "& .MuiInputBase-root": {height: "40px"}
+                                                                                "& .MuiInputBase-root": { height: "40px" }
                                                                             }}
                                                                             readOnly
                                                                             value={selectedCatLable}
@@ -1392,18 +1374,18 @@ const Add = () => {
                                                         );
                                                     })
                                                 )}
-                                                <span style={{color: "red"}}>
-                                                    <ErrorMessage name="category" component="div"/>
+                                                <span style={{ color: "red" }}>
+                                                    <ErrorMessage name="category" component="div" />
                                                 </span>
                                             </Box>
                                         </Box>
                                     </Grid>
                                     <Grid item xs={12} sm={6}>
-                                        <Box sx={{display: 'flex', alignItems: 'center', gap: 2}}>
-                                            <Typography sx={{minWidth: '120px', fontWeight: 'bold'}}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                            <Typography sx={{ minWidth: '120px', fontWeight: 'bold' }}>
                                                 Title:
                                             </Typography>
-                                            <Box sx={{flex: 1}}>
+                                            <Box sx={{ flex: 1 }}>
                                                 <Field
                                                     as={TextField}
                                                     type="text"
@@ -1413,8 +1395,8 @@ const Add = () => {
                                                     name="name"
                                                     placeholder={queryId ? "Title" : ""}
                                                     helperText={
-                                                        <span style={{color: "red"}}>
-                                                            <ErrorMessage name="name"/>
+                                                        <span style={{ color: "red" }}>
+                                                            <ErrorMessage name="name" />
                                                         </span>
                                                     }
                                                     sx={{
@@ -1432,9 +1414,9 @@ const Add = () => {
                                 </Grid>
 
                                 {/* Best Selling Radio Group */}
-                                <Box sx={{mb: 3}}>
-                                    <Box sx={{display: 'flex', alignItems: 'center', gap: 2, mb: 2}}>
-                                        <Typography sx={{minWidth: '120px', fontWeight: 'bold'}}>
+                                <Box sx={{ mb: 3 }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                                        <Typography sx={{ minWidth: '120px', fontWeight: 'bold' }}>
                                             Best Selling:
                                         </Typography>
                                         <FormControl>
@@ -1448,12 +1430,12 @@ const Add = () => {
                                             >
                                                 <FormControlLabel
                                                     value="Yes"
-                                                    control={<Radio checked={values.bestSelling === "Yes"}/>}
+                                                    control={<Radio checked={values.bestSelling === "Yes"} />}
                                                     label="Yes"
                                                 />
                                                 <FormControlLabel
                                                     value="No"
-                                                    control={<Radio checked={values.bestSelling === "No"}/>}
+                                                    control={<Radio checked={values.bestSelling === "No"} />}
                                                     label="No"
                                                 />
                                             </RadioGroup>
@@ -1462,13 +1444,13 @@ const Add = () => {
                                 </Box>
 
                                 {/* File Uploads */}
-                                <Grid container spacing={2} sx={{mb: 3}}>
+                                <Grid container spacing={2} sx={{ mb: 3 }}>
                                     <Grid item xs={12} sm={6}>
-                                        <Box sx={{display: 'flex', alignItems: 'start', gap: 2}}>
-                                            <Typography sx={{minWidth: '120px', fontWeight: 'bold'}}>
+                                        <Box sx={{ display: 'flex', alignItems: 'start', gap: 2 }}>
+                                            <Typography sx={{ minWidth: '120px', fontWeight: 'bold' }}>
                                                 Category Image:
                                             </Typography>
-                                            <Box sx={{flex: 1}}>
+                                            <Box sx={{ flex: 1 }}>
                                                 <TextField
                                                     fullWidth
                                                     value={fileName}
@@ -1480,14 +1462,14 @@ const Add = () => {
                                                     InputProps={{
                                                         startAdornment: (
                                                             <InputAdornment position="start">
-                                                                <AttachFileIcon/>
+                                                                <AttachFileIcon />
                                                             </InputAdornment>
                                                         ),
                                                         endAdornment: (
                                                             <input
                                                                 type="file"
                                                                 accept="image/*"
-                                                                style={{display: "none"}}
+                                                                style={{ display: "none" }}
                                                                 id="file-input"
                                                                 onChange={(event) => {
                                                                     handleImageSelect(event);
@@ -1503,7 +1485,7 @@ const Add = () => {
                                                 />
                                                 {(imagePreview || getCatData.image) && (
                                                     <img
-                                                        style={{margin: "16px 0"}}
+                                                        style={{ margin: "16px 0" }}
                                                         src={imagePreview ? imagePreview : getCatData.image}
                                                         width={200}
                                                         alt="Category"
@@ -1513,11 +1495,11 @@ const Add = () => {
                                         </Box>
                                     </Grid>
                                     <Grid item xs={12} sm={6}>
-                                        <Box sx={{display: 'flex', alignItems: 'start', gap: 2}}>
-                                            <Typography sx={{minWidth: '120px', fontWeight: 'bold'}}>
+                                        <Box sx={{ display: 'flex', alignItems: 'start', gap: 2 }}>
+                                            <Typography sx={{ minWidth: '120px', fontWeight: 'bold' }}>
                                                 Top Rated Image:
                                             </Typography>
-                                            <Box sx={{flex: 1}}>
+                                            <Box sx={{ flex: 1 }}>
                                                 <TextField
                                                     fullWidth
                                                     value={topRatedImg?.name}
@@ -1529,14 +1511,14 @@ const Add = () => {
                                                     InputProps={{
                                                         startAdornment: (
                                                             <InputAdornment position="start">
-                                                                <AttachFileIcon/>
+                                                                <AttachFileIcon />
                                                             </InputAdornment>
                                                         ),
                                                         endAdornment: (
                                                             <input
                                                                 type="file"
                                                                 accept="image/*"
-                                                                style={{display: "none"}}
+                                                                style={{ display: "none" }}
                                                                 id="file-input1"
                                                                 onChange={(event) => {
                                                                     handleImageChange(event, "topRated");
@@ -1549,7 +1531,7 @@ const Add = () => {
                                                     onClick={() => document.getElementById("file-input1").click()}
                                                 />
                                                 {topRatedUrl && (
-                                                    <img style={{margin: "16px 0"}} src={topRatedUrl} width={200} alt=""/>
+                                                    <img style={{ margin: "16px 0" }} src={topRatedUrl} width={200} alt="" />
                                                 )}
                                             </Box>
                                         </Box>
@@ -1557,13 +1539,13 @@ const Add = () => {
                                 </Grid>
 
                                 {/* Variants and Attributes */}
-                                <Box spacing={2} sx={{mb: 3}}>
-                                    <Box sx={{mb: 3}}>
-                                        <Box sx={{display: 'flex', alignItems: 'center', gap: 2}}>
-                                            <Typography sx={{minWidth: '120px', fontWeight: 'bold'}}>
+                                <Box spacing={2} sx={{ mb: 3 }}>
+                                    <Box sx={{ mb: 3 }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                            <Typography sx={{ minWidth: '120px', fontWeight: 'bold' }}>
                                                 Variants:
                                             </Typography>
-                                            <Box sx={{flex: 1}}>
+                                            <Box sx={{ flex: 1 }}>
                                                 <Autocomplete
                                                     multiple
                                                     limitTags={4}
@@ -1590,12 +1572,12 @@ const Add = () => {
                                             </Box>
                                         </Box>
                                     </Box>
-                                    <Box sx={{mb: 3}}>
-                                        <Box sx={{display: 'flex', alignItems: 'center', gap: 2}}>
-                                            <Typography sx={{minWidth: '120px', fontWeight: 'bold'}}>
+                                    <Box sx={{ mb: 3 }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                            <Typography sx={{ minWidth: '120px', fontWeight: 'bold' }}>
                                                 Attributes:
                                             </Typography>
-                                            <Box sx={{flex: 1}}>
+                                            <Box sx={{ flex: 1 }}>
                                                 <Autocomplete
                                                     multiple
                                                     limitTags={4}
@@ -1625,12 +1607,12 @@ const Add = () => {
                                 </Box>
 
                                 {/* Restricted Keywords */}
-                                <Box sx={{mb: 3}}>
-                                    <Box sx={{display: 'flex', alignItems: 'center', gap: 2}}>
-                                        <Typography sx={{minWidth: '120px', fontWeight: 'bold'}}>
+                                <Box sx={{ mb: 3 }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                        <Typography sx={{ minWidth: '120px', fontWeight: 'bold' }}>
                                             Restricted Keywords:
                                         </Typography>
-                                        <Box sx={{flex: 1}}>
+                                        <Box sx={{ flex: 1 }}>
                                             <Autocomplete
                                                 multiple
                                                 freeSolo
@@ -1658,13 +1640,13 @@ const Add = () => {
                                 </Box>
 
                                 {/* Description and Meta Fields */}
-                                <Grid container spacing={2} sx={{mb: 3}}>
+                                <Grid container spacing={2} sx={{ mb: 3 }}>
                                     <Grid item xs={12}>
-                                        <Box sx={{display: 'flex', alignItems: 'flex-start', gap: 2}}>
-                                            <Typography sx={{minWidth: '120px', fontWeight: 'bold', pt: 1}}>
+                                        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                                            <Typography sx={{ minWidth: '120px', fontWeight: 'bold', pt: 1 }}>
                                                 Description:
                                             </Typography>
-                                            <Box sx={{flex: 1}}>
+                                            <Box sx={{ flex: 1 }}>
                                                 <Field
                                                     as={TextField}
                                                     multiline
@@ -1674,8 +1656,8 @@ const Add = () => {
                                                     placeholder={queryId ? "Description" : ""}
                                                     name="description"
                                                     helperText={
-                                                        <span style={{color: "red"}}>
-                                                            <ErrorMessage name="description"/>
+                                                        <span style={{ color: "red" }}>
+                                                            <ErrorMessage name="description" />
                                                         </span>
                                                     }
                                                 />
@@ -1683,11 +1665,11 @@ const Add = () => {
                                         </Box>
                                     </Grid>
                                     <Grid item xs={12} sm={6}>
-                                        <Box sx={{display: 'flex', alignItems: 'center', gap: 2}}>
-                                            <Typography sx={{minWidth: '120px', fontWeight: 'bold'}}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                            <Typography sx={{ minWidth: '120px', fontWeight: 'bold' }}>
                                                 Meta Title:
                                             </Typography>
-                                            <Box sx={{flex: 1}}>
+                                            <Box sx={{ flex: 1 }}>
                                                 <Field
                                                     as={TextField}
                                                     type="text"
@@ -1697,8 +1679,8 @@ const Add = () => {
                                                     placeholder={queryId ? "Meta Title" : ""}
                                                     name="metaTitle"
                                                     helperText={
-                                                        <span style={{color: "red"}}>
-                                                            <ErrorMessage name="metaTitle"/>
+                                                        <span style={{ color: "red" }}>
+                                                            <ErrorMessage name="metaTitle" />
                                                         </span>
                                                     }
                                                     sx={{
@@ -1711,11 +1693,11 @@ const Add = () => {
                                         </Box>
                                     </Grid>
                                     <Grid item xs={12} sm={6}>
-                                        <Box sx={{display: 'flex', alignItems: 'flex-start', gap: 2}}>
-                                            <Typography sx={{minWidth: '120px', fontWeight: 'bold', pt: 1}}>
+                                        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                                            <Typography sx={{ minWidth: '120px', fontWeight: 'bold', pt: 1 }}>
                                                 Meta Keywords:
                                             </Typography>
-                                            <Box sx={{flex: 1}}>
+                                            <Box sx={{ flex: 1 }}>
                                                 <Field
                                                     as={TextField}
                                                     multiline
@@ -1725,8 +1707,8 @@ const Add = () => {
                                                     placeholder={queryId ? "Meta KeyWords" : ""}
                                                     name="metaKeywords"
                                                     helperText={
-                                                        <span style={{color: "red"}}>
-                                                            <ErrorMessage name="metaKeywords"/>
+                                                        <span style={{ color: "red" }}>
+                                                            <ErrorMessage name="metaKeywords" />
                                                         </span>
                                                     }
                                                 />
@@ -1734,11 +1716,11 @@ const Add = () => {
                                         </Box>
                                     </Grid>
                                     <Grid item xs={12}>
-                                        <Box sx={{display: 'flex', alignItems: 'flex-start', gap: 2}}>
-                                            <Typography sx={{minWidth: '120px', fontWeight: 'bold', pt: 1}}>
+                                        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                                            <Typography sx={{ minWidth: '120px', fontWeight: 'bold', pt: 1 }}>
                                                 Meta Description:
                                             </Typography>
-                                            <Box sx={{flex: 1}}>
+                                            <Box sx={{ flex: 1 }}>
                                                 <Field
                                                     as={TextField}
                                                     multiline
@@ -1748,8 +1730,8 @@ const Add = () => {
                                                     fullWidth
                                                     name="metaDescription"
                                                     helperText={
-                                                        <span style={{color: "red"}}>
-                                                            <ErrorMessage name="metaDescription"/>
+                                                        <span style={{ color: "red" }}>
+                                                            <ErrorMessage name="metaDescription" />
                                                         </span>
                                                     }
                                                 />
@@ -1769,7 +1751,7 @@ const Add = () => {
                                     maxWidth: '100%',
                                     boxSizing: 'border-box'
                                 }}>
-                                    <FormControl component="fieldset" sx={{mb: 2, width: '100%'}}>
+                                    <FormControl component="fieldset" sx={{ mb: 2, width: '100%' }}>
                                         <FormControlLabel
                                             control={
                                                 <Checkbox
@@ -1779,11 +1761,11 @@ const Add = () => {
                                                 />
                                             }
                                             label={
-                                                <Box sx={{width: '100%'}}>
-                                                    <Typography variant="h6" sx={{fontWeight: "bold"}}>
+                                                <Box sx={{ width: '100%' }}>
+                                                    <Typography variant="h6" sx={{ fontWeight: "bold" }}>
                                                         Automatic
                                                     </Typography>
-                                                    <Typography variant="body2" sx={{color: 'text.secondary', mt: 0.5}}>
+                                                    <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
                                                         Products matched with the following conditions will be
                                                         automatically assigned to this category
                                                     </Typography>
@@ -1793,30 +1775,30 @@ const Add = () => {
                                     </FormControl>
 
                                     {isAutomatic && (
-                                        <Box sx={{mt: 2, width: '100%'}}>
-                                            <Typography variant="h6" sx={{mb: 2, fontWeight: "bold"}}>
+                                        <Box sx={{ mt: 2, width: '100%' }}>
+                                            <Typography variant="h6" sx={{ mb: 2, fontWeight: "bold" }}>
                                                 Conditions
                                             </Typography>
 
                                             {/* Category Scope */}
-                                            <Box sx={{mb: 3, width: '100%'}}>
-                                                <FormLabel component="legend" sx={{fontWeight: "bold", mb: 1}}>
+                                            <Box sx={{ mb: 3, width: '100%' }}>
+                                                <FormLabel component="legend" sx={{ fontWeight: "bold", mb: 1 }}>
                                                     Category
                                                 </FormLabel>
                                                 <RadioGroup
                                                     row
                                                     value={categoryScope}
                                                     onChange={(e) => setCategoryScope(e.target.value)}
-                                                    sx={{width: '100%'}}
+                                                    sx={{ width: '100%' }}
                                                 >
                                                     <FormControlLabel
                                                         value="all"
-                                                        control={<Radio/>}
+                                                        control={<Radio />}
                                                         label="All Categories"
                                                     />
                                                     <FormControlLabel
                                                         value="specific"
-                                                        control={<Radio/>}
+                                                        control={<Radio />}
                                                         label="Specific Categories"
                                                     />
                                                 </RadioGroup>
@@ -1855,8 +1837,8 @@ const Add = () => {
                                             </Box>
 
                                             {/* Product Match Logic */}
-                                            <Box sx={{mb: 3, width: '100%'}}>
-                                                <FormLabel component="legend" sx={{fontWeight: "bold", mb: 1}}>
+                                            <Box sx={{ mb: 3, width: '100%' }}>
+                                                <FormLabel component="legend" sx={{ fontWeight: "bold", mb: 1 }}>
                                                     Product must match
                                                 </FormLabel>
                                                 <RadioGroup
@@ -1864,21 +1846,21 @@ const Add = () => {
                                                     name="conditionType"
                                                     value={values.conditionType}
                                                     onChange={handleChange}
-                                                    sx={{width: '100%'}}
+                                                    sx={{ width: '100%' }}
                                                 >
                                                     <FormControlLabel
                                                         value="all"
-                                                        control={<Radio/>}
+                                                        control={<Radio />}
                                                         label="All conditions (AND)"
                                                     />
                                                     <FormControlLabel
                                                         value="any"
-                                                        control={<Radio/>}
+                                                        control={<Radio />}
                                                         label="Any conditions (OR)"
                                                     />
                                                 </RadioGroup>
                                                 {errors.conditionType && touched.conditionType && (
-                                                    <span style={{color: "red", fontSize: "12px"}}>
+                                                    <span style={{ color: "red", fontSize: "12px" }}>
                                                         {errors.conditionType}
                                                     </span>
                                                 )}
@@ -1886,8 +1868,8 @@ const Add = () => {
 
                                             {/* Dynamic Conditions */}
                                             <FieldArray name="conditions">
-                                                {({push, remove}) => (
-                                                    <Box sx={{width: '100%'}}>
+                                                {({ push, remove }) => (
+                                                    <Box sx={{ width: '100%' }}>
                                                         {values.conditions.map((condition, index) => {
                                                             const fieldOptions = [
                                                                 "Product Title",
@@ -1900,13 +1882,13 @@ const Add = () => {
 
                                                             return (
                                                                 <Grid container spacing={2} alignItems="center"
-                                                                      sx={{mb: 2}} key={index}>
+                                                                    sx={{ mb: 2 }} key={index}>
                                                                     <Grid item xs={12} sm={3}>
                                                                         <FormControl fullWidth>
                                                                             <TextField
                                                                                 select
                                                                                 sx={{
-                                                                                    "& .MuiInputBase-root": {height: "40px"},
+                                                                                    "& .MuiInputBase-root": { height: "40px" },
                                                                                 }}
                                                                                 label="Field"
                                                                                 value={condition.field}
@@ -1915,7 +1897,7 @@ const Add = () => {
                                                                                 error={errors.conditions?.[index]?.field && touched.conditions?.[index]?.field}
                                                                                 helperText={
                                                                                     errors.conditions?.[index]?.field && touched.conditions?.[index]?.field ? (
-                                                                                        <span style={{color: "red"}}>
+                                                                                        <span style={{ color: "red" }}>
                                                                                             {errors.conditions[index].field}
                                                                                         </span>
                                                                                     ) : null
@@ -1923,7 +1905,7 @@ const Add = () => {
                                                                             >
                                                                                 {fieldOptions.map((option) => (
                                                                                     <MenuItem key={option}
-                                                                                              value={option}>
+                                                                                        value={option}>
                                                                                         {option}
                                                                                     </MenuItem>
                                                                                 ))}
@@ -1936,7 +1918,7 @@ const Add = () => {
                                                                             <TextField
                                                                                 select
                                                                                 sx={{
-                                                                                    "& .MuiInputBase-root": {height: "40px"},
+                                                                                    "& .MuiInputBase-root": { height: "40px" },
                                                                                 }}
                                                                                 label="Operator"
                                                                                 value={condition.operator}
@@ -1945,7 +1927,7 @@ const Add = () => {
                                                                                 error={errors.conditions?.[index]?.operator && touched.conditions?.[index]?.operator}
                                                                                 helperText={
                                                                                     errors.conditions?.[index]?.operator && touched.conditions?.[index]?.operator ? (
-                                                                                        <span style={{color: "red"}}>
+                                                                                        <span style={{ color: "red" }}>
                                                                                             {errors.conditions[index].operator}
                                                                                         </span>
                                                                                     ) : null
@@ -1953,7 +1935,7 @@ const Add = () => {
                                                                             >
                                                                                 {operatorOptions.map((option) => (
                                                                                     <MenuItem key={option}
-                                                                                              value={option}>
+                                                                                        value={option}>
                                                                                         {option}
                                                                                     </MenuItem>
                                                                                 ))}
@@ -1980,7 +1962,7 @@ const Add = () => {
                                                                             onClick={() => remove(index)}
                                                                             color="error"
                                                                         >
-                                                                            <DeleteIcon/>
+                                                                            <DeleteIcon />
                                                                         </IconButton>
                                                                     </Grid>
                                                                 </Grid>
@@ -1988,10 +1970,10 @@ const Add = () => {
                                                         })}
 
                                                         <Button
-                                                            startIcon={<AddIcon/>}
+                                                            startIcon={<AddIcon />}
                                                             variant="outlined"
-                                                            onClick={() => push({field: "", operator: "", value: ""})}
-                                                            sx={{mt: 1}}
+                                                            onClick={() => push({ field: "", operator: "", value: "" })}
+                                                            sx={{ mt: 1 }}
                                                         >
                                                             Add another condition
                                                         </Button>
@@ -1999,7 +1981,7 @@ const Add = () => {
                                                 )}
                                             </FieldArray>
                                             {errors.conditions && typeof errors.conditions === 'string' && (
-                                                <span style={{color: "red", fontSize: "12px", display: "block", mt: 1}}>
+                                                <span style={{ color: "red", fontSize: "12px", display: "block", mt: 1 }}>
                                                     {errors.conditions}
                                                 </span>
                                             )}
@@ -2008,9 +1990,9 @@ const Add = () => {
                                 </Box>
 
                                 <Button
-                                    endIcon={loading ? <CircularProgress size={15}/> : ""}
+                                    endIcon={loading ? <CircularProgress size={15} /> : ""}
                                     disabled={loading ? true : false}
-                                    sx={{mr: "16px"}}
+                                    sx={{ mr: "16px" }}
                                     variant="contained"
                                     color="primary"
                                     type="submit"
@@ -2035,7 +2017,7 @@ const Add = () => {
                     </Formik>
                 </StyledContainer>
             </MuiContainer>
-            <ConfirmModal open={open} handleClose={handleClose} type={type} msg={msg}/>
+            <ConfirmModal open={open} handleClose={handleClose} type={type} msg={msg} />
         </ThemeProvider>
     );
 };

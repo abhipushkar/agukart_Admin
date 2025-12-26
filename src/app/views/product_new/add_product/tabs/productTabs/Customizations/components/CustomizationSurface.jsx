@@ -7,7 +7,7 @@ import {
     Box,
     TextField,
     Button,
-    Typography, Checkbox, FormControlLabel
+    Checkbox, FormControlLabel
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CreateIcon from "@mui/icons-material/Create";
@@ -16,7 +16,7 @@ import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import { styled } from "@mui/material/styles";
 import CustomizationList from './CustomizationList';
 import AddCustomizationModal from './AddCustomizationModal';
-import {useProductFormStore} from "../../../../../states/useAddProducts";
+import { useProductFormStore } from "../../../../../states/useAddProducts";
 
 const VisuallyHiddenInput = styled("input")({
     clip: "rect(0 0 0 0)",
@@ -121,7 +121,7 @@ const CustomizationSurface = () => {
                             <FormControlLabel
                                 control={
                                     <Checkbox
-                                        checked={customizationData?.isExpanded}
+                                        checked={customizationData?.isExpanded === "true" || customizationData?.isExpanded === true || false}
                                         onChange={(e) => handleBoxChange(e.target.checked)}
                                     />
                                 }
@@ -208,8 +208,10 @@ const CustomizationSurface = () => {
                         <Box sx={{ fontSize: "14px", fontWeight: "700", wordBreak: "normal", textWrap: "nowrap", width: "15%" }}>
                             Instructions(Optional) :
                         </Box>
-                        <Box sx={{ width: "100%", maxWidth: "100%", border: "1px dotted gray", padding: "20px", height: "150px",
-                            display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <Box sx={{
+                            width: "100%", maxWidth: "100%", border: "1px dotted gray", padding: "20px", height: "150px",
+                            display: "flex", alignItems: "center", justifyContent: "center"
+                        }}>
                             <AddCustomizationModal />
                         </Box>
                     </Box>

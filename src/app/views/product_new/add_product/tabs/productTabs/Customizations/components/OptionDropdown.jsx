@@ -811,7 +811,7 @@ const OptionDropdown = ({ index }) => {
         const isEditable = (imageType === "preview_image") || (imageType === "main_images" && imageIndex === 0);
 
         return (
-            <TableCell align="center">
+            <TableCell align="center" width="150px">
                 <Box sx={{
                     display: 'flex',
                     flexDirection: 'column',
@@ -978,7 +978,7 @@ const OptionDropdown = ({ index }) => {
         const uploadedCount = option.main_images ? option.main_images.filter(img => img && img !== "").length : 0;
 
         return (
-            <TableCell align="center">
+            <TableCell align="center" width="120px">
                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
                     <Button
                         component="label"
@@ -1031,19 +1031,6 @@ const OptionDropdown = ({ index }) => {
 
         return (
             <Box sx={{ mb: 2, p: 2, backgroundColor: '#f0f8ff', borderRadius: 1, border: '1px solid #e1f5fe' }}>
-                {/*<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>*/}
-                {/*    <Typography variant="subtitle2" fontWeight={600}>*/}
-                {/*        Guide Information*/}
-                {/*    </Typography>*/}
-                {/*    <Button*/}
-                {/*        size="small"*/}
-                {/*        startIcon={<EditIcon />}*/}
-                {/*        onClick={handleOpenGuideDialog}*/}
-                {/*    >*/}
-                {/*        Edit Guide*/}
-                {/*    </Button>*/}
-                {/*</Box>*/}
-
                 <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                     {guide.guide_name && (
                         <Typography variant="body2">
@@ -1168,7 +1155,7 @@ const OptionDropdown = ({ index }) => {
                     <FormControlLabel
                         control={
                             <Checkbox
-                                checked={customization?.isCompulsory || false}
+                                checked={customization?.isCompulsory === "true" || customization?.isCompulsory === true || false}
                                 onChange={(e) => handleCheckboxChange(e.target.checked)}
                             />
                         }
@@ -1212,21 +1199,38 @@ const OptionDropdown = ({ index }) => {
                     </Box>
 
                     <DndProvider backend={HTML5Backend}>
-                        <TableContainer component={Paper} sx={{ mt: 2 }}>
+                        <TableContainer component={Paper} sx={{
+                            mt: 2,
+                            overflowX: 'auto',
+                            '& .MuiTableCell-root': {
+                                whiteSpace: 'nowrap',
+                            },
+                            '& .MuiTable-root': {
+                                minWidth: '1000px',
+                            },
+                            '@media (max-width: 1200px)': {
+                                '& .MuiTableCell-root': {
+                                    padding: '8px 4px',
+                                },
+                                '& .MuiTextField-root': {
+                                    minWidth: '120px !important',
+                                },
+                            },
+                        }}>
                             <Table size="small">
                                 <TableHead>
                                     <TableRow>
-                                        <TableCell align="center"></TableCell>
-                                        <TableCell align="center">Option Name</TableCell>
-                                        <TableCell align="center">Bulk Upload</TableCell>
-                                        <TableCell align="center">Main Image 1</TableCell>
-                                        <TableCell align="center">Main Image 2</TableCell>
-                                        <TableCell align="center">Main Image 3</TableCell>
-                                        <TableCell align="center">Preview Image</TableCell>
-                                        <TableCell align="center">Thumbnail</TableCell>
-                                        <TableCell align="center">Price Difference</TableCell>
-                                        <TableCell align="center">Visible</TableCell>
-                                        <TableCell align="center">Actions</TableCell>
+                                        <TableCell align="center" width="40px"></TableCell>
+                                        <TableCell align="center" width="auto" sx={{ minWidth: '150px', maxWidth: '300px' }}>Option Name</TableCell>
+                                        <TableCell align="center" width="120px">Bulk Upload</TableCell>
+                                        <TableCell align="center" width="150px">Main Image 1</TableCell>
+                                        <TableCell align="center" width="150px">Main Image 2</TableCell>
+                                        <TableCell align="center" width="150px">Main Image 3</TableCell>
+                                        <TableCell align="center" width="150px">Preview Image</TableCell>
+                                        <TableCell align="center" width="150px">Thumbnail</TableCell>
+                                        <TableCell align="center" width="100px">Price Difference</TableCell>
+                                        <TableCell align="center" width="70px">Visible</TableCell>
+                                        <TableCell align="center" width="70px">Actions</TableCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
@@ -1242,7 +1246,7 @@ const OptionDropdown = ({ index }) => {
                                             isDragOver={dragOverIndex === optionIndex}
                                         >
                                             {/* Drag Handle Column */}
-                                            <TableCell align="center">
+                                            <TableCell align="center" width="40px">
                                                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                                     <IconButton
                                                         className="drag-handle"
@@ -1277,6 +1281,18 @@ const OptionDropdown = ({ index }) => {
                                                     onChange={(e) => handleOptionChange(optionIndex, 'optionName', e.target.value)}
                                                     placeholder="Option name"
                                                     size="small"
+                                                    sx={{
+                                                        width: '100%',
+                                                        minWidth: '150px',
+                                                        maxWidth: '300px',
+                                                        '& .MuiInputBase-root': {
+                                                            width: '100%',
+                                                            minWidth: '150px',
+                                                        },
+                                                        '& .MuiInputBase-input': {
+                                                            minWidth: '150px',
+                                                        },
+                                                    }}
                                                 />
                                             </TableCell>
 
@@ -1301,12 +1317,19 @@ const OptionDropdown = ({ index }) => {
                                                     onChange={(e) => handleOptionChange(optionIndex, 'priceDifference', e.target.value)}
                                                     placeholder="0.00"
                                                     size="small"
-                                                    sx={{ width: 100 }}
+                                                    sx={{
+                                                        width: '100%',
+                                                        minWidth: '80px',
+                                                        '& .MuiInputBase-root': {
+                                                            width: '100%',
+                                                            minWidth: '80px',
+                                                        }
+                                                    }}
                                                 />
                                             </TableCell>
 
                                             {/* Toggle Switch Column */}
-                                            <TableCell align="center">
+                                            <TableCell align="center" width="70px">
                                                 <Switch
                                                     checked={option.isVisible !== false}
                                                     onChange={() => handleToggleVisibility(optionIndex)}
@@ -1314,7 +1337,7 @@ const OptionDropdown = ({ index }) => {
                                                 />
                                             </TableCell>
 
-                                            <TableCell align="center">
+                                            <TableCell align="center" width="70px">
                                                 <IconButton
                                                     size="small"
                                                     onClick={() => removeOption(optionIndex)}

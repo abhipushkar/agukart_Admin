@@ -816,7 +816,7 @@ const VariantCustomizationTable = ({ index }) => {
         const isEditable = (imageType === "preview_image") || (imageType === "main_images" && imageIndex === 0);
 
         return (
-            <TableCell align="center">
+            <TableCell align="center" width="150px">
                 <Box sx={{
                     display: 'flex',
                     flexDirection: 'column',
@@ -983,7 +983,7 @@ const VariantCustomizationTable = ({ index }) => {
         const uploadedCount = option.main_images ? option.main_images.filter(img => img && img !== "").length : 0;
 
         return (
-            <TableCell align="center">
+            <TableCell align="center" width="120px">
                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
                     <Button
                         component="label"
@@ -1071,7 +1071,7 @@ const VariantCustomizationTable = ({ index }) => {
                     <FormControlLabel
                         control={
                             <Checkbox
-                                checked={customization?.isCompulsory || false}
+                                checked={customization?.isCompulsory === "true" || customization?.isCompulsory === true || false}
                                 onChange={(e) => handleIsCompulsoryChange(e.target.checked)}
                             />
                         }
@@ -1194,21 +1194,41 @@ const VariantCustomizationTable = ({ index }) => {
                         Add/Edit Options
                     </Button>
 
-                    <TableContainer component={Paper} variant="outlined">
+                    <TableContainer
+                        component={Paper}
+                        variant="outlined"
+                        sx={{
+                            overflowX: 'auto',
+                            '& .MuiTableCell-root': {
+                                whiteSpace: 'nowrap',
+                            },
+                            '& .MuiTable-root': {
+                                minWidth: '1000px',
+                            },
+                            '@media (max-width: 1200px)': {
+                                '& .MuiTableCell-root': {
+                                    padding: '8px 4px',
+                                },
+                                '& .MuiTextField-root': {
+                                    minWidth: '120px !important',
+                                },
+                            },
+                        }}
+                    >
                         <Table size="small">
                             <TableHead>
                                 <TableRow>
-                                    <TableCell align="center"></TableCell>
-                                    <TableCell align="center">Option Name</TableCell>
-                                    <TableCell align="center">Bulk Upload</TableCell>
-                                    <TableCell align="center">Main Image 1</TableCell>
-                                    <TableCell align="center">Main Image 2</TableCell>
-                                    <TableCell align="center">Main Image 3</TableCell>
-                                    <TableCell align="center">Preview Image</TableCell>
-                                    <TableCell align="center">Thumbnail</TableCell>
-                                    <TableCell align="center">Price Difference</TableCell>
-                                    <TableCell align="center">Visible</TableCell>
-                                    <TableCell align="center">Actions</TableCell>
+                                    <TableCell align="center" width="40px"></TableCell>
+                                    <TableCell align="center" width="auto" sx={{ minWidth: '150px', maxWidth: '300px' }}>Option Name</TableCell>
+                                    <TableCell align="center" width="120px">Bulk Upload</TableCell>
+                                    <TableCell align="center" width="150px">Main Image 1</TableCell>
+                                    <TableCell align="center" width="150px">Main Image 2</TableCell>
+                                    <TableCell align="center" width="150px">Main Image 3</TableCell>
+                                    <TableCell align="center" width="150px">Preview Image</TableCell>
+                                    <TableCell align="center" width="150px">Thumbnail</TableCell>
+                                    <TableCell align="center" width="100px">Price Difference</TableCell>
+                                    <TableCell align="center" width="70px">Visible</TableCell>
+                                    <TableCell align="center" width="70px">Actions</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
@@ -1224,7 +1244,7 @@ const VariantCustomizationTable = ({ index }) => {
                                         isDragOver={dragOverIndex === optionIndex}
                                     >
                                         {/* Drag Handle Column */}
-                                        <TableCell align="center">
+                                        <TableCell align="center" width="40px">
                                             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                                 <IconButton
                                                     className="drag-handle"
@@ -1259,6 +1279,18 @@ const VariantCustomizationTable = ({ index }) => {
                                                 onChange={(e) => handleOptionChange(optionIndex, 'optionName', e.target.value)}
                                                 placeholder="Option name"
                                                 size="small"
+                                                sx={{
+                                                    width: '100%',
+                                                    minWidth: '150px',
+                                                    maxWidth: '300px',
+                                                    '& .MuiInputBase-root': {
+                                                        width: '100%',
+                                                        minWidth: '150px',
+                                                    },
+                                                    '& .MuiInputBase-input': {
+                                                        minWidth: '150px',
+                                                    },
+                                                }}
                                             />
                                         </TableCell>
 
@@ -1283,12 +1315,19 @@ const VariantCustomizationTable = ({ index }) => {
                                                 onChange={(e) => handleOptionChange(optionIndex, 'priceDifference', e.target.value)}
                                                 placeholder="0.00"
                                                 size="small"
-                                                sx={{ width: 100 }}
+                                                sx={{
+                                                    width: '100%',
+                                                    minWidth: '80px',
+                                                    '& .MuiInputBase-root': {
+                                                        width: '100%',
+                                                        minWidth: '80px',
+                                                    }
+                                                }}
                                             />
                                         </TableCell>
 
                                         {/* Toggle Switch Column */}
-                                        <TableCell align="center">
+                                        <TableCell align="center" width="70px">
                                             <Switch
                                                 checked={option.isVisible !== false} // Default to true if not set
                                                 onChange={() => {
@@ -1314,7 +1353,7 @@ const VariantCustomizationTable = ({ index }) => {
                                             />
                                         </TableCell>
 
-                                        <TableCell align="center">
+                                        <TableCell align="center" width="70px">
                                             <IconButton
                                                 size="small"
                                                 onClick={() => {
