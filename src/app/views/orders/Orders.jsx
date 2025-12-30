@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
 import Grid from "@mui/material/Grid";
@@ -28,7 +28,7 @@ import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { useCallback } from "react";
 import { localStorageKey } from "app/constant/localStorageKey";
 import { ROUTE_CONSTANT } from "app/constant/routeContanst";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ApiService } from "app/services/ApiService";
 import { apiEndpoints } from "app/constant/apiEndpoints";
 import { useEffect } from "react";
@@ -56,6 +56,11 @@ const Search = styled("span")(({ theme }) => ({
   }
 }));
 
+// Valid tab values for validation
+const VALID_TABS = ["pending", "unshipped", "in-progress", "completed", "cancelled"];
+const DEFAULT_TAB = "pending";
+const DEFAULT_PAGE = 1;
+
 const Orders = () => {
   const auth_key = localStorage.getItem(localStorageKey.auth_key);
   const [orders, setOrders] = useState([]);
@@ -69,7 +74,6 @@ const Orders = () => {
   const [completeStatus, setCompleteStatus] = useState("all");
   const [orderIds, setOrderIds] = useState([]);
   const [isAllChecked, setIsAllChecked] = useState(false);
-  const [tab, setTab] = useState("new");
   const [open, setOpen] = useState(false);
   const [type, setType] = useState("");
   const [route, setRoute] = useState(null);
@@ -85,14 +89,86 @@ const Orders = () => {
   const [productData, setProductData] = useState({});
   const [stock, setStock] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [search,setSearch] = useState("");
-  console.log(stock,search, "-----------stock");
-  console.log(productData, "--------------productdata");
-  const openOption1 = Boolean(anchorEl1);
-  const openOption2 = Boolean(anchorEl2);
+  const [search, setSearch] = useState("");
+
+  // Use React Router's search params
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+
+  // Parse URL params with validation
+  const tabParam = searchParams.get("status");
+  const pageParam = searchParams.get("page");
+
+  // Validate and set tab state
+  const tab = VALID_TABS.includes(tabParam) ? tabParam : DEFAULT_TAB;
+
+  // Validate and set page state
+  const parsedPage = parseInt(pageParam || DEFAULT_PAGE, 10);
+  const page = parsedPage > 0 ? parsedPage : DEFAULT_PAGE;
+
+  const [pageSize, setPageSize] = useState(25);
   const [totalPages, setTotalPages] = useState(1);
-  const [page, setPage] = useState(1);
-  const [pageSize,setPageSize] = useState(25);
+
+  // Menu state
+  const openOption2 = Boolean(anchorEl2);
+
+  // Helper function to select all orders for a specific date group
+  const handleSelectAllForDate = (dateGroup) => {
+    // Get all order IDs for this specific date group
+    const dateGroupOrders = orders.find(order => order.date === dateGroup);
+
+    if (!dateGroupOrders || !dateGroupOrders.sales) return;
+
+    const dateOrderIds = dateGroupOrders.sales.map(item => item._id);
+
+    // Check if all orders in this date group are already selected
+    const allSelected = dateOrderIds.every(id => orderIds.includes(id));
+
+    if (allSelected) {
+      // Deselect all orders in this date group
+      setOrderIds(prev => prev.filter(id => !dateOrderIds.includes(id)));
+    } else {
+      // Select all orders in this date group
+      setOrderIds(prev => {
+        const newIds = [...prev];
+        dateOrderIds.forEach(id => {
+          if (!newIds.includes(id)) {
+            newIds.push(id);
+          }
+        });
+        return newIds;
+      });
+    }
+  };
+
+  // Check if all orders in a date group are selected
+  const isDateGroupFullySelected = (dateGroup) => {
+    const dateGroupOrders = orders.find(order => order.date === dateGroup);
+
+    if (!dateGroupOrders || !dateGroupOrders.sales || dateGroupOrders.sales.length === 0) {
+      return false;
+    }
+
+    return dateGroupOrders.sales.every(item => orderIds.includes(item._id));
+  };
+
+  // Update URL when tab changes (resets page to 1)
+  const handleTabChange = (event, newValue) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("status", newValue);
+    params.set("page", "1"); // Reset to page 1 when tab changes
+    setSearchParams(params);
+    setOrderIds([]);
+    setIsAllChecked(false);
+    setAnchorEl2(null);
+  };
+
+  // Update URL when page changes
+  const handlePageChange = (event, value) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("page", value.toString());
+    setSearchParams(params);
+  };
 
   const logOut = () => {
     localStorage.removeItem(localStorageKey.auth_key);
@@ -132,7 +208,6 @@ const Orders = () => {
   const handleClick2 = (event) => {
     setAnchorEl2(event.currentTarget);
   };
-  const navigate = useNavigate();
 
   // const handleOpen = () => setOpen(true);
 
@@ -140,38 +215,46 @@ const Orders = () => {
   console.log({ date });
   console.log({ orderIds });
 
-  const handleChange = (event, newValue) => {
-    setTab(newValue);
-    setOrderIds([]);
-    setIsAllChecked(false);
-    setAnchorEl2(null);
-  };
-
   const getOrderList = useCallback(async () => {
     try {
       setLoading(true);
       setOrders([]);
+
+      // Map UI tab values to API status values
+      const statusMap = {
+        "pending": "new",
+        "unshipped": "unshipped",
+        "in-progress": "in-progress",
+        "completed": "completed",
+        "cancelled": "cancelled"
+      };
+
+      const apiStatus = statusMap[tab] || "new";
+
       const res = await ApiService.get(
-        `${apiEndpoints.getOrders}/${tab}?startDate=${date?.from === undefined ? "" : date?.from
+        `${apiEndpoints.getOrders}/${apiStatus}?startDate=${date?.from === undefined ? "" : date?.from
         }&endDate=${date?.to === undefined ? "" : date?.to}&search=${search}&sort=${sortBy}${tab === "completed" ? `&delivery=${completeStatus}` : ""
         }&page=${page}&limit=${pageSize}`,
         auth_key
       );
+      console.log("Order Data: ", res.data);
+
       if (res?.status == 200) {
         setLoading(false);
         setBaseUrl(res?.data?.base_url);
         setOrders(res?.data?.sales);
-        setTotalPages(res?.data?.pagination?.totalPages || 1)
+        setTotalPages(res?.data?.pagination?.totalPages || 1);
       }
     } catch (error) {
       setLoading(false);
       handleOpen("error", error);
     }
-  }, [auth_key, tab, date, sortBy, completeStatus,search,page,pageSize]);
+  }, [auth_key, tab, date, sortBy, completeStatus, search, page, pageSize]);
 
+  // Fetch orders when URL params change
   useEffect(() => {
     getOrderList();
-  }, [tab, date, sortBy, completeStatus,page,pageSize]);
+  }, [tab, date, sortBy, completeStatus, page, pageSize]);
 
   const updateOrder = async (id, orderStatus) => {
     try {
@@ -273,10 +356,6 @@ const Orders = () => {
     }
   };
 
-  const handlePageChange = (event, value) => {
-    setPage(value);
-  };
-
   console.log(orders, "hhlsoolgllfl");
   return (
     <>
@@ -294,7 +373,7 @@ const Orders = () => {
                   placeholder="Search all orders..."
                   inputProps={{ "aria-label": "search" }}
                   value={search}
-                  onChange = {(e)=>{setSearch(e.target.value)}}
+                  onChange={(e) => { setSearch(e.target.value) }}
                   sx={{
                     paddingLeft: "15px",
                     height: "35px",
@@ -333,12 +412,12 @@ const Orders = () => {
               <TabContext value={tab}>
                 <Box>
                   <TabList
-                    onChange={handleChange}
+                    onChange={handleTabChange}
                     aria-label="lab API tabs example"
                     variant="scrollable"
                     scrollButtons="auto"
                   >
-                    <Tab label={`Pending ${tab === "new" ? orderLength : ""}`} value="new" />
+                    <Tab label={`Pending ${tab === "pending" ? orderLength : ""}`} value="pending" />
                     <Tab
                       label={`Unshipped ${tab === "unshipped" ? orderLength : ""}`}
                       value="unshipped"
@@ -448,7 +527,6 @@ const Orders = () => {
                               <MenuItem
                                 key={option.value}
                                 value={option.value}
-                                // onClick={() => setDate((prev) => ({ ...prev, range: option.value }))}
                                 onClick={() => handleDateRange(option.value)}
                               >
                                 {option.label}
@@ -485,21 +563,6 @@ const Orders = () => {
                                 <Typography pr={1}>{orderIds?.length}</Typography>
 
                                 <Typography component="div" textAlign={"start"}>
-                                  {/* <TextField
-                                    select
-                                    defaultValue="Action"
-                                    sx={{
-                                      ".MuiSelect-select": { padding: "0" },
-                                      ".MuiInputBase-root": { height: "0" },
-                                      ".MuiOutlinedInput-notchedOutline": { border: "none" }
-                                    }}
-                                  >
-                                    {action.map((option) => (
-                                      <MenuItem key={option.value} value={option.value}>
-                                        {option.label}
-                                      </MenuItem>
-                                    ))}
-                                  </TextField> */}
                                   <Button
                                     sx={{ color: "#000" }}
                                     id={`basic-button`}
@@ -570,15 +633,11 @@ const Orders = () => {
                                 </Typography>
                               </Box>
                             </ListItem>
-                            {tab !== "new" && (
+                            {tab !== "pending" && (
                               <ListItem
                                 sx={{ width: "auto", paddingLeft: "0", display: "inline-block" }}
                               >
                                 <Button
-                                  // component="a"
-                                  // href={`/adminpanel${ROUTE_CONSTANT.orders.orderSlip}`}
-                                  // target="_blank"
-                                  // rel="noopener noreferrer"
                                   onClick={handleOrderSlip}
                                   sx={{
                                     color: "#000",
@@ -672,17 +731,17 @@ const Orders = () => {
                     {
                       loading ? (
                         <Box
-                            sx={{
-                                display: "flex",
-                                alignItems: "center",
-                                flexDirection: "column",
-                                padding: "48px",
-                                height: "100vh",
-                            }}
-                          >
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            flexDirection: "column",
+                            padding: "48px",
+                            height: "100vh",
+                          }}
+                        >
                           <CircularProgress size={20} />
                         </Box>
-                      ):(
+                      ) : (
                         <>
                           {orders.length > 0 ? (
                             orders.map((items, i) => (
@@ -712,6 +771,9 @@ const Orders = () => {
                                 handleCloseOption={handleCloseOption}
                                 handleCloseOption1={handleCloseOption1}
                                 updateOrder={updateOrder}
+                                // Pass the select all handler to OrderItem
+                                onSelectAllForDate={handleSelectAllForDate}
+                                isDateGroupFullySelected={isDateGroupFullySelected}
                               />
                             ))
                           ) : (
@@ -758,11 +820,6 @@ const Orders = () => {
               </TabContext>
             </Box>
           </Grid>
-          {/* <Grid lg={2} md={2} xs={12}>
-            <Typography component="div" sx={{ display: 'flex', justifyContent: 'end' }}>
-              <Button sx={{ border: '2px solid gray', color: '#000', borderRadius: '30px', padding: '5px 18px' }}>Upload Tracking</Button>
-            </Typography>
-          </Grid> */}
         </Grid>
       </Box>
       <ConfirmModal open={open} handleClose={handleClose} type={type} msg={msg} />
@@ -805,9 +862,6 @@ const Orders = () => {
                 </Typography>
                 <Typography fontSize={16} sx={{ color: "#000" }}>
                   Quantity:{" "}
-                  {/* <Typography component="span">
-                  {saleData?.qty}
-                </Typography> */}
                 </Typography>
                 <Typography fontSize={16} sx={{ color: "#000" }}>
                   SKU: <Typography component="span">4 inch Red 6 Kon</Typography>

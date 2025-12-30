@@ -19,7 +19,7 @@ import Product from './Product';
 import StarIcon from "@mui/icons-material/Star";
 
 
-const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2, handleOpen, setOrderIds, anchorEl, setAnchorEl, anchorEl1, setAnchorEl1, anchorEl3, setAnchorEl3, openMenuIndex, setOpenMenuIndex, openMenuIndex1, setOpenMenuIndex1, baseUrl, orderIds, handleCloseOption, handleCloseOption1, updateOrder }) => {
+const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2, handleOpen, setOrderIds, anchorEl, setAnchorEl, anchorEl1, setAnchorEl1, anchorEl3, setAnchorEl3, openMenuIndex, setOpenMenuIndex, openMenuIndex1, setOpenMenuIndex1, baseUrl, orderIds, handleCloseOption, handleCloseOption1, updateOrder, onSelectAllForDate, isDateGroupFullySelected }) => {
     console.log({ items }, "rfhrthththt");
     const navigate = useNavigate();
 
@@ -57,6 +57,14 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
         if (!str) return "";
         return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
     };
+
+    // Handle "Select all" for this date group
+    const handleSelectAllClick = () => {
+        if (onSelectAllForDate && items?.date) {
+            onSelectAllForDate(items.date);
+        }
+    };
+
     return (
         <>
             <Grid
@@ -78,12 +86,27 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                         padding: "12px 12px"
                     }}
                 >
-                    <Typography mr={2}>Completed {formatDate(items?.date)}</Typography>
-                    <Typography mr={2}>3</Typography>
+                    <Typography mr={2}>{items?.date}</Typography>
+                    <Typography mr={2}>{items?.sales?.length || 0}</Typography>
                     <Typography>
-                        <Link href="#" style={{ textDecoration: "underline", color: "#000" }}>
-                            Select all{" "}
-                        </Link>
+                        <Button
+                            onClick={handleSelectAllClick}
+                            sx={{
+                                textDecoration: "underline",
+                                color: "#000",
+                                padding: 0,
+                                minWidth: "auto",
+                                fontSize: "inherit",
+                                fontWeight: "inherit",
+                                textTransform: "none",
+                                '&:hover': {
+                                    backgroundColor: 'transparent',
+                                    textDecoration: "underline"
+                                }
+                            }}
+                        >
+                            Select all
+                        </Button>
                     </Typography>
                 </Box>
                 <TableContainer
@@ -402,11 +425,6 @@ ${item?.mobile}`;
                                                         <LocalShippingIcon />
                                                     </Button>
                                                 </ListItem>
-                                                {/* <ListItem sx={{ width: "auto", display: "block" }}>
-                                                    <Button sx={{ color: "#000" }}>
-                                                        <MailOutlineIcon />
-                                                    </Button>
-                                                </ListItem> */}
 
                                                 {tab !== "new" && tab !== "completed" && (
                                                     <ListItem sx={{ width: "auto", display: "block" }}>
@@ -544,44 +562,6 @@ ${item?.mobile}`;
                                                         >
                                                             Refund
                                                         </MenuItem>
-                                                        {/* {tab === "unshipped" && (
-                                                <MenuItem
-                                                  onClick={() => {
-                                                    updateOrder(item?._id, "in-progress");
-                                                    handleCloseOption();
-                                                  }}
-                                                >
-                                                  <HourglassEmptyIcon
-                                                    fontSize="small"
-                                                    style={{ marginRight: 8 }}
-                                                  />
-                                                  In Progress
-                                                </MenuItem>
-                                              )}
-                                              {tab === "unshipped" && (
-                                                <MenuItem
-                                                  onClick={() => {
-                                                    updateOrder(item?._id, "cancelled");
-                                                    handleCloseOption();
-                                                  }}
-                                                >
-                                                  <CloseIcon
-                                                    fontSize="small"
-                                                    style={{ marginRight: 8 }}
-                                                  />
-                                                  Cancel
-                                                </MenuItem>
-                                              )}
-                                              {tab === "in-progress" && (
-                                                <MenuItem
-                                                  onClick={() => {
-                                                    updateOrder(item?._id, "completed");
-                                                    handleCloseOption();
-                                                  }}
-                                                >
-                                                  Complete Order
-                                                </MenuItem>
-                                              )} */}
                                                     </Menu>
                                                 </ListItem>
                                             </List>
