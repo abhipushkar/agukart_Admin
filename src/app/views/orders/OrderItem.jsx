@@ -65,6 +65,36 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
         }
     };
 
+    // Helper to get shipping display name
+    const getShippingDisplayName = (shippingName) => {
+        if (!shippingName) return "Standard Delivery";
+        switch (shippingName) {
+            case "standardShipping": return "Standard Delivery";
+            case "expedited": return "Express Delivery";
+            case "twoDays": return "Two days";
+            case "oneDay": return "One day";
+            default: return shippingName;
+        }
+    };
+
+    // Helper to get buyer/seller note from saleDetaildata items
+    const getNoteFromItems = (itemsArray, noteType) => {
+        if (!itemsArray || !itemsArray.length) return null;
+        // Check first item for note
+        const firstItem = itemsArray[0];
+        if (firstItem && firstItem[noteType]) {
+            return firstItem[noteType];
+        }
+        return null;
+    };
+
+    // Helper to get shipping name from saleDetaildata
+    const getShippingNameFromItems = (itemsArray) => {
+        if (!itemsArray || !itemsArray.length) return "standardShipping";
+        const firstSaleDetail = itemsArray[0];
+        return firstSaleDetail?.shippingName || "standardShipping";
+    };
+
     return (
         <>
             <Grid
@@ -146,7 +176,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                 component="div"
                                                 sx={{
                                                     display: "flex",
-                                                    alignItems: "center"
+                                                    alignItems: "start"
                                                 }}
                                             >
                                                 <a
@@ -162,21 +192,43 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                 <Typography ml={2} sx={{ color: "#000" }}>
                                                     ${item?.subtotal?.toFixed(2)}
                                                 </Typography>
-                                                <Typography
-                                                    ml={8}
-                                                    sx={{
-                                                        display: "-webkit-box",
-                                                        WebkitLineClamp: "3",
-                                                        WebkitBoxOrient: "vertical",
-                                                        textOverflow: "ellipsis",
-                                                        overflow: "hidden",
-                                                        fontWeight: "400",
-                                                        fontSize: "15px",
-                                                        maxWidth: { xs: "100%", md: "400px" }
-                                                    }}
-                                                >
-                                                    Shipping : {item?.saleDetaildata?.[0]?.shippingName == "standardShipping" ? "Standard Delivery" : item?.saleDetaildata?.[0]?.shippingName == "expedited" ? "Express Delivery" : item?.saleDetaildata?.[0]?.shippingName == "twoDays" ? "Two days" : "One day"}
-                                                </Typography>
+                                                <Box sx={{
+                                                    display: "flex",
+                                                    flexDirection: "column",
+                                                    gap: 0.5,
+                                                    alignItems: "start"
+                                                }}>
+                                                    <Typography
+                                                        ml={8}
+                                                        sx={{
+                                                            display: "-webkit-box",
+                                                            WebkitLineClamp: "3",
+                                                            WebkitBoxOrient: "vertical",
+                                                            textOverflow: "ellipsis",
+                                                            overflow: "hidden",
+                                                            fontWeight: "400",
+                                                            fontSize: "15px",
+                                                            maxWidth: { xs: "100%", md: "400px" }
+                                                        }}
+                                                    >
+                                                        Shipping : {getShippingDisplayName(getShippingNameFromItems(item?.saleDetaildata))}
+                                                    </Typography>
+                                                    <Typography
+                                                        ml={8}
+                                                        sx={{
+                                                            display: "-webkit-box",
+                                                            WebkitLineClamp: "3",
+                                                            WebkitBoxOrient: "vertical",
+                                                            textOverflow: "ellipsis",
+                                                            overflow: "hidden",
+                                                            fontWeight: "400",
+                                                            fontSize: "15px",
+                                                            maxWidth: { xs: "100%", md: "400px" }
+                                                        }}
+                                                    >
+                                                        <strong>Shop</strong> : {item?.shop_name}
+                                                    </Typography>
+                                                </Box>
                                             </Typography>
 
                                             <Typography
@@ -278,25 +330,41 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                             </Typography>
                                         </Box>
 
-                                        {item?.saleDetaildata.map((saleData, saleIndex) => (
-                                            <Product key={saleIndex} saleData={saleData} baseUrl={baseUrl} getOrderList={getOrderList} handleOpen={handleOpen} item={item} />
+                                        {/* Map through saleDetaildata and then through items array */}
+                                        {item?.saleDetaildata?.map((saleData, saleIndex) => (
+                                            saleData?.items?.map((itemData, itemIndex) => (
+                                                <Product
+                                                    key={`${saleIndex}-${itemIndex}`}
+                                                    saleData={itemData}
+                                                    baseUrl={baseUrl}
+                                                    getOrderList={getOrderList}
+                                                    handleOpen={handleOpen}
+                                                    item={item}
+                                                    shop_name={item?.shop_name}
+                                                    vendorData={saleData}
+                                                />
+                                            ))
                                         ))}
                                         <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "flex-start", alignItems: "flex-start" }}>
                                             {
-                                                item?.saleDetaildata?.[0]?.buyer_note && <Typography fontSize={14} sx={{ color: "#000" }}>
-                                                    Buyer Note:{" "}
-                                                    <Typography component="span">
-                                                        {item?.saleDetaildata?.[0]?.buyer_note}
+                                                getNoteFromItems(item?.saleDetaildata?.[0]?.items, 'buyer_note') && (
+                                                    <Typography fontSize={14} sx={{ color: "#000" }}>
+                                                        Buyer Note:{" "}
+                                                        <Typography component="span">
+                                                            {getNoteFromItems(item?.saleDetaildata?.[0]?.items, 'buyer_note')}
+                                                        </Typography>
                                                     </Typography>
-                                                </Typography>
+                                                )
                                             }
                                             {
-                                                item?.saleDetaildata?.[0]?.seller_note && <Typography fontSize={14} sx={{ color: "#000" }}>
-                                                    Seller Note:{" "}
-                                                    <Typography component="span">
-                                                        {item?.saleDetaildata?.[0]?.seller_note}
+                                                getNoteFromItems(item?.saleDetaildata?.[0]?.items, 'seller_note') && (
+                                                    <Typography fontSize={14} sx={{ color: "#000" }}>
+                                                        Seller Note:{" "}
+                                                        <Typography component="span">
+                                                            {getNoteFromItems(item?.saleDetaildata?.[0]?.items, 'seller_note')}
+                                                        </Typography>
                                                     </Typography>
-                                                </Typography>
+                                                )
                                             }
                                         </Box>
 
@@ -305,7 +373,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                     <TableCell align="center" colSpan={2}>
                                         <Box textAlign={"start"}>
                                             <Typography variant="h6" fontWeight={500} fontSize={15}>
-                                                {tab == "new" ? "No Tracking" : tab == "unshipped" ? "Unshipped" : tab == "in-progress" ? "In Progress" : tab == "completed" ? "Completed" : "Cancelled"}
+                                                {tab == "pending" ? "No Tracking" : tab == "unshipped" ? "Unshipped" : tab == "in-progress" ? "In Progress" : tab == "completed" ? "Completed" : "Cancelled"}
                                             </Typography>
                                             <Typography>Order {formatDate(item?.createdAt)}</Typography>
                                             {tab == "completed" && (
@@ -426,7 +494,7 @@ ${item?.mobile}`;
                                                     </Button>
                                                 </ListItem>
 
-                                                {tab !== "new" && tab !== "completed" && (
+                                                {tab !== "pending" && tab !== "completed" && (
                                                     <ListItem sx={{ width: "auto", display: "block" }}>
                                                         <Button
                                                             sx={{ color: "#000" }}
@@ -526,7 +594,7 @@ ${item?.mobile}`;
                                                             "aria-labelledby": `basic-button-${index}`
                                                         }}
                                                     >
-                                                        {tab !== "new" && (
+                                                        {tab !== "pending" && (
                                                             <MenuItem
                                                                 onClick={() => {
                                                                     // updateOrder(item?._id, "in-progress");

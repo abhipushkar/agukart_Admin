@@ -1,22 +1,11 @@
-import { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Box from "@mui/material/Box";
-import Container from "@mui/material/Container";
 import Grid from "@mui/material/Grid";
 import Typography from "@mui/material/Typography";
-import MenuItem from "@mui/material/MenuItem";
-import { styled, alpha } from "@mui/material/styles";
-import InputBase from "@mui/material/InputBase";
-import SearchIcon from "@mui/icons-material/Search";
 import Button from "@mui/material/Button";
-import Tab from "@mui/material/Tab";
-import TabContext from "@mui/lab/TabContext";
-import TabList from "@mui/lab/TabList";
-import TabPanel from "@mui/lab/TabPanel";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import TextField from "@mui/material/TextField";
-import Checkbox from "@mui/material/Checkbox";
-import Link from "@mui/material/Link";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
@@ -25,6 +14,7 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Paper from "@mui/material/Paper";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { localStorageKey } from "app/constant/localStorageKey";
 import { ROUTE_CONSTANT } from "app/constant/routeContanst";
@@ -38,18 +28,106 @@ import ConfirmModal from "app/components/ConfirmModal";
 
 const OrderHistory = () => {
   const auth_key = localStorage.getItem(localStorageKey.auth_key);
-  const [order, setOrder] = useState([]);
-  console.log(order,"rfhbrhrhrhrh")
+  const [order, setOrder] = useState({ saleDetaildata: [] });
+  const [expandedRows, setExpandedRows] = useState({});
   const [baseUrl, setBaseUrl] = useState("");
   const [query, setQuery] = useSearchParams();
   const queryId = query.get("id");
   const navigate = useNavigate();
-  const [sellerNote,setSellerNote] = useState("");
+  const [sellerNote, setSellerNote] = useState("");
 
   const [open, setOpen] = useState(false);
   const [type, setType] = useState("");
   const [route, setRoute] = useState(null);
   const [msg, setMsg] = useState(null);
+
+  // Helper function to get display value or "..."
+  const getDisplayValue = (value, fallback = "...") => {
+    if (value === null || value === undefined || value === "") {
+      return fallback;
+    }
+    return value;
+  };
+
+  // Toggle row expansion
+  const toggleRowExpansion = (itemId) => {
+    setExpandedRows(prev => ({
+      ...prev,
+      [itemId]: !prev[itemId]
+    }));
+  };
+
+  // Calculate derived data once to avoid repeated calculations
+  const orderTotals = useMemo(() => {
+    if (!order?.saleDetaildata?.length) {
+      return {
+        subTotal: 0,
+        shippingTotal: 0,
+        itemTotal: 0,
+        grandTotal: 0,
+        paypalAmount: 0
+      };
+    }
+
+    // Flatten all items from all saleDetaildata
+    const allItems = order.saleDetaildata.flatMap(saleDetail => saleDetail.items || []);
+
+    const subTotal = allItems.reduce((a, b) => a + ((b.sub_total - (b?.couponDiscountAmount || 0))), 0);
+    const shippingTotal = allItems.reduce((a, b) => a + (b.shippingAmount || 0), 0);
+    const itemTotal = allItems.reduce((a, b) => a + ((b?.amount || 0) + (b?.shippingAmount || 0) - (b?.couponDiscountAmount || 0)), 0);
+    const grandTotal = itemTotal - (order?.voucher_dicount || 0);
+    const paypalAmount = grandTotal - (order?.wallet_used || 0);
+
+    return {
+      subTotal: subTotal.toFixed(2),
+      shippingTotal: shippingTotal.toFixed(2),
+      itemTotal: itemTotal.toFixed(2),
+      grandTotal: grandTotal.toFixed(2),
+      paypalAmount: paypalAmount > 0 ? paypalAmount.toFixed(2) : "0.00"
+    };
+  }, [order]);
+
+  // Get shipping name once
+  const shippingName = useMemo(() => {
+    if (!order?.saleDetaildata?.[0]?.shippingName) return "...";
+    const name = order.saleDetaildata[0].shippingName;
+    switch (name) {
+      case "standardShipping": return "Standard Delivery";
+      case "expedited": return "Express Delivery";
+      case "twoDays": return "Two days";
+      case "oneDay": return "One day";
+      default: return getDisplayValue(name);
+    }
+  }, [order]);
+
+  // Get delivery dates from deliveryData
+  const deliveryDates = useMemo(() => {
+    if (!order?.saleDetaildata?.[0]?.deliveryData?.minDate || !order?.saleDetaildata?.[0]?.deliveryData?.maxDate) {
+      return {
+        minDate: "...",
+        maxDate: "..."
+      };
+    }
+
+    const formatDeliveryDate = (dateString) => {
+      try {
+        const date = new Date(dateString);
+        return date.toLocaleDateString("en-US", {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+          year: "numeric"
+        });
+      } catch (error) {
+        return "...";
+      }
+    };
+
+    return {
+      minDate: formatDeliveryDate(order.saleDetaildata[0].deliveryData.minDate),
+      maxDate: formatDeliveryDate(order.saleDetaildata[0].deliveryData.maxDate)
+    };
+  }, [order]);
 
   const logOut = () => {
     localStorage.removeItem(localStorageKey.auth_key);
@@ -77,17 +155,17 @@ const OrderHistory = () => {
   };
 
   const getOrder = useCallback(async () => {
-    console.log("djhfsjkhfshdjkfhjksd");
     try {
-      console.log("hfsjdfs");
       const payload = {
         sales_id: queryId
       };
       const res = await ApiService.post(apiEndpoints.getOrderHistory, payload, auth_key);
       if (res?.status == "200") {
-        setOrder(res?.data?.sales?.[0]);
-        setSellerNote(res?.data?.sales?.[0]?.saleDetaildata?.[0]?.seller_note || "");
-        setBaseUrl(res?.data?.base_url);
+        setOrder(res?.data?.orderHistory || { saleDetaildata: [] });
+        // Get seller note from first item in first saleDetaildata
+        const firstItem = res?.data?.orderHistory?.saleDetaildata?.[0]?.items?.[0];
+        setSellerNote(firstItem?.seller_note || "");
+        setBaseUrl(res?.data?.base_url || "");
       }
     } catch (error) {
       handleOpen("error", error);
@@ -102,7 +180,7 @@ const OrderHistory = () => {
 
   const formatDate = (timestamp) => {
     if (!timestamp) {
-      timestamp = Date.now();
+      return "...";
     }
 
     let date;
@@ -116,7 +194,7 @@ const OrderHistory = () => {
     }
 
     if (isNaN(date.getTime())) {
-      throw new Error("Invalid date value");
+      return "...";
     }
 
     const options = {
@@ -127,34 +205,36 @@ const OrderHistory = () => {
       timeZone: "America/Los_Angeles"
     };
 
-    const formattedDate = new Intl.DateTimeFormat("en-US", options).format(date);
-
-    // const timezone = "PST";
-    return `${formattedDate}`;
+    try {
+      const formattedDate = new Intl.DateTimeFormat("en-US", options).format(date);
+      return formattedDate;
+    } catch (error) {
+      return "...";
+    }
   };
 
-  const handleSellerSaveNote = async()=>{
-    if(!sellerNote){
+  const handleSellerSaveNote = async () => {
+    if (!sellerNote.trim()) {
       const data = {
         message: "Please Enter Seller Note"
       }
       return handleOpen("error", data);
-    } 
+    }
     try {
-      const vendor_ids = [
-        ...new Set(
+      const vendor_ids = Array.from(
+        new Set(
           (order?.saleDetaildata || [])
             .map(item => item.vendor_id)
             .filter(Boolean)
         )
-      ];
+      );
 
       const payload = {
         order_id: order?.order_id,
-        vendor_id:vendor_ids,
-        seller_note:sellerNote
+        vendor_id: vendor_ids,
+        seller_note: sellerNote
       };
-      const res = await ApiService.post(apiEndpoints.saveSellerNote,payload,auth_key);
+      const res = await ApiService.post(apiEndpoints.saveSellerNote, payload, auth_key);
       if (res?.status == "200") {
         handleOpen("success", res?.data);
         getOrder();
@@ -164,10 +244,49 @@ const OrderHistory = () => {
     }
   }
 
-    const capitalizeFirstWord = (str) => {
-      if (!str) return "";
-      return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
-    };
+  const capitalizeFirstWord = (str) => {
+    if (!str) return "...";
+    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+  };
+
+  // Helper to safely strip HTML tags
+  const stripHtmlTags = (html) => {
+    if (!html) return "...";
+    return html.replace(/<\/?[^>]+(>|$)/g, "");
+  };
+
+  // Helper to check if item has any variants to show
+  const hasVariantsToShow = (item) => {
+    return (
+      (item?.variantData && item.variantData.length > 0) ||
+      (item?.variants && item.variants.length > 0) ||
+      (item?.variant_id && item.variant_id.length > 0) ||
+      (item?.variant_attribute_id && item.variant_attribute_id.length > 0)
+    );
+  };
+
+  // Helper to get buyer/seller note from saleDetaildata items
+  const getNoteFromItems = (itemsArray, noteType) => {
+    if (!itemsArray || !itemsArray.length) return null;
+    // Check first item for note
+    const firstItem = itemsArray[0];
+    if (firstItem && firstItem[noteType]) {
+      return firstItem[noteType];
+    }
+    return null;
+  };
+
+  // Get shipping display name
+  const getShippingDisplayName = (shippingName) => {
+    if (!shippingName) return "Standard Delivery";
+    switch (shippingName) {
+      case "standardShipping": return "Standard Delivery";
+      case "expedited": return "Express Delivery";
+      case "twoDays": return "Two days";
+      case "oneDay": return "One day";
+      default: return shippingName;
+    }
+  };
 
   return (
     <>
@@ -187,17 +306,17 @@ const OrderHistory = () => {
             >
               Order ID:{" "}
               <Typography fontSize={17} component="span" fontWeight={600}>
-                # {order?.order_id}
+                # {getDisplayValue(order?.order_id)}
               </Typography>
             </Typography>
-            <Typography sx={{ marginLeft: { lg: "10px", md: "10px", xs: "0" } }}>
-              <Typography
+            <Box sx={{ marginLeft: { lg: "10px", md: "10px", xs: "0" } }}>
+              <Box
                 component="span"
                 sx={{ background: "red", padding: "4px 8px", color: "#fff", borderRadius: "4px" }}
               >
                 Custom order
-              </Typography>
-            </Typography>
+              </Box>
+            </Box>
           </Box>
           <Typography
             fontSize={17}
@@ -210,28 +329,12 @@ const OrderHistory = () => {
           >
             Your Seller Order ID:{" "}
             <Typography fontSize={17} component="span" fontWeight={600} color={"green"}>
-              # Edit
+              # {getDisplayValue(order?.order_id)}
             </Typography>
           </Typography>
         </Box>
+
         <Grid container width={"100%"} m={0} pt={2} spacing={2} alignItems={"center"}>
-          {/* <Grid lg={6} md={6} xs={12}>
-            <Box>
-              <Button
-                sx={{
-                  fontWeight: "600",
-                  background: "#000",
-                  borderRadius: "30px",
-                  padding: "5px 16px",
-                  color: "#fff",
-                  "&:hover": { background: "#494949" }
-                }}
-                onClick={() => navigate(ROUTE_CONSTANT.orders.orderPage)}
-              >
-                Go back to order list
-              </Button>
-            </Box>
-          </Grid> */}
           <Grid lg={12} md={12} xs={12}>
             <Box sx={{ display: { lg: "flex", md: "flex", xs: "block" }, justifyContent: "end" }}>
               <List sx={{ display: { lg: "flex", md: "flex", xs: "block" }, alignItems: "center" }}>
@@ -299,20 +402,21 @@ const OrderHistory = () => {
                     Message to buyer
                   </Button>
                 </ListItem>
-                {
-                  order?.redStar && <ListItem sx={{ paddingLeft: "0", width: "auto", display: "inline-block" }}>
+                {order?.redStar && (
+                  <ListItem sx={{ paddingLeft: "0", width: "auto", display: "inline-block" }}>
                     <StarIcon sx={{ color: "red" }} />
                   </ListItem>
-                }
-                {
-                  order?.greenStar && <ListItem sx={{ paddingLeft: "0", width: "auto", display: "inline-block" }}>
+                )}
+                {order?.greenStar && (
+                  <ListItem sx={{ paddingLeft: "0", width: "auto", display: "inline-block" }}>
                     <StarIcon sx={{ color: "green" }} />
                   </ListItem>
-                }
+                )}
               </List>
             </Box>
           </Grid>
         </Grid>
+
         <Grid container width={"100%"} m={0} pb={2} spacing={2}>
           <Grid py={2} lg={7} md={6} xs={12}>
             <Box
@@ -353,7 +457,7 @@ const OrderHistory = () => {
                           Ship by:
                         </Typography>
                         <Typography fontWeight={600} color={"#e2912c"} pl={2} sx={{ width: "70%" }}>
-                          Web, Feb 1, 2023 PST to Thu, Feb 2, 2023 PST
+                          {deliveryDates.minDate} to {deliveryDates.maxDate}
                         </Typography>
                       </ListItem>
                       <ListItem
@@ -368,7 +472,7 @@ const OrderHistory = () => {
                           Deliver by:
                         </Typography>
                         <Typography fontWeight={600} sx={{ width: "70%" }} pl={2}>
-                          Web, Feb 1, 2023 PST to Thu, Feb 2, 2023 PST
+                          {deliveryDates.minDate} to {deliveryDates.maxDate}
                         </Typography>
                       </ListItem>
                       <ListItem
@@ -383,7 +487,7 @@ const OrderHistory = () => {
                           Delivered date:
                         </Typography>
                         <Typography fontWeight={600} sx={{ width: "70%" }} pl={2}>
-                          Web, Feb 1, 2023 PST to Thu, Feb 2, 2023 PST
+                          {order?.saleDetaildata?.[0]?.items?.[0]?.delivered_date ? formatDate(order.saleDetaildata[0].items[0].delivered_date) : "..."}
                         </Typography>
                       </ListItem>
                     </List>
@@ -403,7 +507,7 @@ const OrderHistory = () => {
                         Shipping services:
                       </Typography>
                       <Typography fontWeight={600} pl={2} sx={{ width: "50%" }}>
-                        {order?.saleDetaildata?.[0]?.shippingName == "standardShipping" ? "Standard Delivery" : order?.saleDetaildata?.[0]?.shippingName == "expedited" ? "Express Delivery" : order?.saleDetaildata?.[0]?.shippingName == "twoDays" ? "Two days" : "One day"}
+                        {shippingName}
                       </Typography>
                     </ListItem>
                   </List>
@@ -411,6 +515,7 @@ const OrderHistory = () => {
               </Grid>
             </Box>
           </Grid>
+
           <Grid py={2} lg={5} md={6} xs={12} sx={{ paddingLeft: { lg: "20px", md: "20px" } }}>
             <Box
               p={3}
@@ -422,21 +527,21 @@ const OrderHistory = () => {
               <Grid container width={"100%"} m={0} spacing={2}>
                 <Grid lg={6} md={4} xs={12}>
                   <Box mt={2}>
-                    <Typography fontSize={15}>{order?.userName}</Typography>
+                    <Typography fontSize={15}>{getDisplayValue(order?.userName)}</Typography>
                     <Typography>
-                        {capitalizeFirstWord(order?.address_line1)}
+                      {capitalizeFirstWord(order?.address_line1)}
                     </Typography>
                     <Typography>
-                        {capitalizeFirstWord(order?.address_line2)}
+                      {capitalizeFirstWord(order?.address_line2)}
                     </Typography>
                     <Typography>
-                        {order?.city}, {order?.state} {order?.pincode}
+                      {getDisplayValue(order?.city)}, {getDisplayValue(order?.state)} {getDisplayValue(order?.pincode)}
                     </Typography>
                     <Typography>
-                        {order?.country}
+                      {getDisplayValue(order?.country)}
                     </Typography>
                     <Typography fontSize={15} fontWeight={500}>
-                      Mob. No.: {order?.mobile}
+                      Mob. No.: {getDisplayValue(order?.mobile)}
                     </Typography>
                   </Box>
                 </Grid>
@@ -454,7 +559,7 @@ const OrderHistory = () => {
                     >
                       <Typography fontWeight={501}>Buyer Name:</Typography>
                       <Typography fontWeight={500} pl={1} color={"green"}>
-                        {order?.userName}
+                        {getDisplayValue(order?.userName)}
                       </Typography>
                     </ListItem>
                     <ListItem
@@ -469,7 +574,7 @@ const OrderHistory = () => {
                     >
                       <Typography fontWeight={501}>Buyer Id No.:</Typography>
                       <Typography fontWeight={500} pl={1}>
-                        {order?.id_number}
+                        {getDisplayValue(order?.id_number)}
                       </Typography>
                     </ListItem>
                     <ListItem
@@ -484,7 +589,7 @@ const OrderHistory = () => {
                     >
                       <Typography fontWeight={501}>Buyer Email Id:</Typography>
                       <Typography fontWeight={500} pl={1}>
-                        {order?.userEmail}
+                        {getDisplayValue(order?.userEmail)}
                       </Typography>
                     </ListItem>
                   </List>
@@ -493,6 +598,7 @@ const OrderHistory = () => {
             </Box>
           </Grid>
         </Grid>
+
         <Box mt={3}>
           <Grid container width={"100%"} m={0} pb={2} spacing={2}>
             <Grid py={2} lg={9} md={8} xs={12}>
@@ -500,435 +606,538 @@ const OrderHistory = () => {
                 component={Paper}
                 sx={{
                   boxShadow: "0 0 3px #dbdbdb",
-                  borderRadius: "6px"
+                  borderRadius: "6px",
+                  overflowX: "auto",
+                  maxWidth: "100%"
                 }}
               >
                 <Table
                   sx={{
-                    minWidth: "100%",
-                    maxWidth: "100%",
-                    width: "max-content",
-                    ".MuiTableCell-root": { padding: "20px" }
+                    minWidth: 800,
+                    tableLayout: 'fixed',
+                    ".MuiTableCell-root": {
+                      padding: "20px",
+                      wordBreak: "break-word"
+                    }
                   }}
                   aria-label="simple table"
                 >
                   <TableHead sx={{ background: "#ebebeb" }}>
                     <TableRow>
-                      <TableCell align="center" sx={{ fontSize: "16px", whiteSpace: "nowrap" }}>
+                      <TableCell align="center" sx={{ fontSize: "16px", whiteSpace: "nowrap", width: "120px" }}>
                         Status
                       </TableCell>
-                      <TableCell align="center" sx={{ fontSize: "16px", whiteSpace: "nowrap" }}>
+                      <TableCell align="center" sx={{ fontSize: "16px", whiteSpace: "nowrap", width: "100px" }}>
                         Image
                       </TableCell>
-                      <TableCell align="center" sx={{ fontSize: "16px", whiteSpace: "nowrap" }}>
+                      <TableCell align="center" sx={{ fontSize: "16px", whiteSpace: "nowrap", width: "250px", minWidth: "200px" }}>
                         Product name
                       </TableCell>
-                      <TableCell align="center" sx={{ fontSize: "16px", whiteSpace: "nowrap" }}>
+                      <TableCell align="center" sx={{ fontSize: "16px", whiteSpace: "nowrap", width: "150px" }}>
                         More information
                       </TableCell>
-                      <TableCell align="center" sx={{ fontSize: "16px", whiteSpace: "nowrap" }}>
+                      <TableCell align="center" sx={{ fontSize: "16px", whiteSpace: "nowrap", width: "80px" }}>
                         Quantity
                       </TableCell>
-                      <TableCell align="center" sx={{ fontSize: "16px", whiteSpace: "nowrap" }}>
+                      <TableCell align="center" sx={{ fontSize: "16px", whiteSpace: "nowrap", width: "100px" }}>
                         Unit price
                       </TableCell>
-                      <TableCell align="center" sx={{ fontSize: "16px", whiteSpace: "nowrap" }}>
+                      <TableCell align="center" sx={{ fontSize: "16px", whiteSpace: "nowrap", width: "180px", minWidth: "150px" }}>
                         Proceeds
                       </TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {order?.saleDetaildata?.map((items, index) => (
-                      <TableRow
-                        sx={{
-                          verticalAlign: "top",
-                          "&:last-child td, &:last-child th": { border: 0 }
-                        }}
-                        key={index}
-                      >
-                        <TableCell align="start">
-                          <Typography
-                            component="div"
-                            sx={{
-                              background: "green",
-                              color: "#fff",
-                              padding: "8px 16px",
-                              borderRadius: "4px",
-                              whiteSpace: "nowrap"
-                            }}
-                          >
-                            {items?.order_status == "new" ? "No Tracking" : items?.order_status}
-                          </Typography>
-                        </TableCell>
-                        <TableCell align="start">
-                          <Box>
-                            <img
-                              src={`${items?.productData?.image?.[0]}`}
-                              alt=""
-                              style={{
-                                height: "80px",
-                                width: "80px",
-                                objectFit: "contain",
-                                aspectRatio: "1/1",
-                                borderRadius: "4px"
+                    {/* Flatten all items from all saleDetaildata for display */}
+                    {order?.saleDetaildata?.flatMap(saleDetail =>
+                      saleDetail?.items?.map((items) => {
+                        const productData = items?.productData || {};
+                        const productTitle = stripHtmlTags(productData.product_title || "");
+                        const productImage = productData.image?.[0] || "";
+                        const variantData = items?.variantData || [];
+                        const variantAttributeData = items?.variantAttributeData || [];
+                        const skuCode = getDisplayValue(productData.sku_code);
+                        const isExpanded = expandedRows[items._id];
+                        const hasVariants = hasVariantsToShow(items);
+                        const variantIds = items?.variant_id || [];
+                        const variantAttributeIds = items?.variant_attribute_id || [];
+                        const internalVariants = items?.variants || [];
+                        const vendorData = saleDetail;
+
+                        return (
+                          <React.Fragment key={items._id}>
+                            <TableRow
+                              sx={{
+                                verticalAlign: "top",
+                                "&:last-child td, &:last-child th": { border: 0 }
                               }}
-                            />
-                          </Box>
-                        </TableCell>
-                        <TableCell align="start" sx={{ width: "300px", minWidth: "100%" }}>
-                          <Box>
-                            <Typography fontSize={16} color={"green"}>
-                              {items?.productData?.product_title?.replace(/<\/?[^>]+(>|$)/g, "")}
-                            </Typography>
-                            {items?.isCombination === true &&
-                              items?.variantData?.map((variantItem, variantIndex) => (
-                                <Typography fontSize={14} sx={{ color: "#000" }} key={variantIndex}>
-                                  {variantItem?.variant_name}:{" "}
-                                  <Typography component="span">
-                                    {items?.variantAttributeData[variantIndex]?.attribute_value}
-                                  </Typography>
-                                </Typography>
-                              ))}
-                            {items?.customize == "Yes" && (
-                              <>
-                                {items?.customizationData?.map((item, index) => (
-                                  <div key={index}>
-                                    {Object.entries(item).map(([key, value]) => (
-                                      <div key={key}>
-                                        {typeof value === "object" ? (
-                                          <div>
-                                            {key}:{`${value?.value} ($ ${value?.price})`}
-                                          </div>
-                                        ) : (
-                                          <div>
-                                            {key}: {value}
-                                          </div>
-                                        )}
-                                      </div>
-                                    ))}
-                                  </div>
-                                ))}
-                              </>
-                            )}
-                            <Typography mt={1}>
-                              <Button
-                                sx={{
-                                  background: "none",
-                                  border: "none",
-                                  boxShadow: "none",
-                                  color: "green",
-                                  padding: "0"
-                                }}
-                              >
-                                <KeyboardArrowDownIcon mr={1} />
-                                Show more
-                              </Button>
-                            </Typography>
-                          </Box>
-                        </TableCell>
-                        <TableCell align="start">
-                          <Box>
-                            <Typography fontSize={16}>
-                              Order item ID:{" "}
-                              <Typography fontSize={16} component="span">
-                                {items?._id}
-                              </Typography>
-                            </Typography>
-                          </Box>
-                        </TableCell>
-                        <TableCell align="start">
-                          <Typography fontSize={16}>{items?.qty}</Typography>
-                        </TableCell>
-                        <TableCell align="start">
-                          <Typography fontSize={16}>${items?.original_price}</Typography>
-                        </TableCell>
-                        <TableCell
-                          align="start"
-                          sx={{ width: "300px", minWidth: "100%", whiteSpace: "nowrap" }}
-                        >
-                          <Box>
-                            <List>
-                              <ListItem sx={{ padding: "0" }}>
+                            >
+                              <TableCell align="start">
                                 <Box
-                                  pb={1}
-                                  sx={{ width: "100%", borderBottom: "2px solid #d9d9d9" }}
+                                  sx={{
+                                    background: items?.order_status === "new" ? "#f0ad4e" :
+                                      items?.order_status === "completed" ? "#5cb85c" :
+                                        items?.order_status === "cancelled" ? "#d9534f" : "#5bc0de",
+                                    color: "#fff",
+                                    padding: "8px 16px",
+                                    borderRadius: "4px",
+                                    whiteSpace: "nowrap",
+                                    textAlign: "center"
+                                  }}
                                 >
+                                  {items?.order_status == "new" ? "No Tracking" : getDisplayValue(items?.order_status)}
+                                </Box>
+                              </TableCell>
+                              <TableCell align="start">
+                                <Box>
+                                  {productImage ? (
+                                    <img
+                                      src={`${baseUrl}${productImage}`}
+                                      alt={productTitle}
+                                      style={{
+                                        height: "80px",
+                                        width: "80px",
+                                        objectFit: "contain",
+                                        aspectRatio: "1/1",
+                                        borderRadius: "4px"
+                                      }}
+                                    />
+                                  ) : (
+                                    <Box
+                                      sx={{
+                                        height: "80px",
+                                        width: "80px",
+                                        bgcolor: "#f5f5f5",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        borderRadius: "4px"
+                                      }}
+                                    >
+                                      <Typography color="text.secondary">No image</Typography>
+                                    </Box>
+                                  )}
+                                </Box>
+                              </TableCell>
+                              <TableCell align="start" sx={{ width: "250px" }}>
+                                <Box>
                                   <Typography
-                                    component="div"
+                                    fontSize={16}
+                                    color={"green"}
                                     sx={{
-                                      paddingLeft: "0",
-                                      width: "auto",
-                                      display: "flex",
-                                      alignItems: "center",
-                                      width: "100%",
-                                      justifyContent: "space-between"
+                                      display: "-webkit-box",
+                                      WebkitLineClamp: 3,
+                                      WebkitBoxOrient: "vertical",
+                                      overflow: "hidden",
+                                      textOverflow: "ellipsis"
                                     }}
                                   >
-                                    <Typography color={"#000"} fontSize={15}>
-                                      Item subtotal:
-                                    </Typography>
-                                    <Typography pl={2} color={"#000"} fontSize={15}>
-                                      ${items?.original_price * items?.qty}
-                                    </Typography>
+                                    {productTitle}
                                   </Typography>
-                                  {
-                                    items?.promotional_discount > 0 && (
-                                      <Typography
-                                        component="div"
+                                  <Typography fontSize={14} sx={{ color: "#000", mt: 1 }}>
+                                    SKU:{" "}
+                                    <Box component="span" fontWeight={500}>
+                                      {skuCode}
+                                    </Box>
+                                  </Typography>
+
+                                  {/* Show first variant if exists */}
+                                  {(variantData.length > 0 || internalVariants.length > 0) && (
+                                    <Box sx={{ mt: 1 }}>
+                                      {/* Show first variantData if available */}
+                                      {variantData.length > 0 && variantData[0] && variantAttributeData[0] && (
+                                        <Typography fontSize={14} sx={{ color: "#000" }}>
+                                          {getDisplayValue(variantData[0]?.variant_name)}:{" "}
+                                          <Box component="span">
+                                            {getDisplayValue(variantAttributeData[0]?.attribute_value)}
+                                          </Box>
+                                        </Typography>
+                                      )}
+
+                                      {/* Show first internal variant if available */}
+                                      {internalVariants.length > 0 && !variantData[0] && (
+                                        <Typography fontSize={14} sx={{ color: "#000" }}>
+                                          {getDisplayValue(internalVariants[0]?.variantName)}:{" "}
+                                          <Box component="span">
+                                            {getDisplayValue(internalVariants[0]?.attributeName)}
+                                          </Box>
+                                        </Typography>
+                                      )}
+
+                                      {/* Show More button if there are more variants to show */}
+                                      {hasVariants && (variantData.length > 1 || internalVariants.length > 1 || variantIds.length > 0) && (
+                                        <Button
+                                          sx={{
+                                            background: "none",
+                                            border: "none",
+                                            boxShadow: "none",
+                                            color: "green",
+                                            padding: "0",
+                                            mt: 1,
+                                            fontSize: "14px",
+                                            textTransform: "none"
+                                          }}
+                                          onClick={() => toggleRowExpansion(items._id)}
+                                        >
+                                          {isExpanded ? (
+                                            <>
+                                              <KeyboardArrowUpIcon sx={{ fontSize: "16px", mr: 0.5 }} />
+                                              Show less
+                                            </>
+                                          ) : (
+                                            <>
+                                              <KeyboardArrowDownIcon sx={{ fontSize: "16px", mr: 0.5 }} />
+                                              Show more variants
+                                            </>
+                                          )}
+                                        </Button>
+                                      )}
+                                    </Box>
+                                  )}
+                                </Box>
+                              </TableCell>
+                              <TableCell align="start">
+                                <Box>
+                                  <Typography fontSize={16}>
+                                    Order item ID:{" "}
+                                    <Box fontSize={16} component="span">
+                                      {getDisplayValue(items?._id)}
+                                    </Box>
+                                  </Typography>
+                                  <Typography fontSize={14} sx={{ color: "#000", mt: 1 }}>
+                                    Vendor:{" "}
+                                    <Box component="span">
+                                      {getDisplayValue(vendorData?.vendor_name || items?.vendor_name)}
+                                    </Box>
+                                  </Typography>
+                                </Box>
+                              </TableCell>
+                              <TableCell align="start">
+                                <Typography fontSize={16}>{getDisplayValue(items?.qty)}</Typography>
+                              </TableCell>
+                              <TableCell align="start">
+                                <Typography fontSize={16}>${getDisplayValue(items?.original_price, "0.00")}</Typography>
+                              </TableCell>
+                              <TableCell
+                                align="start"
+                                sx={{ width: "180px" }}
+                              >
+                                <Box>
+                                  <List>
+                                    <ListItem sx={{ padding: "0" }}>
+                                      <Box
+                                        pb={1}
+                                        sx={{ width: "100%", borderBottom: "2px solid #d9d9d9" }}
+                                      >
+                                        <Box
+                                          sx={{
+                                            paddingLeft: "0",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            width: "100%",
+                                            justifyContent: "space-between"
+                                          }}
+                                        >
+                                          <Typography color={"#000"} fontSize={15}>
+                                            Item subtotal:
+                                          </Typography>
+                                          <Box pl={2} color={"#000"} fontSize={15}>
+                                            ${((items?.original_price || 0) * (items?.qty || 0)).toFixed(2)}
+                                          </Box>
+                                        </Box>
+                                        {items?.promotional_discount > 0 && (
+                                          <Box
+                                            sx={{
+                                              paddingLeft: "0",
+                                              display: "flex",
+                                              alignItems: "center",
+                                              width: "100%",
+                                              justifyContent: "space-between"
+                                            }}
+                                          >
+                                            <Typography
+                                              color={"#a1a1a1"}
+                                              fontSize={13}
+                                              sx={{ display: "flex", alignItems: "center" }}
+                                            >
+                                              <LocalOfferIcon
+                                                sx={{
+                                                  marginRight: "4px",
+                                                  fontSize: "18px",
+                                                  transform: "rotate(115deg)"
+                                                }}
+                                              />{" "}
+                                              {`Today Sale ${items?.promotionalOfferData?.offer_type == "percentage" ?
+                                                getDisplayValue(items?.promotionalOfferData?.discount_amount) + "%" :
+                                                "$" + getDisplayValue(items?.promotionalOfferData?.discount_amount)}  off`}:
+                                            </Typography>
+                                            <Box pl={2} color={"red"} fontSize={13}>
+                                              - ${((items?.promotional_discount || 0) * (items?.qty || 0)).toFixed(2)}
+                                            </Box>
+                                          </Box>
+                                        )}
+                                        {items?.couponDiscountAmount > 0 && (
+                                          <Box
+                                            pt={1}
+                                            sx={{
+                                              paddingLeft: "0",
+                                              display: "flex",
+                                              alignItems: "center",
+                                              width: "100%",
+                                              justifyContent: "space-between"
+                                            }}
+                                          >
+                                            <Typography
+                                              color={"#a1a1a1"}
+                                              fontSize={13}
+                                              sx={{ display: "flex", alignItems: "center" }}
+                                            >
+                                              <LocalOfferIcon
+                                                sx={{
+                                                  marginRight: "4px",
+                                                  fontSize: "18px",
+                                                  transform: "rotate(115deg)"
+                                                }}
+                                              />{" "}
+                                              Shop Coupon({getDisplayValue(items?.couponData?.coupon_data?.coupon_code)})
+                                            </Typography>
+                                            <Box pl={2} color={"red"} fontSize={13}>
+                                              - ${(items?.couponDiscountAmount || 0).toFixed(2)}
+                                            </Box>
+                                          </Box>
+                                        )}
+                                      </Box>
+                                    </ListItem>
+                                    <ListItem sx={{ padding: "0", marginTop: "10px" }}>
+                                      <Box
+                                        pb={1}
+                                        sx={{ width: "100%", borderBottom: "2px solid #d9d9d9" }}
+                                      >
+                                        <Box
+                                          sx={{
+                                            paddingLeft: "0",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            width: "100%",
+                                            justifyContent: "space-between"
+                                          }}
+                                        >
+                                          <Typography color={"#000"} fontSize={15}>
+                                            Sub Total:
+                                          </Typography>
+                                          <Box pl={2} color={"#000"} fontSize={15}>
+                                            ${((items?.sub_total || 0) - (items?.couponDiscountAmount || 0)).toFixed(2)}
+                                          </Box>
+                                        </Box>
+                                        <Box
+                                          pt={1}
+                                          sx={{
+                                            paddingLeft: "0",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            width: "100%",
+                                            justifyContent: "space-between"
+                                          }}
+                                        >
+                                          <Typography color={"#000"} fontSize={15}>
+                                            Shipping Total:
+                                          </Typography>
+                                          <Box pl={2} color={"#000"} fontSize={15}>
+                                            ${(items?.shippingAmount || 0).toFixed(2)}
+                                          </Box>
+                                        </Box>
+                                        <Box
+                                          pt={1}
+                                          sx={{
+                                            paddingLeft: "0",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            width: "100%",
+                                            justifyContent: "space-between"
+                                          }}
+                                        >
+                                          <Typography color={"#000"} fontSize={15}>
+                                            Tax:
+                                          </Typography>
+                                          <Box pl={2} color={"#000"} fontSize={15}>
+                                            $0
+                                          </Box>
+                                        </Box>
+                                      </Box>
+                                    </ListItem>
+                                    <ListItem sx={{ padding: "0", marginTop: "10px" }}>
+                                      <Box
                                         sx={{
                                           paddingLeft: "0",
-                                          width: "auto",
                                           display: "flex",
                                           alignItems: "center",
                                           width: "100%",
                                           justifyContent: "space-between"
                                         }}
                                       >
-                                        <Typography
-                                          color={"#a1a1a1"}
-                                          fontSize={13}
-                                          sx={{ display: "flex", alignItems: "center" }}
-                                        >
-                                          <LocalOfferIcon
-                                            sx={{
-                                              marginRight: "4px",
-                                              fontSize: "18px",
-                                              transform: "rotate(115deg)"
-                                            }}
-                                          />{" "}
-                                          {`Today Sale ${items?.promotionalOfferData?.offer_type == "percentage" ? items?.promotionalOfferData?.discount_amount + "%": "$" + items?.promotionalOfferData?.discount_amount}  off`}:
+                                        <Typography color={"#000"} fontSize={15} fontWeight={600}>
+                                          Item Total:
                                         </Typography>
-                                        <Typography pl={2} color={"red"} fontSize={13}>
-                                          - ${(items?.promotional_discount * items?.qty).toFixed(2)}
-                                        </Typography>
-                                      </Typography>
-                                    )
-                                  }
-                                  {
-                                    items?.couponDiscountAmount > 0 && 
-                                    <Typography
-                                      component="div"
-                                      pt={1}
-                                      sx={{
-                                        paddingLeft: "0",
-                                        width: "auto",
-                                        display: "flex",
-                                        alignItems: "center",
-                                        width: "100%",
-                                        justifyContent: "space-between"
-                                      }}
-                                    >
-                                      <Typography
-                                        color={"#a1a1a1"}
-                                        fontSize={13}
-                                        sx={{ display: "flex", alignItems: "center" }}
-                                      >
-                                        <LocalOfferIcon
-                                          sx={{
-                                            marginRight: "4px",
-                                            fontSize: "18px",
-                                            transform: "rotate(115deg)"
-                                          }}
-                                        />{" "}
-                                        Shop Coupon({items?.couponData?.coupon_data?.coupon_code})
-                                      </Typography>
-                                      <Typography pl={2} color={"red"} fontSize={13}>
-                                        - ${(items?.couponDiscountAmount).toFixed(2)}
-                                      </Typography>
-                                    </Typography>
-                                  }
+                                        <Box pl={2} color={"#000"} fontSize={15} fontWeight={600}>
+                                          ${((items?.amount || 0) + (items?.shippingAmount || 0) - (items?.couponDiscountAmount || 0)).toFixed(2)}
+                                        </Box>
+                                      </Box>
+                                    </ListItem>
+                                  </List>
                                 </Box>
-                              </ListItem>
-                              <ListItem sx={{ padding: "0", marginTop: "10px" }}>
-                                <Box
-                                  pb={1}
-                                  sx={{ width: "100%", borderBottom: "2px solid #d9d9d9" }}
-                                >
-                                  <Typography
-                                    component="div"
-                                    sx={{
-                                      paddingLeft: "0",
-                                      width: "auto",
-                                      display: "flex",
-                                      alignItems: "center",
-                                      width: "100%",
-                                      justifyContent: "space-between"
-                                    }}
-                                  >
-                                    <Typography color={"#000"} fontSize={15}>
-                                      Sub Total:
+                              </TableCell>
+                            </TableRow>
+
+                            {isExpanded && (
+                              <TableRow>
+                                <TableCell colSpan={7} sx={{ backgroundColor: "#f9f9f9", borderTop: "1px solid #e0e0e0" }}>
+                                  <Box sx={{ p: 2 }}>
+                                    <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                                      Additional Details
                                     </Typography>
-                                    <Typography pl={2} color={"#000"} fontSize={15}>
-                                      ${(items?.sub_total - items?.couponDiscountAmount).toFixed(2)}
-                                    </Typography>
-                                  </Typography>
-                                  <Typography
-                                    component="div"
-                                    pt={1}
-                                    sx={{
-                                      paddingLeft: "0",
-                                      width: "auto",
-                                      display: "flex",
-                                      alignItems: "center",
-                                      width: "100%",
-                                      justifyContent: "space-between"
-                                    }}
-                                  >
-                                    <Typography color={"#000"} fontSize={15}>
-                                      Shipping Total:
-                                    </Typography>
-                                    <Typography pl={2} color={"#000"} fontSize={15}>
-                                      ${items?.shippingAmount?.toFixed(2)}
-                                    </Typography>
-                                  </Typography>
-                                  <Typography
-                                    component="div"
-                                    pt={1}
-                                    sx={{
-                                      paddingLeft: "0",
-                                      width: "auto",
-                                      display: "flex",
-                                      alignItems: "center",
-                                      width: "100%",
-                                      justifyContent: "space-between"
-                                    }}
-                                  >
-                                    <Typography color={"#000"} fontSize={15}>
-                                      Tax:
-                                    </Typography>
-                                    <Typography pl={2} color={"#000"} fontSize={15}>
-                                      $0
-                                    </Typography>
-                                  </Typography>
-                                </Box>
-                              </ListItem>
-                              <ListItem sx={{ padding: "0", marginTop: "10px" }}>
-                                <Typography
-                                  component="div"
-                                  sx={{
-                                    paddingLeft: "0",
-                                    width: "auto",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    width: "100%",
-                                    justifyContent: "space-between"
-                                  }}
-                                >
-                                  <Typography color={"#000"} fontSize={15} fontWeight={600}>
-                                    Item Total:
-                                  </Typography>
-                                  <Typography pl={2} color={"#000"} fontSize={15} fontWeight={600}>
-                                    ${(items?.amount + items?.shippingAmount - items?.couponDiscountAmount).toFixed(2)}
-                                  </Typography>
-                                </Typography>
-                              </ListItem>
-                            </List>
-                          </Box>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                                    <Grid container spacing={3}>
+                                      {/* Variant Data (Amazon-style) */}
+                                      {(variantData.length > 0 || variantIds.length > 0) && (
+                                        <Grid item xs={12} md={6}>
+                                          <Box>
+                                            <Typography fontWeight={600} gutterBottom>
+                                              Product Variants:
+                                            </Typography>
+                                            {variantData.length > 0 ? (
+                                              variantData.map((variantItem, idx) => (
+                                                <Box key={idx} sx={{ mb: 1 }}>
+                                                  <Typography fontSize={14} fontWeight={500}>
+                                                    {getDisplayValue(variantItem?.variant_name)}:
+                                                  </Typography>
+                                                  <Typography fontSize={14}>
+                                                    {getDisplayValue(variantAttributeData[idx]?.attribute_value)}
+                                                  </Typography>
+                                                </Box>
+                                              ))
+                                            ) : variantIds.length > 0 ? (
+                                              <Box>
+                                                <Typography fontSize={14} fontWeight={500}>
+                                                  Variant IDs:
+                                                </Typography>
+                                                <Typography fontSize={14}>
+                                                  {variantIds.join(", ")}
+                                                </Typography>
+                                                {variantAttributeIds.length > 0 && (
+                                                  <>
+                                                    <Typography fontSize={14} fontWeight={500} sx={{ mt: 1 }}>
+                                                      Variant Attribute IDs:
+                                                    </Typography>
+                                                    <Typography fontSize={14}>
+                                                      {variantAttributeIds.join(", ")}
+                                                    </Typography>
+                                                  </>
+                                                )}
+                                              </Box>
+                                            ) : null}
+                                          </Box>
+                                        </Grid>
+                                      )}
+
+                                      {/* Internal Variants (Etsy-style) */}
+                                      {internalVariants.length > 0 && (
+                                        <Grid item xs={12} md={6}>
+                                          <Box>
+                                            <Typography fontWeight={600} gutterBottom>
+                                              Internal Variants:
+                                            </Typography>
+                                            {internalVariants.map((variant, idx) => (
+                                              <Box key={variant._id || idx} sx={{ mb: 1 }}>
+                                                <Typography fontSize={14} fontWeight={500}>
+                                                  {getDisplayValue(variant.variantName)}:
+                                                </Typography>
+                                                <Typography fontSize={14}>
+                                                  {getDisplayValue(variant.attributeName)}
+                                                </Typography>
+                                              </Box>
+                                            ))}
+                                          </Box>
+                                        </Grid>
+                                      )}
+
+                                      {/* Customizations */}
+                                      {items?.customize == "Yes" && items?.customizationData?.length > 0 && (
+                                        <Grid item xs={12} md={6}>
+                                          <Box>
+                                            <Typography fontWeight={600} gutterBottom>
+                                              Customizations:
+                                            </Typography>
+                                            {items.customizationData.map((item, idx) => (
+                                              <Box key={idx} sx={{ mb: 2, p: 1, bgcolor: "#f5f5f5", borderRadius: 1 }}>
+                                                {Object.entries(item).map(([key, value]) => (
+                                                  <Box key={key} sx={{ mb: 0.5 }}>
+                                                    <Typography fontSize={14} fontWeight={500}>
+                                                      {getDisplayValue(key)}:
+                                                    </Typography>
+                                                    <Typography fontSize={14}>
+                                                      {typeof value === "object" ?
+                                                        `${getDisplayValue(value?.value)} ($ ${getDisplayValue(value?.price)})` :
+                                                        getDisplayValue(value)}
+                                                    </Typography>
+                                                  </Box>
+                                                ))}
+                                              </Box>
+                                            ))}
+                                          </Box>
+                                        </Grid>
+                                      )}
+
+                                      {/* Product Info */}
+                                      <Grid item xs={12} md={6}>
+                                        <Box>
+                                          <Typography fontWeight={600} gutterBottom>
+                                            Product Information:
+                                          </Typography>
+                                          <Typography fontSize={14}>
+                                            <Box component="span" fontWeight={500}>Product ID:</Box> {getDisplayValue(items?.product_id)}
+                                          </Typography>
+                                          <Typography fontSize={14}>
+                                            <Box component="span" fontWeight={500}>Vendor ID:</Box> {getDisplayValue(vendorData?.vendor_id || items?.vendor_id)}
+                                          </Typography>
+                                          <Typography fontSize={14}>
+                                            <Box component="span" fontWeight={500}>Order Status:</Box> {getDisplayValue(items?.order_status)}
+                                          </Typography>
+                                          <Typography fontSize={14}>
+                                            <Box component="span" fontWeight={500}>Combination:</Box> {items?.isCombination ? "Yes" : "No"}
+                                          </Typography>
+                                          <Typography fontSize={14}>
+                                            <Box component="span" fontWeight={500}>Customization:</Box> {items?.customize || "No"}
+                                          </Typography>
+                                        </Box>
+                                      </Grid>
+                                    </Grid>
+                                  </Box>
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </React.Fragment>
+                        );
+                      })
+                    )}
                   </TableBody>
                 </Table>
               </TableContainer>
             </Grid>
+
             <Grid py={2} lg={3} md={4} xs={12} sx={{ paddingLeft: { lg: "20px", md: "20px" } }}>
               <Box p={2} border={"1px solid #000"}>
                 <Typography variant="h6" fontWeight={600}>
                   Sales Proceeds
                 </Typography>
-                <Typography color={"#000"}>Billing country/region: US</Typography>
-                <Typography color={"#000"}>Payment methods: Standard</Typography>
+                <Typography color={"#000"}>Billing country/region: {getDisplayValue(order?.country, "US")}</Typography>
+                <Typography color={"#000"}>Payment methods: {getDisplayValue(order?.payment_method, "Standard")}</Typography>
 
                 <Box mt={2}>
                   <List>
-                    {/* <ListItem sx={{ padding: "0" }}>
-                      <Box pb={1} sx={{ width: "100%", borderBottom: "2px solid #d9d9d9" }}>
-                        <Typography
-                          component="div"
-                          sx={{
-                            paddingLeft: "0",
-                            width: "auto",
-                            display: "flex",
-                            alignItems: "center",
-                            width: "100%",
-                            justifyContent: "space-between"
-                          }}
-                        >
-                          <Typography color={"#000"} fontSize={15}>
-                            Item subtotal:
-                          </Typography>
-                          <Typography pl={2} color={"#000"} fontSize={15}>
-                            ${order?.subtotal}
-                          </Typography>
-                        </Typography>
-                        <Typography
-                          component="div"
-                          sx={{
-                            paddingLeft: "0",
-                            width: "auto",
-                            display: "flex",
-                            alignItems: "center",
-                            width: "100%",
-                            justifyContent: "space-between"
-                          }}
-                        >
-                          <Typography
-                            color={"#a1a1a1"}
-                            fontSize={13}
-                            sx={{ display: "flex", alignItems: "center" }}
-                          >
-                            <LocalOfferIcon
-                              sx={{
-                                marginRight: "4px",
-                                fontSize: "18px",
-                                transform: "rotate(115deg)"
-                              }}
-                            />{" "}
-                            Today Sale 15% off:
-                          </Typography>
-                          <Typography pl={2} color={"red"} fontSize={13}>
-                            $0
-                          </Typography>
-                        </Typography>
-                        <Typography
-                          component="div"
-                          pt={1}
-                          sx={{
-                            paddingLeft: "0",
-                            width: "auto",
-                            display: "flex",
-                            alignItems: "center",
-                            width: "100%",
-                            justifyContent: "space-between"
-                          }}
-                        >
-                          <Typography
-                            color={"#a1a1a1"}
-                            fontSize={13}
-                            sx={{ display: "flex", alignItems: "center" }}
-                          >
-                            <LocalOfferIcon
-                              sx={{
-                                marginRight: "4px",
-                                fontSize: "18px",
-                                transform: "rotate(115deg)"
-                              }}
-                            />{" "}
-                            Shop Coupon($2)
-                          </Typography>
-                          <Typography pl={2} color={"red"} fontSize={13}>
-                            $0
-                          </Typography>
-                        </Typography>
-                      </Box>
-                    </ListItem> */}
                     <ListItem sx={{ padding: "0", marginTop: "10px" }}>
                       <Box pb={1} sx={{ width: "100%", borderBottom: "2px solid #d9d9d9" }}>
-                        <Typography
-                          component="div"
+                        <Box
                           sx={{
                             paddingLeft: "0",
-                            width: "auto",
                             display: "flex",
                             alignItems: "center",
                             width: "100%",
@@ -938,16 +1147,14 @@ const OrderHistory = () => {
                           <Typography color={"#000"} fontSize={15}>
                             Sub Total:
                           </Typography>
-                          <Typography pl={2} color={"#000"} fontSize={15}>
-                            ${order?.saleDetaildata?.reduce((a, b) => a + ((b.sub_total - b?.couponDiscountAmount)), 0).toFixed(2)}
-                          </Typography>
-                        </Typography>
-                        <Typography
-                          component="div"
+                          <Box pl={2} color={"#000"} fontSize={15}>
+                            ${orderTotals.subTotal}
+                          </Box>
+                        </Box>
+                        <Box
                           pt={1}
                           sx={{
                             paddingLeft: "0",
-                            width: "auto",
                             display: "flex",
                             alignItems: "center",
                             width: "100%",
@@ -957,18 +1164,15 @@ const OrderHistory = () => {
                           <Typography color={"#000"} fontSize={15}>
                             Shipping Total:
                           </Typography>
-                          <Typography pl={2} color={"#000"} fontSize={15}>
-                            ${order?.saleDetaildata?.reduce((a, b) => a + b.shippingAmount, 0).toFixed(2)}
-                          </Typography>
-                        </Typography>
-                        {
-                          order?.voucher_dicount > 0 && 
-                          <Typography
-                            component="div"
+                          <Box pl={2} color={"#000"} fontSize={15}>
+                            ${orderTotals.shippingTotal}
+                          </Box>
+                        </Box>
+                        {order?.voucher_dicount > 0 && (
+                          <Box
                             pt={1}
                             sx={{
                               paddingLeft: "0",
-                              width: "auto",
                               display: "flex",
                               alignItems: "center",
                               width: "100%",
@@ -978,17 +1182,15 @@ const OrderHistory = () => {
                             <Typography color={"#000"} fontSize={15}>
                               Voucher Discount:
                             </Typography>
-                            <Typography pl={2} color={"#000"} fontSize={15}>
-                              - ${order?.voucher_dicount}
-                            </Typography>
-                          </Typography>
-                        }
-                        <Typography
-                          component="div"
+                            <Box pl={2} color={"#000"} fontSize={15}>
+                              - ${(order?.voucher_dicount || 0).toFixed(2)}
+                            </Box>
+                          </Box>
+                        )}
+                        <Box
                           pt={1}
                           sx={{
                             paddingLeft: "0",
-                            width: "auto",
                             display: "flex",
                             alignItems: "center",
                             width: "100%",
@@ -998,18 +1200,16 @@ const OrderHistory = () => {
                           <Typography color={"#000"} fontSize={15}>
                             Tax:
                           </Typography>
-                          <Typography pl={2} color={"#000"} fontSize={15}>
+                          <Box pl={2} color={"#000"} fontSize={15}>
                             $0
-                          </Typography>
-                        </Typography>
+                          </Box>
+                        </Box>
                       </Box>
                     </ListItem>
                     <ListItem sx={{ padding: "0", marginTop: "10px" }}>
-                      <Typography
-                        component="div"
+                      <Box
                         sx={{
                           paddingLeft: "0",
-                          width: "auto",
                           display: "flex",
                           alignItems: "center",
                           width: "100%",
@@ -1019,18 +1219,16 @@ const OrderHistory = () => {
                         <Typography color={"#000"} fontSize={15} fontWeight={600}>
                           Grand Total:
                         </Typography>
-                        <Typography pl={2} color={"#000"} fontSize={15} fontWeight={600}>
-                          ${(order?.saleDetaildata?.reduce((a, b) => a + (b?.amount + b?.shippingAmount - b?.couponDiscountAmount), 0) - order?.voucher_dicount).toFixed(2)}
-                        </Typography>
-                      </Typography>
+                        <Box pl={2} color={"#000"} fontSize={15} fontWeight={600}>
+                          ${orderTotals.grandTotal}
+                        </Box>
+                      </Box>
                     </ListItem>
                     <ListItem sx={{ padding: "0", marginTop: "10px" }}>
                       <Box pb={1} sx={{ width: "100%" }}>
-                        <Typography
-                          component="div"
+                        <Box
                           sx={{
                             paddingLeft: "0",
-                            width: "auto",
                             display: "flex",
                             alignItems: "center",
                             width: "100%",
@@ -1040,16 +1238,14 @@ const OrderHistory = () => {
                           <Typography color={"#000"} fontSize={15}>
                             Used Gift Card:
                           </Typography>
-                          <Typography pl={2} color={"#000"} fontSize={15}>
-                            ${order?.wallet_used?.toFixed(2)}
-                          </Typography>
-                        </Typography>
-                        <Typography
-                          component="div"
+                          <Box pl={2} color={"#000"} fontSize={15}>
+                            ${(order?.wallet_used || 0).toFixed(2)}
+                          </Box>
+                        </Box>
+                        <Box
                           pt={1}
                           sx={{
                             paddingLeft: "0",
-                            width: "auto",
                             display: "flex",
                             alignItems: "center",
                             width: "100%",
@@ -1059,10 +1255,10 @@ const OrderHistory = () => {
                           <Typography color={"#000"} fontSize={15}>
                             Pay By PayPal:
                           </Typography>
-                          <Typography pl={2} color={"#000"} fontSize={15}>
-                            ${(order?.saleDetaildata?.reduce((a, b) => a + (b?.amount + b?.shippingAmount - b?.couponDiscountAmount), 0) - order?.voucher_dicount - order?.wallet_used).toFixed(2)}
-                          </Typography>
-                        </Typography>
+                          <Box pl={2} color={"#000"} fontSize={15}>
+                            ${orderTotals.paypalAmount}
+                          </Box>
+                        </Box>
                       </Box>
                     </ListItem>
                   </List>
@@ -1078,7 +1274,7 @@ const OrderHistory = () => {
               <Box>
                 <Typography variant="h6">Package 1</Typography>
                 <Box sx={{ border: "1px solid #777777", overflow: "hidden", borderRadius: "6px" }}>
-                  <Typography p={2} component="div" sx={{ background: "#ebebeb" }}>
+                  <Box p={2} sx={{ background: "#ebebeb" }}>
                     <Box
                       sx={{
                         display: { lg: "flex", md: "flex", xs: "block" },
@@ -1086,13 +1282,14 @@ const OrderHistory = () => {
                       }}
                     >
                       <Typography>Action on package 1</Typography>
-                      <Typography
-                        component="div"
+                      <Box
                         sx={{
                           paddingLeft: { lg: "16px", md: "16px", xs: "0" },
                           display: "flex",
                           whiteSpace: "nowrap",
-                          alignItems: "center"
+                          alignItems: "center",
+                          flexWrap: "wrap",
+                          gap: "8px"
                         }}
                       >
                         <Button
@@ -1108,20 +1305,23 @@ const OrderHistory = () => {
                         </Button>
                         <Button
                           sx={{
-                            marginLeft: "8px",
                             padding: "4px 16px",
                             background: "#fff",
                             color: "#000",
                             borderRadius: "30px",
                             border: "1px solid #000"
                           }}
+                          onClick={() => {
+                            const url = `${ROUTE_CONSTANT.orders.orderSlip}?id=${order?._id}`;
+                            window.open(url, '_blank');
+                          }}
                         >
                           Print packing slip
                         </Button>
-                      </Typography>
+                      </Box>
                     </Box>
-                  </Typography>
-                  <Typography component="div" p={2}>
+                  </Box>
+                  <Box p={2}>
                     <Grid container width={"100%"} m={0} alignItems={"center"} spacing={2}>
                       <Grid lg={6} md={6} xs={12}>
                         <List>
@@ -1137,7 +1337,7 @@ const OrderHistory = () => {
                               Ship date:
                             </Typography>
                             <Typography fontWeight={500} pl={2} sx={{ width: "50%" }}>
-                              Fri, Nov 4, 2024
+                              {order?.saleDetaildata?.[0]?.items?.[0]?.shipped_date ? formatDate(order.saleDetaildata[0].items[0].shipped_date) : "..."}
                             </Typography>
                           </ListItem>
                           <ListItem
@@ -1152,7 +1352,7 @@ const OrderHistory = () => {
                               Carrier:
                             </Typography>
                             <Typography fontWeight={500} pl={2} sx={{ width: "50%" }}>
-                              USPS
+                              {getDisplayValue(order?.saleDetaildata?.[0]?.items?.[0]?.shipping_couriername)}
                             </Typography>
                           </ListItem>
                           <ListItem
@@ -1167,55 +1367,26 @@ const OrderHistory = () => {
                               Shipping services:
                             </Typography>
                             <Typography fontWeight={500} pl={2} sx={{ width: "50%" }}>
-                              {order?.saleDetaildata?.[0]?.shippingName == "standardShipping" ? "Standard Delivery" : order?.saleDetaildata?.[0]?.shippingName == "expedited" ? "Express Delivery" : order?.saleDetaildata?.[0]?.shippingName == "twoDays" ? "Two days" : "One day"}
+                              {shippingName}
                             </Typography>
                           </ListItem>
-                          {/* <ListItem
-                            sx={{
-                              paddingLeft: "0",
-                              width: "auto",
-                              display: "flex",
-                              alignItems: "center"
-                            }}
-                          >
-                            <Typography fontWeight={500} sx={{ width: "50%" }}>
-                              Fulfillment:
-                            </Typography>
-                            <Typography fontWeight={600} pl={2} sx={{ width: "50%" }}>
-                              Seller
-                            </Typography>
-                          </ListItem> */}
-                          {/* <ListItem
-                            sx={{
-                              paddingLeft: "0",
-                              width: "auto",
-                              display: "flex",
-                              alignItems: "center"
-                            }}
-                          >
-                            <Typography fontWeight={500} sx={{ width: "50%" }}>
-                              Sales channel:
-                            </Typography>
-                            <Typography fontWeight={600} pl={2} sx={{ width: "50%" }}>
-                              Amazon.com
-                            </Typography>
-                          </ListItem> */}
                         </List>
                       </Grid>
                       <Grid lg={6} md={6} xs={12}>
-                        <Typography component="div">
+                        <Box>
                           <Typography color={"#000"} fontWeight={600}>
                             Tracking Id:{" "}
-                            <Typography component="span" pl={1} fontWeight={400}>
-                              101237862352673
-                            </Typography>
+                            <Box component="span" pl={1} fontWeight={400}>
+                              {getDisplayValue(order?.saleDetaildata?.[0]?.items?.[0]?.shipping_couriernumber, "101237862352673")}
+                            </Box>
                           </Typography>
-                        </Typography>
+                        </Box>
                       </Grid>
                     </Grid>
-                  </Typography>
+                  </Box>
                 </Box>
               </Box>
+
               <Box mt={3}>
                 <Typography variant="h6">Buyer Notes</Typography>
                 <TextField
@@ -1223,13 +1394,14 @@ const OrderHistory = () => {
                   multiline
                   rows={4}
                   variant="outlined"
-                  value={order?.saleDetaildata?.[0]?.buyer_note}
+                  value={getNoteFromItems(order?.saleDetaildata?.[0]?.items, 'buyer_note') || "No buyer notes"}
                   fullWidth
                   disabled
                 />
               </Box>
-             <Box mt={3}>
-              <Typography variant="h6">Seller Notes</Typography>
+
+              <Box mt={3}>
+                <Typography variant="h6">Seller Notes</Typography>
                 <TextField
                   id="outlined-multiline"
                   multiline
@@ -1239,6 +1411,7 @@ const OrderHistory = () => {
                   value={sellerNote}
                   onChange={(e) => setSellerNote(e.target.value)}
                   sx={{ mt: 1 }}
+                  placeholder="Enter seller notes here..."
                 />
                 <Button
                   variant="contained"
@@ -1248,49 +1421,42 @@ const OrderHistory = () => {
                 >
                   Save
                 </Button>
-            </Box>
+              </Box>
             </Grid>
+
             <Grid py={2} lg={3} md={3} xs={12} sx={{ paddingLeft: { lg: "20px", md: "20px" } }}>
               <Box p={2} sx={{ boxShadow: "0 0 3px #000", borderRadius: "6px" }}>
-                <Typography component="div" pb={1} sx={{ borderBottom: "1px solid #ebebeb" }}>
+                <Box pb={1} sx={{ borderBottom: "1px solid #ebebeb" }}>
                   <Typography variant="h6" fontWeight={600}>
                     Manage Feedback
                   </Typography>
-                </Typography>
-                <Typography component="div" pt={1}>
-                  <Typography component="div" display={"flex"} alignItems={"center"}>
+                </Box>
+                <Box pt={1}>
+                  <Box display={"flex"} alignItems={"center"}>
                     <Typography fontSize={17}>Rating:</Typography>
-                    <Typography component="div" pl={1} sx={{ display: "flex" }}>
-                      <Typography component="span" lineHeight={0.6}>
-                        <StarIcon sx={{ color: "#eb9a4c" }} />
-                      </Typography>
-                      <Typography component="span" lineHeight={0.6}>
-                        <StarIcon sx={{ color: "#eb9a4c" }} />
-                      </Typography>
-                      <Typography component="span" lineHeight={0.6}>
-                        <StarIcon sx={{ color: "#eb9a4c" }} />
-                      </Typography>
-                      <Typography component="span" lineHeight={0.6}>
-                        <StarIcon sx={{ color: "#eb9a4c" }} />
-                      </Typography>
-                    </Typography>
-                  </Typography>
+                    <Box pl={1} sx={{ display: "flex" }}>
+                      <StarIcon sx={{ color: "#eb9a4c" }} />
+                      <StarIcon sx={{ color: "#eb9a4c" }} />
+                      <StarIcon sx={{ color: "#eb9a4c" }} />
+                      <StarIcon sx={{ color: "#eb9a4c" }} />
+                    </Box>
+                  </Box>
                   <Typography fontSize={17}>
-                    Comments: "Beautiful ring! Great craftsmanship and fits very comfortably.
-                    I&#39;m wearing it on a finger. Looks very elegant. Going to buy a few more in
-                    diff colors!"
+                    Comments: {getDisplayValue(order?.feedback_comment, '"Beautiful ring! Great craftsmanship and fits very comfortably. I\'m wearing it on a finger. Looks very elegant. Going to buy a few more in diff colors!"')}
                   </Typography>
                   <Typography pt={1} fontSize={17}>
-                    Date: Mon, Jul 10, 2023
+                    Date: {order?.feedback_date ? formatDate(order.feedback_date) : "Mon, Jul 10, 2023"}
                   </Typography>
-                  <Typography component="div" mt={2}>
-                    <img
-                      src="https://i.etsystatic.com/9674287/c/2250/2250/324/0/il/c34d73/5776117645/il_300x300.5776117645_nrmo.jpg"
-                      style={{ width: "100%", height: "200px", objectFit: "cover" }}
-                      alt=""
-                    />
-                  </Typography>
-                </Typography>
+                  {order?.feedback_image && (
+                    <Box mt={2}>
+                      <img
+                        src={order.feedback_image}
+                        style={{ width: "100%", height: "200px", objectFit: "cover" }}
+                        alt="Feedback"
+                      />
+                    </Box>
+                  )}
+                </Box>
               </Box>
             </Grid>
           </Grid>

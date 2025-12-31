@@ -1,4 +1,4 @@
-import { Avatar, Box, Dialog, ListItem, Typography } from '@mui/material';
+import { Box, Dialog, Typography } from '@mui/material';
 import React from 'react'
 import Button from "@mui/material/Button";
 import { useState } from 'react';
@@ -8,23 +8,24 @@ import { localStorageKey } from "app/constant/localStorageKey";
 import { apiEndpoints } from "app/constant/apiEndpoints";
 import TextField from "@mui/material/TextField";
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import MailOutlineIcon from "@mui/icons-material/MailOutline";
-import { ROUTE_CONSTANT } from "app/constant/routeContanst";
 import { REACT_APP_WEB_URL } from 'config';
 import MessagePopup from './MessagePopup';
 
-const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item }) => {
-    console.log({ saleData, item }, "trhththtt")
+const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData }) => {
+    console.log({ saleData, item, vendorData }, "trhththtt")
     const [openPopup, SetOpenPopup] = useState(false);
-    const navigate = useNavigate();
+    const [imageModalOpen, setImageModalOpen] = useState(false);  // For image preview modal
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
     const [stock, setStock] = useState(0);
     const [combinationStockId, setCombinationStockId] = useState([]);
     const [openPop, setOpenPop] = useState(false);
+
     const popClose = () => {
         setOpenPop(false);
     };
+
     const handleClickPopup = () => {
         SetOpenPopup(true);
     };
@@ -32,6 +33,33 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item }) => {
     const handleClosePopup = () => {
         SetOpenPopup(false);
     };
+
+    // Handle image click for preview
+    const handleImageClick = () => {
+        setImageModalOpen(true);
+    };
+
+    const closeImageModal = () => {
+        setImageModalOpen(false);
+        setCurrentImageIndex(0);
+    };
+
+    const goToNextImage = () => {
+        if (saleData?.productData?.image && saleData.productData.image.length > 0) {
+            setCurrentImageIndex((prev) =>
+                prev === saleData.productData.image.length - 1 ? 0 : prev + 1
+            );
+        }
+    };
+
+    const goToPrevImage = () => {
+        if (saleData?.productData?.image && saleData.productData.image.length > 0) {
+            setCurrentImageIndex((prev) =>
+                prev === 0 ? saleData.productData.image.length - 1 : prev - 1
+            );
+        }
+    };
+
     const updateQty = async () => {
         try {
             const payload = {
@@ -49,6 +77,7 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item }) => {
             handleOpen("error", error);
         }
     };
+
     const getCombinations = (arr) => {
         let combinations = arr.map(item =>
             [item]
@@ -62,6 +91,7 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item }) => {
         }
         return combinations;
     };
+
     const handleClickOpen = () => {
         setOpenPop(true);
     };
@@ -102,69 +132,43 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item }) => {
         }
     }, [saleData])
 
+    // Helper function to get display value or fallback
+    const getDisplayValue = (value, fallback = "...") => {
+        if (value === null || value === undefined || value === "") {
+            return fallback;
+        }
+        return value;
+    };
+
     return (
         <>
             <Box sx={{ display: "flex" }}>
-                <Typography
+                <Box
                     sx={{
                         cursor: "pointer",
                         position: "relative",
                         width: 150, height: 150, borderRadius: 2, overflow: "hidden"
                     }}
-                    component="div"
                     textAlign={"start"}
                     marginRight={2}
                 >
-                    <a
-                        href={`${REACT_APP_WEB_URL}/products/${saleData?.product_id}`}
-                        target="_blank"
-
-                    >
+                    {/* Image click now opens preview modal instead of navigating */}
+                    <div onClick={handleImageClick} style={{ cursor: 'pointer' }}>
                         <img
-                            alt="image"
-                            src={`${baseUrl}/${saleData?.productMain?.image[0]}`}
+                            src={
+                                saleData?.productData?.image?.[0]
+                                    ? `${baseUrl}/${saleData.productData.image[0]}`
+                                    : saleData?.productMain?.image?.[0]
+                                        ? `${baseUrl}/${saleData.productMain.image[0]}`
+                                        : ''
+                            }
                             style={{ width: "100%", height: "100%", borderRadius: 2, objectFit: "cover" }}
-
-
-
+                            alt="product"
                         />
-                        {stock > 0 ? (
-                            <Typography
-                                component="span"
-                                sx={{
-                                    position: "absolute",
-                                    bottom: "0px",
-                                    left: "0px",
-                                    background: "#000",
-                                    color: "#fff",
-                                    padding: "3px 9px",
-                                    borderRadius: "5px",
-                                    fontSize: "10px"
-                                }}
-                            >
-                                Left {stock}
-                            </Typography>
-                        ) : (
-                            <Typography
-                                component="span"
-                                sx={{
-                                    position: "absolute",
-                                    bottom: "0px",
-                                    left: "0px",
-                                    background: "red",
-                                    color: "#fff",
-                                    padding: "3px 9px",
-                                    borderRadius: "5px",
-                                    fontSize: "10px"
-                                }}
-                            >
-                                Sold
-                            </Typography>
-                        )}
+                    </div>
 
-                    </a>
                     {stock > 0 ? (
-                        <Typography
+                        <Box
                             component="span"
                             sx={{
                                 position: "absolute",
@@ -178,9 +182,9 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item }) => {
                             }}
                         >
                             Left {stock}
-                        </Typography>
+                        </Box>
                     ) : (
-                        <Typography
+                        <Box
                             component="span"
                             sx={{
                                 position: "absolute",
@@ -194,89 +198,134 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item }) => {
                             }}
                         >
                             Sold
-                        </Typography>
+                        </Box>
                     )}
-                </Typography>
+                </Box>
                 <Box textAlign={"start"}>
-                    <Typography
-                        variant="h6"
-                        sx={{
-                            display: "-webkit-box",
-                            WebkitLineClamp: "3",
-                            WebkitBoxOrient: "vertical",
-                            textOverflow: "ellipsis",
-                            overflow: "hidden",
-                            fontWeight: "500",
-                            fontSize: "15px",
-                            maxWidth: { xs: "100%", md: "400px" }
-                        }}
+                    {/* Product title - click navigates to product page */}
+                    <a
+                        href={`${REACT_APP_WEB_URL}/products/${saleData?.productData?._id}`}
+                        target="_blank"
+                        style={{
+                            textDecoration: 'none',
+                            color: 'inherit',
+                            cursor: 'pointer'
+                        }} rel="noreferrer"
                     >
-                        {saleData?.productMain?.product_title?.replace(
-                            /<\/?[^>]+(>|$)/g,
-                            ""
-                        )}
-                    </Typography>
+                        <Typography
+                            variant="h6"
+                            sx={{
+                                display: "-webkit-box",
+                                WebkitLineClamp: "3",
+                                WebkitBoxOrient: "vertical",
+                                textOverflow: "ellipsis",
+                                overflow: "hidden",
+                                fontWeight: "500",
+                                fontSize: "15px",
+                                maxWidth: { xs: "100%", md: "400px" },
+                                '&:hover': {
+                                    textDecoration: 'underline'
+                                }
+                            }}
+                        >
+                            {saleData?.productData?.product_title
+                                ? saleData.productData.product_title.replace(/<\/?[^>]+(>|$)/g, "")
+                                : saleData?.productMain?.product_title?.replace(/<\/?[^>]+(>|$)/g, "")
+                            }
+                        </Typography>
+                    </a>
+
                     <Typography fontSize={14} sx={{ color: "#000" }}>
                         Product SKU:{" "}
-                        <Typography component="span">
-                            {saleData?.productMain?.sku_code}
-                        </Typography>
+                        <Box component="span">
+                            {getDisplayValue(saleData?.productData?.sku_code || saleData?.productMain?.sku_code)}
+                        </Box>
                     </Typography>
                     <Typography fontSize={14} sx={{ color: "#000" }}>
                         Quantity:{" "}
-                        <Typography component="span">
-                            {saleData?.qty}
-                        </Typography>
+                        <Box component="span">
+                            {getDisplayValue(saleData?.qty)}
+                        </Box>
                     </Typography>
-                    {saleData?.isCombination === true &&
-                        saleData?.variantData?.map(
-                            (variantItem, variantIndex) => (
-                                <Typography
-                                    fontSize={14}
-                                    sx={{ color: "#000" }}
-                                    key={variantIndex}
-                                >
-                                    {variantItem?.variant_name}:{" "}
-                                    <Typography component="span">
-                                        {
-                                            saleData?.variantAttributeData[variantIndex]
-                                                ?.attribute_value
-                                        }
-                                    </Typography>
+
+                    {/* Display Amazon-style variants (variantData and variantAttributeData) */}
+                    {saleData?.isCombination === true && saleData?.variantData && saleData.variantData.length > 0 && (
+                        saleData.variantData.map((variantItem, variantIndex) => (
+                            <Typography
+                                fontSize={14}
+                                sx={{ color: "#000" }}
+                                key={variantIndex}
+                            >
+                                {getDisplayValue(variantItem?.variant_name)}:{" "}
+                                <Box component="span">
+                                    {getDisplayValue(saleData?.variantAttributeData[variantIndex]?.attribute_value)}
+                                </Box>
+                            </Typography>
+                        ))
+                    )}
+
+                    {/* Display Etsy-style internal variants (variants array) */}
+                    {saleData?.variants && saleData.variants.length > 0 && (
+                        saleData.variants.map((variant, index) => (
+                            <Typography
+                                fontSize={14}
+                                sx={{ color: "#000" }}
+                                key={variant._id || index}
+                            >
+                                {getDisplayValue(variant.variantName)}:{" "}
+                                <Box component="span">
+                                    {getDisplayValue(variant.attributeName)}
+                                </Box>
+                            </Typography>
+                        ))
+                    )}
+
+                    {/* Display variant IDs if no structured variant data is available */}
+                    {(saleData?.variant_id && saleData.variant_id.length > 0) &&
+                        (!saleData?.variantData || saleData.variantData.length === 0) &&
+                        (!saleData?.variants || saleData.variants.length === 0) && (
+                            <Box>
+                                <Typography fontSize={14} sx={{ color: "#000" }}>
+                                    Variant IDs:{" "}
+                                    <Box component="span">
+                                        {saleData.variant_id.join(", ")}
+                                    </Box>
                                 </Typography>
-                            )
-                        )
-                    }
-                    {
-                        saleData?.customize == "Yes" && (
-                            <>
-                                {
-                                    saleData?.customizationData?.map((item, index) => (
-                                        <div key={index}>
-                                            {Object.entries(item).map(([key, value]) => (
-                                                <div key={key}>
-                                                    {typeof value === 'object' ? (
-                                                        <div>
-                                                            {key}:{`${value?.value} ($ ${value?.price})`}
-                                                        </div>
-                                                    ) : (
-                                                        <div>{key}: {value}</div>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ))
-                                }
-                            </>
-                        )
-                    }
-                    {/* <Typography fontSize={14} sx={{ color: "#000" }}>
-                        Personalization:{" "}
-                        <Typography component="span">
-                            Not requested on this item
-                        </Typography>
-                    </Typography> */}
-                    <Typography component="div" mt={2}>
+                                {saleData?.variant_attribute_id && saleData.variant_attribute_id.length > 0 && (
+                                    <Typography fontSize={14} sx={{ color: "#000" }}>
+                                        Variant Attribute IDs:{" "}
+                                        <Box component="span">
+                                            {saleData.variant_attribute_id.join(", ")}
+                                        </Box>
+                                    </Typography>
+                                )}
+                            </Box>
+                        )}
+
+                    {/* Display customization data */}
+                    {saleData?.customize === "Yes" && saleData?.customizationData && saleData.customizationData.length > 0 && (
+                        <Box>
+                            {saleData.customizationData.map((item, index) => (
+                                <Box key={index}>
+                                    {Object.entries(item).map(([key, value]) => (
+                                        <Box key={key}>
+                                            {typeof value === 'object' ? (
+                                                <Typography fontSize={14} sx={{ color: "#000" }}>
+                                                    {getDisplayValue(key)}:{` ${getDisplayValue(value?.value)} ($ ${getDisplayValue(value?.price)})`}
+                                                </Typography>
+                                            ) : (
+                                                <Typography fontSize={14} sx={{ color: "#000" }}>
+                                                    {getDisplayValue(key)}: {getDisplayValue(value)}
+                                                </Typography>
+                                            )}
+                                        </Box>
+                                    ))}
+                                </Box>
+                            ))}
+                        </Box>
+                    )}
+
+                    <Box mt={2}>
                         <Button
                             onClick={() => {
                                 handleClickOpen(saleData);
@@ -294,18 +343,81 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item }) => {
                         <Button sx={{ color: "#000" }} onClick={handleClickPopup}>
                             <MailOutlineIcon />
                         </Button>
-                    </Typography>
+                    </Box>
                 </Box>
             </Box>
+
+            {/* Image Preview Modal */}
+            <Dialog
+                open={imageModalOpen}
+                onClose={closeImageModal}
+                maxWidth="md"
+                fullWidth
+            >
+                <Box sx={{ position: 'relative', padding: 2 }}>
+                    <Button
+                        onClick={closeImageModal}
+                        sx={{
+                            position: 'absolute',
+                            top: 8,
+                            right: 8,
+                            zIndex: 1,
+                            minWidth: 'auto',
+                            padding: '4px'
+                        }}
+                    >
+                        <CloseIcon />
+                    </Button>
+
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Button
+                            onClick={goToPrevImage}
+                            sx={{ minWidth: 'auto', padding: '8px' }}
+                        >
+                            ‹
+                        </Button>
+
+                        <Box sx={{ flex: 1, textAlign: 'center' }}>
+                            {saleData?.productData?.image?.[currentImageIndex] && (
+                                <img
+                                    src={`${baseUrl}/${saleData.productData.image[currentImageIndex]}`}
+                                    alt={`Product ${currentImageIndex + 1}`}
+                                    style={{
+                                        maxWidth: '100%',
+                                        maxHeight: '500px',
+                                        objectFit: 'contain'
+                                    }}
+                                />
+                            )}
+                        </Box>
+
+                        <Button
+                            onClick={goToNextImage}
+                            sx={{ minWidth: 'auto', padding: '8px' }}
+                        >
+                            ›
+                        </Button>
+                    </Box>
+
+                    {saleData?.productData?.image && saleData.productData.image.length > 1 && (
+                        <Box sx={{ display: 'flex', justifyContent: 'center', marginTop: 2 }}>
+                            <Typography>
+                                Image {currentImageIndex + 1} of {saleData.productData.image.length}
+                            </Typography>
+                        </Box>
+                    )}
+                </Box>
+            </Dialog>
+
             <Dialog open={openPop} onClose={popClose} sx={{ "& .MuiPaper-root": { maxWidth: "750px" } }}>
                 {saleData?.productMain && (
                     <Box p={2} sx={{ position: "relative" }}>
                         <Typography variant="h4">You are about to Update 1 Listing</Typography>
                         <Box mt={2} sx={{ display: { lg: "flex", md: "flex", xs: "block" } }}>
-                            {saleData?.productMain?.image?.length > 0 && (
-                                <Typography component="div">
+                            {saleData?.productData?.image?.[0] ? (
+                                <Box>
                                     <img
-                                        src={`${baseUrl}/${saleData?.productMain?.image[0]}`}
+                                        src={`${baseUrl}/${saleData.productData.image[0]}`}
                                         style={{
                                             height: "200px",
                                             width: "200px",
@@ -314,9 +426,22 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item }) => {
                                         }}
                                         alt="Product"
                                     />
-                                </Typography>
+                                </Box>
+                            ) : saleData?.productMain?.image?.[0] && (
+                                <Box>
+                                    <img
+                                        src={`${baseUrl}/${saleData.productMain.image[0]}`}
+                                        style={{
+                                            height: "200px",
+                                            width: "200px",
+                                            objectFit: "cover",
+                                            aspectRatio: "1/1"
+                                        }}
+                                        alt="Product"
+                                    />
+                                </Box>
                             )}
-                            <Typography component="div" sx={{ paddingLeft: { lg: 2, md: 2, xs: 0 } }}>
+                            <Box sx={{ paddingLeft: { lg: 2, md: 2, xs: 0 } }}>
                                 <Typography
                                     variant="h6"
                                     sx={{
@@ -330,38 +455,57 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item }) => {
                                         maxWidth: { xs: "100%", md: "400px" }
                                     }}
                                 >
-                                    {saleData?.productMain?.product_title?.replace(/<\/?[^>]+(>|$)/g, "")}
+                                    {saleData?.productData?.product_title
+                                        ? saleData.productData.product_title.replace(/<\/?[^>]+(>|$)/g, "")
+                                        : saleData?.productMain?.product_title?.replace(/<\/?[^>]+(>|$)/g, "")
+                                    }
                                 </Typography>
                                 <Typography fontSize={16} sx={{ color: "#000" }}>
                                     Quantity:{" "}
-                                    <Typography component="span">
-                                        {saleData?.qty}
-                                    </Typography>
+                                    <Box component="span">
+                                        {getDisplayValue(saleData?.qty)}
+                                    </Box>
                                 </Typography>
                                 <Typography fontSize={16} sx={{ color: "#000" }}>
-                                    SKU: <Typography component="span">4 inch Red 6 Kon</Typography>
+                                    SKU: <Box component="span">
+                                        {getDisplayValue(saleData?.productData?.sku_code || saleData?.productMain?.sku_code, "N/A")}
+                                    </Box>
                                 </Typography>
-                                <Typography fontSize={16} sx={{ color: "#000" }}>
-                                    Style: <Typography component="span">Chillum with stopper</Typography>
-                                </Typography>
-                                {saleData?.isCombination === true &&
-                                    saleData?.variantData?.map((variantItem, variantIndex) => (
+
+                                {/* Display variants in the popup dialog too */}
+                                {/* Amazon-style variants */}
+                                {saleData?.isCombination === true && saleData?.variantData && saleData.variantData.length > 0 && (
+                                    saleData.variantData.map((variantItem, variantIndex) => (
                                         <Typography fontSize={16} sx={{ color: "#000" }} key={variantIndex}>
-                                            {variantItem?.variant_name}:{" "}
-                                            <Typography component="span">
-                                                {saleData?.variantAttributeData[variantIndex]?.attribute_value}
-                                            </Typography>
+                                            {getDisplayValue(variantItem?.variant_name)}:{" "}
+                                            <Box component="span">
+                                                {getDisplayValue(saleData?.variantAttributeData[variantIndex]?.attribute_value)}
+                                            </Box>
                                         </Typography>
-                                    ))}
+                                    ))
+                                )}
+
+                                {/* Etsy-style internal variants */}
+                                {saleData?.variants && saleData.variants.length > 0 && (
+                                    saleData.variants.map((variant, index) => (
+                                        <Typography fontSize={16} sx={{ color: "#000" }} key={variant._id || index}>
+                                            {getDisplayValue(variant.variantName)}:{" "}
+                                            <Box component="span">
+                                                {getDisplayValue(variant.attributeName)}
+                                            </Box>
+                                        </Typography>
+                                    ))
+                                )}
+
                                 <Typography fontSize={16} sx={{ color: "#000" }}>
                                     Personalization:{" "}
-                                    <Typography component="span">Not requested on this item</Typography>
+                                    <Box component="span">Not requested on this item</Box>
                                 </Typography>
                                 <Box mt={2}>
-                                    <Typography component="div" sx={{ display: "flex", alignItems: "center" }}>
-                                        <Typography component="span" fontSize={14} fontWeight={500} pr={2}>
+                                    <Box sx={{ display: "flex", alignItems: "center" }}>
+                                        <Box component="span" fontSize={14} fontWeight={500} pr={2}>
                                             Stock:
-                                        </Typography>
+                                        </Box>
                                         <TextField
                                             type="number"
                                             value={stock}
@@ -372,11 +516,10 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item }) => {
                                                 }
                                             }}
                                         />
-                                    </Typography>
+                                    </Box>
                                 </Box>
-                                <Typography
+                                <Box
                                     mt={2}
-                                    component="div"
                                     sx={{
                                         display: "flex",
                                         alignItems: "center",
@@ -402,8 +545,8 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item }) => {
                                     >
                                         Update
                                     </Button>
-                                </Typography>
-                            </Typography>
+                                </Box>
+                            </Box>
                         </Box>
                         <Button
                             onClick={popClose}
@@ -426,13 +569,15 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item }) => {
             {
                 openPopup && <MessagePopup
                     openPopup={openPopup}
-                    vendorID={saleData?.vendor_id}
+                    vendorID={vendorData?.vendor_id || saleData?.vendor_id}
                     orderId={item?.order_id}
-                    product_image={`${baseUrl}/${saleData?.productMain?.image[0]}`}
+                    product_image={saleData?.productData?.image?.[0]
+                        ? `${baseUrl}/${saleData.productData.image[0]}`
+                        : `${baseUrl}/${saleData?.productMain?.image[0]}`
+                    }
                     productData={saleData}
                     userName={item?.userName}
-                    vendorName={saleData?.vendor_name}
-                    shopName={item?.shop_name}
+                    vendorName={vendorData?.vendor_name || saleData?.vendor_name}
                     userId={item?.user_idnumer}
                     userImage={item?.user_image}
                     handleClosePopup={handleClosePopup}
