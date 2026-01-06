@@ -1,10 +1,9 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import Box from "@mui/material/Box";
-import Container from "@mui/material/Container";
 import Grid from "@mui/material/Grid";
 import Typography from "@mui/material/Typography";
 import MenuItem from "@mui/material/MenuItem";
-import { styled, alpha } from "@mui/material/styles";
+import { styled } from "@mui/material/styles";
 import InputBase from "@mui/material/InputBase";
 import SearchIcon from "@mui/icons-material/Search";
 import Button from "@mui/material/Button";
@@ -16,15 +15,6 @@ import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import TextField from "@mui/material/TextField";
 import Checkbox from "@mui/material/Checkbox";
-import Link from "@mui/material/Link";
-import Table from "@mui/material/Table";
-import TableBody from "@mui/material/TableBody";
-import TableCell from "@mui/material/TableCell";
-import TableContainer from "@mui/material/TableContainer";
-import TableHead from "@mui/material/TableHead";
-import TableRow from "@mui/material/TableRow";
-import Paper from "@mui/material/Paper";
-import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { useCallback } from "react";
 import { localStorageKey } from "app/constant/localStorageKey";
 import { ROUTE_CONSTANT } from "app/constant/routeContanst";
@@ -34,12 +24,11 @@ import { apiEndpoints } from "app/constant/apiEndpoints";
 import { useEffect } from "react";
 import { dateRange, completedStatus, newest } from "app/data/Index";
 import ConfirmModal from "app/components/ConfirmModal";
-import { CircularProgress, FormControl, InputLabel, Menu, Pagination, Select } from "@mui/material";
+import { CircularProgress, Menu, Pagination, Select } from "@mui/material";
 import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
 import CloseIcon from "@mui/icons-material/Close";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import Dialog from "@mui/material/Dialog";
-import { toast } from "react-toastify";
 import OrderItem from "./OrderItem";
 import { REACT_APP_WEB_URL } from "config";
 
@@ -119,16 +108,17 @@ const Orders = () => {
 
     if (!dateGroupOrders || !dateGroupOrders.sales) return;
 
-    const dateOrderIds = dateGroupOrders.sales.map(item => item._id);
+    // Get all SALE IDs for this date group
+    const dateOrderIds = dateGroupOrders.sales.map(sale => sale._id);
 
-    // Check if all orders in this date group are already selected
+    // Check if all sales in this date group are already selected
     const allSelected = dateOrderIds.every(id => orderIds.includes(id));
 
     if (allSelected) {
-      // Deselect all orders in this date group
+      // Deselect all sales in this date group
       setOrderIds(prev => prev.filter(id => !dateOrderIds.includes(id)));
     } else {
-      // Select all orders in this date group
+      // Select all sales in this date group
       setOrderIds(prev => {
         const newIds = [...prev];
         dateOrderIds.forEach(id => {
@@ -141,7 +131,7 @@ const Orders = () => {
     }
   };
 
-  // Check if all orders in a date group are selected
+  // Check if all sub-orders in a date group are selected
   const isDateGroupFullySelected = (dateGroup) => {
     const dateGroupOrders = orders.find(order => order.date === dateGroup);
 
@@ -149,7 +139,10 @@ const Orders = () => {
       return false;
     }
 
-    return dateGroupOrders.sales.every(item => orderIds.includes(item._id));
+    // Get all SALE IDs for this date group
+    const dateOrderIds = dateGroupOrders.sales.map(sale => sale._id);
+
+    return dateOrderIds.length > 0 && dateOrderIds.every(id => orderIds.includes(id));
   };
 
   // Update URL when tab changes (resets page to 1)
@@ -177,14 +170,14 @@ const Orders = () => {
     setRoute(ROUTE_CONSTANT.login);
   };
 
-  const handleOpen = (type, msg) => {
+  const handleOpen = useCallback((type, msg) => {
     setMsg(msg?.message);
     setOpen(true);
     setType(type);
     if (msg?.response?.status === 401) {
       logOut();
     }
-  };
+  }, []);
 
   const handleClose = () => {
     setOpen(false);
@@ -208,8 +201,6 @@ const Orders = () => {
   const handleClick2 = (event) => {
     setAnchorEl2(event.currentTarget);
   };
-
-  // const handleOpen = () => setOpen(true);
 
   console.log({ orders });
   console.log({ date });
@@ -239,7 +230,7 @@ const Orders = () => {
       );
       console.log("Order Data: ", res.data);
 
-      if (res?.status == 200) {
+      if (res?.status === 200) {
         setLoading(false);
         setBaseUrl(res?.data?.base_url);
         setOrders(res?.data?.sales);
@@ -249,12 +240,12 @@ const Orders = () => {
       setLoading(false);
       handleOpen("error", error);
     }
-  }, [auth_key, tab, date, sortBy, completeStatus, search, page, pageSize]);
+  }, [tab, date?.from, date?.to, search, sortBy, completeStatus, page, pageSize, auth_key, handleOpen]);
 
   // Fetch orders when URL params change
   useEffect(() => {
     getOrderList();
-  }, [tab, date, sortBy, completeStatus, page, pageSize]);
+  }, [tab, date, sortBy, completeStatus, page, pageSize, getOrderList]);
 
   const updateOrder = async (id, orderStatus) => {
     try {
@@ -312,10 +303,14 @@ const Orders = () => {
     }
   };
 
+  // Also update the master checkbox handler:
   const handleMasterCheckboxChange = () => {
     setIsAllChecked(!isAllChecked);
     if (!isAllChecked) {
-      const allIds = orders?.flatMap((items) => items?.sales?.map((item) => item._id));
+      // Get all SALE IDs from all sales
+      const allIds = orders?.flatMap((dateGroup) =>
+        dateGroup?.sales?.map((sale) => sale._id) || []
+      );
       setOrderIds(allIds);
     } else {
       setOrderIds([]);
