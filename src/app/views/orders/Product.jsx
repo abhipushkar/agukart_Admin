@@ -1,3 +1,4 @@
+// Product.jsx - Complete updated code
 import { Box, Dialog, Typography } from '@mui/material';
 import React from 'react'
 import Button from "@mui/material/Button";
@@ -15,10 +16,12 @@ import MessagePopup from './MessagePopup';
 const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData }) => {
     console.log({ saleData, item, vendorData }, "trhththtt")
     const [openPopup, SetOpenPopup] = useState(false);
-    const [imageModalOpen, setImageModalOpen] = useState(false);  // For image preview modal
+    const [imageModalOpen, setImageModalOpen] = useState(false);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
     const [stock, setStock] = useState(0);
+    const [quantityOwner, setQuantityOwner] = useState(null);
+    const [matchedCombination, setMatchedCombination] = useState(null);
     const [combinationStockId, setCombinationStockId] = useState([]);
     const [openPop, setOpenPop] = useState(false);
 
@@ -34,7 +37,6 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
         SetOpenPopup(false);
     };
 
-    // Handle image click for preview
     const handleImageClick = () => {
         setImageModalOpen(true);
     };
@@ -60,16 +62,180 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
         }
     };
 
+    // 1️⃣ SINGLE quantity owner resolver
+    const determineQuantityOwner = () => {
+        const product = saleData?.productMain;
+        const productQty = Number(product?.qty || 0);
+
+        if (productQty > 0) {
+            return {
+                owner: 'product',
+                quantity: productQty,
+                source: product
+            };
+        }
+
+        if (product?.form_values?.isCheckedQuantity === true) {
+            return {
+                owner: 'combination',
+                quantity: 0, // Will be set after matching
+                source: product?.combinationData || []
+            };
+        }
+
+        return {
+            owner: 'none',
+            quantity: 0,
+            source: null
+        };
+    };
+
+    // 4️⃣ Matching combination rule - Only match Etsy-style internal variants
+    const findMatchedCombination = (combinationsData) => {
+        if (!combinationsData || combinationsData.length === 0) {
+            return null;
+        }
+
+        // Get Etsy-style variants (internal variants like Ring Size)
+        const internalVariants = saleData?.variants || [];
+
+        if (internalVariants.length === 0) {
+            return null;
+        }
+
+        // Extract all combinations from combinationData
+        const allCombinations = combinationsData.flatMap(item => item?.combinations || []);
+
+        // Find combination that matches ALL internal variants
+        const matchedCombination = allCombinations.find(combination => {
+            const combValues = combination.combValues || [];
+
+            // Every internal variant must be found in combValues
+            return internalVariants.every(internalVariant => {
+                if (!internalVariant.variantName || !internalVariant.attributeName) {
+                    return false;
+                }
+
+                // Create search pattern: "variantName: attributeName"
+                const searchPattern = `${internalVariant.variantName}: ${internalVariant.attributeName}`;
+
+                // Also check for variant name and attribute separately
+                return combValues.some(combValue => {
+                    if (!combValue) return false;
+
+                    // Exact match with pattern
+                    if (combValue === searchPattern) {
+                        return true;
+                    }
+
+                    // Contains both variant name and attribute name
+                    if (combValue.includes(internalVariant.variantName) &&
+                        combValue.includes(internalVariant.attributeName)) {
+                        return true;
+                    }
+
+                    // For simple combValues that are just the attribute value
+                    if (combValue === internalVariant.attributeName) {
+                        return true;
+                    }
+
+                    return false;
+                });
+            });
+        });
+
+        return matchedCombination;
+    };
+
+    useEffect(() => {
+        // Determine quantity owner once
+        const ownerInfo = determineQuantityOwner();
+        setQuantityOwner(ownerInfo.owner);
+
+        if (ownerInfo.owner === 'combination') {
+            // Find the matching combination for internal variants only
+            const matched = findMatchedCombination(ownerInfo.source);
+
+            setMatchedCombination(matched);
+
+            if (matched?.isVisible && matched?.isCheckedQuantity) {
+                const matchedQty = Number(matched.qty || 0);
+                setStock(matchedQty);
+
+                // Set the combination IDs from the matched combination
+                const combinationIds = matched.combIds || [];
+                setCombinationStockId(combinationIds);
+
+                console.log('Matched combination:', matched);
+                console.log('Combination IDs:', combinationIds);
+                console.log('Quantity:', matchedQty);
+
+                // If matched combination has 0 or negative quantity, treat as "none"
+                if (matchedQty <= 0) {
+                    setQuantityOwner('none');
+                }
+            } else {
+                // No valid combination found or combination not visible/checked
+                setStock(0);
+                setCombinationStockId([]);
+                setQuantityOwner('none');
+                console.log('No valid combination found');
+            }
+        } else if (ownerInfo.owner === 'product') {
+            const productQty = Number(saleData?.productMain?.qty || 0);
+            setStock(productQty);
+            setCombinationStockId([]);
+
+            console.log('Product quantity:', productQty);
+
+            // If product has 0 quantity, treat as "none"
+            if (productQty <= 0) {
+                setQuantityOwner('none');
+            }
+        } else {
+            setStock(0);
+            setCombinationStockId([]);
+            console.log('No quantity owner (none)');
+        }
+    }, [saleData]);
+
     const updateQty = async () => {
         try {
-            const payload = {
-                _id: saleData?.productMain?._id,
-                qty: stock,
-                isCombination: saleData?.isCombination,
-                combinationData: combinationStockId
-            };
+            let payload = {};
+
+            if (quantityOwner === 'product') {
+                // Update product quantity
+                payload = {
+                    _id: saleData?.productMain?._id,
+                    qty: stock,
+                    isCombination: false
+                };
+            } else if (quantityOwner === 'combination' && matchedCombination) {
+                // Get the correct combination IDs from matched combination
+                const combinationIds = matchedCombination.combIds || [];
+
+                // Update combination quantity
+                payload = {
+                    _id: saleData?.productMain?._id,
+                    qty: stock,
+                    isCombination: true,
+                    combinationData: combinationIds, // Send the specific combination IDs
+                    combinationQty: stock
+                };
+
+                console.log('Updating combination with IDs:', combinationIds);
+                console.log('New quantity:', stock);
+            } else {
+                console.error('Cannot update quantity: No valid quantity owner');
+                handleOpen("error", { message: 'Cannot update quantity - No valid inventory source' });
+                return;
+            }
+
+            console.log('Update payload:', payload);
+
             const res = await ApiService.post(apiEndpoints.updateProductQuantity, payload, auth_key);
             if (res?.status === 200) {
+                handleOpen("success", { message: 'Quantity updated successfully' });
                 popClose();
                 getOrderList();
             }
@@ -78,59 +244,28 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
         }
     };
 
-    const getCombinations = (arr) => {
-        let combinations = arr.map(item =>
-            [item]
-        );
-        if (arr.length > 1) {
-            for (let i = 0; i < arr.length; i++) {
-                for (let j = i + 1; j < arr.length; j++) {
-                    combinations.push([arr[i], arr[j]]);
-                }
-            }
-        }
-        return combinations;
-    };
-
     const handleClickOpen = () => {
         setOpenPop(true);
     };
 
-    useEffect(() => {
-        if (saleData?.isCombination && saleData?.productMain?.form_values?.isCheckedQuantity) {
-            const variantCombinations = getCombinations(saleData?.variant_attribute_id);
-            const mergedCombinations = saleData?.productMain?.combinationData?.map((item) => item.combinations).flat();
-            const data = mergedCombinations?.filter((item) =>
-                variantCombinations?.some((combination) =>
-                    Array.isArray(item?.combIds) && Array.isArray(combination) &&
-                    JSON.stringify(item?.combIds) === JSON.stringify(combination)
-                )
-            );
-            if (data.length <= 1) {
-                if (data[0]?.isVisible && +data[0]?.qty > 0 && data[0]?.isCheckedQuantity) {
-                    setStock(+data[0]?.qty);
-                    setCombinationStockId(data[0]?.combIds);
-                } else {
-                    setStock(+saleData?.productMain?.qty);
-                }
-            } else {
-                console.log(data, "Rthryhryhrt")
-                data.forEach((item) => {
-                    if (item.isVisible && item?.isCheckedQuantity) {
-                        if (+item.qty > 0) {
-                            setStock(+item.qty);
-                            setCombinationStockId(item?.combIds);
-                        }
-                    }
-                });
-                if (!data.some((item) => +item.qty > 0 && item.isVisible)) {
-                    setStock(+saleData?.productMain?.qty);
-                }
-            }
-        } else {
-            setStock(+saleData?.productMain?.qty);
+    // 2️⃣ Sold / Left badge logic
+    const getStockBadge = () => {
+        if (quantityOwner === 'none' || stock <= 0) {
+            return {
+                text: 'Sold',
+                bgColor: 'red',
+                show: true
+            };
         }
-    }, [saleData])
+
+        return {
+            text: `Left ${stock}`,
+            bgColor: '#000',
+            show: true
+        };
+    };
+
+    const stockBadge = getStockBadge();
 
     // Helper function to get display value or fallback
     const getDisplayValue = (value, fallback = "...") => {
@@ -152,7 +287,6 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                     textAlign={"start"}
                     marginRight={2}
                 >
-                    {/* Image click now opens preview modal instead of navigating */}
                     <div onClick={handleImageClick} style={{ cursor: 'pointer' }}>
                         <img
                             src={
@@ -167,42 +301,25 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                         />
                     </div>
 
-                    {stock > 0 ? (
+                    {stockBadge.show && (
                         <Box
                             component="span"
                             sx={{
                                 position: "absolute",
                                 bottom: "0px",
                                 left: "0px",
-                                background: "#000",
+                                background: stockBadge.bgColor,
                                 color: "#fff",
                                 padding: "3px 9px",
                                 borderRadius: "5px",
                                 fontSize: "10px"
                             }}
                         >
-                            Left {stock}
-                        </Box>
-                    ) : (
-                        <Box
-                            component="span"
-                            sx={{
-                                position: "absolute",
-                                bottom: "0px",
-                                left: "0px",
-                                background: "red",
-                                color: "#fff",
-                                padding: "3px 9px",
-                                borderRadius: "5px",
-                                fontSize: "10px"
-                            }}
-                        >
-                            Sold
+                            {stockBadge.text}
                         </Box>
                     )}
                 </Box>
                 <Box textAlign={"start"}>
-                    {/* Product title - click navigates to product page */}
                     <a
                         href={`${REACT_APP_WEB_URL}/products/${saleData?.productData?._id}`}
                         target="_blank"
@@ -248,7 +365,7 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                         </Box>
                     </Typography>
 
-                    {/* Display Amazon-style variants (variantData and variantAttributeData) */}
+                    {/* Display Amazon-style variants (parent variants) */}
                     {saleData?.isCombination === true && saleData?.variantData && saleData.variantData.length > 0 && (
                         saleData.variantData.map((variantItem, variantIndex) => (
                             <Typography
@@ -264,7 +381,7 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                         ))
                     )}
 
-                    {/* Display Etsy-style internal variants (variants array) */}
+                    {/* Display Etsy-style internal variants (these have combination quantities) */}
                     {saleData?.variants && saleData.variants.length > 0 && (
                         saleData.variants.map((variant, index) => (
                             <Typography
@@ -280,7 +397,7 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                         ))
                     )}
 
-                    {/* Display variant IDs if no structured variant data is available */}
+                    {/* Display variant IDs if no structured variant data */}
                     {(saleData?.variant_id && saleData.variant_id.length > 0) &&
                         (!saleData?.variantData || saleData.variantData.length === 0) &&
                         (!saleData?.variants || saleData.variants.length === 0) && (
@@ -337,6 +454,7 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                                 borderRadius: "30px",
                                 border: "1px solid #000"
                             }}
+                            disabled={quantityOwner === 'none'}
                         >
                             Update quantity
                         </Button>
@@ -409,10 +527,15 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                 </Box>
             </Dialog>
 
+            {/* Update Quantity Modal */}
             <Dialog open={openPop} onClose={popClose} sx={{ "& .MuiPaper-root": { maxWidth: "750px" } }}>
                 {saleData?.productMain && (
                     <Box p={2} sx={{ position: "relative" }}>
-                        <Typography variant="h4">You are about to Update 1 Listing</Typography>
+                        <Typography variant="h4">Update Quantity</Typography>
+                        <Typography variant="subtitle2" color="text.secondary">
+                            Quantity Owner: {quantityOwner === 'product' ? 'Product' : quantityOwner === 'combination' ? 'Variant Combination' : 'None'}
+                        </Typography>
+
                         <Box mt={2} sx={{ display: { lg: "flex", md: "flex", xs: "block" } }}>
                             {saleData?.productData?.image?.[0] ? (
                                 <Box>
@@ -460,64 +583,70 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                                         : saleData?.productMain?.product_title?.replace(/<\/?[^>]+(>|$)/g, "")
                                     }
                                 </Typography>
-                                <Typography fontSize={16} sx={{ color: "#000" }}>
-                                    Quantity:{" "}
-                                    <Box component="span">
-                                        {getDisplayValue(saleData?.qty)}
-                                    </Box>
-                                </Typography>
-                                <Typography fontSize={16} sx={{ color: "#000" }}>
-                                    SKU: <Box component="span">
-                                        {getDisplayValue(saleData?.productData?.sku_code || saleData?.productMain?.sku_code, "N/A")}
+
+                                {/* Show current stock status */}
+                                <Typography fontSize={16} sx={{ color: "#000", mt: 1 }}>
+                                    Current Stock:{" "}
+                                    <Box component="span" fontWeight="bold">
+                                        {stockBadge.text}
                                     </Box>
                                 </Typography>
 
-                                {/* Display variants in the popup dialog too */}
-                                {/* Amazon-style variants */}
-                                {saleData?.isCombination === true && saleData?.variantData && saleData.variantData.length > 0 && (
-                                    saleData.variantData.map((variantItem, variantIndex) => (
-                                        <Typography fontSize={16} sx={{ color: "#000" }} key={variantIndex}>
-                                            {getDisplayValue(variantItem?.variant_name)}:{" "}
-                                            <Box component="span">
-                                                {getDisplayValue(saleData?.variantAttributeData[variantIndex]?.attribute_value)}
-                                            </Box>
+                                {/* Show which variant is being tracked */}
+                                {quantityOwner === 'combination' && matchedCombination && (
+                                    <Box sx={{ mt: 1, p: 1, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+                                        <Typography fontSize={14} fontWeight="bold">
+                                            Tracking Inventory For:
                                         </Typography>
-                                    ))
+                                        {saleData?.variants?.map((variant, index) => (
+                                            <Typography key={index} fontSize={14}>
+                                                {variant.variantName}: {variant.attributeName}
+                                            </Typography>
+                                        ))}
+                                        {matchedCombination.combValues?.map((value, idx) => (
+                                            <Typography key={idx} fontSize={14} color="text.secondary">
+                                                Combination: {value}
+                                            </Typography>
+                                        ))}
+                                        {matchedCombination.combIds?.length > 0 && (
+                                            <Typography fontSize={12} color="text.secondary" sx={{ mt: 1 }}>
+                                                Combination IDs: {matchedCombination.combIds.join(', ')}
+                                            </Typography>
+                                        )}
+                                    </Box>
                                 )}
 
-                                {/* Etsy-style internal variants */}
-                                {saleData?.variants && saleData.variants.length > 0 && (
-                                    saleData.variants.map((variant, index) => (
-                                        <Typography fontSize={16} sx={{ color: "#000" }} key={variant._id || index}>
-                                            {getDisplayValue(variant.variantName)}:{" "}
-                                            <Box component="span">
-                                                {getDisplayValue(variant.attributeName)}
-                                            </Box>
-                                        </Typography>
-                                    ))
-                                )}
-
-                                <Typography fontSize={16} sx={{ color: "#000" }}>
-                                    Personalization:{" "}
-                                    <Box component="span">Not requested on this item</Box>
-                                </Typography>
+                                {/* 3️⃣ Update Quantity input */}
                                 <Box mt={2}>
                                     <Box sx={{ display: "flex", alignItems: "center" }}>
-                                        <Box component="span" fontSize={14} fontWeight={500} pr={2}>
-                                            Stock:
-                                        </Box>
+                                        <Typography component="span" fontSize={14} fontWeight={500} pr={2}>
+                                            New Quantity:
+                                        </Typography>
                                         <TextField
                                             type="number"
                                             value={stock}
                                             onChange={(e) => {
                                                 const value = e.target.value;
                                                 if (value >= 0) {
-                                                    setStock(value);
+                                                    setStock(Number(value));
                                                 }
                                             }}
+                                            disabled={quantityOwner === 'none'}
+                                            helperText={quantityOwner === 'none' ? 'Cannot update - No inventory source' : ''}
                                         />
                                     </Box>
+                                    {quantityOwner === 'product' && (
+                                        <Typography variant="caption" color="text.secondary">
+                                            Updating product-level inventory for this gemstone variant
+                                        </Typography>
+                                    )}
+                                    {quantityOwner === 'combination' && (
+                                        <Typography variant="caption" color="text.secondary">
+                                            Updating specific ring size variant inventory
+                                        </Typography>
+                                    )}
                                 </Box>
+
                                 <Box
                                     mt={2}
                                     sx={{
@@ -531,7 +660,7 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                                         sx={{ color: "#000", borderRadius: "30px", padding: "4px 30px" }}
                                         onClick={popClose}
                                     >
-                                        Update later
+                                        Cancel
                                     </Button>
                                     <Button
                                         sx={{
@@ -539,9 +668,13 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                                             color: "#fff",
                                             borderRadius: "30px",
                                             padding: "4px 30px",
-                                            "&:hover": { background: "#2e2e2e" }
+                                            "&:hover": { background: "#2e2e2e" },
+                                            "&.Mui-disabled": {
+                                                background: "#ccc"
+                                            }
                                         }}
                                         onClick={updateQty}
+                                        disabled={quantityOwner === 'none'}
                                     >
                                         Update
                                     </Button>
