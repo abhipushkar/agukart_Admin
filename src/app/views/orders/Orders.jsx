@@ -101,27 +101,37 @@ const Orders = () => {
   // Menu state
   const openOption2 = Boolean(anchorEl2);
 
-  // Helper function to select all orders for a specific date group
+  // Helper function to select all SUB-ORDERS for a specific date group
   const handleSelectAllForDate = (dateGroup) => {
-    // Get all order IDs for this specific date group
+    // Find the date group
     const dateGroupOrders = orders.find(order => order.date === dateGroup);
 
     if (!dateGroupOrders || !dateGroupOrders.sales) return;
 
-    // Get all SALE IDs for this date group
-    const dateOrderIds = dateGroupOrders.sales.map(sale => sale._id);
+    // Get all SUB-ORDER IDs for this date group
+    const allSubOrderIds = [];
+    dateGroupOrders.sales.forEach(sale => {
+      if (sale?.saleDetaildata?.length) {
+        sale.saleDetaildata.forEach(subOrder => {
+          const subOrderId = subOrder._id || subOrder.sub_order_id;
+          if (subOrderId) {
+            allSubOrderIds.push(subOrderId);
+          }
+        });
+      }
+    });
 
-    // Check if all sales in this date group are already selected
-    const allSelected = dateOrderIds.every(id => orderIds.includes(id));
+    // Check if all sub-orders in this date group are already selected
+    const allSelected = allSubOrderIds.every(id => orderIds.includes(id));
 
     if (allSelected) {
-      // Deselect all sales in this date group
-      setOrderIds(prev => prev.filter(id => !dateOrderIds.includes(id)));
+      // Deselect all sub-orders in this date group
+      setOrderIds(prev => prev.filter(id => !allSubOrderIds.includes(id)));
     } else {
-      // Select all sales in this date group
+      // Select all sub-orders in this date group
       setOrderIds(prev => {
         const newIds = [...prev];
-        dateOrderIds.forEach(id => {
+        allSubOrderIds.forEach(id => {
           if (!newIds.includes(id)) {
             newIds.push(id);
           }
@@ -131,7 +141,7 @@ const Orders = () => {
     }
   };
 
-  // Check if all sub-orders in a date group are selected
+  // Check if all SUB-ORDERS in a date group are selected
   const isDateGroupFullySelected = (dateGroup) => {
     const dateGroupOrders = orders.find(order => order.date === dateGroup);
 
@@ -139,10 +149,20 @@ const Orders = () => {
       return false;
     }
 
-    // Get all SALE IDs for this date group
-    const dateOrderIds = dateGroupOrders.sales.map(sale => sale._id);
+    // Get all SUB-ORDER IDs for this date group
+    const allSubOrderIds = [];
+    dateGroupOrders.sales.forEach(sale => {
+      if (sale?.saleDetaildata?.length) {
+        sale.saleDetaildata.forEach(subOrder => {
+          const subOrderId = subOrder._id || subOrder.sub_order_id;
+          if (subOrderId) {
+            allSubOrderIds.push(subOrderId);
+          }
+        });
+      }
+    });
 
-    return dateOrderIds.length > 0 && dateOrderIds.every(id => orderIds.includes(id));
+    return allSubOrderIds.length > 0 && allSubOrderIds.every(id => orderIds.includes(id));
   };
 
   // Update URL when tab changes (resets page to 1)
@@ -303,22 +323,39 @@ const Orders = () => {
     }
   };
 
-  // Also update the master checkbox handler:
+  // Update master checkbox to handle SUB-ORDER IDs
   const handleMasterCheckboxChange = () => {
     setIsAllChecked(!isAllChecked);
     if (!isAllChecked) {
-      // Get all SALE IDs from all sales
-      const allIds = orders?.flatMap((dateGroup) =>
-        dateGroup?.sales?.map((sale) => sale._id) || []
-      );
-      setOrderIds(allIds);
+      // Get all SUB-ORDER IDs from all sales
+      const allSubOrderIds = [];
+      orders?.forEach((dateGroup) => {
+        dateGroup?.sales?.forEach((sale) => {
+          if (sale?.saleDetaildata?.length) {
+            sale.saleDetaildata.forEach(subOrder => {
+              const subOrderId = subOrder._id || subOrder.sub_order_id;
+              if (subOrderId) {
+                allSubOrderIds.push(subOrderId);
+              }
+            });
+          }
+        });
+      });
+      setOrderIds(allSubOrderIds);
     } else {
       setOrderIds([]);
     }
   };
 
   const orderLength = orders?.reduce((total, order) => {
-    return total + (order?.sales?.length || 0);
+    // Count sub-orders instead of sales
+    let subOrderCount = 0;
+    order?.sales?.forEach(sale => {
+      if (sale?.saleDetaildata?.length) {
+        subOrderCount += sale.saleDetaildata.length;
+      }
+    });
+    return total + subOrderCount;
   }, 0);
 
   const handleOrderSlip = async () => {

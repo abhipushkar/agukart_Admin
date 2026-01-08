@@ -311,8 +311,10 @@ const OrderHistory = () => {
     <>
       <Box sx={{ padding: "30px", background: "#fff" }}>
         <Box sx={{ display: { lg: "flex", md: "flex", xs: "block" }, alignItems: "center" }}>
-          <Typography variant="h4" mr={2}>
-            Order details {sub_order_id ? "(Vendor View)" : "(Master View)"}
+          <Typography variant="h4" sx={{
+            textWrap: "nowrap"
+          }} mr={2}>
+            Order details
           </Typography>
           <Box
             sx={{ display: { lg: "flex", md: "flex", xs: "block" }, alignItems: "center" }}
@@ -327,11 +329,6 @@ const OrderHistory = () => {
               <Typography fontSize={17} component="span" fontWeight={600}>
                 # {getDisplayValue(order?.order_id)}
               </Typography>
-              {sub_order_id && (
-                <Typography fontSize={14} component="span" color="text.secondary" ml={1}>
-                  (TranscationId: #{sub_order_id?.slice(-8)})
-                </Typography>
-              )}
             </Typography>
             <Box sx={{ marginLeft: { lg: "10px", md: "10px", xs: "0" } }}>
               <Box
@@ -353,7 +350,7 @@ const OrderHistory = () => {
           >
             Your Seller Order ID:{" "}
             <Typography fontSize={17} component="span" fontWeight={600} color={"green"}>
-              # {getDisplayValue(order?.order_id)}
+              #{sub_order_id || "..."}
             </Typography>
           </Typography>
         </Box>
@@ -564,8 +561,9 @@ const OrderHistory = () => {
                     <Typography>
                       {getDisplayValue(order?.country)}
                     </Typography>
-                    <Typography fontSize={15} fontWeight={500}>
-                      Mob. No.: {getDisplayValue(order?.mobile)}
+                    <Typography fontSize={15} fontWeight={500} sx
+                    >
+                      Mob. No.: {`${getDisplayValue(order?.phone_code)} ${getDisplayValue(order?.mobile)}`}
                     </Typography>
                   </Box>
                 </Grid>
@@ -834,7 +832,7 @@ const OrderHistory = () => {
                                 </Typography>
                                 {sub_order_id && (
                                   <Typography fontSize={12} sx={{ color: "#666", mt: 0.5 }}>
-                                    Transaction Id: {sub_order_id?.slice(-8)}
+                                    Transaction Id: {item.item_id}
                                   </Typography>
                                 )}
                               </Box>

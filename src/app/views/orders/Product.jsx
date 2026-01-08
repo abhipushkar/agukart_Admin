@@ -277,7 +277,7 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
 
     return (
         <>
-            <Box sx={{ display: "flex" }}>
+            <Box sx={{ display: "flex", my: 3 }}>
                 <Box
                     sx={{
                         cursor: "pointer",
@@ -320,6 +320,21 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                     )}
                 </Box>
                 <Box textAlign={"start"}>
+
+                    <Typography
+                        variant="subtitle2"
+                        sx={{
+                            color: "secondary.main",
+                            // mb: 1,
+                            // cursor: "pointer",
+                            // textDecoration: "underline",
+                            '&:hover': {
+                                textDecoration: "none"
+                            }
+                        }}
+                    >
+                        Transaction Id: {saleData.item_id || "N/A"}
+                    </Typography>
                     <a
                         href={`${REACT_APP_WEB_URL}/products/${saleData?.productData?._id}`}
                         target="_blank"
@@ -442,7 +457,7 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                         </Box>
                     )}
 
-                    <Box mt={2}>
+                    <Box mt={1}>
                         <Button
                             onClick={() => {
                                 handleClickOpen(saleData);

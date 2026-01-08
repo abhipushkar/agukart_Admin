@@ -261,7 +261,16 @@ const ParentProductIdentity = ({ productId }) => {
     const generateCombinations = (innervariations) => {
         let combinations = [];
         const variationKeys = Object.keys(innervariations);
-        const variations = variationKeys.map((key) => innervariations[key]);
+
+        // Sort attributes deterministically before generating combinations
+        const variations = variationKeys.map((key) => {
+            return [...innervariations[key]].sort((a, b) => {
+                if (a.sort_order !== b.sort_order) {
+                    return a.sort_order - b.sort_order;
+                }
+                return a._id.localeCompare(b._id);
+            });
+        });
 
         function combine(attributes, index, currentCombination) {
             if (index === attributes.length) {
@@ -269,11 +278,8 @@ const ParentProductIdentity = ({ productId }) => {
                 return;
             }
 
-            const sortedAttributes = [...attributes[index]].sort((a, b) =>
-                a.attribute_value.localeCompare(b.attribute_value)
-            );
-
-            sortedAttributes.forEach((attribute) => {
+            // Attributes are already sorted
+            attributes[index].forEach((attribute) => {
                 const key = `key${index + 1}`;
                 currentCombination[key] = {
                     value: attribute.attribute_value,
@@ -360,27 +366,27 @@ const ParentProductIdentity = ({ productId }) => {
             const existingVariant = productVariations.find(pv => pv.variant_name === variant.variant_name);
 
             if (existingVariant) {
-                // Remove attributes that are no longer selected
-                const previousAttributeValues = previousAttributes.map(attr => attr.attribute_value);
-                const currentAttributeValues = innerVariants.map(attr => attr.attribute_value);
-                const removedAttributes = previousAttributeValues.filter(attr => !currentAttributeValues.includes(attr));
+                // Remove attributes that are no longer selected using _id
+                const previousAttributeIds = previousAttributes.map(attr => attr._id);
+                const currentAttributeIds = innerVariants.map(attr => attr._id);
+                const removedAttributeIds = previousAttributeIds.filter(id => !currentAttributeIds.includes(id));
 
                 let updatedAttributes = [];
 
-                if (removedAttributes.length > 0) {
-                    // Filter out removed attributes
+                if (removedAttributeIds.length > 0) {
+                    // Filter out removed attributes using _id
                     updatedAttributes = existingVariant.variant_attributes.filter(
-                        attr => !removedAttributes.includes(attr.attribute)
+                        attr => !removedAttributeIds.includes(attr._id)
                     );
                 } else {
                     // Preserve existing order and add new attributes
                     updatedAttributes = [...existingVariant.variant_attributes];
                 }
 
-                // Add new attributes that don't exist yet
+                // Add new attributes that don't exist yet using _id
                 innerVariants.forEach(innerVariant => {
                     const existingAttribute = updatedAttributes.find(attr =>
-                        attr.attribute === innerVariant.attribute_value
+                        attr._id === innerVariant._id  // CHANGED: Use _id instead of attribute
                     );
 
                     if (!existingAttribute) {
@@ -870,7 +876,7 @@ const ParentProductIdentity = ({ productId }) => {
 
     // console.log("Product Variant ", productVariations);
 
-    // FIXED: Enhanced function to sync variant attributes with existing data - NOW PRESERVES GUIDE DATA
+    // FIXED: Enhanced function to sync variant attributes with existing data - NOW PRESERVES GUIDE DATA AND USES _id FOR MATCHING
     const syncVariantAttributesWithExistingData = (filteredData, existingProductVariations) => {
         return formData.variantData.map(variant => {
             const innerVariants = filteredData[variant.variant_name] || [];
@@ -879,17 +885,18 @@ const ParentProductIdentity = ({ productId }) => {
             const existingVariant = existingProductVariations.find(pv => pv.variant_name === variant.variant_name);
 
             if (existingVariant) {
-                // Merge existing attributes with new inner variants
+                // Merge existing attributes with new inner variants using _id for matching
                 const mergedAttributes = innerVariants.map(innerVariant => {
-                    // Find if this attribute already exists in the existing data
+                    // Find if this attribute already exists in the existing data using _id
                     const existingAttribute = existingVariant.variant_attributes.find(attr =>
-                        attr.attribute === innerVariant.attribute_value
+                        attr._id === innerVariant._id  // CHANGED: Use _id instead of attribute
                     );
 
                     if (existingAttribute) {
                         // Preserve all existing data including thumbnails
                         return {
                             ...existingAttribute,
+                            _id: innerVariant._id, // Ensure _id is preserved
                             attribute: innerVariant.attribute_value
                         };
                     } else {
@@ -1074,7 +1081,15 @@ const ParentProductIdentity = ({ productId }) => {
         if (varientAttribute && formData?.variantData && formData.variantData.length > 0) {
             const filteredData = formData.variantData.reduce((acc, item) => {
                 if (item?.variant_attribute) {
-                    const filteredAttributes = item.variant_attribute.filter((variant) =>
+                    // Sort attributes deterministically first by sort_order, then by _id
+                    const sortedAttributes = [...item.variant_attribute].sort((a, b) => {
+                        if (a.sort_order !== b.sort_order) {
+                            return a.sort_order - b.sort_order;
+                        }
+                        return a._id.localeCompare(b._id);
+                    });
+
+                    const filteredAttributes = sortedAttributes.filter((variant) =>
                         varientAttribute.includes(variant._id)
                     );
 
@@ -1118,29 +1133,29 @@ const ParentProductIdentity = ({ productId }) => {
                 } else {
                     // For existing products, check if we need to sync
                     // Only sync if the attribute set has actually changed (not for drag & drop reordering)
-                    const currentAttributeSet = new Set();
+                    const currentAttributeIds = new Set();
                     productVariations.forEach(variant => {
                         variant.variant_attributes.forEach(attr => {
-                            currentAttributeSet.add(attr.attribute);
+                            currentAttributeIds.add(attr._id); // CHANGED: Use _id instead of attribute
                         });
                     });
 
-                    const newAttributeSet = new Set();
+                    const newAttributeIds = new Set();
                     Object.values(filteredData).forEach(attributes => {
                         attributes.forEach(attr => {
-                            newAttributeSet.add(attr.attribute_value);
+                            newAttributeIds.add(attr._id); // CHANGED: Use _id instead of attribute_value
                         });
                     });
 
                     // Only sync if attributes have been added or removed, not just reordered
                     const attributesChanged =
-                        currentAttributeSet.size !== newAttributeSet.size ||
-                        [...currentAttributeSet].some(attr => !newAttributeSet.has(attr)) ||
-                        [...newAttributeSet].some(attr => !currentAttributeSet.has(attr));
+                        currentAttributeIds.size !== newAttributeIds.size ||
+                        [...currentAttributeIds].some(id => !newAttributeIds.has(id)) ||
+                        [...newAttributeIds].some(id => !currentAttributeIds.has(id));
 
                     console.log("🔄 Attribute sync check:", {
-                        currentAttributes: [...currentAttributeSet],
-                        newAttributes: [...newAttributeSet],
+                        currentAttributeIds: [...currentAttributeIds],
+                        newAttributeIds: [...newAttributeIds],
                         attributesChanged
                     });
 

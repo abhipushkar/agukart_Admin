@@ -22,26 +22,26 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
     console.log({ items }, "rfhrthththt");
     const navigate = useNavigate();
 
-    const handleCheckboxChange = (saleId) => {
+    // Handle checkbox change for SUB-ORDER IDs
+    const handleCheckboxChange = (subOrderId) => {
         setOrderIds((prev) =>
-            prev.includes(saleId) ? prev.filter((id) => id !== saleId) : [...prev, saleId]
+            prev.includes(subOrderId) ? prev.filter((id) => id !== subOrderId) : [...prev, subOrderId]
         );
     };
 
-
-    const handleClick = (event, index) => {
+    const handleClick = (event, subOrderId) => {
         setAnchorEl(event.currentTarget);
-        setOpenMenuIndex(index);
+        setOpenMenuIndex(subOrderId);
     };
 
-    const handleClick1 = (event, index) => {
+    const handleClick1 = (event, subOrderId) => {
         setAnchorEl1(event.currentTarget);
-        setOpenMenuIndex1(index);
+        setOpenMenuIndex1(subOrderId);
     };
 
-    const handleClick3 = (event, index) => {
+    const handleClick3 = (event, subOrderId) => {
         setAnchorEl3(event.currentTarget);
-        setOpenMenuIndex2(index);
+        setOpenMenuIndex2(subOrderId);
     };
 
     const formatDate = (isoDateString) => {
@@ -77,21 +77,9 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
         }
     };
 
-    // Helper to get buyer/seller note from items
-    // const getNoteFromItems = (itemsArray, noteType) => {
-    //     if (!itemsArray || !itemsArray.length) return null;
-    //     // Check first item for note
-    //     const firstItem = itemsArray[0];
-    //     if (firstItem && firstItem[noteType]) {
-    //         return firstItem[noteType];
-    //     }
-    //     return null;
-    // };
-
-    // Helper to get shipping name from the first sub-order
-    const getShippingNameFromOrder = (sale) => {
-        if (!sale?.saleDetaildata?.length) return "standardShipping";
-        return sale.saleDetaildata[0]?.shippingName || "standardShipping";
+    // Helper to get shipping name from sub-order
+    const getShippingNameFromSubOrder = (subOrder) => {
+        return subOrder?.shippingName || "standardShipping";
     };
 
     // Helper to get display value or fallback
@@ -102,38 +90,32 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
         return value;
     };
 
-    // Group sub-orders by shop/vendor within a sale
-    const getSubOrdersByShop = (sale) => {
-        const subOrdersByShop = {};
+    // Get all sub-orders from all sales in this date group
+    const getAllSubOrders = () => {
+        const subOrders = [];
 
-        if (!sale?.saleDetaildata?.length) return [];
+        if (!items?.sales) return subOrders;
 
-        sale.saleDetaildata.forEach(subOrder => {
-            const shopName = subOrder.items[0]?.shop_name || subOrder?.vendor_name || subOrder?.shop_name || sale?.shop_name;
-            const subOrderId = subOrder._id || subOrder.sub_order_id;
-
-            if (!subOrdersByShop[shopName]) {
-                subOrdersByShop[shopName] = {
-                    shopName: shopName,
-                    subOrderId: subOrderId,
-                    vendor_id: subOrder?.vendor_id,
-                    items: []
-                };
-            }
-
-            if (subOrder?.items?.length) {
-                subOrder.items.forEach(item => {
-                    subOrdersByShop[shopName].items.push({
-                        ...item,
-                        subOrderData: subOrder,
-                        shopName: shopName,
-                        subOrderId: subOrderId
+        items.sales.forEach(sale => {
+            if (sale?.saleDetaildata?.length) {
+                sale.saleDetaildata.forEach(subOrder => {
+                    subOrders.push({
+                        ...subOrder,
+                        // Keep parent sale info for reference
+                        parentSale: sale,
+                        order_id: sale.order_id,
+                        sale_id: sale._id,
                     });
                 });
             }
         });
 
-        return Object.values(subOrdersByShop);
+        return subOrders;
+    };
+
+    // Get sub-order count for display
+    const getSubOrderCount = () => {
+        return getAllSubOrders().length;
     };
 
     return (
@@ -158,7 +140,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                     }}
                 >
                     <Typography mr={2}>{items?.date}</Typography>
-                    <Typography mr={2}>{items?.sales?.length || 0}</Typography>
+                    <Typography mr={2}>{getSubOrderCount()}</Typography>
                     <Typography>
                         <Button
                             onClick={handleSelectAllClick}
@@ -197,14 +179,19 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                         aria-label="simple table"
                     >
                         <TableBody>
-                            {/* Render one row per sale (order_id) */}
-                            {items?.sales?.map((sale, index) => {
-                                const subOrdersByShop = getSubOrdersByShop(sale);
-                                // const shopNames = getAllShopNames(sale);
+                            {/* Render one row per sub-order */}
+                            {getAllSubOrders().map((subOrder, index) => {
+                                const subOrderId = subOrder._id || subOrder.sub_order_id;
+                                const parentSale = subOrder.parentSale;
+                                const shopName = subOrder.items?.[0]?.shop_name ||
+                                    subOrder?.vendor_name ||
+                                    subOrder?.shop_name ||
+                                    parentSale?.shop_name ||
+                                    "Unknown Shop";
 
                                 return (
                                     <TableRow
-                                        key={sale._id} // Use sale_id as unique key
+                                        key={subOrderId}
                                         sx={{
                                             verticalAlign: "top",
                                             "&:last-child td, &:last-child th": { border: 0 }
@@ -212,8 +199,8 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                     >
                                         <TableCell align="center">
                                             <Checkbox
-                                                checked={orderIds.includes(sale._id)} // Check by sale ID
-                                                onClick={() => handleCheckboxChange(sale._id)} // Pass sale ID
+                                                checked={orderIds.includes(subOrderId)}
+                                                onClick={() => handleCheckboxChange(subOrderId)}
                                             />
                                         </TableCell>
                                         <TableCell align="center" colSpan={3}>
@@ -225,7 +212,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                         alignItems: "start"
                                                     }}
                                                 >
-                                                    {/* Order ID - plain text */}
+                                                    {/* Order ID from parent sale */}
                                                     <Typography
                                                         component="span"
                                                         sx={{
@@ -234,10 +221,10 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                             fontSize: "16px"
                                                         }}
                                                     >
-                                                        {sale?.order_id}
+                                                        {parentSale?.order_id}
                                                     </Typography>
                                                     <Typography ml={2} sx={{ color: "#000" }}>
-                                                        ${getDisplayValue(sale?.subtotal?.toFixed(2))}
+                                                        ${getDisplayValue(parentSale?.subtotal?.toFixed(2))}
                                                     </Typography>
                                                     <Box sx={{
                                                         display: "flex",
@@ -258,7 +245,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                                 maxWidth: { xs: "100%", md: "400px" }
                                                             }}
                                                         >
-                                                            Shipping : {getShippingDisplayName(getShippingNameFromOrder(sale))}
+                                                            Shipping : {getShippingDisplayName(getShippingNameFromSubOrder(subOrder))}
                                                         </Typography>
                                                     </Box>
                                                 </Typography>
@@ -270,7 +257,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                     alignItems={"center"}
                                                     mt={1}
                                                 >
-                                                    {capitalizeFirstWord(sale?.userName)}
+                                                    {capitalizeFirstWord(parentSale?.userName)}
                                                     <ListItem
                                                         sx={{
                                                             width: "auto",
@@ -287,30 +274,30 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                                 minWidth: "0",
                                                                 width: "auto"
                                                             }}
-                                                            id={`basic-button-${sale?._id}`}
+                                                            id={`basic-button-${subOrderId}`}
                                                             aria-controls={
-                                                                openMenuIndex1 === sale?._id
-                                                                    ? `basic-menu-${sale?._id}`
+                                                                openMenuIndex1 === subOrderId
+                                                                    ? `basic-menu-${subOrderId}`
                                                                     : undefined
                                                             }
                                                             aria-haspopup="true"
                                                             aria-expanded={
-                                                                openMenuIndex1 === sale?._id ? "true" : undefined
+                                                                openMenuIndex1 === subOrderId ? "true" : undefined
                                                             }
-                                                            onClick={(e) => handleClick1(e, sale?._id)}
+                                                            onClick={(e) => handleClick1(e, subOrderId)}
                                                         >
                                                             <ArrowDropDownIcon />
                                                         </Button>
                                                         <Menu
-                                                            id={`basic-menu-${sale?._id}`}
+                                                            id={`basic-menu-${subOrderId}`}
                                                             anchorEl={anchorEl1}
-                                                            open={openMenuIndex1 === sale?._id}
+                                                            open={openMenuIndex1 === subOrderId}
                                                             onClose={() => {
                                                                 setAnchorEl1(null);
                                                                 setOpenMenuIndex1(null);
                                                             }}
                                                             MenuListProps={{
-                                                                "aria-labelledby": `basic-button-${sale?._id}`
+                                                                "aria-labelledby": `basic-button-${subOrderId}`
                                                             }}
                                                         >
                                                             <MenuItem
@@ -321,12 +308,11 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                             >
                                                                 View user profile
                                                             </MenuItem>
-                                                            {/* Navigate to main order history */}
                                                             <MenuItem
                                                                 onClick={() => {
                                                                     setAnchorEl1(null);
                                                                     setOpenMenuIndex1(null);
-                                                                    navigate(`${ROUTE_CONSTANT.orders.orderHistory}?sales_id=${sale?._id}&sub_order_id=${sale?.saleDetaildata?.[0]?._id}`);
+                                                                    navigate(`${ROUTE_CONSTANT.orders.orderHistory}?sales_id=${parentSale?._id}&sub_order_id=${subOrderId}`);
                                                                 }}
                                                             >
                                                                 Order history
@@ -334,7 +320,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                             <MenuItem disableRipple>
                                                                 <TextField
                                                                     variant="standard"
-                                                                    value={sale?.userEmail}
+                                                                    value={parentSale?.userEmail}
                                                                     InputProps={{
                                                                         readOnly: true,
                                                                         disableUnderline: true,
@@ -351,91 +337,87 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
 
                                                     </ListItem>
                                                     {
-                                                        sale?.redStar && <Typography sx={{ paddingLeft: "0", width: "auto", display: "inline-block" }}>
+                                                        parentSale?.redStar && <Typography sx={{ paddingLeft: "0", width: "auto", display: "inline-block" }}>
                                                             <StarIcon sx={{ color: "red" }} />
                                                         </Typography>
                                                     }
                                                     {
-                                                        sale?.greenStar && <Typography sx={{ paddingLeft: "0", width: "auto", display: "inline-block" }}>
+                                                        parentSale?.greenStar && <Typography sx={{ paddingLeft: "0", width: "auto", display: "inline-block" }}>
                                                             <StarIcon sx={{ color: "green" }} />
                                                         </Typography>
                                                     }
                                                 </Typography>
                                             </Box>
 
-                                            {/* Render products grouped by shop */}
-                                            {subOrdersByShop.map((shopGroup, shopIndex) => (
-                                                <Box key={shopIndex} sx={{ mb: 3, borderLeft: "2px solid #e0e0e0", pl: 2 }}>
-                                                    {/* Sub-order ID with navigation link */}
-                                                    <Typography
-                                                        variant="subtitle2"
-                                                        sx={{
-                                                            color: "#0066cc",
-                                                            mb: 1,
-                                                            cursor: "pointer",
-                                                            textDecoration: "underline",
-                                                            '&:hover': {
-                                                                textDecoration: "none"
-                                                            }
-                                                        }}
-                                                        onClick={() => {
-                                                            // Navigate using both sales_id and sub_order_id
-                                                            navigate(`${ROUTE_CONSTANT.orders.orderHistory}?sales_id=${sale?._id}&sub_order_id=${shopGroup.subOrderId}`);
-                                                        }}
-                                                    >
-                                                        Transaction Id: {shopGroup.subOrderId?.slice(-8) || "N/A"}
-                                                    </Typography>
-
-                                                    <Typography
-                                                        variant="subtitle2"
-                                                        sx={{
-                                                            color: "#666",
-                                                            mb: 1,
-                                                        }}
-                                                    >
-                                                        Shop: {shopGroup.shopName}
-                                                    </Typography>
-
-                                                    {/* Map through items in this shop group */}
-                                                    {shopGroup.items.map((itemData, itemIndex) => (
-                                                        <Product
-                                                            key={`${shopGroup.shopName}-${itemIndex}`}
-                                                            saleData={itemData}
-                                                            baseUrl={baseUrl}
-                                                            getOrderList={getOrderList}
-                                                            handleOpen={handleOpen}
-                                                            item={sale} // Pass the sale object
-                                                            shop_name={shopGroup.shopName} // Use shop name from group
-                                                            vendorData={itemData.subOrderData} // Pass the sub-order data
-                                                        />
-                                                    ))}
-                                                    <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "flex-start", alignItems: "flex-start", mt: 2 }}>
-                                                        {
-                                                            shopGroup.items.find(item => item.buyer_note)?.buyer_note && (
-                                                                <Typography fontSize={14} sx={{ color: "#000" }}>
-                                                                    Buyer Note:{" "}
-                                                                    <Typography component="span">
-                                                                        {shopGroup.items.find(item => item.buyer_note)?.buyer_note}
-                                                                    </Typography>
-                                                                </Typography>
-                                                            )
+                                            {/* Sub-order details */}
+                                            <Box sx={{ my: 1.5, borderLeft: "2px solid #e0e0e0", pl: 2 }}>
+                                                {/* Sub-order ID with navigation link */}
+                                                <Typography
+                                                    variant="subtitle2"
+                                                    sx={{
+                                                        color: "#0066cc",
+                                                        mb: 1,
+                                                        cursor: "pointer",
+                                                        textDecoration: "underline",
+                                                        '&:hover': {
+                                                            textDecoration: "none"
                                                         }
-                                                        {
-                                                            shopGroup.items.find(item => item.seller_note)?.seller_note && (
-                                                                <Typography fontSize={14} sx={{ color: "#000" }}>
-                                                                    Seller Note:{" "}
-                                                                    <Typography component="span">
-                                                                        {shopGroup.items.find(item => item.seller_note)?.seller_note}
-                                                                    </Typography>
+                                                    }}
+                                                    onClick={() => {
+                                                        navigate(`${ROUTE_CONSTANT.orders.orderHistory}?sales_id=${parentSale?._id}&sub_order_id=${subOrderId}`);
+                                                    }}
+                                                >
+                                                    Reciept Id: {subOrderId?.slice(-8) || "N/A"}
+                                                </Typography>
+
+                                                <Typography
+                                                    variant="subtitle2"
+                                                    sx={{
+                                                        color: "#666",
+                                                        mb: 1,
+                                                    }}
+                                                >
+                                                    Shop: {shopName}
+                                                </Typography>
+
+                                                {/* Map through items in this sub-order */}
+                                                {subOrder.items?.map((itemData, itemIndex) => (
+                                                    <Product
+                                                        key={`${shopName}-${itemIndex}`}
+                                                        saleData={itemData}
+                                                        baseUrl={baseUrl}
+                                                        getOrderList={getOrderList}
+                                                        handleOpen={handleOpen}
+                                                        item={parentSale} // Pass the parent sale object
+                                                        shop_name={shopName}
+                                                        vendorData={subOrder} // Pass the sub-order data
+                                                    />
+                                                ))}
+
+                                                {/* Display notes for this sub-order */}
+                                                <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "flex-start", alignItems: "flex-start", mt: 2 }}>
+                                                    {
+                                                        subOrder.items?.find(item => item.buyer_note)?.buyer_note && (
+                                                            <Typography fontSize={14} sx={{ color: "#000" }}>
+                                                                Buyer Note:{" "}
+                                                                <Typography component="span">
+                                                                    {subOrder.items.find(item => item.buyer_note)?.buyer_note}
                                                                 </Typography>
-                                                            )
-                                                        }
-                                                    </Box>
+                                                            </Typography>
+                                                        )
+                                                    }
+                                                    {
+                                                        subOrder.items?.find(item => item.seller_note)?.seller_note && (
+                                                            <Typography fontSize={14} sx={{ color: "#000" }}>
+                                                                Seller Note:{" "}
+                                                                <Typography component="span">
+                                                                    {subOrder.items.find(item => item.seller_note)?.seller_note}
+                                                                </Typography>
+                                                            </Typography>
+                                                        )
+                                                    }
                                                 </Box>
-                                            ))}
-
-
-
+                                            </Box>
                                         </TableCell>
 
                                         <TableCell align="center" colSpan={2}>
@@ -443,7 +425,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                 <Typography variant="h6" fontWeight={500} fontSize={15}>
                                                     {tab === "pending" ? "No Tracking" : tab === "unshipped" ? "Unshipped" : tab === "in-progress" ? "In Progress" : tab === "completed" ? "Completed" : "Cancelled"}
                                                 </Typography>
-                                                <Typography>Order {formatDate(sale?.createdAt)}</Typography>
+                                                <Typography>Order {formatDate(parentSale?.createdAt)}</Typography>
                                                 {tab === "completed" && (
                                                     <Box
                                                         my={2}
@@ -489,22 +471,22 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                     Ship to
                                                 </Typography>
                                                 <Typography>
-                                                    {capitalizeFirstWord(sale?.userName)}
+                                                    {capitalizeFirstWord(parentSale?.userName)}
                                                 </Typography>
                                                 <Typography>
-                                                    {capitalizeFirstWord(sale?.address_line1)}
+                                                    {capitalizeFirstWord(parentSale?.address_line1)}
                                                 </Typography>
                                                 <Typography>
-                                                    {capitalizeFirstWord(sale?.address_line2)}
+                                                    {capitalizeFirstWord(parentSale?.address_line2)}
                                                 </Typography>
                                                 <Typography>
-                                                    {sale?.city}, {sale?.state} {sale?.pincode}
+                                                    {parentSale?.city}, {parentSale?.state} {parentSale?.pincode}
                                                 </Typography>
                                                 <Typography>
-                                                    {sale?.country}
+                                                    {parentSale?.country}
                                                 </Typography>
-                                                <Typography fontSize={15} fontWeight={500}>
-                                                    Mob. No.: {sale?.mobile}
+                                                <Typography fontSize={15} fontWeight={500} sx={{ textWrap: "nowrap" }}>
+                                                    Mob. No.: {`${getDisplayValue(parentSale?.phone_code)} ${getDisplayValue(parentSale?.mobile)}`}
                                                 </Typography>
                                                 <Box mt={1}>
                                                     <Button
@@ -519,12 +501,12 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                             "&:focus": { fontWeight: "bold" }
                                                         }}
                                                         onClick={() => {
-                                                            const fullAddress = `${sale?.userName}
-                                                        ${sale?.address_line1}
-                                                        ${sale?.address_line2 ? ',' + sale.address_line2 + ',' : ''}
-                                                        ${sale?.city}, ${sale?.state} ${sale?.pincode}
-                                                        ${sale?.country}
-                                                        ${sale?.mobile}`;
+                                                            const fullAddress = `${parentSale?.userName}
+                                                        ${parentSale?.address_line1}
+                                                        ${parentSale?.address_line2 ? ',' + parentSale.address_line2 + ',' : ''}
+                                                        ${parentSale?.city}, ${parentSale?.state} ${parentSale?.pincode}
+                                                        ${parentSale?.country}
+                                                        ${parentSale?.mobile}`;
                                                             navigator.clipboard.writeText(fullAddress);
                                                         }}
                                                     >
@@ -565,37 +547,33 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                         <ListItem sx={{ width: "auto", display: "block" }}>
                                                             <Button
                                                                 sx={{ color: "#000" }}
-                                                                id={`basic-button-${sale?._id}`}
+                                                                id={`basic-button-${subOrderId}`}
                                                                 aria-controls={
-                                                                    openMenuIndex2 === sale?._id
-                                                                        ? `basic-menu-${sale?._id}`
+                                                                    openMenuIndex2 === subOrderId
+                                                                        ? `basic-menu-${subOrderId}`
                                                                         : undefined
                                                                 }
                                                                 aria-haspopup="true"
                                                                 aria-expanded={
-                                                                    openMenuIndex2 === sale?._id ? "true" : undefined
+                                                                    openMenuIndex2 === subOrderId ? "true" : undefined
                                                                 }
-                                                                onClick={(e) => handleClick3(e, sale?._id)}
+                                                                onClick={(e) => handleClick3(e, subOrderId)}
                                                             >
                                                                 <PublishedWithChangesIcon />
                                                             </Button>
                                                             <Menu
-                                                                id={`basic-menu-${sale?._id}`}
+                                                                id={`basic-menu-${subOrderId}`}
                                                                 anchorEl={anchorEl3}
-                                                                open={openMenuIndex2 === sale?._id}
+                                                                open={openMenuIndex2 === subOrderId}
                                                                 onClose={handleCloseOption1}
                                                                 MenuListProps={{
-                                                                    "aria-labelledby": `basic-button-${sale?._id}`
+                                                                    "aria-labelledby": `basic-button-${subOrderId}`
                                                                 }}
                                                             >
                                                                 {tab !== "in-progress" && (
                                                                     <MenuItem
                                                                         onClick={() => {
-                                                                            // Update using sub-order IDs from all sub-orders
-                                                                            const subOrderIds = sale?.saleDetaildata?.map(sub => sub._id) || [];
-                                                                            subOrderIds.forEach(subOrderId => {
-                                                                                updateOrder(subOrderId, "in-progress");
-                                                                            });
+                                                                            updateOrder(subOrderId, "in-progress");
                                                                             handleCloseOption1();
                                                                         }}
                                                                     >
@@ -605,10 +583,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                                 {tab !== "unshipped" && (
                                                                     <MenuItem
                                                                         onClick={() => {
-                                                                            const subOrderIds = sale?.saleDetaildata?.map(sub => sub._id) || [];
-                                                                            subOrderIds.forEach(subOrderId => {
-                                                                                updateOrder(subOrderId, "unshipped");
-                                                                            });
+                                                                            updateOrder(subOrderId, "unshipped");
                                                                             handleCloseOption1();
                                                                         }}
                                                                     >
@@ -618,10 +593,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                                 {tab !== "cancelled" && (
                                                                     <MenuItem
                                                                         onClick={() => {
-                                                                            const subOrderIds = sale?.saleDetaildata?.map(sub => sub._id) || [];
-                                                                            subOrderIds.forEach(subOrderId => {
-                                                                                updateOrder(subOrderId, "cancelled");
-                                                                            });
+                                                                            updateOrder(subOrderId, "cancelled");
                                                                             handleCloseOption1();
                                                                         }}
                                                                     >
@@ -630,10 +602,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                                 )}
                                                                 <MenuItem
                                                                     onClick={() => {
-                                                                        const subOrderIds = sale?.saleDetaildata?.map(sub => sub._id) || [];
-                                                                        subOrderIds.forEach(subOrderId => {
-                                                                            updateOrder(subOrderId, "completed");
-                                                                        });
+                                                                        updateOrder(subOrderId, "completed");
                                                                         handleCloseOption1();
                                                                     }}
                                                                 >
@@ -651,27 +620,27 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                     <ListItem sx={{ width: "auto", display: "block" }}>
                                                         <Button
                                                             sx={{ color: "#000" }}
-                                                            id={`basic-button-${index}`}
+                                                            id={`basic-button-${subOrderId}`}
                                                             aria-controls={
-                                                                openMenuIndex === index
-                                                                    ? `basic-menu-${index}`
+                                                                openMenuIndex === subOrderId
+                                                                    ? `basic-menu-${subOrderId}`
                                                                     : undefined
                                                             }
                                                             aria-haspopup="true"
                                                             aria-expanded={
-                                                                openMenuIndex === index ? "true" : undefined
+                                                                openMenuIndex === subOrderId ? "true" : undefined
                                                             }
-                                                            onClick={(e) => handleClick(e, index)}
+                                                            onClick={(e) => handleClick(e, subOrderId)}
                                                         >
                                                             <MoreVertIcon />
                                                         </Button>
                                                         <Menu
-                                                            id={`basic-menu-${index}`}
+                                                            id={`basic-menu-${subOrderId}`}
                                                             anchorEl={anchorEl}
-                                                            open={openMenuIndex === index}
+                                                            open={openMenuIndex === subOrderId}
                                                             onClose={handleCloseOption}
                                                             MenuListProps={{
-                                                                "aria-labelledby": `basic-button-${index}`
+                                                                "aria-labelledby": `basic-button-${subOrderId}`
                                                             }}
                                                         >
                                                             {tab !== "pending" && (
