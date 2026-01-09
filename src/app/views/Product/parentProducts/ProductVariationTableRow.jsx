@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import TableRow from "@mui/material/TableRow";
 import TableCell from "@mui/material/TableCell";
 import { Box, IconButton } from "@mui/material";
@@ -127,12 +127,20 @@ const ProductVariationTableRow = ({
         setDragOverIndex(null);
     };
 
+    // FIXED: Use stable keys for table rows
+    const attributeRows = useMemo(() => {
+        return variant.variant_attributes?.map((attribute, attributeIndex) => ({
+            attribute,
+            attributeIndex,
+            key: `${variant.variant_name}-${attribute._id}-${attributeIndex}`
+        })) || [];
+    }, [variant.variant_attributes, variant.variant_name]);
+
     return (
         <>
-            {variant.variant_attributes?.map((attribute, attributeIndex) => (
-                // FIX: Use _id for React key instead of attribute_value
+            {attributeRows.map(({ attribute, attributeIndex, key }) => (
                 <DraggableTableRow
-                    key={`${variant.variant_name}-${attribute._id}`}
+                    key={key}
                     index={attributeIndex}
                     onDragStart={handleDragStart}
                     onDragOver={handleDragOver}

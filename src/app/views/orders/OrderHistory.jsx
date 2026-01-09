@@ -60,7 +60,6 @@ const OrderHistory = () => {
 
   // Calculate derived data once to avoid repeated calculations
   const orderTotals = useMemo(() => {
-    // Get items from the specific vendor's sub-order only
     const vendorItems = order?.saleDetaildata?.[0]?.items || [];
 
     if (!vendorItems.length) {
@@ -73,11 +72,22 @@ const OrderHistory = () => {
       };
     }
 
-    const subTotal = vendorItems.reduce((a, b) => a + ((b.sub_total - (b?.couponDiscountAmount || 0))), 0);
-    const shippingTotal = vendorItems.reduce((a, b) => a + (b.shippingAmount || 0), 0);
-    const itemTotal = vendorItems.reduce((a, b) => a + ((b?.amount || 0) + (b?.shippingAmount || 0) - (b?.couponDiscountAmount || 0)), 0);
-    const grandTotal = itemTotal - (order?.voucher_dicount || 0);
-    const paypalAmount = grandTotal - (order?.wallet_used || 0);
+    const subTotal = vendorItems.reduce(
+      (a, b) => a + ((b.sub_total || 0) - (b?.couponDiscountAmount || 0)),
+      0
+    );
+
+    // ✅ FIXED
+    const shippingTotal = vendorItems[0]?.subOrderShippingTotal || 0;
+
+    const itemTotal =
+      subTotal + shippingTotal;
+
+    const grandTotal =
+      itemTotal - (order?.voucher_dicount || 0);
+
+    const paypalAmount =
+      grandTotal - (order?.wallet_used || 0);
 
     return {
       subTotal: subTotal.toFixed(2),
@@ -87,6 +97,7 @@ const OrderHistory = () => {
       paypalAmount: paypalAmount > 0 ? paypalAmount.toFixed(2) : "0.00"
     };
   }, [order]);
+
 
   // Get shipping name from the specific vendor's sub-order
   const shippingName = useMemo(() => {

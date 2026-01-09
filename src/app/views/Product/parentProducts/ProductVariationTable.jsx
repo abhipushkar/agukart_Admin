@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
     Box,
     Typography,
@@ -191,8 +191,6 @@ const AttributeCell = React.memo(({ variant, variantIndex, attributeName, onOpen
                 title={tooltipContent}
                 arrow
                 placement="top"
-                // enterDelay={500}
-                // leaveDelay={200}
                 componentsProps={{
                     tooltip: {
                         sx: {
@@ -429,126 +427,137 @@ const ProductVariationsTable = ({
         window.open(fileUrl, '_blank');
     };
 
+    // FIXED: Use stable keys for table rows
+    const tableSections = useMemo(() => {
+        return productVariations?.map((variant, variantIndex) => {
+            const tableKey = variant.variant_name;
+            const tableVisibleColumns = getTableVisibleColumns(tableKey);
+
+            return {
+                variant,
+                variantIndex,
+                tableKey,
+                tableVisibleColumns,
+                key: `${tableKey}-${variantIndex}-${variant.variant_attributes?.length || 0}`
+            };
+        }) || [];
+    }, [productVariations, visibleColumns]);
+
     return (
         <Box>
-            {productVariations?.map((variant, variantIndex) => {
-                const tableKey = variant.variant_name;
-                const tableVisibleColumns = getTableVisibleColumns(tableKey);
-
-                return (
-                    <Box
-                        key={`${tableKey}-${variantIndex}`}
-                        sx={{
-                            mb: 4,
-                            border: '1px solid #e0e0e0',
-                            borderRadius: 1,
-                            overflow: 'hidden'
-                        }}
-                    >
-                        <Box sx={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            p: 2,
-                            backgroundColor: '#f8f9fa',
-                            borderBottom: '1px solid #e9ecef'
-                        }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <IconButton size="small">
-                                    <DragIndicatorIcon />
-                                </IconButton>
-                                <Box>
-                                    <Typography variant="h6" fontWeight={600} color="primary">
-                                        {tableKey}
-                                    </Typography>
-                                    <Typography variant="body2" color="textSecondary">
-                                        {variant.variant_attributes?.length || 0} attribute(s)
-                                    </Typography>
-                                </Box>
+            {tableSections.map(({ variant, variantIndex, tableKey, tableVisibleColumns, key }) => (
+                <Box
+                    key={key}
+                    sx={{
+                        mb: 4,
+                        border: '1px solid #e0e0e0',
+                        borderRadius: 1,
+                        overflow: 'hidden'
+                    }}
+                >
+                    <Box sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        p: 2,
+                        backgroundColor: '#f8f9fa',
+                        borderBottom: '1px solid #e9ecef'
+                    }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <IconButton size="small">
+                                <DragIndicatorIcon />
+                            </IconButton>
+                            <Box>
+                                <Typography variant="h6" fontWeight={600} color="primary">
+                                    {tableKey}
+                                </Typography>
+                                <Typography variant="body2" color="textSecondary">
+                                    {variant.variant_attributes?.length || 0} attribute(s)
+                                </Typography>
                             </Box>
                         </Box>
-
-                        {/* Column Selection Menu */}
-                        <Popover
-                            open={Boolean(anchorEl) && currentTableKey === tableKey}
-                            anchorEl={anchorEl}
-                            onClose={handleColumnMenuClose}
-                            anchorOrigin={{
-                                vertical: 'bottom',
-                                horizontal: 'right',
-                            }}
-                            transformOrigin={{
-                                vertical: 'top',
-                                horizontal: 'right',
-                            }}
-                        >
-                            <Box sx={{ p: 2, minWidth: 200 }}>
-                                <Typography variant="subtitle1" fontWeight={600} mb={1}>
-                                    Show Columns - {tableKey}
-                                </Typography>
-                                {Object.entries(tableVisibleColumns).map(([column, isVisible]) => (
-                                    column !== 'attribute' && (
-                                        <MenuItem
-                                            key={column}
-                                            onClick={() => handleColumnToggle(column)}
-                                            dense
-                                        >
-                                            <Checkbox checked={isVisible} />
-                                            <Typography variant="body2">
-                                                {column === 'drag' ? 'Drag' :
-                                                    column === 'thumbnail' ? 'Thumbnail' : column}
-                                            </Typography>
-                                        </MenuItem>
-                                    )
-                                ))}
-                            </Box>
-                        </Popover>
-
-                        {/* Variations Table */}
-                        <TableContainer component={Paper} sx={{ border: 'none', width: "100%", borderRadius: 0 }}>
-                            <Table width={"100%"}>
-                                <TableHead>
-                                    <TableRow sx={{ backgroundColor: '#f5f5f5', width: "100%" }}>
-                                        {tableVisibleColumns.drag && (
-                                            <TableCell width={69} align="center" sx={{ wordBreak: "keep-all", fontWeight: 600, py: 2 }}>
-                                                Drag
-                                            </TableCell>
-                                        )}
-                                        {tableVisibleColumns.attribute && (
-                                            <AttributeCell
-                                                key={`attribute-${tableKey}-${variantIndex}`}
-                                                variant={variant}
-                                                variantIndex={variantIndex}
-                                                attributeName={variant.variant_name}
-                                                onOpenGuideDialog={handleOpenGuideDialog}
-                                                isImageFile={isImageFile}
-                                                createObjectURL={createObjectURL}
-                                                handleOpenFile={handleOpenFile}
-                                            />
-                                        )}
-                                        {tableVisibleColumns.thumbnail && (
-                                            <TableCell align="center" sx={{ wordBreak: "keep-all", width: 200, fontWeight: 600, py: 2 }}>
-                                                Thumbnail
-                                            </TableCell>
-                                        )}
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    <ProductVariationTableRow
-                                        variant={variant}
-                                        variantIndex={variantIndex}
-                                        visibleColumns={tableVisibleColumns}
-                                        onImageUpload={onImageUpload}
-                                        onImageRemove={onImageRemove}
-                                        onImageEdit={onImageEdit}
-                                        onRowReorder={onRowReorder}
-                                    />
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
                     </Box>
-                );
-            })}
+
+                    {/* Column Selection Menu */}
+                    <Popover
+                        open={Boolean(anchorEl) && currentTableKey === tableKey}
+                        anchorEl={anchorEl}
+                        onClose={handleColumnMenuClose}
+                        anchorOrigin={{
+                            vertical: 'bottom',
+                            horizontal: 'right',
+                        }}
+                        transformOrigin={{
+                            vertical: 'top',
+                            horizontal: 'right',
+                        }}
+                    >
+                        <Box sx={{ p: 2, minWidth: 200 }}>
+                            <Typography variant="subtitle1" fontWeight={600} mb={1}>
+                                Show Columns - {tableKey}
+                            </Typography>
+                            {Object.entries(tableVisibleColumns).map(([column, isVisible]) => (
+                                column !== 'attribute' && (
+                                    <MenuItem
+                                        key={column}
+                                        onClick={() => handleColumnToggle(column)}
+                                        dense
+                                    >
+                                        <Checkbox checked={isVisible} />
+                                        <Typography variant="body2">
+                                            {column === 'drag' ? 'Drag' :
+                                                column === 'thumbnail' ? 'Thumbnail' : column}
+                                        </Typography>
+                                    </MenuItem>
+                                )
+                            ))}
+                        </Box>
+                    </Popover>
+
+                    {/* Variations Table */}
+                    <TableContainer component={Paper} sx={{ border: 'none', width: "100%", borderRadius: 0 }}>
+                        <Table width={"100%"}>
+                            <TableHead>
+                                <TableRow sx={{ backgroundColor: '#f5f5f5', width: "100%" }}>
+                                    {tableVisibleColumns.drag && (
+                                        <TableCell width={69} align="center" sx={{ wordBreak: "keep-all", fontWeight: 600, py: 2 }}>
+                                            Drag
+                                        </TableCell>
+                                    )}
+                                    {tableVisibleColumns.attribute && (
+                                        <AttributeCell
+                                            key={`attribute-${tableKey}-${variantIndex}`}
+                                            variant={variant}
+                                            variantIndex={variantIndex}
+                                            attributeName={variant.variant_name}
+                                            onOpenGuideDialog={handleOpenGuideDialog}
+                                            isImageFile={isImageFile}
+                                            createObjectURL={createObjectURL}
+                                            handleOpenFile={handleOpenFile}
+                                        />
+                                    )}
+                                    {tableVisibleColumns.thumbnail && (
+                                        <TableCell align="center" sx={{ wordBreak: "keep-all", width: 200, fontWeight: 600, py: 2 }}>
+                                            Thumbnail
+                                        </TableCell>
+                                    )}
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                <ProductVariationTableRow
+                                    variant={variant}
+                                    variantIndex={variantIndex}
+                                    visibleColumns={tableVisibleColumns}
+                                    onImageUpload={onImageUpload}
+                                    onImageRemove={onImageRemove}
+                                    onImageEdit={onImageEdit}
+                                    onRowReorder={onRowReorder}
+                                />
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                </Box>
+            ))}
 
             {/* Guide Dialog */}
             <Dialog

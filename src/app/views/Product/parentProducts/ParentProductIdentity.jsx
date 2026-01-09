@@ -24,11 +24,17 @@ import CircularProgress from "@mui/material/CircularProgress";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import ProductParentTable from "app/components/ProductListTable/ProductParentTable";
 import { ROUTE_CONSTANT } from "app/constant/routeContanst";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import dayjs from "dayjs";
 import ConfirmModal from "app/components/ConfirmModal";
 import ProductVariationsTable from "./ProductVariationTable";
 import { TabContext, TabPanel } from "@mui/lab";
+import {
+    normalizeVariantList,
+    expandInnervariations,
+    compressInnervariations,
+    getAttributesByIds
+} from "./normalizeVariantAttributes";
 
 const ParentProductIdentity = ({ productId }) => {
     const [formData, setFormData] = React.useState({
@@ -54,7 +60,8 @@ const ParentProductIdentity = ({ productId }) => {
     const [allCategory, setAllCategory] = React.useState([]);
     const [selectedCatLable, setSelectedCatLable] = React.useState("Select Category");
     const [showVariant, setShowVariant] = React.useState(false);
-    const [varintList, setVariantList] = React.useState([]);
+    const [rawVariantList, setRawVariantList] = React.useState([]);
+    const [normalizedVariantList, setNormalizedVariantList] = React.useState([]);
     const [varientAttribute, setVarientAttribute] = React.useState([]);
     const [images, setImages] = React.useState(formData.images);
     const [isCoponentLoader, setIsconponentLoader] = useState(false);
@@ -197,7 +204,10 @@ const ParentProductIdentity = ({ productId }) => {
             const urlWithParam = `${apiEndpoints.getAllActiveVarient}?${typeParam}`;
             const res = await ApiService.get(urlWithParam, auth_key);
             if (res.status === 200) {
-                setVariantList(res?.data?.parent);
+                setRawVariantList(res?.data?.parent || []);
+                // Normalize variant list to remove duplicates
+                const normalized = normalizeVariantList(res?.data?.parent);
+                setNormalizedVariantList(normalized);
             }
         } catch (error) {
             handleApiError(error, "Failed to load variants");
@@ -216,19 +226,13 @@ const ParentProductIdentity = ({ productId }) => {
         if (Object.keys(formData.Innervariations).length > 0) {
             let arr = [];
             for (let i = 0; i < formData.variant_name.length; i++) {
-                let data = formData.Innervariations[formData.variant_name[i]];
-                const newarrrr = formData.Innervariations[formData.variant_name[i]]?.map((item) => {
-                    return item._id;
-                });
-
-                if (!newarrrr) {
-                    return;
+                const variantName = formData.variant_name[i];
+                const attributeIds = formData.Innervariations[variantName];
+                if (attributeIds && Array.isArray(attributeIds)) {
+                    arr.push(...attributeIds);
                 }
-                arr.push(newarrrr);
             }
-
-            const myarr = arr.flat();
-            setVarientAttribute(myarr);
+            setVarientAttribute(arr);
         }
     }, [formData.variant_name, formData.Innervariations]);
 
@@ -262,7 +266,6 @@ const ParentProductIdentity = ({ productId }) => {
             .join('_');
     };
 
-    // FIX: Deterministic sorting function
     const deterministicSort = (a, b) => {
         if (a.sort_order !== b.sort_order) {
             return a.sort_order - b.sort_order;
@@ -270,13 +273,13 @@ const ParentProductIdentity = ({ productId }) => {
         return a._id.localeCompare(b._id);
     };
 
-    const generateCombinations = (innervariations) => {
+    const generateCombinations = (expandedInnervariations) => {
         let combinations = [];
-        const variationKeys = Object.keys(innervariations);
+        const variationKeys = Object.keys(expandedInnervariations);
 
         // Apply deterministic sorting
         const variations = variationKeys.map((key) => {
-            return [...innervariations[key]].sort(deterministicSort);
+            return [...expandedInnervariations[key]].sort(deterministicSort);
         });
 
         function combine(attributes, index, currentCombination) {
@@ -339,37 +342,47 @@ const ParentProductIdentity = ({ productId }) => {
         setCombinationMap(newMap);
     };
 
-    // FIX: Add useMemo for filteredData to ensure stable references
+    // Get expanded innervariations for UI display
+    const getExpandedInnervariations = useCallback(() => {
+        return expandInnervariations(formData.Innervariations, normalizedVariantList);
+    }, [formData.Innervariations, normalizedVariantList]);
+
+    // FIXED: Memoized filtered data using IDs only
     const filteredData = useMemo(() => {
         if (!varientAttribute || !formData?.variantData || formData.variantData.length === 0) {
             return {};
         }
 
+        const variantMap = new Map(normalizedVariantList.map(v => [v.variant_name, v]));
+
         return formData.variantData.reduce((acc, item) => {
-            if (item?.variant_attribute) {
-                // Apply deterministic sorting
-                const sortedAttributes = [...item.variant_attribute].sort(deterministicSort);
+            const variant = variantMap.get(item.variant_name);
+            if (variant?.variant_attribute) {
+                // Get attribute IDs for this variant from varientAttribute
+                const attributeIdsForVariant = variant.variant_attribute
+                    .filter(attr => varientAttribute.includes(attr._id))
+                    .map(attr => attr._id);
 
-                const filteredAttributes = sortedAttributes.filter((variant) =>
-                    varientAttribute.includes(variant._id)
-                );
-
-                if (filteredAttributes.length > 0) {
-                    acc[item.variant_name] = filteredAttributes;
+                if (attributeIdsForVariant.length > 0) {
+                    acc[item.variant_name] = attributeIdsForVariant;
                 }
             }
             return acc;
         }, {});
-    }, [varientAttribute, formData?.variantData]);
+    }, [varientAttribute, formData?.variantData, normalizedVariantList]);
 
-    const InnervariationsHandle = (variantId) => (event, newValue) => {
-        const previousAttributes = formData.Innervariations[variantId] || [];
+    const InnervariationsHandle = (variantName) => (event, newValue) => {
+        // Store only IDs in state
+        const attributeIds = newValue.map(attr => attr._id);
+
         const updatedInnervariations = {
             ...formData.Innervariations,
-            [variantId]: newValue
+            [variantName]: attributeIds
         };
 
-        const newCombinations = generateCombinations(updatedInnervariations);
+        // Expand for combination generation
+        const expandedInnervariations = expandInnervariations(updatedInnervariations, normalizedVariantList);
+        const newCombinations = generateCombinations(expandedInnervariations);
 
         const { preservedVariantData, preservedSellerSky } = preserveCombinationData(
             newCombinations,
@@ -391,75 +404,78 @@ const ParentProductIdentity = ({ productId }) => {
             setSellerSku(preservedSellerSky);
         });
 
-        // Sync product variations when inner variations change
+        // Get previous attribute IDs
+        const previousAttributeIds = formData.Innervariations[variantName] || [];
+        const removedAttributeIds = previousAttributeIds.filter(id => !attributeIds.includes(id));
+
+        // Sync product variations
         const updatedProductVariations = formData.variantData.map(variant => {
-            const innerVariants = updatedInnervariations[variant.variant_name] || [];
-
-            // Find existing variant data to preserve images AND guide
-            const existingVariant = productVariations.find(pv => pv.variant_name === variant.variant_name);
-
-            if (existingVariant) {
-                // Remove attributes that are no longer selected using _id
-                const previousAttributeIds = previousAttributes.map(attr => attr._id);
-                const currentAttributeIds = innerVariants.map(attr => attr._id);
-                const removedAttributeIds = previousAttributeIds.filter(id => !currentAttributeIds.includes(id));
-
-                let updatedAttributes = [];
-
-                if (removedAttributeIds.length > 0) {
-                    // Filter out removed attributes using _id
-                    updatedAttributes = existingVariant.variant_attributes.filter(
-                        attr => !removedAttributeIds.includes(attr._id)
-                    );
-                } else {
-                    // Preserve existing order and add new attributes
-                    updatedAttributes = [...existingVariant.variant_attributes];
-                }
-
-                // Add new attributes that don't exist yet using _id
-                innerVariants.forEach(innerVariant => {
-                    const existingAttribute = updatedAttributes.find(attr =>
-                        attr._id === innerVariant._id
-                    );
-
-                    if (!existingAttribute) {
-                        updatedAttributes.push({
-                            _id: innerVariant._id,
-                            attribute: innerVariant.attribute_value,
-                            main_images: [null, null, null],
-                            preview_image: innerVariant.preview_image || "",
-                            thumbnail: innerVariant.thumbnail || "",
-                            edit_main_image: null,
-                            edit_preview_image: innerVariant.edit_preview_image || "",
-                            edit_main_image_data: innerVariant.edit_main_image_data || {},
-                            edit_preview_image_data: innerVariant.edit_preview_image_data || {},
-                        });
-                    }
-                });
-
-                return {
-                    _id: variant._id,
-                    ...existingVariant,
-                    variant_attributes: updatedAttributes,
-                    guide: existingVariant.guide || []
-                };
-            } else {
-                return {
-                    _id: variant._id,
+            if (variant.variant_name !== variantName) {
+                // Find existing variant data
+                const existingVariant = productVariations.find(pv => pv.variant_name === variant.variant_name);
+                return existingVariant || {
+                    _id: variant.id,
                     variant_name: variant.variant_name,
-                    variant_attributes: innerVariants.map(innerVariant => ({
-                        _id: innerVariant._id,
-                        attribute: innerVariant.attribute_value,
-                        main_images: [null, null, null],
-                        preview_image: innerVariant.preview_image || "",
-                        thumbnail: innerVariant.thumbnail || "",
-                        edit_main_image: null,
-                        edit_preview_image: innerVariant.edit_preview_image || "",
-                        edit_main_image_data: innerVariant.edit_main_image_data || {},
-                        edit_preview_image_data: innerVariant.edit_preview_image_data || {},
-                    }))
+                    variant_attributes: [],
+                    guide: []
                 };
             }
+
+            // For the changed variant
+            const existingVariant = productVariations.find(pv => pv.variant_name === variantName);
+            const variantObj = normalizedVariantList.find(v => v.variant_name === variantName);
+
+            let updatedAttributes = [];
+
+            if (existingVariant) {
+                // Remove attributes that are no longer selected
+                updatedAttributes = existingVariant.variant_attributes.filter(
+                    attr => !removedAttributeIds.includes(attr._id)
+                );
+
+                // Add new attributes that don't exist yet
+                attributeIds.forEach(attributeId => {
+                    if (!updatedAttributes.some(attr => attr._id === attributeId)) {
+                        const attribute = variantObj?.variant_attribute?.find(a => a._id === attributeId);
+                        if (attribute) {
+                            updatedAttributes.push({
+                                _id: attribute._id,
+                                attribute: attribute.attribute_value,
+                                main_images: [null, null, null],
+                                preview_image: attribute.preview_image || "",
+                                thumbnail: attribute.thumbnail || "",
+                                edit_main_image: null,
+                                edit_preview_image: attribute.edit_preview_image || "",
+                                edit_main_image_data: attribute.edit_main_image_data || {},
+                                edit_preview_image_data: attribute.edit_preview_image_data || {},
+                            });
+                        }
+                    }
+                });
+            } else {
+                // Create new variant with attributes
+                updatedAttributes = attributeIds.map(attributeId => {
+                    const attribute = variantObj?.variant_attribute?.find(a => a._id === attributeId);
+                    return attribute ? {
+                        _id: attribute._id,
+                        attribute: attribute.attribute_value,
+                        main_images: [null, null, null],
+                        preview_image: attribute.preview_image || "",
+                        thumbnail: attribute.thumbnail || "",
+                        edit_main_image: null,
+                        edit_preview_image: attribute.edit_preview_image || "",
+                        edit_main_image_data: attribute.edit_main_image_data || {},
+                        edit_preview_image_data: attribute.edit_preview_image_data || {},
+                    } : null;
+                }).filter(Boolean);
+            }
+
+            return {
+                _id: variant.id,
+                variant_name: variant.variant_name,
+                variant_attributes: updatedAttributes,
+                guide: existingVariant?.guide || []
+            };
         });
 
         // FIX: Batch this update too
@@ -534,7 +550,8 @@ const ParentProductIdentity = ({ productId }) => {
     };
 
     const getCurrentCombinations = () => {
-        return generateCombinations(formData.Innervariations);
+        const expandedInnervariations = getExpandedInnervariations();
+        return generateCombinations(expandedInnervariations);
     };
 
     const trimObjectValues = (obj) => {
@@ -910,68 +927,22 @@ const ParentProductIdentity = ({ productId }) => {
         setProductVariations(updatedProductVariations);
     };
 
-    // FIXED: Enhanced function to sync variant attributes with existing data
-    const syncVariantAttributesWithExistingData = (filteredData, existingProductVariations) => {
-        return formData.variantData.map(variant => {
-            const innerVariants = filteredData[variant.variant_name] || [];
+    // FIXED: Get attribute objects for a specific variant
+    const getAttributesForVariant = (variantName) => {
+        const variant = normalizedVariantList.find(v => v.variant_name === variantName);
+        if (!variant || !variant.variant_attribute) return [];
+        return variant.variant_attribute;
+    };
 
-            // Find existing variant data
-            const existingVariant = existingProductVariations.find(pv => pv.variant_name === variant.variant_name);
+    // FIXED: Get selected attribute objects for display
+    const getSelectedAttributesForVariant = (variantName) => {
+        const attributeIds = formData.Innervariations[variantName];
+        if (!Array.isArray(attributeIds)) return [];
 
-            if (existingVariant) {
-                // Merge existing attributes with new inner variants using _id
-                const mergedAttributes = innerVariants.map(innerVariant => {
-                    // Find if this attribute already exists in the existing data using _id
-                    const existingAttribute = existingVariant.variant_attributes.find(attr =>
-                        attr._id === innerVariant._id
-                    );
+        const variant = normalizedVariantList.find(v => v.variant_name === variantName);
+        if (!variant || !variant.variant_attribute) return [];
 
-                    if (existingAttribute) {
-                        // Preserve all existing data including thumbnails
-                        return {
-                            ...existingAttribute,
-                            _id: innerVariant._id,
-                            attribute: innerVariant.attribute_value
-                        };
-                    } else {
-                        // Create new attribute with data from variant_attribute_id
-                        return {
-                            _id: innerVariant._id,
-                            attribute: innerVariant.attribute_value,
-                            main_images: [null, null, null],
-                            preview_image: innerVariant.preview_image || "",
-                            thumbnail: innerVariant.thumbnail || "",
-                            edit_main_image: null,
-                            edit_preview_image: innerVariant.edit_preview_image || "",
-                            edit_main_image_data: innerVariant.edit_main_image_data || {},
-                            edit_preview_image_data: innerVariant.edit_preview_image_data || {},
-                        };
-                    }
-                });
-
-                return {
-                    ...existingVariant,
-                    variant_attributes: mergedAttributes
-                };
-            } else {
-                // Create new variant with data from variant_attribute_id
-                return {
-                    _id: variant._id,
-                    variant_name: variant.variant_name,
-                    variant_attributes: innerVariants.map(innerVariant => ({
-                        _id: innerVariant._id,
-                        attribute: innerVariant.attribute_value,
-                        main_images: [null, null, null],
-                        preview_image: innerVariant.preview_image || "",
-                        thumbnail: innerVariant.thumbnail || "",
-                        edit_main_image: null,
-                        edit_preview_image: innerVariant.edit_preview_image || "",
-                        edit_main_image_data: innerVariant.edit_main_image_data || {},
-                        edit_preview_image_data: innerVariant.edit_preview_image_data || {},
-                    }))
-                };
-            }
-        });
+        return getAttributesByIds(variant, attributeIds);
     };
 
     const getParentProductDetail = async () => {
@@ -986,6 +957,20 @@ const ParentProductIdentity = ({ productId }) => {
 
                 const vendor = resData?.vendor_id ? vendors.find(v => v._id === resData.vendor_id) : null;
 
+                // FIX: Convert stored attribute IDs back to object format if needed
+                let innervariations = {};
+                if (resData?.variant_attribute_id) {
+                    // Group attribute IDs by variant name
+                    const variantMap = new Map();
+                    resData.variant_id?.forEach(variant => {
+                        variantMap.set(variant._id, variant.variant_name);
+                    });
+
+                    // This is a simplified approach - you might need to adjust based on your actual data structure
+                    // Assuming variant_attribute_id contains all selected attribute IDs
+                    innervariations = resData.innervariations || {};
+                }
+
                 // FIX: Prepare all updates first, then batch them
                 const formDataUpdates = {
                     productTitle: resData?.product_title || "",
@@ -996,7 +981,8 @@ const ParentProductIdentity = ({ productId }) => {
                     variant_id: resData?.variant_id?.map((option) => option?._id) || [],
                     variant_name: resData?.variant_id?.map((option) => option?.variant_name) || [],
                     subCategory: resData?.sub_category || "",
-                    vendor: vendor || null
+                    vendor: vendor || null,
+                    Innervariations: innervariations
                 };
 
                 const fixedProductVariants = resData?.product_variants?.map(variant => {
@@ -1017,7 +1003,7 @@ const ParentProductIdentity = ({ productId }) => {
                     }));
 
                     setParentId(resData?._id);
-                    setVarientAttribute(resData?.variant_attribute_id.map((option) => option._id) || []);
+                    setVarientAttribute(resData?.variant_attribute_id?.map((option) => option._id) || []);
                     setProductVariations(fixedProductVariants);
                 });
 
@@ -1106,8 +1092,8 @@ const ParentProductIdentity = ({ productId }) => {
     }, [formData?.images]);
 
     useEffect(() => {
-        if (formData?.variant_id && varintList) {
-            const filteredVariantData = varintList.filter((variant) =>
+        if (formData?.variant_id && normalizedVariantList.length > 0) {
+            const filteredVariantData = normalizedVariantList.filter((variant) =>
                 formData.variant_id.includes(variant.id)
             );
 
@@ -1116,99 +1102,39 @@ const ParentProductIdentity = ({ productId }) => {
                 variantData: filteredVariantData
             }));
         }
-    }, [formData?.variant_id, varintList]);
+    }, [formData?.variant_id, normalizedVariantList]);
 
-    // FIXED: Use filteredData from useMemo instead of recalculating
+    // FIXED: Initialize innervariations when variant data changes
     useEffect(() => {
-        if (Object.keys(filteredData).length > 0) {
-            setFormData((prev) => ({ ...prev, Innervariations: filteredData }));
+        if (formData.variantData.length > 0 && Object.keys(formData.Innervariations).length === 0) {
+            // Initialize with empty arrays for each variant
+            const initialInnervariations = {};
+            formData.variantData.forEach(variant => {
+                initialInnervariations[variant.variant_name] = [];
+            });
 
-            // Only sync product variations if we don't have existing data
-            if (Object.keys(filteredData).length > 0) {
-                const hasExistingProductVariations = productVariations.length > 0;
-
-                if (!hasExistingProductVariations) {
-                    // For new products, create initial product variations
-                    const newProductVariations = formData.variantData.map(variant => {
-                        const innerVariants = filteredData[variant.variant_name] || [];
-
-                        return {
-                            _id: variant._id,
-                            variant_name: variant.variant_name,
-                            variant_attributes: innerVariants.map(innerVariant => ({
-                                _id: innerVariant._id,
-                                attribute: innerVariant.attribute_value,
-                                main_images: [null, null, null],
-                                preview_image: innerVariant.preview_image || "",
-                                thumbnail: innerVariant.thumbnail || "",
-                                edit_main_image: null,
-                                edit_preview_image: innerVariant.edit_preview_image || "",
-                                edit_main_image_data: innerVariant.edit_main_image_data || {},
-                                edit_preview_image_data: innerVariant.edit_preview_image_data || {},
-                            }))
-                        };
-                    });
-
-                    ReactDOM.unstable_batchedUpdates(() => {
-                        setProductVariations(newProductVariations);
-                    });
-                } else {
-                    // For existing products, check if we need to sync
-                    const currentAttributeIds = new Set();
-                    productVariations.forEach(variant => {
-                        variant.variant_attributes.forEach(attr => {
-                            currentAttributeIds.add(attr._id);
-                        });
-                    });
-
-                    const newAttributeIds = new Set();
-                    Object.values(filteredData).forEach(attributes => {
-                        attributes.forEach(attr => {
-                            newAttributeIds.add(attr._id);
-                        });
-                    });
-
-                    const attributesChanged =
-                        currentAttributeIds.size !== newAttributeIds.size ||
-                        [...currentAttributeIds].some(id => !newAttributeIds.has(id)) ||
-                        [...newAttributeIds].some(id => !currentAttributeIds.has(id));
-
-                    if (attributesChanged) {
-                        const syncedProductVariations = syncVariantAttributesWithExistingData(filteredData, productVariations);
-                        ReactDOM.unstable_batchedUpdates(() => {
-                            setProductVariations(syncedProductVariations);
-                        });
-                    }
-                }
-
-                if (Object.keys(filteredData).length > 0) {
-                    const initialCombinations = generateCombinations(filteredData);
-                    updateCombinationMap(initialCombinations);
-
-                    if (variantArrValues.length === 0) {
-                        const initialVariantData = initialCombinations.map(() => ({
-                            _id: "",
-                            product_id: "",
-                            sale_price: "",
-                            price: "",
-                            sale_start_date: "",
-                            sale_end_date: "",
-                            qty: ""
-                        }));
-
-                        ReactDOM.unstable_batchedUpdates(() => {
-                            setVariantArrValue(initialVariantData);
-                            setSellerSku(Array(initialCombinations.length).fill(""));
-                        });
-                    }
-                }
-            } else {
-                setProductVariations([]);
-            }
-        } else {
-            setProductVariations([]);
+            setFormData(prev => ({
+                ...prev,
+                Innervariations: initialInnervariations
+            }));
         }
-    }, [filteredData]);
+    }, [formData.variantData]);
+
+    // FIXED: Initialize product variations when variants are selected
+    useEffect(() => {
+        if (formData.variantData.length > 0 && productVariations.length === 0) {
+            const initialProductVariations = formData.variantData.map(variant => ({
+                _id: variant.id,
+                variant_name: variant.variant_name,
+                variant_attributes: [],
+                guide: []
+            }));
+
+            ReactDOM.unstable_batchedUpdates(() => {
+                setProductVariations(initialProductVariations);
+            });
+        }
+    }, [formData.variantData]);
 
     useEffect(() => {
         if (productId) {
@@ -1677,7 +1603,7 @@ const ParentProductIdentity = ({ productId }) => {
                                         }
                                     }}
                                     id="multiple-limit-tags"
-                                    options={varintList}
+                                    options={normalizedVariantList}
                                     getOptionLabel={(option) => option?.variant_name}
                                     renderInput={(params) => (
                                         <TextField
@@ -1701,7 +1627,7 @@ const ParentProductIdentity = ({ productId }) => {
                                         formData.variantData.length > 0
                                             ? formData.variantData
                                             : formData.variant_id
-                                                ? varintList.filter((variant) => formData.variant_id.includes(variant.id))
+                                                ? normalizedVariantList.filter((variant) => formData.variant_id.includes(variant.id))
                                                 : []
                                     }
                                     isOptionEqualToValue={(option, value) => option?.id === value?.id}
@@ -1753,7 +1679,7 @@ const ParentProductIdentity = ({ productId }) => {
                                                 }
                                             }}
                                             id="multiple-limit-tags"
-                                            options={inputField?.variant_attribute}
+                                            options={getAttributesForVariant(inputField?.variant_name)}
                                             getOptionLabel={(option) => option.attribute_value}
                                             renderInput={(params) => {
                                                 return (
@@ -1774,9 +1700,7 @@ const ParentProductIdentity = ({ productId }) => {
                                             }}
                                             sx={{ width: "100%" }}
                                             onChange={InnervariationsHandle(inputField?.variant_name)}
-                                            value={
-                                                formData?.Innervariations[inputField?.variant_name] || []
-                                            }
+                                            value={getSelectedAttributesForVariant(inputField?.variant_name)}
                                             isOptionEqualToValue={(option, value) => option._id === value._id}
                                         />
                                         {inputErrors.innervariation && (

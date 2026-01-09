@@ -17,21 +17,21 @@ import dayjs from "dayjs";
 import { toast } from "react-toastify";
 
 export default function ProductParentTable({
-                                               combinations,
-                                               formdataaaaa,
-                                               setSellerSku,
-                                               sellerSky,
-                                               variantArrValues,
-                                               setVariantArrValue,
-                                               setIsconponentLoader,
-                                               skuErrors,
-                                               setSkuErrors,
-                                               loadingSkus,
-                                               setLoadingSkus,
-                                               parentVariants,
-                                               checkForDuplicateSkus,
-                                               selectedVendor // Added selectedVendor prop
-                                           }) {
+    combinations,
+    formdataaaaa,
+    setSellerSku,
+    sellerSky,
+    variantArrValues,
+    setVariantArrValue,
+    setIsconponentLoader,
+    skuErrors,
+    setSkuErrors,
+    loadingSkus,
+    setLoadingSkus,
+    parentVariants,
+    checkForDuplicateSkus,
+    selectedVendor // Added selectedVendor prop
+}) {
     const [sellerSkyValues, setSellerSkyValues] = React.useState(
         sellerSky ? sellerSky : Array(combinations.length).fill("")
     );
@@ -73,11 +73,11 @@ export default function ProductParentTable({
     // Validate vendor match
     const validateVendorMatch = (childProductData, selectedVendor) => {
         if (!childProductData?.vendor_id || !selectedVendor) return null;
-        
+
         if (childProductData.vendor_id !== selectedVendor._id) {
             return `SKU not found in this shop.`;
         }
-        
+
         return null;
     };
 
