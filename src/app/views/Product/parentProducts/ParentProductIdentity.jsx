@@ -1,4 +1,5 @@
 import * as React from "react";
+import ReactDOM from "react-dom";
 import FormControl from "@mui/material/FormControl";
 import {
     Autocomplete,
@@ -23,8 +24,7 @@ import CircularProgress from "@mui/material/CircularProgress";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import ProductParentTable from "app/components/ProductListTable/ProductParentTable";
 import { ROUTE_CONSTANT } from "app/constant/routeContanst";
-import { useEffect } from "react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
 import ConfirmModal from "app/components/ConfirmModal";
 import ProductVariationsTable from "./ProductVariationTable";
@@ -93,6 +93,9 @@ const ParentProductIdentity = ({ productId }) => {
     const [route, setRoute] = useState(null);
     const [msg, setMsg] = useState(null);
     const [currentTab, setCurrentTab] = useState("combination");
+
+    // FIX: Client-side hydration check
+    const [isClient, setIsClient] = useState(false);
 
     function handleTabChanges(event, newValue) {
         setCurrentTab(newValue);
@@ -202,6 +205,7 @@ const ParentProductIdentity = ({ productId }) => {
     };
 
     React.useEffect(() => {
+        setIsClient(true);
         getBrandList();
         getVaraintList();
         getChildCategory();
@@ -258,18 +262,21 @@ const ParentProductIdentity = ({ productId }) => {
             .join('_');
     };
 
+    // FIX: Deterministic sorting function
+    const deterministicSort = (a, b) => {
+        if (a.sort_order !== b.sort_order) {
+            return a.sort_order - b.sort_order;
+        }
+        return a._id.localeCompare(b._id);
+    };
+
     const generateCombinations = (innervariations) => {
         let combinations = [];
         const variationKeys = Object.keys(innervariations);
 
-        // Sort attributes deterministically before generating combinations
+        // Apply deterministic sorting
         const variations = variationKeys.map((key) => {
-            return [...innervariations[key]].sort((a, b) => {
-                if (a.sort_order !== b.sort_order) {
-                    return a.sort_order - b.sort_order;
-                }
-                return a._id.localeCompare(b._id);
-            });
+            return [...innervariations[key]].sort(deterministicSort);
         });
 
         function combine(attributes, index, currentCombination) {
@@ -278,7 +285,7 @@ const ParentProductIdentity = ({ productId }) => {
                 return;
             }
 
-            // Attributes are already sorted
+            // Attributes are already sorted deterministically
             attributes[index].forEach((attribute) => {
                 const key = `key${index + 1}`;
                 currentCombination[key] = {
@@ -332,6 +339,29 @@ const ParentProductIdentity = ({ productId }) => {
         setCombinationMap(newMap);
     };
 
+    // FIX: Add useMemo for filteredData to ensure stable references
+    const filteredData = useMemo(() => {
+        if (!varientAttribute || !formData?.variantData || formData.variantData.length === 0) {
+            return {};
+        }
+
+        return formData.variantData.reduce((acc, item) => {
+            if (item?.variant_attribute) {
+                // Apply deterministic sorting
+                const sortedAttributes = [...item.variant_attribute].sort(deterministicSort);
+
+                const filteredAttributes = sortedAttributes.filter((variant) =>
+                    varientAttribute.includes(variant._id)
+                );
+
+                if (filteredAttributes.length > 0) {
+                    acc[item.variant_name] = filteredAttributes;
+                }
+            }
+            return acc;
+        }, {});
+    }, [varientAttribute, formData?.variantData]);
+
     const InnervariationsHandle = (variantId) => (event, newValue) => {
         const previousAttributes = formData.Innervariations[variantId] || [];
         const updatedInnervariations = {
@@ -350,13 +380,16 @@ const ParentProductIdentity = ({ productId }) => {
 
         updateCombinationMap(newCombinations);
 
-        setFormData((prev) => ({
-            ...prev,
-            Innervariations: updatedInnervariations
-        }));
+        // FIX: Use batching for all state updates
+        ReactDOM.unstable_batchedUpdates(() => {
+            setFormData((prev) => ({
+                ...prev,
+                Innervariations: updatedInnervariations
+            }));
 
-        setVariantArrValue(preservedVariantData);
-        setSellerSku(preservedSellerSky);
+            setVariantArrValue(preservedVariantData);
+            setSellerSku(preservedSellerSky);
+        });
 
         // Sync product variations when inner variations change
         const updatedProductVariations = formData.variantData.map(variant => {
@@ -386,12 +419,12 @@ const ParentProductIdentity = ({ productId }) => {
                 // Add new attributes that don't exist yet using _id
                 innerVariants.forEach(innerVariant => {
                     const existingAttribute = updatedAttributes.find(attr =>
-                        attr._id === innerVariant._id  // CHANGED: Use _id instead of attribute
+                        attr._id === innerVariant._id
                     );
 
                     if (!existingAttribute) {
                         updatedAttributes.push({
-                            _id: innerVariant._id, // Include attribute ID
+                            _id: innerVariant._id,
                             attribute: innerVariant.attribute_value,
                             main_images: [null, null, null],
                             preview_image: innerVariant.preview_image || "",
@@ -405,17 +438,17 @@ const ParentProductIdentity = ({ productId }) => {
                 });
 
                 return {
-                    _id: variant._id, // Include variant ID
+                    _id: variant._id,
                     ...existingVariant,
                     variant_attributes: updatedAttributes,
-                    guide: existingVariant.guide || [] // PRESERVE GUIDE DATA
+                    guide: existingVariant.guide || []
                 };
             } else {
                 return {
-                    _id: variant._id, // Include variant ID
+                    _id: variant._id,
                     variant_name: variant.variant_name,
                     variant_attributes: innerVariants.map(innerVariant => ({
-                        _id: innerVariant._id, // Include attribute ID
+                        _id: innerVariant._id,
                         attribute: innerVariant.attribute_value,
                         main_images: [null, null, null],
                         preview_image: innerVariant.preview_image || "",
@@ -429,8 +462,11 @@ const ParentProductIdentity = ({ productId }) => {
             }
         });
 
-        setProductVariations(updatedProductVariations);
-        setInputErrors((prev) => ({ ...prev, innervariation: "" }));
+        // FIX: Batch this update too
+        ReactDOM.unstable_batchedUpdates(() => {
+            setProductVariations(updatedProductVariations);
+            setInputErrors((prev) => ({ ...prev, innervariation: "" }));
+        });
     };
 
     const getChildCategory = async () => {
@@ -874,9 +910,7 @@ const ParentProductIdentity = ({ productId }) => {
         setProductVariations(updatedProductVariations);
     };
 
-    // console.log("Product Variant ", productVariations);
-
-    // FIXED: Enhanced function to sync variant attributes with existing data - NOW PRESERVES GUIDE DATA AND USES _id FOR MATCHING
+    // FIXED: Enhanced function to sync variant attributes with existing data
     const syncVariantAttributesWithExistingData = (filteredData, existingProductVariations) => {
         return formData.variantData.map(variant => {
             const innerVariants = filteredData[variant.variant_name] || [];
@@ -885,18 +919,18 @@ const ParentProductIdentity = ({ productId }) => {
             const existingVariant = existingProductVariations.find(pv => pv.variant_name === variant.variant_name);
 
             if (existingVariant) {
-                // Merge existing attributes with new inner variants using _id for matching
+                // Merge existing attributes with new inner variants using _id
                 const mergedAttributes = innerVariants.map(innerVariant => {
                     // Find if this attribute already exists in the existing data using _id
                     const existingAttribute = existingVariant.variant_attributes.find(attr =>
-                        attr._id === innerVariant._id  // CHANGED: Use _id instead of attribute
+                        attr._id === innerVariant._id
                     );
 
                     if (existingAttribute) {
                         // Preserve all existing data including thumbnails
                         return {
                             ...existingAttribute,
-                            _id: innerVariant._id, // Ensure _id is preserved
+                            _id: innerVariant._id,
                             attribute: innerVariant.attribute_value
                         };
                     } else {
@@ -916,7 +950,7 @@ const ParentProductIdentity = ({ productId }) => {
                 });
 
                 return {
-                    ...existingVariant, // This preserves the guide data
+                    ...existingVariant,
                     variant_attributes: mergedAttributes
                 };
             } else {
@@ -952,8 +986,8 @@ const ParentProductIdentity = ({ productId }) => {
 
                 const vendor = resData?.vendor_id ? vendors.find(v => v._id === resData.vendor_id) : null;
 
-                setFormData((prev) => ({
-                    ...prev,
+                // FIX: Prepare all updates first, then batch them
+                const formDataUpdates = {
                     productTitle: resData?.product_title || "",
                     description: resData?.description || "",
                     sellerSku: resData?.seller_sku || "",
@@ -963,24 +997,29 @@ const ParentProductIdentity = ({ productId }) => {
                     variant_name: resData?.variant_id?.map((option) => option?.variant_name) || [],
                     subCategory: resData?.sub_category || "",
                     vendor: vendor || null
-                }));
+                };
 
-                setParentId(resData?._id);
-                setVarientAttribute(resData?.variant_attribute_id.map((option) => option._id) || []);
-
-                // FIX: Convert guide object to array format
                 const fixedProductVariants = resData?.product_variants?.map(variant => {
                     if (variant.guide && !Array.isArray(variant.guide)) {
                         return {
                             ...variant,
-                            guide: [variant.guide] // Convert object to array
+                            guide: [variant.guide]
                         };
                     }
                     return variant;
                 }) || [];
 
-                console.log("Fixed Product Variant Res", fixedProductVariants);
-                setProductVariations(fixedProductVariants);
+                // FIX: Batch ALL state updates together
+                ReactDOM.unstable_batchedUpdates(() => {
+                    setFormData((prev) => ({
+                        ...prev,
+                        ...formDataUpdates
+                    }));
+
+                    setParentId(resData?._id);
+                    setVarientAttribute(resData?.variant_attribute_id.map((option) => option._id) || []);
+                    setProductVariations(fixedProductVariants);
+                });
 
                 if (resData?.sku && resData?.sku.length > 0) {
                     const arr = resData.sku.map(async (sku, i) => {
@@ -1037,8 +1076,11 @@ const ParentProductIdentity = ({ productId }) => {
                     });
 
                     Promise.all(arr).then((results) => {
-                        setVariantArrValue(results);
-                        setSellerSku(resData.sku);
+                        // FIX: Batch these updates too
+                        ReactDOM.unstable_batchedUpdates(() => {
+                            setVariantArrValue(results);
+                            setSellerSku(resData.sku);
+                        });
 
                         if (resData?.combinations) {
                             const initialMap = new Map();
@@ -1076,36 +1118,13 @@ const ParentProductIdentity = ({ productId }) => {
         }
     }, [formData?.variant_id, varintList]);
 
-    // FIXED: This useEffect was overwriting the product variations data INCLUDING GUIDE DATA
+    // FIXED: Use filteredData from useMemo instead of recalculating
     useEffect(() => {
-        if (varientAttribute && formData?.variantData && formData.variantData.length > 0) {
-            const filteredData = formData.variantData.reduce((acc, item) => {
-                if (item?.variant_attribute) {
-                    // Sort attributes deterministically first by sort_order, then by _id
-                    const sortedAttributes = [...item.variant_attribute].sort((a, b) => {
-                        if (a.sort_order !== b.sort_order) {
-                            return a.sort_order - b.sort_order;
-                        }
-                        return a._id.localeCompare(b._id);
-                    });
-
-                    const filteredAttributes = sortedAttributes.filter((variant) =>
-                        varientAttribute.includes(variant._id)
-                    );
-
-                    if (filteredAttributes.length > 0) {
-                        acc[item.variant_name] = filteredAttributes;
-                    }
-                }
-                return acc;
-            }, {});
-
+        if (Object.keys(filteredData).length > 0) {
             setFormData((prev) => ({ ...prev, Innervariations: filteredData }));
 
-            // Only sync product variations if we don't have existing data (for new products)
-            // OR if we need to update based on filtered data changes
+            // Only sync product variations if we don't have existing data
             if (Object.keys(filteredData).length > 0) {
-                // Check if we have existing product variations (from API response)
                 const hasExistingProductVariations = productVariations.length > 0;
 
                 if (!hasExistingProductVariations) {
@@ -1114,10 +1133,10 @@ const ParentProductIdentity = ({ productId }) => {
                         const innerVariants = filteredData[variant.variant_name] || [];
 
                         return {
-                            _id: variant._id, // Include variant ID
+                            _id: variant._id,
                             variant_name: variant.variant_name,
                             variant_attributes: innerVariants.map(innerVariant => ({
-                                _id: innerVariant._id, // Include attribute ID
+                                _id: innerVariant._id,
                                 attribute: innerVariant.attribute_value,
                                 main_images: [null, null, null],
                                 preview_image: innerVariant.preview_image || "",
@@ -1129,43 +1148,36 @@ const ParentProductIdentity = ({ productId }) => {
                             }))
                         };
                     });
-                    setProductVariations(newProductVariations);
+
+                    ReactDOM.unstable_batchedUpdates(() => {
+                        setProductVariations(newProductVariations);
+                    });
                 } else {
                     // For existing products, check if we need to sync
-                    // Only sync if the attribute set has actually changed (not for drag & drop reordering)
                     const currentAttributeIds = new Set();
                     productVariations.forEach(variant => {
                         variant.variant_attributes.forEach(attr => {
-                            currentAttributeIds.add(attr._id); // CHANGED: Use _id instead of attribute
+                            currentAttributeIds.add(attr._id);
                         });
                     });
 
                     const newAttributeIds = new Set();
                     Object.values(filteredData).forEach(attributes => {
                         attributes.forEach(attr => {
-                            newAttributeIds.add(attr._id); // CHANGED: Use _id instead of attribute_value
+                            newAttributeIds.add(attr._id);
                         });
                     });
 
-                    // Only sync if attributes have been added or removed, not just reordered
                     const attributesChanged =
                         currentAttributeIds.size !== newAttributeIds.size ||
                         [...currentAttributeIds].some(id => !newAttributeIds.has(id)) ||
                         [...newAttributeIds].some(id => !currentAttributeIds.has(id));
 
-                    console.log("🔄 Attribute sync check:", {
-                        currentAttributeIds: [...currentAttributeIds],
-                        newAttributeIds: [...newAttributeIds],
-                        attributesChanged
-                    });
-
                     if (attributesChanged) {
-                        console.log("🔄 Attributes changed, syncing...");
                         const syncedProductVariations = syncVariantAttributesWithExistingData(filteredData, productVariations);
-                        setProductVariations(syncedProductVariations);
-                    } else {
-                        console.log("🔄 Only reordering detected, preserving current order");
-                        // Don't update productVariations - preserve the drag & drop order
+                        ReactDOM.unstable_batchedUpdates(() => {
+                            setProductVariations(syncedProductVariations);
+                        });
                     }
                 }
 
@@ -1183,19 +1195,20 @@ const ParentProductIdentity = ({ productId }) => {
                             sale_end_date: "",
                             qty: ""
                         }));
-                        setVariantArrValue(initialVariantData);
-                        setSellerSku(Array(initialCombinations.length).fill(""));
+
+                        ReactDOM.unstable_batchedUpdates(() => {
+                            setVariantArrValue(initialVariantData);
+                            setSellerSku(Array(initialCombinations.length).fill(""));
+                        });
                     }
                 }
             } else {
-                // If no filtered data, clear product variations
                 setProductVariations([]);
             }
         } else {
-            // If no variant data, clear product variations
             setProductVariations([]);
         }
-    }, [varientAttribute, formData?.variantData]);
+    }, [filteredData]);
 
     useEffect(() => {
         if (productId) {
@@ -1204,6 +1217,11 @@ const ParentProductIdentity = ({ productId }) => {
     }, [vendors]);
 
     const currentCombinations = getCurrentCombinations();
+
+    // FIX: Prevent hydration mismatch
+    if (!isClient) {
+        return null;
+    }
 
     return (
         <>

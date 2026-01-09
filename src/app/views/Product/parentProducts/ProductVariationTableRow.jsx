@@ -3,8 +3,7 @@ import TableRow from "@mui/material/TableRow";
 import TableCell from "@mui/material/TableCell";
 import { Box, IconButton } from "@mui/material";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
-import ImageCell, { BulkUploadCell } from "app/views/product_new/add_product/tabs/productTabs/Variations/components/imageComponents/ImageCell";
-// import ImageCell, { BulkUploadCell } from "./imageComponents/ImageCell";
+import ImageCell from "app/views/product_new/add_product/tabs/productTabs/Variations/components/imageComponents/ImageCell";
 
 const DraggableTableRow = ({
     children,
@@ -128,29 +127,12 @@ const ProductVariationTableRow = ({
         setDragOverIndex(null);
     };
 
-    // Handle bulk image upload
-    // const handleBulkImageUpload = (variantIndex, attributeIndex, event) => {
-    //     const files = Array.from(event.target.files);
-    //     if (files.length === 0) return;
-
-    //     files.slice(0, 3).forEach((file, index) => {
-    //         const imageKey = `main_images[${index}]`;
-    //         onImageUpload(variantIndex, attributeIndex, imageKey, { target: { files: [file] } });
-    //     });
-    // };
-
-    // Check if image is editable
-    // const isImageEditable = (imageType, imageIndex) => {
-    //     if (imageType === "preview_image") return true;
-    //     if (imageType === "main_images" && imageIndex === 0) return true;
-    //     return false;
-    // };
-
     return (
         <>
             {variant.variant_attributes?.map((attribute, attributeIndex) => (
+                // FIX: Use _id for React key instead of attribute_value
                 <DraggableTableRow
-                    key={`${variantIndex}-${attributeIndex}-${attribute.attribute}`}
+                    key={`${variant.variant_name}-${attribute._id}`}
                     index={attributeIndex}
                     onDragStart={handleDragStart}
                     onDragOver={handleDragOver}
@@ -188,87 +170,6 @@ const ProductVariationTableRow = ({
                     {visibleColumns.attribute && (
                         <TableCell align="center">{attribute.attribute}</TableCell>
                     )}
-
-                    {/* Bulk Upload Column */}
-                    {/* {visibleColumns.multipleUpload && (
-                        <TableCell align="center">
-                            <BulkUploadCell
-                                item={attribute}
-                                index={attributeIndex}
-                                combindex={variantIndex}
-                                onBulkImageUpload={handleBulkImageUpload}
-                            />
-                        </TableCell>
-                    )} */}
-
-                    {/* Main Image 1 Column */}
-                    {/* {visibleColumns.mainImage1 && (
-                        <TableCell align="center">
-                            <ImageCell
-                                item={attribute}
-                                index={attributeIndex}
-                                imageType="main_images"
-                                imageIndex={0}
-                                editData={attribute.edit_main_image_data || null}
-                                combindex={variantIndex}
-                                onImageUpload={onImageUpload}
-                                onImageRemove={onImageRemove}
-                                onImageEdit={onImageEdit}
-                                isEditable={isImageEditable("main_images", 0)}
-                            />
-                        </TableCell>
-                    )} */}
-
-                    {/* Main Image 2 Column */}
-                    {/* {visibleColumns.mainImage2 && (
-                        <TableCell align="center">
-                            <ImageCell
-                                item={attribute}
-                                index={attributeIndex}
-                                imageType="main_images"
-                                imageIndex={1}
-                                combindex={variantIndex}
-                                onImageUpload={onImageUpload}
-                                onImageRemove={onImageRemove}
-                                onImageEdit={onImageEdit}
-                                isEditable={false}
-                            />
-                        </TableCell>
-                    )} */}
-
-                    {/* Main Image 3 Column */}
-                    {/* {visibleColumns.mainImage3 && (
-                        <TableCell align="center">
-                            <ImageCell
-                                item={attribute}
-                                index={attributeIndex}
-                                imageType="main_images"
-                                imageIndex={2}
-                                combindex={variantIndex}
-                                onImageUpload={onImageUpload}
-                                onImageRemove={onImageRemove}
-                                onImageEdit={onImageEdit}
-                                isEditable={false}
-                            />
-                        </TableCell>
-                    )} */}
-
-                    {/* Preview Image Column */}
-                    {/* {visibleColumns.preview && (
-                        <TableCell align="center">
-                            <ImageCell
-                                item={attribute}
-                                index={attributeIndex}
-                                imageType="preview_image"
-                                editData={attribute.edit_preview_image_data || null}
-                                combindex={variantIndex}
-                                onImageUpload={onImageUpload}
-                                onImageRemove={onImageRemove}
-                                onImageEdit={onImageEdit}
-                                isEditable={isImageEditable("preview_image", null)}
-                            />
-                        </TableCell>
-                    )} */}
 
                     {/* Thumbnail Column */}
                     {visibleColumns.thumbnail && (
