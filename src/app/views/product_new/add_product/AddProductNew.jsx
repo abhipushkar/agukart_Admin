@@ -20,7 +20,8 @@ export default function AddProductNew() {
     const [searchParams] = useSearchParams();
     const queryId = searchParams.get("id");
     const copyQueryId = searchParams.get("_id");
-    const isCopied = searchParams.get("listing") === "copy";
+    const listingMode = searchParams.get("listing");
+    const isCopyMode = Boolean(queryId || copyQueryId) && listingMode === "copy";
     const [currentTab, setCurrentTab] = useState(0);
 
     const {
@@ -39,6 +40,7 @@ export default function AddProductNew() {
         draftLoading,
         loadingProductData,
         setLoadingProductData,
+        safeSetFormData,
     } = useProductFormStore();
 
     const {
@@ -61,8 +63,42 @@ export default function AddProductNew() {
 
     // Fetch edit product data if query parameters exist
     useEffect(() => {
-        fetchEditProductData(queryId, copyQueryId, isCopied);
-    }, [queryId, copyQueryId, auth_key, initializeFormWithEditData]);
+        const fetchData = async () => {
+            try {
+                // Use fetchEditProductData from useProductAPI
+                const editData = await fetchEditProductData(queryId, copyQueryId, isCopyMode);
+
+
+
+                if (editData) {
+                    // Clean parent-related fields in copy mode
+                    const cleanedEditData = isCopyMode ? {
+                        ...editData,
+                        parent_id: null,
+                        parent_product: null,
+                        isChild: false,
+                    } : editData;
+
+                    console.log("Copy Mode ", isCopyMode, cleanedEditData);
+                    // Initialize form with cleaned data
+                    initializeFormWithEditData(cleanedEditData, isCopyMode);
+
+                    // Also explicitly clear parentProduct in store for copy mode using safe setter
+                    if (isCopyMode) {
+                        safeSetFormData({
+                            parentProduct: null
+                        }, true);
+                    }
+                }
+            } catch (error) {
+                console.error("Error fetching product data:", error);
+            }
+        };
+
+        if (queryId || copyQueryId) {
+            fetchData();
+        }
+    }, [queryId, copyQueryId, isCopyMode, initializeFormWithEditData, safeSetFormData]);
 
     const handleOpen = (type, msg) => {
         setMsg(msg?.message ? msg?.message : msg);

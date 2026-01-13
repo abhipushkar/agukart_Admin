@@ -664,6 +664,7 @@ export const useProductAPI = () => {
             imgArr.forEach((file) => {
                 fData.append("images", file);
             });
+
             fData.append("_id", id);
 
             const res = await ApiService.postImage(apiEndpoints.addProductImages, fData, auth_key);
@@ -822,7 +823,7 @@ export const useProductAPI = () => {
                         console.log("Parent Id is", productData.parent_id);
                         const parentData = await fetchParentProductData(productData.parent_id);
                         console.log("OUTSIDE IF Parent Data is", parentData);
-                        if (parentData) {
+                        if (parentData && !copyQueryId) {
                             console.log("Parent Data is", parentData);
                             useProductFormStore.getState().setParentProductData(parentData);
                         }

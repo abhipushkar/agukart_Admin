@@ -212,6 +212,19 @@ export const useProductFormStore = create(
                 formData: { ...state.formData, ...updates }
             })),
 
+            // NEW: Safe setter with copy mode protection
+            safeSetFormData: (updates, isCopyMode = false) => set((state) => {
+                // If in copy mode, ensure parentProduct is null
+                const safeUpdates = isCopyMode ? {
+                    ...updates,
+                    parentProduct: null
+                } : updates;
+
+                return {
+                    formData: { ...state.formData, ...safeUpdates }
+                };
+            }),
+
             setFormValues: (updates) => set((state) => ({
                 formValues: { ...state.formValues, ...updates }
             })),
@@ -321,6 +334,41 @@ export const useProductFormStore = create(
             setAltText: (altText) => set({ altText }),
 
             setKeys: (keys) => set({ keys }),
+
+            // ========== GUIDE HANDLERS (for variant guides) ==========
+            handleGuideUpdate: (variantIndex, guideData) => {
+                const state = get();
+                const updatedProductVariants = [...state.product_variants];
+
+                const newProductVariants = updatedProductVariants.map((variant, vIndex) => {
+                    if (vIndex === variantIndex) {
+                        return {
+                            ...variant,
+                            guide: guideData ? [guideData] : [] // Store guide as an array
+                        };
+                    }
+                    return variant;
+                });
+
+                set({ product_variants: newProductVariants });
+            },
+
+            handleGuideRemove: (variantIndex) => {
+                const state = get();
+                const updatedProductVariants = [...state.product_variants];
+
+                const newProductVariants = updatedProductVariants.map((variant, vIndex) => {
+                    if (vIndex === variantIndex) {
+                        return {
+                            ...variant,
+                            guide: [] // Clear guide array
+                        };
+                    }
+                    return variant;
+                });
+
+                set({ product_variants: newProductVariants });
+            },
 
             // ========== IMAGE HANDLERS (now work with product_variants) ==========
             handleImageUpload: (variantIndex, attributeIndex, imageKey, event) => {
@@ -605,18 +653,26 @@ export const useProductFormStore = create(
 
             // ========== INITIALIZE FORM WITH EDIT DATA ==========
             initializeFormWithEditData: (editData, isCopied = false) => {
-                console.log("IS COPIED:", editData.sellerSku, editData.seller_sku);
+                console.log("IS COPIED:", isCopied, editData?.sellerSku, editData?.seller_sku);
 
-                const imageObjects = isCopied ? [] : editData?.image?.map((image) => ({
-                    src: `${editData.imageBaseUrl}${image}`
+                // Clean parent-related fields for copy mode
+                const cleanedEditData = isCopied ? {
+                    ...editData,
+                    parent_id: null,
+                    parent_product: null,
+                    isChild: false
+                } : editData;
+
+                const imageObjects = isCopied ? [] : cleanedEditData?.image?.map((image) => ({
+                    src: `${cleanedEditData.imageBaseUrl}${image}`
                 })) || [];
 
-                const videoObjects = isCopied ? [] : editData?.videos?.map((video) => ({
-                    src: `${editData.videoBaseUrl}${video}`
+                const videoObjects = isCopied ? [] : cleanedEditData?.videos?.map((video) => ({
+                    src: `${cleanedEditData.videoBaseUrl}${video}`
                 })) || [];
 
-                const variationsData = editData?.variations_data || [];
-                const formValues = editData?.form_values || {
+                const variationsData = cleanedEditData?.variations_data || [];
+                const formValues = cleanedEditData?.form_values || {
                     prices: "",
                     quantities: "",
                     isCheckedPrice: false,
@@ -624,83 +680,84 @@ export const useProductFormStore = create(
                 };
 
                 // Initialize product_variants from edit data if available
-                const product_variants = editData?.product_variants || [];
+                const product_variants = cleanedEditData?.product_variants || [];
 
                 set({
                     formData: {
-                        productTitle: editData?.product_title || "",
-                        productType: editData?.product_type || "productType",
-                        subCategory: editData?.category || "",
-                        parentProduct: editData.parent_id,
+                        productTitle: cleanedEditData?.product_title || "",
+                        productType: cleanedEditData?.product_type || "productType",
+                        subCategory: cleanedEditData?.category || "",
+                        // CRITICAL: Set parentProduct to null for copied products
+                        parentProduct: isCopied ? null : cleanedEditData?.parent_id || null,
                         deletedVariantImages: {},
-                        variations: editData?.variant_attribute_id || [],
-                        brandName: editData?.brand_id || "",
-                        productDescription: editData?.description || "",
-                        bulletPoints: editData?.bullet_points || "",
-                        customization: editData?.customize || "No",
-                        popularGifts: editData?.popular_gifts || "No",
-                        bestSelling: editData?.bestseller || "No",
-                        stylesKeyWords: [{ value: editData?.style_name || "" }],
-                        searchTerms: editData?.size || "",
-                        serchTemsKeyArray: editData?.search_terms || [],
-                        StyleName: editData?.style_name || "",
-                        Shopingsweight: editData?.shipping_weight || "",
-                        DisplayDimenssionlength: editData?.display_dimension_length || "",
-                        DisplayDimenssionwidth: editData?.display_dimension_width || "",
-                        DisplayDimenssionheight: editData?.display_dimension_height || "",
-                        PackageDimenssionheight: editData?.package_dimension_height || "",
-                        PackageDimenssionlength: editData?.package_dimension_length || "",
-                        PackageDimenssionwidth: editData?.package_dimension_width || "",
-                        PackageDimenssionUnit: editData?.package_dimension_unit || "",
-                        productcateUnitCount: editData?.unit_count || "",
-                        productcateUnitCounttypeee: editData?.unit_count_type || "",
-                        HowAreYouProuduct: editData?.how_product_made || "",
+                        variations: cleanedEditData?.variant_attribute_id || [],
+                        brandName: cleanedEditData?.brand_id || "",
+                        productDescription: cleanedEditData?.description || "",
+                        bulletPoints: cleanedEditData?.bullet_points || "",
+                        customization: cleanedEditData?.customize || "No",
+                        popularGifts: cleanedEditData?.popular_gifts || "No",
+                        bestSelling: cleanedEditData?.bestseller || "No",
+                        stylesKeyWords: [{ value: cleanedEditData?.style_name || "" }],
+                        searchTerms: cleanedEditData?.size || "",
+                        serchTemsKeyArray: cleanedEditData?.search_terms || [],
+                        StyleName: cleanedEditData?.style_name || "",
+                        Shopingsweight: cleanedEditData?.shipping_weight || "",
+                        DisplayDimenssionlength: cleanedEditData?.display_dimension_length || "",
+                        DisplayDimenssionwidth: cleanedEditData?.display_dimension_width || "",
+                        DisplayDimenssionheight: cleanedEditData?.display_dimension_height || "",
+                        PackageDimenssionheight: cleanedEditData?.package_dimension_height || "",
+                        PackageDimenssionlength: cleanedEditData?.package_dimension_length || "",
+                        PackageDimenssionwidth: cleanedEditData?.package_dimension_width || "",
+                        PackageDimenssionUnit: cleanedEditData?.package_dimension_unit || "",
+                        productcateUnitCount: cleanedEditData?.unit_count || "",
+                        productcateUnitCounttypeee: cleanedEditData?.unit_count_type || "",
+                        HowAreYouProuduct: cleanedEditData?.how_product_made || "",
                         productdetailsOccassion: [],
-                        productdetailsDesign: editData?.design || "",
-                        packageWidth: editData?.package_weight || "",
-                        launchData: editData?.launch_date ? dayjs(editData.launch_date) : null,
-                        releaseDate: editData?.release_date ? dayjs(editData.release_date) : null,
-                        taxRatio: editData?.tax_ratio || "6",
+                        productdetailsDesign: cleanedEditData?.design || "",
+                        packageWidth: cleanedEditData?.package_weight || "",
+                        launchData: cleanedEditData?.launch_date ? dayjs(cleanedEditData.launch_date) : null,
+                        releaseDate: cleanedEditData?.release_date ? dayjs(cleanedEditData.release_date) : null,
+                        taxRatio: cleanedEditData?.tax_ratio || "6",
                         images: imageObjects,
                         videos: videoObjects,
                         productsize: "",
-                        varientName: editData?.variant_attribute_id || [],
-                        ParentMainId: editData?.variant_id || [],
-                        productsizeMap: editData?.size_map || "",
-                        productcolor: editData?.color_textarea || "",
-                        colorMap: editData?.color_map || "",
-                        productweight: editData?.shipping_weight_unit || "",
-                        packageweight: editData?.package_weight_unit || "",
-                        productunitValue: editData?.display_dimension_unit || "",
-                        sellerSku: isCopied ? "" : editData?.seller_sku || editData?.sku_code || "",
-                        ProductTaxCode: editData?.tax_code || "",
-                        shipingTemplates: editData?.shipping_templates || "",
-                        yourPrice: editData?.price || "",
-                        salePrice: editData?.sale_price || "",
-                        saleStartDate: editData?.sale_start_date ? dayjs(editData.sale_start_date) : null,
-                        saleEndDate: editData?.sale_end_date ? dayjs(editData.sale_end_date) : null,
-                        quantity: editData?.qty || "",
-                        maxOrderQuantity: editData?.max_order_qty || "",
-                        color: editData?.color || "",
-                        offeringCanBe: editData?.can_offer || "",
-                        isGiftWrap: editData?.gift_wrap || "",
-                        transformData: editData?.zoom || { scale: 1, x: 0, y: 0 },
-                        reStockDate: editData?.restock_date ? dayjs(editData.restock_date) : null,
-                        productionTime: editData?.production_time || "",
-                        vendor: editData?.vendor_id || "",
-                        isCombination: editData?.isCombination?.toString() || "false",
-                        tabs: editData?.tabs || [],
-                        exchangePolicy: editData?.exchangePolicy || "",
-                        dynamicFields: editData?.dynamicFields || {},
+                        varientName: cleanedEditData?.variant_attribute_id || [],
+                        ParentMainId: cleanedEditData?.variant_id || [],
+                        productsizeMap: cleanedEditData?.size_map || "",
+                        productcolor: cleanedEditData?.color_textarea || "",
+                        colorMap: cleanedEditData?.color_map || "",
+                        productweight: cleanedEditData?.shipping_weight_unit || "",
+                        packageweight: cleanedEditData?.package_weight_unit || "",
+                        productunitValue: cleanedEditData?.display_dimension_unit || "",
+                        sellerSku: isCopied ? "" : cleanedEditData?.seller_sku || cleanedEditData?.sku_code || "",
+                        ProductTaxCode: cleanedEditData?.tax_code || "",
+                        shipingTemplates: cleanedEditData?.shipping_templates || "",
+                        yourPrice: cleanedEditData?.price || "",
+                        salePrice: cleanedEditData?.sale_price || "",
+                        saleStartDate: cleanedEditData?.sale_start_date ? dayjs(cleanedEditData.sale_start_date) : null,
+                        saleEndDate: cleanedEditData?.sale_end_date ? dayjs(cleanedEditData.sale_end_date) : null,
+                        quantity: cleanedEditData?.qty || "",
+                        maxOrderQuantity: cleanedEditData?.max_order_qty || "",
+                        color: cleanedEditData?.color || "",
+                        offeringCanBe: cleanedEditData?.can_offer || "",
+                        isGiftWrap: cleanedEditData?.gift_wrap || "",
+                        transformData: cleanedEditData?.zoom || { scale: 1, x: 0, y: 0 },
+                        reStockDate: cleanedEditData?.restock_date ? dayjs(cleanedEditData.restock_date) : null,
+                        productionTime: cleanedEditData?.production_time || "",
+                        vendor: cleanedEditData?.vendor_id || "",
+                        isCombination: cleanedEditData?.isCombination?.toString() || "false",
+                        tabs: cleanedEditData?.tabs || [],
+                        exchangePolicy: cleanedEditData?.exchangePolicy || "",
+                        dynamicFields: cleanedEditData?.dynamicFields || {},
                     },
                     formValues,
                     variationsData,
                     selectedVariations: variationsData?.map((item) => item?.name) || [],
-                    customizationData: editData?.customizationData || { label: "", instructions: "", customizations: [] },
-                    combinations: editData?.combinationData || [],
+                    customizationData: cleanedEditData?.customizationData || { label: "", instructions: "", customizations: [] },
+                    combinations: cleanedEditData?.combinationData || [],
                     product_variants: product_variants, // NEW: Initialize product_variants
-                    keys: editData?.search_terms || [],
-                    altText: editData?.altText || []
+                    keys: cleanedEditData?.search_terms || [],
+                    altText: cleanedEditData?.altText || []
                 });
             },
 

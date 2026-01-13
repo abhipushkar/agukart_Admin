@@ -327,10 +327,14 @@ const VariationsTable = ({ setShowVariantModal, isSynced }) => {
         setCurrentVariantIndex(variantIndex);
         const variant = product_variants[variantIndex];
 
-        if (variant.guide && variant.guide.length > 0) {
+        if (variant?.guide && variant.guide.length > 0) {
+            const existingGuide = variant.guide[0];
             setCurrentGuide({
-                ...variant.guide[0],
-                guide_file_url: variant.guide[0].guide_file ? createObjectURL(variant.guide[0].guide_file) : ""
+                guide_name: existingGuide.guide_name || "",
+                guide_file: existingGuide.guide_file || null,
+                guide_description: existingGuide.guide_description || "",
+                guide_type: existingGuide.guide_type || "",
+                guide_file_url: existingGuide.guide_file_url || ""
             });
         } else {
             setCurrentGuide({
@@ -360,10 +364,13 @@ const VariationsTable = ({ setShowVariantModal, isSynced }) => {
         const file = event.target.files[0];
         if (!file) return;
 
+        // Create object URL for preview
+        const fileUrl = URL.createObjectURL(file);
+
         setCurrentGuide(prev => ({
             ...prev,
             guide_file: file,
-            guide_file_url: URL.createObjectURL(file),
+            guide_file_url: fileUrl,
             guide_type: isImageFile(file) ? 'image' : 'document',
             guide_name: prev.guide_name || file.name
         }));
@@ -394,8 +401,26 @@ const VariationsTable = ({ setShowVariantModal, isSynced }) => {
 
     const handleSaveGuide = () => {
         if (currentVariantIndex === null) return;
-        // TODO: Implement guide saving to product_variants
+
+        const { handleGuideUpdate } = useProductFormStore.getState();
+
+        // Create guide data object
+        const guideData = {
+            guide_name: currentGuide.guide_name,
+            guide_file: currentGuide.guide_file,
+            guide_description: currentGuide.guide_description,
+            guide_type: currentGuide.guide_type,
+            guide_file_url: currentGuide.guide_file_url
+        };
+
+        // Update guide in store
+        handleGuideUpdate(currentVariantIndex, guideData);
         handleCloseGuideDialog();
+    };
+
+    const handleRemoveGuide = (variantIndex) => {
+        const { handleGuideRemove } = useProductFormStore.getState();
+        handleGuideRemove(variantIndex);
     };
 
     const handleOpenFile = (guide) => {
@@ -509,10 +534,15 @@ const VariationsTable = ({ setShowVariantModal, isSynced }) => {
 
     // Attribute Cell with Tooltip Component
     const AttributeCell = ({ variant, variantIndex, attributeName }) => {
-        const hasGuide = variant.guide && variant.guide.length > 0 && variant.guide[0];
+        const hasGuide = variant?.guide && Array.isArray(variant.guide) && variant.guide.length > 0 && variant.guide[0];
         const guide = hasGuide ? variant.guide[0] : null;
         const isImage = guide && isImageFile(guide.guide_file);
         const fileUrl = guide?.guide_file_url || (guide?.guide_file ? createObjectURL(guide.guide_file) : null);
+
+        const handleRemoveGuideClick = (e) => {
+            e.stopPropagation(); // Prevent tooltip from opening
+            handleRemoveGuide(variantIndex);
+        };
 
         return (
             <TableCell align="center" sx={{ wordBreak: "keep-all", width: 200, fontWeight: 600, py: 2 }}>
@@ -521,9 +551,20 @@ const VariationsTable = ({ setShowVariantModal, isSynced }) => {
                         <Box sx={{ p: 1, maxWidth: 300 }}>
                             {hasGuide ? (
                                 <Box>
-                                    <Typography variant="subtitle2" fontWeight={600} mb={1}>
-                                        Guide Preview
-                                    </Typography>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                                        <Typography variant="subtitle2" fontWeight={600}>
+                                            Guide Preview
+                                        </Typography>
+                                        <IconButton
+                                            size="small"
+                                            color="error"
+                                            onClick={handleRemoveGuideClick}
+                                            title="Remove guide"
+                                            sx={{ ml: 1 }}
+                                        >
+                                            <DeleteIcon fontSize="small" />
+                                        </IconButton>
+                                    </Box>
                                     {guide.guide_name && (
                                         <Typography variant="body2" mb={1}>
                                             <strong>Name:</strong> {guide.guide_name}
@@ -645,9 +686,9 @@ const VariationsTable = ({ setShowVariantModal, isSynced }) => {
                             fontSize="small"
                             sx={{
                                 cursor: 'pointer',
-                                color: 'primary.main',
+                                color: hasGuide ? 'success.main' : 'primary.main',
                                 '&:hover': {
-                                    color: 'primary.dark'
+                                    color: hasGuide ? 'success.dark' : 'primary.dark'
                                 }
                             }}
                             onClick={() => handleOpenGuideDialog(variantIndex)}
