@@ -12,6 +12,7 @@ import { useEffect } from 'react';
 import MailOutlineIcon from "@mui/icons-material/MailOutline";
 import { REACT_APP_WEB_URL } from 'config';
 import MessagePopup from './MessagePopup';
+import { useCallback } from 'react';
 
 const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData }) => {
     console.log({ saleData, item, vendorData }, "trhththtt")
@@ -20,6 +21,7 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
     const [stock, setStock] = useState(0);
+    const [newStock, setNewStock] = useState(null);
     const [quantityOwner, setQuantityOwner] = useState(null);
     const [matchedCombination, setMatchedCombination] = useState(null);
     const [combinationStockId, setCombinationStockId] = useState([]);
@@ -27,6 +29,7 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
 
     const popClose = () => {
         setOpenPop(false);
+        setNewStock(stock);
     };
 
     const handleClickPopup = () => {
@@ -63,11 +66,11 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
     };
 
     // 1️⃣ SINGLE quantity owner resolver
-    const determineQuantityOwner = () => {
+    const determineQuantityOwner = useCallback(() => {
         const product = saleData?.productMain;
         const productQty = Number(product?.qty || 0);
 
-        if (productQty > 0) {
+        if (product.form_values?.isCheckedQuantity === false) {
             return {
                 owner: 'product',
                 quantity: productQty,
@@ -88,10 +91,10 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
             quantity: 0,
             source: null
         };
-    };
+    }, [saleData?.productMain]);
 
     // 4️⃣ Matching combination rule - Only match Etsy-style internal variants
-    const findMatchedCombination = (combinationsData) => {
+    const findMatchedCombination = useCallback((combinationsData) => {
         if (!combinationsData || combinationsData.length === 0) {
             return null;
         }
@@ -145,7 +148,7 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
         });
 
         return matchedCombination;
-    };
+    }, [saleData?.variants]);
 
     useEffect(() => {
         // Determine quantity owner once
@@ -163,17 +166,11 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                 setStock(matchedQty);
 
                 // Set the combination IDs from the matched combination
-                const combinationIds = matched.combIds || [];
-                setCombinationStockId(combinationIds);
+                setCombinationStockId(matched.combIds || []);
 
                 console.log('Matched combination:', matched);
-                console.log('Combination IDs:', combinationIds);
-                console.log('Quantity:', matchedQty);
-
-                // If matched combination has 0 or negative quantity, treat as "none"
-                if (matchedQty <= 0) {
-                    setQuantityOwner('none');
-                }
+                console.log('Combination IDs:', combinationStockId);
+                console.log('Order Data Quantity:', matchedQty);
             } else {
                 // No valid combination found or combination not visible/checked
                 setStock(0);
@@ -187,17 +184,12 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
             setCombinationStockId([]);
 
             console.log('Product quantity:', productQty);
-
-            // If product has 0 quantity, treat as "none"
-            if (productQty <= 0) {
-                setQuantityOwner('none');
-            }
         } else {
             setStock(0);
             setCombinationStockId([]);
             console.log('No quantity owner (none)');
         }
-    }, [saleData]);
+    }, [determineQuantityOwner, findMatchedCombination, saleData]);
 
     const updateQty = async () => {
         try {
@@ -207,23 +199,23 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                 // Update product quantity
                 payload = {
                     _id: saleData?.productMain?._id,
-                    qty: stock,
+                    qty: newStock,
                     isCombination: false
                 };
             } else if (quantityOwner === 'combination' && matchedCombination) {
                 // Get the correct combination IDs from matched combination
-                const combinationIds = matchedCombination.combIds || [];
+                // const combinationIds = matchedCombination.combIds || [];
 
                 // Update combination quantity
                 payload = {
                     _id: saleData?.productMain?._id,
-                    qty: stock,
+                    qty: newStock,
                     isCombination: true,
-                    combinationData: combinationIds, // Send the specific combination IDs
+                    combinationData: combinationStockId, // Send the specific combination IDs
                     combinationQty: stock
                 };
 
-                console.log('Updating combination with IDs:', combinationIds);
+                console.log('Updating combination with IDs:', combinationStockId);
                 console.log('New quantity:', stock);
             } else {
                 console.error('Cannot update quantity: No valid quantity owner');
@@ -240,7 +232,7 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                 getOrderList();
             }
         } catch (error) {
-            handleOpen("error", error);
+            handleOpen("error", error.response.message);
         }
     };
 
@@ -639,25 +631,22 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                                         </Typography>
                                         <TextField
                                             type="number"
-                                            value={stock}
-                                            onChange={(e) => {
-                                                const value = e.target.value;
-                                                if (value >= 0) {
-                                                    setStock(Number(value));
-                                                }
-                                            }}
+                                            value={newStock}
+                                            placeholder={stock}
+                                            onChange={(e) => setNewStock(Number(e.target.value))
+                                            }
                                             disabled={quantityOwner === 'none'}
                                             helperText={quantityOwner === 'none' ? 'Cannot update - No inventory source' : ''}
                                         />
                                     </Box>
                                     {quantityOwner === 'product' && (
                                         <Typography variant="caption" color="text.secondary">
-                                            Updating product-level inventory for this gemstone variant
+                                            Updating product-level inventory for this variant
                                         </Typography>
                                     )}
                                     {quantityOwner === 'combination' && (
                                         <Typography variant="caption" color="text.secondary">
-                                            Updating specific ring size variant inventory
+                                            Updating specific variant inventory
                                         </Typography>
                                     )}
                                 </Box>

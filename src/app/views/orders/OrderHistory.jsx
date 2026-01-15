@@ -835,12 +835,7 @@ const OrderHistory = () => {
                                     {getDisplayValue(item?._id)}
                                   </Box>
                                 </Typography>
-                                <Typography fontSize={14} sx={{ color: "#000", mt: 1 }}>
-                                  Vendor:{" "}
-                                  <Box component="span">
-                                    {getDisplayValue(vendorSubOrder?.vendor_name || item?.vendor_name)}
-                                  </Box>
-                                </Typography>
+
                                 {sub_order_id && (
                                   <Typography fontSize={12} sx={{ color: "#666", mt: 0.5 }}>
                                     Transaction Id: {item.item_id}
@@ -1403,6 +1398,21 @@ const OrderHistory = () => {
                             </Typography>
                             <Typography fontWeight={500} pl={2} sx={{ width: "50%" }}>
                               {shippingName}
+                            </Typography>
+                          </ListItem>
+                          <ListItem
+                            sx={{
+                              paddingLeft: "0",
+                              width: "auto",
+                              display: "flex",
+                              alignItems: "center"
+                            }}
+                          >
+                            <Typography fontSize={14} sx={{ color: "#000", mt: 1 }}>
+                              Store:{" "}
+                              <Box component="span">
+                                {vendorSubOrder?.shop_name || "..."}
+                              </Box>
                             </Typography>
                           </ListItem>
                         </List>

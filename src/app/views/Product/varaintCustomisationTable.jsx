@@ -978,7 +978,7 @@ const VariantCustomizationTable = ({
                     <FormControlLabel
                         control={
                             <Checkbox
-                                checked={customization?.isCompulsory === "true" || customization?.isCompulsory === true || false}
+                                checked={customization?.isCompulsory === "true" || customization?.isCompulsory === true}
                                 onChange={(e) => handleIsCompulsoryChange(e.target.checked)}
                             />
                         }
