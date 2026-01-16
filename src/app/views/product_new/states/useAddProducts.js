@@ -253,6 +253,16 @@ export const useProductFormStore = create(
                     if (variantData) {
                         const existingVariant = existingVariantsMap.get(variation.name);
 
+                        // ========== ADDED: Extract guide data from API response ==========
+                        // Check if variantData has guide properties from API
+                        const hasApiGuideData = variantData.guide_name || variantData.guide_file || variantData.guide_description;
+                        const apiGuide = hasApiGuideData ? {
+                            guide_name: variantData.guide_name || "",
+                            guide_file: variantData.guide_file || null,
+                            guide_description: variantData.guide_description || "",
+                            guide_type: variantData.guide_type || (variantData.guide_file ? "image" : "")
+                        } : null;
+
                         if (existingVariant) {
                             // Preserve existing variant, but update attributes if needed
                             const updatedAttributes = variation.values.map(value => {
@@ -284,7 +294,11 @@ export const useProductFormStore = create(
 
                             newProductVariants.push({
                                 variant_name: variation.name,
-                                variant_attributes: updatedAttributes
+                                variant_attributes: updatedAttributes,
+                                // ========== ADDED: Preserve existing guide or use API guide ==========
+                                guide: existingVariant.guide && existingVariant.guide.length > 0
+                                    ? existingVariant.guide
+                                    : (apiGuide ? [apiGuide] : [])
                             });
                         } else {
                             // Create new variant with default images
@@ -307,7 +321,9 @@ export const useProductFormStore = create(
 
                             newProductVariants.push({
                                 variant_name: variation.name,
-                                variant_attributes: variantAttributes
+                                variant_attributes: variantAttributes,
+                                // ========== ADDED: Set guide data from API if available ==========
+                                guide: apiGuide ? [apiGuide] : []
                             });
                         }
                     }

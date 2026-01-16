@@ -542,6 +542,21 @@ const OrderHistory = () => {
                         {shippingName}
                       </Typography>
                     </ListItem>
+                    <ListItem
+                      sx={{
+                        paddingLeft: "0",
+                        width: "auto",
+                        display: "flex",
+                        alignItems: "center"
+                      }}
+                    >
+                      <Typography fontSize={14} sx={{ color: "#000", mt: 1, width: "50%" }}>
+                        Store:{" "}
+                        <Box component="strong" sx={{ width: "50%" }}>
+                          {vendorSubOrder?.shop_name || "..."}
+                        </Box>
+                      </Typography>
+                    </ListItem>
                   </List>
                 </Grid>
               </Grid>
@@ -1353,7 +1368,7 @@ const OrderHistory = () => {
                   </Box>
                   <Box p={2}>
                     <Grid container width={"100%"} m={0} alignItems={"center"} spacing={2}>
-                      <Grid lg={6} md={6} xs={12}>
+                      <Grid item lg={6} md={6} xs={12}>
                         <List>
                           <ListItem
                             sx={{
@@ -1400,24 +1415,10 @@ const OrderHistory = () => {
                               {shippingName}
                             </Typography>
                           </ListItem>
-                          <ListItem
-                            sx={{
-                              paddingLeft: "0",
-                              width: "auto",
-                              display: "flex",
-                              alignItems: "center"
-                            }}
-                          >
-                            <Typography fontSize={14} sx={{ color: "#000", mt: 1 }}>
-                              Store:{" "}
-                              <Box component="span">
-                                {vendorSubOrder?.shop_name || "..."}
-                              </Box>
-                            </Typography>
-                          </ListItem>
+
                         </List>
                       </Grid>
-                      <Grid lg={6} md={6} xs={12}>
+                      <Grid item lg={6} md={6} xs={12}>
                         <Box>
                           <Typography color={"#000"} fontWeight={600}>
                             Tracking Id:{" "}

@@ -7,7 +7,7 @@ import DraggableCustomizationItem from './DraggableCustomizationItem';
 import TextCustomization from './TextCustomisation';
 import OptionDropdown from './OptionDropdown';
 import VariantCustomizationTable from './VariantCustomizationTable';
-import {useProductFormStore} from "../../../../../states/useAddProducts";
+import { useProductFormStore } from "../../../../../states/useAddProducts";
 
 const CustomizationList = () => {
     const { customizationData, setCustomizationData } = useProductFormStore();
@@ -44,7 +44,7 @@ const CustomizationList = () => {
             title: item.title,
             isVariant: item.isVariant,
             hasOptionList: !!item.optionList,
-            optionList: item.optionList
+            optionList: item.optionList,
         });
 
         // First check if it's a variant customization

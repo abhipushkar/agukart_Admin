@@ -311,9 +311,23 @@ const OptionDropdown = ({ index }) => {
     };
 
     const handleCheckboxChange = (checked) => {
+        console.log('Product Data Option Dropdown Checkbox changed:', {
+            index,
+            checked,
+            currentCustomizations: customizationData.customizations.map(c => ({
+                label: c.label,
+                isCompulsory: c.isCompulsory
+            }))
+        });
+
         const updatedCustomizations = customizationData.customizations.map((item, idx) =>
             idx === index ? { ...item, isCompulsory: checked } : item
         );
+
+        console.log('Product Data Option Dropdown Updated customizations:', updatedCustomizations.map(c => ({
+            label: c.label,
+            isCompulsory: c.isCompulsory
+        })));
 
         setCustomizationData({
             ...customizationData,
@@ -702,13 +716,13 @@ const OptionDropdown = ({ index }) => {
         });
     };
 
-    const handleToggleVisibility = (optionIndex) => {
+    const handleToggleVisibility = (optionIndex, checked) => {
         const updatedCustomizations = [...customizationData.customizations];
         const updatedOptionList = [...updatedCustomizations[index].optionList];
 
         updatedOptionList[optionIndex] = {
             ...updatedOptionList[optionIndex],
-            isVisible: !updatedOptionList[optionIndex].isVisible
+            isVisible: checked
         };
 
         updatedCustomizations[index] = {
@@ -1331,8 +1345,8 @@ const OptionDropdown = ({ index }) => {
                                             {/* Toggle Switch Column */}
                                             <TableCell align="center" width="70px">
                                                 <Switch
-                                                    checked={option.isVisible !== false}
-                                                    onChange={() => handleToggleVisibility(optionIndex)}
+                                                    checked={option.isVisible === "true" || option.isVisible === true || false}
+                                                    onChange={(_e, checked) => handleToggleVisibility(optionIndex, checked)}
                                                     inputProps={{ 'aria-label': 'controlled' }}
                                                 />
                                             </TableCell>

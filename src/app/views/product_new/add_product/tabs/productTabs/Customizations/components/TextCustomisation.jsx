@@ -1,7 +1,7 @@
 // components/TextCustomization.jsx
 import React from 'react';
 import { Box, TextField, Checkbox } from "@mui/material";
-import {useProductFormStore} from "../../../../../states/useAddProducts";
+import { useProductFormStore } from "../../../../../states/useAddProducts";
 
 const TextCustomization = ({ index }) => {
     const { customizationData, setCustomizationData } = useProductFormStore();
@@ -22,9 +22,23 @@ const TextCustomization = ({ index }) => {
     };
 
     const handleCheckboxChange = (checked) => {
+        console.log('Product Data Text Customization Checkbox changed:', {
+            index,
+            checked,
+            currentCustomizations: customizationData.customizations.map(c => ({
+                label: c.label,
+                isCompulsory: c.isCompulsory
+            }))
+        });
+
         const updatedCustomizations = customizationData.customizations.map((item, idx) =>
             idx === index ? { ...item, isCompulsory: checked } : item
         );
+
+        console.log('Product Data Text Customization Updated customizations:', updatedCustomizations.map(c => ({
+            label: c.label,
+            isCompulsory: c.isCompulsory
+        })));
 
         setCustomizationData({
             ...customizationData,
@@ -96,7 +110,7 @@ const TextCustomization = ({ index }) => {
                             </Box>
                             <Box sx={{ width: "100%", maxWidth: "100%" }}>
                                 <Checkbox
-                                    checked={customization?.isCompulsory || false}
+                                    checked={customization?.isCompulsory === "true" || customization?.isCompulsory === true || false}
                                     onChange={(e) => handleCheckboxChange(e.target.checked)}
                                     name="isCompulsory"
                                     color="primary"

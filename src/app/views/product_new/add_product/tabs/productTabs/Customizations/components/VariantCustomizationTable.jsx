@@ -1329,14 +1329,14 @@ const VariantCustomizationTable = ({ index }) => {
                                         {/* Toggle Switch Column */}
                                         <TableCell align="center" width="70px">
                                             <Switch
-                                                checked={option.isVisible !== false} // Default to true if not set
-                                                onChange={() => {
+                                                checked={option.isVisible === "true" || option.isVisible === true || false} // Default to true if not set
+                                                onChange={(_e, checked) => {
                                                     const updatedCustomizations = [...customizationData.customizations];
                                                     const updatedOptionList = [...updatedCustomizations[index].optionList];
 
                                                     updatedOptionList[optionIndex] = {
                                                         ...updatedOptionList[optionIndex],
-                                                        isVisible: !(updatedOptionList[optionIndex]?.isVisible !== false)
+                                                        isVisible: checked
                                                     };
 
                                                     updatedCustomizations[index] = {

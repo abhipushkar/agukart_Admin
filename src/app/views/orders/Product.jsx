@@ -189,7 +189,7 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
             setCombinationStockId([]);
             console.log('No quantity owner (none)');
         }
-    }, [determineQuantityOwner, findMatchedCombination, saleData]);
+    }, [combinationStockId, determineQuantityOwner, findMatchedCombination, saleData]);
 
     const updateQty = async () => {
         try {

@@ -8,22 +8,22 @@ import DescriptionTabs from "./DescriptionTabs";
 import CustomisationTabs from "./CustomisationTabs";
 import OfferDetails from "./OfferDetails";
 import CustomisationInner from "./CustomisationInner";
-import {useLocation, useNavigate, useSearchParams} from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import dayjs from "dayjs";
-import {apiEndpoints} from "app/constant/apiEndpoints";
-import {ApiService} from "app/services/ApiService";
-import {localStorageKey} from "app/constant/localStorageKey";
+import { apiEndpoints } from "app/constant/apiEndpoints";
+import { ApiService } from "app/services/ApiService";
+import { localStorageKey } from "app/constant/localStorageKey";
 import moment from "moment";
-import {toast} from "react-toastify";
-import {ROUTE_CONSTANT} from "app/constant/routeContanst";
+import { toast } from "react-toastify";
+import { ROUTE_CONSTANT } from "app/constant/routeContanst";
 import ErrorIcon from "@mui/icons-material/Error";
-import {useState} from "react";
-import {useEffect} from "react";
+import { useState } from "react";
+import { useEffect } from "react";
 import ConfirmModal from "app/components/ConfirmModal";
 import DynamicTabs from "./DynamicTabs";
 
 function CustomTabPanel(props) {
-    const {children, value, index, ...other} = props;
+    const { children, value, index, ...other } = props;
 
     return (
         <div
@@ -33,7 +33,7 @@ function CustomTabPanel(props) {
             aria-labelledby={`simple-tab-${index}`}
             {...other}
         >
-            {value === index && <Box sx={{p: 3}}>{children}</Box>}
+            {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
         </div>
     );
 }
@@ -60,13 +60,13 @@ export default function BasicTabs() {
     const [query, setQuery] = useSearchParams();
     const copyQueryId = query.get("_id");
     const queryId = query.get("id");
-    console.log({copyQueryId})
+    console.log({ copyQueryId })
     const [transformData, setTransformData] = useState({
         scale: 1,
         x: 0,
         y: 0
     });
-    console.log({transformData}, "rtyhrt5rtyrty")
+    console.log({ transformData }, "rtyhrt5rtyrty")
     const [EdtiFroemData, setEditFormData] = React.useState({});
     console.log(EdtiFroemData, "EdtiFroemData")
     const navigate = useNavigate();
@@ -166,7 +166,7 @@ export default function BasicTabs() {
         customization: EdtiFroemData?.customize || "No",
         popularGifts: EdtiFroemData?.popular_gifts || "No",
         bestSelling: EdtiFroemData?.bestseller || "No",
-        stylesKeyWords: [{value: EdtiFroemData?.style_name || ""}],
+        stylesKeyWords: [{ value: EdtiFroemData?.style_name || "" }],
         searchTerms: "",
         serchTemsKeyArray: EdtiFroemData?.size || [],
         StyleName: EdtiFroemData?.style_name || "",
@@ -238,10 +238,10 @@ export default function BasicTabs() {
         isCheckedPrice: false,
         isCheckedQuantity: false
     });
-    console.log({formValues})
+    console.log({ formValues })
     const [variationsData, setVariationsData] = useState([]);
     const [selectedVariations, setSelectedVariations] = useState([]);
-    const [customizationData, setCustomizationData] = useState({label: "", instructions: "", customizations: []});
+    const [customizationData, setCustomizationData] = useState({ label: "", instructions: "", customizations: [] });
     const [showAll, setShowAll] = useState(false);
     console.log(customizationData, "customizationData")
     const [combinationError, setCombinationError] = useState({});
@@ -286,7 +286,7 @@ export default function BasicTabs() {
         setTabsValue(newValue);
     };
 
-    console.log({formData});
+    console.log({ formData });
 
     useEffect(() => {
         if (altText.length === 0 && formData?.images?.length > 0) {
@@ -306,7 +306,7 @@ export default function BasicTabs() {
             customization: EdtiFroemData?.customize || "No",
             popularGifts: EdtiFroemData?.popular_gifts || "No",
             bestSelling: EdtiFroemData?.bestseller || "No",
-            stylesKeyWords: [{value: EdtiFroemData?.style_name || ""}],
+            stylesKeyWords: [{ value: EdtiFroemData?.style_name || "" }],
             searchTerms: "",
             serchTemsKeyArray: EdtiFroemData?.size || [],
             StyleName: EdtiFroemData?.style_name || "",
@@ -389,13 +389,13 @@ export default function BasicTabs() {
         setKeys(EdtiFroemData?.search_terms || []);
         setAltText(EdtiFroemData?.altText || altText)
         setCombinations(EdtiFroemData?.combinationData || []);
-        setTransformData(EdtiFroemData?.zoom || {scale: 1, x: 0, y: 0});
+        setTransformData(EdtiFroemData?.zoom || { scale: 1, x: 0, y: 0 });
     }, [EdtiFroemData]);
 
     const uniqueSetarr = [...new Set(deleteArr)];
     console.log("deleteIconData", uniqueSetarr);
 
-// ---------------- helper to build FormData ----------------
+    // ---------------- helper to build FormData ----------------
     const buildProductFormData = (payload, combinations, customizationData) => {
         const fData = new FormData();
 
@@ -633,8 +633,8 @@ export default function BasicTabs() {
                 fData.append(`customizationData[customizations][${cIndex}][title]`, customization.title || '');
                 fData.append(`customizationData[customizations][${cIndex}][label]`, customization.label || '');
                 fData.append(`customizationData[customizations][${cIndex}][instructions]`, customization.instructions || '');
-                fData.append(`customizationData[customizations][${cIndex}][isCompulsory]`, customization.isCompulsory ? 'true' : 'false');
-                fData.append(`customizationData[customizations][${cIndex}][isVariant]`, customization.isVariant ? 'true' : 'false');
+                fData.append(`customizationData[customizations][${cIndex}][isCompulsory]`, customization.isCompulsory === "true" || customization.isCompulsory === true ? 'true' : 'false');
+                fData.append(`customizationData[customizations][${cIndex}][isVariant]`, customization.isVariant === 'true' || customization.isVariant === true ? 'true' : 'false');
 
                 // Handle text customization specific fields
                 if (customization.placeholder !== undefined) {
@@ -748,7 +748,7 @@ export default function BasicTabs() {
 
         return fData;
     };
-// ----------------------------------------------------------
+    // ----------------------------------------------------------
 
     const addProducthandler = async () => {
         // keep your existing combination validation logic
@@ -786,39 +786,39 @@ export default function BasicTabs() {
         // (sellerSku, shipingTemplates, vendor, productTitle, subCategory, productDescription, images etc.)
         // If any required field missing setInputErrors and return early (same as original logic)
         if (!formData.sellerSku) {
-            setInputErrors((prv) => ({...prv, sellerSku: "Seller Sku is Required"}));
+            setInputErrors((prv) => ({ ...prv, sellerSku: "Seller Sku is Required" }));
             return;
         }
         if (!formData.shipingTemplates) {
-            setInputErrors((prv) => ({...prv, shipingTemplates: "Shiping Temeplate is Required"}));
+            setInputErrors((prv) => ({ ...prv, shipingTemplates: "Shiping Temeplate is Required" }));
             return;
         }
         if (!formData.vendor) {
-            setInputErrors((prv) => ({...prv, vendor: "Shop name is Required"}));
+            setInputErrors((prv) => ({ ...prv, vendor: "Shop name is Required" }));
             return;
         }
         if (!formData.productTitle) {
-            setInputErrors((prv) => ({...prv, productTitle: "Product Title is Required"}));
+            setInputErrors((prv) => ({ ...prv, productTitle: "Product Title is Required" }));
             return;
         }
         if (!formData.productDescription) {
-            setInputErrors((prv) => ({...prv, productDescription: "Product description is Required"}));
+            setInputErrors((prv) => ({ ...prv, productDescription: "Product description is Required" }));
             return;
         }
         if (!formData.images || formData.images.length === 0) {
-            setInputErrors((prv) => ({...prv, images: "Product image is Required"}));
+            setInputErrors((prv) => ({ ...prv, images: "Product image is Required" }));
             return;
         }
         if (!formValues?.isCheckedPrice && !formData.salePrice) {
-            setInputErrors((prv) => ({...prv, salePrice: "Sale Price is Required"}));
+            setInputErrors((prv) => ({ ...prv, salePrice: "Sale Price is Required" }));
             return;
         }
         if (!formValues?.isCheckedQuantity && !formData.quantity) {
-            setInputErrors((prv) => ({...prv, quantity: "Quantity is Required"}));
+            setInputErrors((prv) => ({ ...prv, quantity: "Quantity is Required" }));
             return;
         }
         if (!formData.exchangePolicy) {
-            setInputErrors((prv) => ({...prv, exchangePolicy: "Return and exchange policy is required"}));
+            setInputErrors((prv) => ({ ...prv, exchangePolicy: "Return and exchange policy is required" }));
             return;
         }
 
@@ -1029,7 +1029,7 @@ export default function BasicTabs() {
 
         // other validations remain same...
         if (!formData.sellerSku) {
-            setInputErrors((prv) => ({...prv, sellerSku: "Seller Sku is Required"}));
+            setInputErrors((prv) => ({ ...prv, sellerSku: "Seller Sku is Required" }));
             return;
         }
 
@@ -1119,7 +1119,7 @@ export default function BasicTabs() {
 
     const handleUploadVideo = async (id) => {
         const videoArr = formData.videos.map((e) => e.file);
-        console.log({videoArr});
+        console.log({ videoArr });
         try {
             const fData = new FormData();
             videoArr.forEach((file) => {
@@ -1141,7 +1141,7 @@ export default function BasicTabs() {
         const filterVideoData = formData.videos.filter((res) => res.file);
         console.log("filterImagesData", filterVideoData);
         const videoArr = filterVideoData?.map((e) => e.file);
-        console.log({videoArr});
+        console.log({ videoArr });
         try {
             const fData = new FormData();
 
@@ -1179,7 +1179,7 @@ export default function BasicTabs() {
     };
 
     const handleUploadImage2 = async (id, msg) => {
-        const {images, deleteIconData} = formData;
+        const { images, deleteIconData } = formData;
         const filterImagesData = images.filter((img) => img.file);
         const sortImagesData = images.filter((img) => !img.file);
         const newSortArray = filterImagesData.map((img) => img.file?.sortOrder);
@@ -1234,7 +1234,7 @@ export default function BasicTabs() {
 
     const handleUploadImage = async (id, msg) => {
         const imgArr = formData.images.map((e) => e.file);
-        console.log({imgArr});
+        console.log({ imgArr });
         try {
             const fData = new FormData();
 
@@ -1245,7 +1245,7 @@ export default function BasicTabs() {
             const res = await ApiService.postImage(apiEndpoints.addProductImages, fData, auth_key);
             if (res.status === 200) {
                 const apiRes = await handleUploadVideo(id);
-                console.log({apiRes});
+                console.log({ apiRes });
                 if (apiRes) {
                     setLoading(false);
                     setDraftLoading(false);
@@ -1263,22 +1263,22 @@ export default function BasicTabs() {
 
     useEffect(() => {
         if (formValues?.isCheckedPrice) {
-            setFormData((prev) => ({...prev, salePrice: ""}))
+            setFormData((prev) => ({ ...prev, salePrice: "" }))
         }
         if (formValues?.isCheckedQuantity) {
-            setFormData((prev) => ({...prev, quantity: ""}));
+            setFormData((prev) => ({ ...prev, quantity: "" }));
         }
     }, [variationsData.length, formValues.isCheckedPrice, formValues?.isCheckedQuantity])
 
     useEffect(() => {
         if (designation_id == "3") {
-            setFormData((prev) => ({...prev, vendor: vendorId}));
+            setFormData((prev) => ({ ...prev, vendor: vendorId }));
         }
     }, [designation_id]);
 
     return (
-        <Box sx={{width: "100%"}}>
-            <Box sx={{borderBottom: 1, borderColor: "divider"}}>
+        <Box sx={{ width: "100%" }}>
+            <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
                 <Tabs value={tabsValue} onChange={handleChange} aria-label="basic tabs example">
                     <Tab
                         icon={
@@ -1347,9 +1347,9 @@ export default function BasicTabs() {
                     <Tab
                         icon={
                             inputErrors.sellerSku ||
-                            inputErrors.shipingTemplates ||
-                            inputErrors.salePrice ||
-                            inputErrors.quantity ? (
+                                inputErrors.shipingTemplates ||
+                                inputErrors.salePrice ||
+                                inputErrors.quantity ? (
                                 <ErrorIcon
                                     sx={{
                                         borderRadius: "50%",
@@ -1494,7 +1494,7 @@ export default function BasicTabs() {
             ) : (
                 <></>
             )}
-            <ConfirmModal open={open} handleClose={handleClose} type={type} msg={msg}/>
+            <ConfirmModal open={open} handleClose={handleClose} type={type} msg={msg} />
         </Box>
     );
 }

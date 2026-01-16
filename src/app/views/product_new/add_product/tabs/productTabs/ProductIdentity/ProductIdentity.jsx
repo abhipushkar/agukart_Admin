@@ -435,7 +435,7 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                     }}
                 >
                     SKU:
-                    <span style={{color: "red", fontSize: "15px", margin: "0 3px"}}>*</span>:
+                    <span style={{ color: "red", fontSize: "15px", margin: "0 3px" }}>*</span>:
                 </Box>
                 <Box sx={{ width: "50%" }}>
                     <FormControl fullWidth>

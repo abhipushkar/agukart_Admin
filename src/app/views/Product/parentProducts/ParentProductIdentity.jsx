@@ -35,6 +35,7 @@ import {
     compressInnervariations,
     getAttributesByIds
 } from "./normalizeVariantAttributes";
+import { useRef } from "react";
 
 const ParentProductIdentity = ({ productId }) => {
     const [formData, setFormData] = React.useState({
@@ -115,14 +116,14 @@ const ParentProductIdentity = ({ productId }) => {
         setRoute(ROUTE_CONSTANT.login)
     };
 
-    const handleOpen = (type, msg) => {
+    const handleOpen = useCallback((type, msg) => {
         setMsg(msg?.message || msg);
         setOpen(true);
         setType(type);
         if (msg?.response?.status === 401) {
             logOut()
         }
-    };
+    }, []);
 
     const handleClose = () => {
         setOpen(false);
@@ -133,7 +134,7 @@ const ParentProductIdentity = ({ productId }) => {
         setMsg(null);
     };
 
-    const handleApiError = (error, customMessage = null) => {
+    const handleApiError = useCallback((error, customMessage = null) => {
         console.error("API Error:", error);
 
         if (error?.response?.status === 401) {
@@ -143,7 +144,7 @@ const ParentProductIdentity = ({ productId }) => {
         } else {
             handleOpen("error", { message: customMessage || "Something went wrong. Please try again." });
         }
-    };
+    }, [handleOpen]);
 
     const getBrandList = async () => {
         try {
@@ -945,7 +946,7 @@ const ParentProductIdentity = ({ productId }) => {
         return getAttributesByIds(variant, attributeIds);
     };
 
-    const getParentProductDetail = async () => {
+    const getParentProductDetail = useCallback(async () => {
         try {
             const res = await ApiService.get(
                 `${apiEndpoints.getParentProductDetail}/${productId}`,
@@ -957,18 +958,22 @@ const ParentProductIdentity = ({ productId }) => {
 
                 const vendor = resData?.vendor_id ? vendors.find(v => v._id === resData.vendor_id) : null;
 
-                // FIX: Convert stored attribute IDs back to object format if needed
+                // FIX: Build innervariations from variant_attribute_id grouped by variant
                 let innervariations = {};
-                if (resData?.variant_attribute_id) {
-                    // Group attribute IDs by variant name
-                    const variantMap = new Map();
-                    resData.variant_id?.forEach(variant => {
-                        variantMap.set(variant._id, variant.variant_name);
+                if (resData?.variant_attribute_id && Array.isArray(resData.variant_attribute_id)) {
+                    // Group attribute IDs by variant
+                    resData.variant_attribute_id.forEach(attr => {
+                        // Find which variant this attribute belongs to
+                        const variant = resData.variant_id?.find(v => v._id === attr.variant);
+                        if (variant && variant.variant_name) {
+                            if (!innervariations[variant.variant_name]) {
+                                innervariations[variant.variant_name] = [];
+                            }
+                            if (!innervariations[variant.variant_name].includes(attr._id)) {
+                                innervariations[variant.variant_name].push(attr._id);
+                            }
+                        }
                     });
-
-                    // This is a simplified approach - you might need to adjust based on your actual data structure
-                    // Assuming variant_attribute_id contains all selected attribute IDs
-                    innervariations = resData.innervariations || {};
                 }
 
                 // FIX: Prepare all updates first, then batch them
@@ -985,6 +990,45 @@ const ParentProductIdentity = ({ productId }) => {
                     Innervariations: innervariations
                 };
 
+                // FIX: Build product variations from variant attributes
+                let productVariations = [];
+
+                if (resData?.variant_id && Array.isArray(resData.variant_id)) {
+                    productVariations = resData.variant_id.map(variant => {
+                        // Get attribute IDs for this variant
+                        const variantAttributeIds = innervariations[variant.variant_name] || [];
+
+                        // Build variant attributes
+                        const variantAttributes = variantAttributeIds.map(attributeId => {
+                            const attribute = resData.variant_attribute_id?.find(a => a._id === attributeId);
+                            return attribute ? {
+                                _id: attribute._id,
+                                attribute: attribute.attribute_value,
+                                main_images: [null, null, null],
+                                preview_image: attribute.preview_image || "",
+                                thumbnail: attribute.thumbnail || "",
+                                edit_main_image: null,
+                                edit_preview_image: attribute.edit_preview_image || "",
+                                edit_main_image_data: attribute.edit_main_image_data || {},
+                                edit_preview_image_data: attribute.edit_preview_image_data || {},
+                            } : null;
+                        }).filter(Boolean);
+
+                        return {
+                            _id: variant._id,
+                            variant_name: variant.variant_name,
+                            variant_attributes: variantAttributes,
+                            guide: variant.guide_name ? [{
+                                guide_name: variant.guide_name,
+                                guide_file: variant.guide_file,
+                                guide_description: variant.guide_description,
+                                guide_type: variant.guide_type
+                            }] : []
+                        };
+                    });
+                }
+
+                // FIX: Handle existing product_variants if they exist (from API response)
                 const fixedProductVariants = resData?.product_variants?.map(variant => {
                     if (variant.guide && !Array.isArray(variant.guide)) {
                         return {
@@ -995,6 +1039,9 @@ const ParentProductIdentity = ({ productId }) => {
                     return variant;
                 }) || [];
 
+                // Use existing product_variants if available, otherwise use our built productVariations
+                const finalProductVariations = fixedProductVariants.length > 0 ? fixedProductVariants : productVariations;
+
                 // FIX: Batch ALL state updates together
                 ReactDOM.unstable_batchedUpdates(() => {
                     setFormData((prev) => ({
@@ -1004,13 +1051,30 @@ const ParentProductIdentity = ({ productId }) => {
 
                     setParentId(resData?._id);
                     setVarientAttribute(resData?.variant_attribute_id?.map((option) => option._id) || []);
-                    setProductVariations(fixedProductVariants);
+                    setProductVariations(finalProductVariations);
                 });
 
-                if (resData?.sku && resData?.sku.length > 0) {
+                // ADD CACHING FOR SKU VALIDATION
+                const skuCache = new Map();
+                let shouldFetchSkus = true;
+
+                // Check if we already have the SKU data loaded
+                if (sellerSky.length > 0 && variantArrValues.length > 0) {
+                    console.log('SKUs already loaded, skipping re-fetch');
+                    shouldFetchSkus = false;
+                }
+
+                // KEEP ALL EXISTING SKU LOADING CODE BELOW - DO NOT MODIFY
+                if (shouldFetchSkus && resData?.sku && resData?.sku.length > 0) {
+                    console.log('Loading SKU data...');
                     const arr = resData.sku.map(async (sku, i) => {
+                        // Check cache first
+                        if (skuCache.has(sku)) {
+                            return skuCache.get(sku);
+                        }
+
                         if (!sku) {
-                            return {
+                            const emptyResult = {
                                 _id: "",
                                 product_id: "",
                                 sale_price: "",
@@ -1019,6 +1083,8 @@ const ParentProductIdentity = ({ productId }) => {
                                 sale_end_date: "",
                                 qty: ""
                             };
+                            skuCache.set(sku, emptyResult);
+                            return emptyResult;
                         }
 
                         let url = apiEndpoints.getProductBySku + `/${sku}`;
@@ -1038,7 +1104,7 @@ const ParentProductIdentity = ({ productId }) => {
                                 }));
                             }
 
-                            return {
+                            const result = {
                                 ...obj,
                                 _id: obj.product_id,
                                 product_id: obj.product_id,
@@ -1049,8 +1115,12 @@ const ParentProductIdentity = ({ productId }) => {
                                 qty: obj.qty || "",
                                 isExistingProduct: true
                             };
+
+                            skuCache.set(sku, result);
+                            return result;
                         }
-                        return {
+
+                        const errorResult = {
                             _id: "",
                             product_id: "",
                             sale_price: "",
@@ -1059,6 +1129,8 @@ const ParentProductIdentity = ({ productId }) => {
                             sale_end_date: "",
                             qty: ""
                         };
+                        skuCache.set(sku, errorResult);
+                        return errorResult;
                     });
 
                     Promise.all(arr).then((results) => {
@@ -1077,19 +1149,22 @@ const ParentProductIdentity = ({ productId }) => {
                             });
                             setCombinationMap(initialMap);
                         }
+                    }).catch(error => {
+                        console.error('Error loading SKU data:', error);
+                        handleApiError(error, "Failed to load SKU data");
                     });
                 }
             }
         } catch (error) {
             handleApiError(error, "Failed to load product details");
         }
-    };
+    }, [auth_key, handleApiError, productId, vendors, sellerSky, variantArrValues]); // Added sellerSky and variantArrValues to dependencies
 
     useEffect(() => {
         if (productId) {
             setImages(formData?.images);
         }
-    }, [formData?.images]);
+    }, [formData?.images, productId]);
 
     useEffect(() => {
         if (formData?.variant_id && normalizedVariantList.length > 0) {
@@ -1118,7 +1193,7 @@ const ParentProductIdentity = ({ productId }) => {
                 Innervariations: initialInnervariations
             }));
         }
-    }, [formData.variantData]);
+    }, [formData.Innervariations, formData.variantData]);
 
     // FIXED: Initialize product variations when variants are selected
     useEffect(() => {
@@ -1134,13 +1209,23 @@ const ParentProductIdentity = ({ productId }) => {
                 setProductVariations(initialProductVariations);
             });
         }
-    }, [formData.variantData]);
+    }, [formData.variantData, productVariations.length]);
+
+    const hasLoadedProductData = useRef(false);
 
     useEffect(() => {
-        if (productId) {
+        if (productId && vendors.length > 0 && !hasLoadedProductData.current) {
             getParentProductDetail();
+            hasLoadedProductData.current = true;
         }
-    }, [vendors]);
+    }, [getParentProductDetail, productId, vendors]);
+
+    // Also add cleanup to reset the flag when component unmounts
+    useEffect(() => {
+        return () => {
+            hasLoadedProductData.current = false;
+        };
+    }, []);
 
     const currentCombinations = getCurrentCombinations();
 
