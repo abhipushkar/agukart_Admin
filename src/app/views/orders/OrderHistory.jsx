@@ -574,7 +574,7 @@ const OrderHistory = () => {
               <Grid container width={"100%"} m={0} spacing={2}>
                 <Grid lg={6} md={4} xs={12}>
                   <Box mt={2}>
-                    <Typography fontSize={15}>{getDisplayValue(order?.userName)}</Typography>
+                    <Typography fontSize={15}>{getDisplayValue(order?.receiver_name)}</Typography>
                     <Typography>
                       {capitalizeFirstWord(order?.address_line1)}
                     </Typography>

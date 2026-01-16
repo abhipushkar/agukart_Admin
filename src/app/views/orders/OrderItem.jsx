@@ -471,7 +471,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                     Ship to
                                                 </Typography>
                                                 <Typography>
-                                                    {capitalizeFirstWord(parentSale?.userName)}
+                                                    {capitalizeFirstWord(parentSale?.receiver_name)}
                                                 </Typography>
                                                 <Typography>
                                                     {capitalizeFirstWord(parentSale?.address_line1)}

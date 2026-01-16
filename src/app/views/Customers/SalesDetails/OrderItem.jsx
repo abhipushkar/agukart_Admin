@@ -1,24 +1,14 @@
 import { Box, Grid, Table, TableBody, TableCell, TableContainer, TableRow, Typography } from '@mui/material';
 import React from 'react'
-import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
 import Link from "@mui/material/Link";
-import Checkbox from "@mui/material/Checkbox";
-import { Menu } from "@mui/material";
 import Button from "@mui/material/Button";
-import PublishedWithChangesIcon from "@mui/icons-material/PublishedWithChanges";
-import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { ROUTE_CONSTANT } from "app/constant/routeContanst";
-import List from "@mui/material/List";
-import ListItem from "@mui/material/ListItem";
-import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
-import MailOutlineIcon from "@mui/icons-material/MailOutline";
 import { useNavigate } from 'react-router-dom';
-import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import Product from './Product';
 
 
-const OrderItem = ({ items, getOrderList, baseUrl}) => {
+const OrderItem = ({ items, getOrderList, baseUrl }) => {
     const navigate = useNavigate();
 
     const formatDate = (isoDateString) => {
@@ -83,8 +73,8 @@ const OrderItem = ({ items, getOrderList, baseUrl}) => {
                                     }}
                                 >
                                     <TableCell align="center" colSpan={3} sx={{
-                                                    padding: "18px",
-                                                }}>
+                                        padding: "18px",
+                                    }}>
                                         <Box mb={1}>
                                             <Typography
                                                 component="div"
@@ -124,7 +114,7 @@ const OrderItem = ({ items, getOrderList, baseUrl}) => {
                                         </Box>
 
                                         {item?.saleDetaildata.map((saleData, saleIndex) => (
-                                            <Product key={saleIndex} saleData={saleData} baseUrl={baseUrl} getOrderList={getOrderList}/>
+                                            <Product key={saleIndex} saleData={saleData} baseUrl={baseUrl} getOrderList={getOrderList} />
                                         ))}
                                     </TableCell>
 
@@ -180,7 +170,7 @@ const OrderItem = ({ items, getOrderList, baseUrl}) => {
                                                 Ship to
                                             </Typography>
                                             <Typography>
-                                                {capitalizeFirstWord(item?.userName)}
+                                                {capitalizeFirstWord(item?.receiver_name)}
                                             </Typography>
                                             <Typography>
                                                 {capitalizeFirstWord(item?.address_line1)}
