@@ -664,6 +664,9 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                             <MenuItem
                                                                 onClick={() => {
                                                                     handleCloseOption();
+                                                                    navigate(
+                                                                        `${ROUTE_CONSTANT.orders.orderRefund}?subOrder=${subOrderId}&mode=cancel`,
+                                                                    );
                                                                 }}
                                                             >
                                                                 Cancel
@@ -671,6 +674,9 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                             <MenuItem
                                                                 onClick={() => {
                                                                     handleCloseOption();
+                                                                    navigate(
+                                                                        `${ROUTE_CONSTANT.orders.orderRefund}?subOrder=${subOrderId}&mode=refund`,
+                                                                    );
                                                                 }}
                                                             >
                                                                 Refund

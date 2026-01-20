@@ -145,7 +145,8 @@ export const ROUTE_CONSTANT = {
     orders: {
         orderPage: "/pages/orders",
         orderHistory: "/pages/order-history",
-        orderSlip: "/pages/order-slip"
+        orderSlip: "/pages/order-slip",
+        orderRefund: "/pages/order-refund"
     },
     messageRoute: {
         fromEtsy: "/pages/message/etsy",
