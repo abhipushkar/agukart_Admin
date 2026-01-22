@@ -58,6 +58,47 @@ const OrderHistory = () => {
     }));
   };
 
+  const vendorSubOrder = order?.saleDetaildata?.[0];
+
+  const itemShippingMap = useMemo(() => {
+    const items = vendorSubOrder?.items || [];
+    const map = {};
+    const groups = {};
+
+    // group by shippingId
+    items.forEach(item => {
+      const d = item.deliveryData;
+      if (!d?.shippingId) return;
+
+      if (!groups[d.shippingId]) {
+        groups[d.shippingId] = {
+          perOrder: Number(d.perOrder || 0),
+          perItem: Number(d.perItem || 0),
+          totalQty: 0,
+          items: []
+        };
+      }
+
+      groups[d.shippingId].totalQty += Number(item.qty || 0);
+      groups[d.shippingId].items.push(item);
+    });
+
+    // calculate & split
+    Object.values(groups).forEach(group => {
+      const groupShipping =
+        group.perOrder +
+        (group.totalQty > 1 ? (group.totalQty - 1) * group.perItem : 0);
+
+      group.items.forEach(item => {
+        map[item._id] =
+          groupShipping * (item.qty / group.totalQty);
+      });
+    });
+
+    return map;
+  }, [vendorSubOrder]);
+
+
   // Calculate derived data once to avoid repeated calculations
   const orderTotals = useMemo(() => {
     const vendorItems = order?.saleDetaildata?.[0]?.items || [];
@@ -78,7 +119,7 @@ const OrderHistory = () => {
     );
 
     // ✅ FIXED
-    const shippingTotal = vendorItems[0]?.subOrderShippingTotal || 0;
+    const shippingTotal = order?.saleDetaildata?.[0]?.shippingAmount || 0;
 
     const itemTotal =
       subTotal + shippingTotal;
@@ -316,7 +357,6 @@ const OrderHistory = () => {
   // };
 
   // Get the vendor sub-order
-  const vendorSubOrder = order?.saleDetaildata?.[0];
 
   return (
     <>
@@ -989,7 +1029,7 @@ const OrderHistory = () => {
                                           Shipping Total:
                                         </Typography>
                                         <Box pl={2} color={"#000"} fontSize={15}>
-                                          ${(item?.shippingAmount || 0).toFixed(2)}
+                                          ${(itemShippingMap[item._id] || 0).toFixed(2)}
                                         </Box>
                                       </Box>
                                       <Box
@@ -1025,7 +1065,7 @@ const OrderHistory = () => {
                                         Item Total:
                                       </Typography>
                                       <Box pl={2} color={"#000"} fontSize={15} fontWeight={600}>
-                                        ${((item?.amount || 0) + (item?.shippingAmount || 0) - (item?.couponDiscountAmount || 0)).toFixed(2)}
+                                        ${((item?.amount || 0) + (itemShippingMap[item._id] || 0) - (item?.couponDiscountAmount || 0)).toFixed(2)}
                                       </Box>
                                     </Box>
                                   </ListItem>
