@@ -15,7 +15,6 @@ import MessagePopup from './MessagePopup';
 import { useCallback } from 'react';
 
 const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData }) => {
-    console.log({ saleData, item, vendorData }, "trhththtt")
     const [openPopup, SetOpenPopup] = useState(false);
     const [imageModalOpen, setImageModalOpen] = useState(false);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -183,7 +182,6 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
             setStock(productQty);
             setCombinationStockId([]);
 
-            console.log('Product quantity:', productQty);
         } else {
             setStock(0);
             setCombinationStockId([]);
