@@ -20,6 +20,7 @@ import { useNavigate } from "react-router-dom";
 
 const ComposeChatAdmin = ({ slug }) => {
   const [messages, setMessages] = useState([]);
+  const [audienceMode, setAudienceMode] = useState("snapshot");
   const [input, setInput] = useState("");
   const [imagePreviews, setImagePreviews] = useState([]);
   console.log({ imagePreviews });
@@ -34,6 +35,11 @@ const ComposeChatAdmin = ({ slug }) => {
 
   console.log("asdfghjkjhgfd", logUserData);
   const [selectedUser, setSelectedUser] = useState("allvendors");
+
+  const handleAudienceChange = (event) => {
+    setAudienceMode(event.target.value);
+  };
+
 
   const handleChange = (event) => {
     setSelectedUser(event.target.value);
@@ -70,30 +76,43 @@ const ComposeChatAdmin = ({ slug }) => {
 
   const sendMessage = async () => {
     let imageUrls = [];
-    if(input.trim() || files.length > 0){
-       // Upload image if there is a file selected
-       if (files.length > 0) {
+    if (input.trim() || files.length > 0) {
+      // Upload image if there is a file selected
+      if (files.length > 0) {
         imageUrls = await uploadImagesToFirebase();
         handleClearPreview(); // Clear preview and file after upload
       }
-      const res = await addDoc(collection(db, "composeChat"), {
+      const now = new Date();
+
+      const payload = {
         text: [
           {
-            senderType:"admin",
+            senderType: "admin",
             text: input,
-            createdAt: new Date(),
+            createdAt: now,
             messageSenderId: senderId,
             isNotification: false,
-            imageUrls: imageUrls 
+            imageUrls: imageUrls
           }
         ],
-        createdAt: new Date(),
+        createdAt: now,
         receiverId: senderId,
         isDeleted: false,
-        currentTime: new Date(),
+        currentTime: now,
         title: "title1",
         type: selectedUser
-      });
+      };
+
+      if (selectedUser === "allusers") {
+        if (audienceMode === "snapshot") {
+          payload.audienceMode = "snapshot";
+          payload.userCreatedBefore = now;
+        } else {
+          payload.audienceMode = "persistent";
+        }
+      }
+
+      const res = await addDoc(collection(db, "composeChat"), payload);
       navigate(`/pages/message/compose/message?slug=${res.id}`);
       setInput("");
     }
@@ -174,7 +193,7 @@ const ComposeChatAdmin = ({ slug }) => {
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     return text.split(urlRegex).map((part, index) =>
       urlRegex.test(part) ? (
-        <a key={index} href={part} target="_blank" rel="noopener noreferrer" style={{ color: "blue",textDecoration: "underline" }}>
+        <a key={index} href={part} target="_blank" rel="noopener noreferrer" style={{ color: "blue", textDecoration: "underline" }}>
           {part}
         </a>
       ) : (
@@ -185,18 +204,31 @@ const ComposeChatAdmin = ({ slug }) => {
 
   return (
     <>
-       <Box p={2} sx={{ background: "#f6f9fc" }} borderBottom={"1px solid #b6b6b6"}>
+      <Box p={2} sx={{ background: "#f6f9fc" }} borderBottom={"1px solid #b6b6b6"}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <Typography fontWeight={500}>Send to:</Typography>
-            <FormControl>
-              <RadioGroup row value={selectedUser} onChange={handleChange}>
-                <FormControlLabel value="allvendors" control={<Radio />} label="All Vendors" />
-                <FormControlLabel value="allusers" control={<Radio />} label="All Users" />
-              </RadioGroup>
-            </FormControl>
-          </Box>
+          <Typography fontWeight={500}>Send to:</Typography>
+          <FormControl>
+            <RadioGroup row value={selectedUser} onChange={handleChange}>
+              <FormControlLabel value="allvendors" control={<Radio />} label="All Vendors" />
+              <FormControlLabel value="allusers" control={<Radio />} label="All Users" />
+            </RadioGroup>
+
+            {selectedUser === "allusers" && (
+              <Box mt={2}>
+                <Typography fontWeight={500}>Audience Mode:</Typography>
+                <FormControl>
+                  <RadioGroup row value={audienceMode} onChange={handleAudienceChange}>
+                    <FormControlLabel value="snapshot" control={<Radio />} label="Snapshot" />
+                    <FormControlLabel value="persistent" control={<Radio />} label="Persistent" />
+                  </RadioGroup>
+                </FormControl>
+              </Box>
+            )}
+
+          </FormControl>
         </Box>
-       <Box
+      </Box>
+      <Box
         sx={{
           overflow: "hidden",
           display: "flex",
@@ -233,7 +265,7 @@ const ComposeChatAdmin = ({ slug }) => {
                     padding: "0",
                     display: "block",
                     width: "auto",
-                    textAlign:  msg.senderType === "user" ? "left" : "right"
+                    textAlign: msg.senderType === "user" ? "left" : "right"
                   }}
                 >
                   {showDate && (
@@ -275,12 +307,12 @@ const ComposeChatAdmin = ({ slug }) => {
                               sx={{
                                 background: msg.senderType === "user" ? "#fff" : "#e9e9e9",
                                 boxShadow: "0 0 3px #000",
-                                border: "2px solid black", 
+                                border: "2px solid black",
                                 borderRadius: "6px",
                                 maxWidth: "340px",
                                 minWidth: "75px",
                                 textAlign: "center",
-                                mb: 1, 
+                                mb: 1,
                               }}
                             >
                               <img
@@ -299,58 +331,58 @@ const ComposeChatAdmin = ({ slug }) => {
                         }
                         {
                           msg.text && (
-                          <Typography
-                            p={2}
-                            component="div"
-                            sx={{
-                              background: msg.senderType === "user" ? "#fff" : "#e9e9e9",
-                              boxShadow: "0 0 3px #000",
-                              border: "1px solid #ccc",
-                              borderRadius: "6px",
-                              maxWidth: "340px",
-                              minWidth: "75px",
-                              textAlign: "initial",
-                              mt: 1,
-                            }}
-                          >
                             <Typography
+                              p={2}
+                              component="div"
                               sx={{
-                                wordWrap: "break-word",
-                                whiteSpace: "pre-line", 
+                                background: msg.senderType === "user" ? "#fff" : "#e9e9e9",
+                                boxShadow: "0 0 3px #000",
+                                border: "1px solid #ccc",
+                                borderRadius: "6px",
+                                maxWidth: "340px",
+                                minWidth: "75px",
+                                textAlign: "initial",
+                                mt: 1,
                               }}
                             >
-                              {detectLink(msg.text || "")}
+                              <Typography
+                                sx={{
+                                  wordWrap: "break-word",
+                                  whiteSpace: "pre-line",
+                                }}
+                              >
+                                {detectLink(msg.text || "")}
+                              </Typography>
+
+                              {msg.productLink && (
+                                <Typography
+                                  sx={{ wordWrap: "break-word", marginTop: "15px" }}
+                                >
+                                  <a
+                                    href={msg.productLink}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{ color: "blue", textDecoration: "underline" }}
+                                  >
+                                    {msg.productLink}
+                                  </a>
+                                </Typography>
+                              )}
+                              {msg.shopLink && (
+                                <Typography
+                                  sx={{ wordWrap: "break-word", marginTop: "15px" }}
+                                >
+                                  <a
+                                    href={msg.shopLink}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{ color: "blue", textDecoration: "underline" }}
+                                  >
+                                    {msg.shopLink}
+                                  </a>
+                                </Typography>
+                              )}
                             </Typography>
-  
-                            {msg.productLink && (
-                              <Typography
-                                sx={{ wordWrap: "break-word", marginTop: "15px" }}
-                              >
-                                <a
-                                  href={msg.productLink}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  style={{ color: "blue", textDecoration: "underline" }}
-                                >
-                                  {msg.productLink}
-                                </a>
-                              </Typography>
-                            )}
-                            {msg.shopLink && (
-                              <Typography
-                                sx={{ wordWrap: "break-word", marginTop: "15px" }}
-                              >
-                                <a
-                                  href={msg.shopLink}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  style={{ color: "blue", textDecoration: "underline" }}
-                                >
-                                  {msg.shopLink}
-                                </a>
-                              </Typography>
-                            )}
-                          </Typography>
                           )
                         }
                       </div>
@@ -482,11 +514,11 @@ const ComposeChatAdmin = ({ slug }) => {
               </Box>
             )}
             <Typography component="div" sx={{ position: "relative" }}>
-             <TextareaAutosize
+              <TextareaAutosize
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Type your reply"
-                minRows={4} 
+                minRows={4}
                 maxRows={10}
                 style={{
                   width: "100%",

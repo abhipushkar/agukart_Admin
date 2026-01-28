@@ -11,7 +11,7 @@ export const ChatContext = createContext();
 
 export const ChatProvider = ({ children }) => {
     const [chats, setChats] = useState([]);
-    const [composeChats,setComposeChats] = useState([]);
+    const [composeChats, setComposeChats] = useState([]);
     const [checkMessage, setCheckMessage] = useState([]);
     const [userDetails, setUserDetails] = useState([]);
     const [searchText, setSearchText] = useState("");
@@ -30,12 +30,12 @@ export const ChatProvider = ({ children }) => {
         if (searchText) return;
         let unsubscribe = undefined;
         let unsubscribeforvendor = undefined;
-        if(designationId === "2"){
+        if (designationId === "2") {
             const q = query(
-                collection(db,"chatRooms"),
+                collection(db, "chatRooms"),
                 orderBy("currentTime", "desc")
             );
-    
+
             unsubscribe = onSnapshot(q, (snapshot) => {
                 const newMessages = snapshot?.docs?.map((doc) => ({
                     id: doc.id,
@@ -51,8 +51,8 @@ export const ChatProvider = ({ children }) => {
                     setChats(filterPinned)
                     return;
                 }
-    
-    
+
+
                 console.log({ matchingDocument });
                 if (pathname === "/pages/message") {
                     const isDeletefilterData = matchingDocument.filter(
@@ -61,12 +61,12 @@ export const ChatProvider = ({ children }) => {
                     setChats(isDeletefilterData);
                     return;
                 }
-    
+
                 if (pathname === "/pages/message/inbox") {
                     const isDeletefilterData = matchingDocument.filter(
                         (item) => item?.isTempDelete2 !== logUserData?._id
                     );
-    
+
                     const filteredData = isDeletefilterData?.filter((item) =>
                         item.text.some((msg) => msg.messageSenderId !== logUserData?._id)
                     );
@@ -82,7 +82,7 @@ export const ChatProvider = ({ children }) => {
                     setChats(filteredData);
                     return;
                 }
-    
+
                 if (pathname === "/pages/message/trash") {
                     const isDeletefilterData = matchingDocument.filter(
                         (item) => item.isTempDelete2 === logUserData?._id
@@ -91,7 +91,7 @@ export const ChatProvider = ({ children }) => {
                 }
             });
             const qforvendor = query(
-                collection(db,"composeChat"),
+                collection(db, "composeChat"),
                 orderBy("currentTime", "desc")
             );
             unsubscribeforvendor = onSnapshot(qforvendor, (snapshot) => {
@@ -99,13 +99,16 @@ export const ChatProvider = ({ children }) => {
                     id: doc.id,
                     ...doc.data()
                 }));
+
                 if (pathname === "/pages/message/compose/message") {
-                    setComposeChats(newMessages);
+                    const filtered = newMessages.filter((doc) => doc.type === "allvendors");
+                    setComposeChats(filtered);
                 }
             });
-        }else{
+
+        } else {
             const q = query(
-                collection(db,"chatRooms"),
+                collection(db, "chatRooms"),
                 orderBy("currentTime", "desc")
             );
             unsubscribe = onSnapshot(q, (snapshot) => {
@@ -113,15 +116,15 @@ export const ChatProvider = ({ children }) => {
                     id: doc.id,
                     ...doc.data()
                 }));
-    
+
                 const userIds = newMessages?.map((chat) => chat?.user);
                 getUsersDetails(userIds);
-    
+
                 let matchingDocument = newMessages?.filter((doc) => {
                     return doc?.receiverId === logUserData?._id;
                 });
-    
-    
+
+
                 if (pathname === "/pages/message/pin") {
                     const filterPinned = matchingDocument.filter((doc) => {
                         return doc.pinnedMsgAdmin === logUserData?._id && doc?.isTempDelete2 !== logUserData?._id;
@@ -129,8 +132,8 @@ export const ChatProvider = ({ children }) => {
                     setChats(filterPinned)
                     return;
                 }
-    
-    
+
+
                 console.log({ matchingDocument });
                 if (pathname === "/pages/message") {
                     const isDeletefilterData = matchingDocument.filter(
@@ -139,35 +142,35 @@ export const ChatProvider = ({ children }) => {
                     setChats(isDeletefilterData);
                     return;
                 }
-    
+
                 if (pathname === "/pages/message/inbox") {
                     const isDeletefilterData = matchingDocument.filter(
                         (item) => item?.isTempDelete2 !== logUserData?._id
                     );
-    
+
                     const filteredData = isDeletefilterData?.filter((item) =>
                         item.text.some((msg) => msg.messageSenderId !== logUserData?._id)
                     );
                     setChats(filteredData);
                     return;
                 }
-    
+
                 if (pathname === "/pages/message/sent") {
                     const isDeletefilterData = matchingDocument.filter(
                         (item) => item?.isTempDelete2 !== logUserData?._id
                     );
-    
+
                     const filteredData = isDeletefilterData?.filter((item) =>
                         item.text.some((msg) => msg.messageSenderId === logUserData?._id)
                     );
-    
+
                     console.log(matchingDocument, "hiiiiiiiiiiiiiiiiiii");
                     setChats(filteredData);
                     return;
                 }
-    
+
                 // console.log("uuuuuuuuuuuuuuuu")
-    
+
                 if (pathname === "/pages/message/unread") {
                     const filteredData = matchingDocument?.filter((item) =>
                         item.text.some(
@@ -177,7 +180,7 @@ export const ChatProvider = ({ children }) => {
                     setChats(filteredData);
                     return;
                 }
-    
+
                 if (pathname === "/pages/message/trash") {
                     const isDeletefilterData = matchingDocument.filter(
                         (item) => item.isTempDelete2 === logUserData?._id
@@ -186,7 +189,7 @@ export const ChatProvider = ({ children }) => {
                 }
             });
             const qforvendor = query(
-                collection(db,"composeChat"),
+                collection(db, "composeChat"),
                 orderBy("currentTime", "desc")
             );
             unsubscribeforvendor = onSnapshot(qforvendor, (snapshot) => {
@@ -194,11 +197,30 @@ export const ChatProvider = ({ children }) => {
                     id: doc.id,
                     ...doc.data()
                 }));
+
                 if (pathname === "/pages/message/etsy") {
-                    const filterData = newMessages.filter((item)=>item.type == "allvendors")
+                    const filterData = newMessages.filter((item) => item.type === "allvendors");
                     setChats(filterData);
                 }
+
+                if (pathname === "/pages/message/compose/message") {
+                    const filtered = newMessages.filter((doc) => {
+                        if (doc.type !== "allusers") return false;
+
+                        if (doc.audienceMode === "persistent") return true;
+
+                        if (doc.audienceMode === "snapshot") {
+                            if (!doc.userCreatedBefore || !logUserData?.createdAt) return false;
+                            return new Date(logUserData.createdAt) <= doc.userCreatedBefore.toDate();
+                        }
+
+                        return true;
+                    });
+
+                    setComposeChats(filtered);
+                }
             });
+
         }
         return () => {
             unsubscribe();
@@ -236,7 +258,7 @@ export const ChatProvider = ({ children }) => {
             const auth_key = localStorage.getItem(localStorageKey.auth_key);
             const res = await ApiService.login(apiEndpoints.getUserDetialsChat, payload, auth_key);
             if (res.status === 200) {
-               return res?.data?.data[0];
+                return res?.data?.data[0];
             }
         } catch (error) {
             console.log(error);
@@ -250,7 +272,7 @@ export const ChatProvider = ({ children }) => {
 
         checkMessage.map(async (docId) => {
             try {
-                const docRef = doc(db,"chatRooms", docId);
+                const docRef = doc(db, "chatRooms", docId);
                 await updateDoc(docRef, {
                     isTempDelete2: logUserData?._id
                 });
@@ -276,7 +298,7 @@ export const ChatProvider = ({ children }) => {
 
         checkMessage.map(async (docId) => {
             try {
-                const docRef = doc(db,"chatRooms", docId);
+                const docRef = doc(db, "chatRooms", docId);
                 await updateDoc(docRef, {
                     isTempDelete2: ""
                 });
@@ -306,7 +328,7 @@ export const ChatProvider = ({ children }) => {
     const markAsUnreadHandler = () => {
         checkMessage.map(async (docId) => {
             try {
-                const docRef = doc(db,"chatRooms", docId);
+                const docRef = doc(db, "chatRooms", docId);
                 const docSnap = await getDoc(docRef);
 
                 if (docSnap.exists()) {
@@ -318,7 +340,7 @@ export const ChatProvider = ({ children }) => {
                         return msg;
                     });
 
-                    await updateDoc(doc(db,"chatRooms", docId), {
+                    await updateDoc(doc(db, "chatRooms", docId), {
                         text: updateArr
                     });
                 }
@@ -333,7 +355,7 @@ export const ChatProvider = ({ children }) => {
     const markAsReadHandler = () => {
         checkMessage.map(async (docId) => {
             try {
-                const docRef = doc(db,"chatRooms", docId);
+                const docRef = doc(db, "chatRooms", docId);
                 const docSnap = await getDoc(docRef);
 
                 if (docSnap.exists()) {
@@ -346,7 +368,7 @@ export const ChatProvider = ({ children }) => {
                         return msg;
                     });
 
-                    await updateDoc(doc(db,"chatRooms", docId), {
+                    await updateDoc(doc(db, "chatRooms", docId), {
                         text: updateArr
                     });
                 }
