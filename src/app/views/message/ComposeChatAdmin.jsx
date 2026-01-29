@@ -76,47 +76,46 @@ const ComposeChatAdmin = ({ slug }) => {
 
   const sendMessage = async () => {
     let imageUrls = [];
-    if (input.trim() || files.length > 0) {
-      // Upload image if there is a file selected
-      if (files.length > 0) {
-        imageUrls = await uploadImagesToFirebase();
-        handleClearPreview(); // Clear preview and file after upload
-      }
-      const now = new Date();
 
-      const payload = {
-        text: [
-          {
-            senderType: "admin",
-            text: input,
-            createdAt: now,
-            messageSenderId: senderId,
-            isNotification: false,
-            imageUrls: imageUrls
-          }
-        ],
-        createdAt: now,
-        receiverId: senderId,
-        isDeleted: false,
-        currentTime: now,
-        title: "title1",
-        type: selectedUser
-      };
+    if (!input.trim() && files.length === 0) return;
 
-      if (selectedUser === "allusers") {
-        if (audienceMode === "snapshot") {
-          payload.audienceMode = "snapshot";
-          payload.userCreatedBefore = now;
-        } else {
-          payload.audienceMode = "persistent";
-        }
-      }
-
-      const res = await addDoc(collection(db, "composeChat"), payload);
-      navigate(`/pages/message/compose/message?slug=${res.id}`);
-      setInput("");
+    if (files.length > 0) {
+      imageUrls = await uploadImagesToFirebase();
+      handleClearPreview();
     }
+
+    const now = new Date();
+
+    const payload = {
+      text: [
+        {
+          senderType: "admin",
+          text: input,
+          createdAt: now,
+          messageSenderId: senderId,
+          isNotification: false,
+          imageUrls
+        }
+      ],
+      createdAt: now,
+      receiverId: senderId,
+      isSpreadStopped: false,
+      spreadStoppedAt: null,
+      isDeleted: false,
+      currentTime: now,
+      type: selectedUser
+    };
+
+    if (selectedUser === "allusers") {
+      payload.audienceMode = audienceMode;          // snapshot | persistent
+      payload.userCreatedBefore = now;               // ALWAYS SET
+    }
+
+    const res = await addDoc(collection(db, "composeChat"), payload);
+    navigate(`/pages/message/compose/message?slug=${res.id}`);
+    setInput("");
   };
+
 
   const handleRemoveAllNotification = async (venderID) => {
     console.log("venderIDvenderID", venderID);
@@ -218,8 +217,8 @@ const ComposeChatAdmin = ({ slug }) => {
                 <Typography fontWeight={500}>Audience Mode:</Typography>
                 <FormControl>
                   <RadioGroup row value={audienceMode} onChange={handleAudienceChange}>
-                    <FormControlLabel value="snapshot" control={<Radio />} label="Snapshot" />
-                    <FormControlLabel value="persistent" control={<Radio />} label="Persistent" />
+                    <FormControlLabel value="snapshot" control={<Radio />} label="For All Old Users" />
+                    <FormControlLabel value="persistent" control={<Radio />} label="For All New Users" />
                   </RadioGroup>
                 </FormControl>
               </Box>

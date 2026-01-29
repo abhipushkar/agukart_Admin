@@ -1,4 +1,4 @@
-import { Box, Button, Link, List, TextareaAutosize, TextField, Tooltip, Typography } from "@mui/material";
+import { Box, Button, Checkbox, FormControlLabel, Link, List, Radio, RadioGroup, Switch, TextareaAutosize, TextField, ToggleButton, Tooltip, Typography } from "@mui/material";
 import ListItem from "@mui/material/ListItem";
 import React, { useEffect, useState, useRef } from "react";
 import { db, storage } from "../../../../src/firebase/Firebase";
@@ -16,15 +16,25 @@ import WallpaperIcon from "@mui/icons-material/Wallpaper";
 import { useProfileData } from "app/contexts/profileContext";
 import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 import useChat from "app/hooks/useChat";
+import { CheckBox } from "@mui/icons-material";
+import { useCallback } from "react";
 
-const ComposeChatBoxAdmin = ({ slug,role }) => {
+const ComposeChatBoxAdmin = ({ slug, role }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
   const { logUserData, setLogUserData } = useProfileData();
-  const [userData,setUserData] = useState({});
+  const [userData, setUserData] = useState({});
   const fileInputRef = useRef(null);
   const [file, setFile] = useState(null);
+  const [audienceMode, setAudienceMode] = useState(null);
+  const [currentAudienceMode, setCurrentAudienceMode] = useState(null);
+  const [stopSpreading, setStopSpreading] = useState(false);
+  const [spreadLoading, setSpreadloading] = useState(false);
+  const [userCreatedBefore, setUserCreatedBefore] = useState(null);
+  const [loadingAudience, setLoadingAudience] = useState(true);
+  const [matchingDoc, setMatchingDoc] = useState(null);
+
   // const receiverId = "66f4e9e2c0b4b8af3e4555e4";
   const senderId = logUserData?._id;
   // const roomId = `${receiverId}_${senderId}`;
@@ -47,33 +57,70 @@ const ComposeChatBoxAdmin = ({ slug,role }) => {
   const designationId = localStorage.getItem("designation_id");
   useEffect(() => {
     const q = query(
-      collection(db,"composeChat"),
+      collection(db, "composeChat"),
       orderBy("createdAt", "asc")
     );
 
-    const unsubscribe = onSnapshot(q, async(snapshot) => {
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
       const newMessages = snapshot?.docs?.map((doc) => ({
         id: doc.id,
         ...doc.data()
       }));
 
       const matchingDocument = newMessages?.filter((doc) => {
-        console.log("newMessagesnewMessagesnewMessagesnewMessages", doc);
         return doc?.id === slug;
       });
-      console.log("newMessagesnewMessages", matchingDocument);
+      setMatchingDoc(matchingDocument);
+      const docData = matchingDocument?.[0];
+
+      if (docData) {
+        setMessages(docData.text || []);
+
+        console.log("Messages in chat", docData.isSpreadStopped);
+
+
+        // 🔥 audience fields
+        setAudienceMode(docData.audienceMode || "snapshot");
+        setCurrentAudienceMode(docData.audienceMode || "snapshot");
+        setStopSpreading(docData.isSpreadStopped);
+        setUserCreatedBefore(docData.userCreatedBefore || null);
+
+        setLoadingAudience(false);
+      }
+
       const userData = await getUserDetails(matchingDocument[0]?.user);
       setUserData(userData);
       matchingDocument.forEach((data) => {
-        console.log("qwwwwwdddddddwwwwwwwdata", data);
         setMessages(data?.text);
         // setUserIdData(data?.user);
       });
     });
     return () => unsubscribe();
-  }, [slug,role]);
+  }, [slug, role, getUserDetails]);
 
-  //   console.log({usercredentials})
+  const updateAudienceMode = async () => {
+    if (!slug || !audienceMode || !currentAudienceMode) return;
+
+    const now = new Date();
+    const updatePayload = {
+      audienceMode,
+      userCreatedBefore: now
+    };
+
+    await updateDoc(doc(db, "composeChat", slug), updatePayload);
+
+    // sync local state
+    setCurrentAudienceMode(audienceMode);
+  };
+
+  const handleSpreading = async (_e, checked) => {
+    setSpreadloading(true);
+    if (!slug) return;
+    const now = new Date();
+    await updateDoc(doc(db, "composeChat", slug), { isSpreadStopped: checked, spreadStoppedAt: checked ? now : null });
+    setStopSpreading(checked);
+    setSpreadloading(false);
+  }
 
   const sendMessage = async () => {
     if (input.trim() || file) {
@@ -124,7 +171,7 @@ const ComposeChatBoxAdmin = ({ slug,role }) => {
         const updatedText = [
           ...existingText,
           {
-            senderType:"vendor",
+            senderType: "vendor",
             text: input,
             imageUrl: imageUrl || null,
             createdAt: new Date(),
@@ -148,7 +195,7 @@ const ComposeChatBoxAdmin = ({ slug,role }) => {
     }
   };
 
-  const handleRemoveAllNotification = async (venderID) => {
+  const handleRemoveAllNotification = useCallback(async (venderID) => {
     console.log("venderIDvenderID", venderID);
 
     // Fetch all documents from 'chatRooms' collection
@@ -203,20 +250,20 @@ const ComposeChatBoxAdmin = ({ slug,role }) => {
 
     // Update the document with the modified `text` field
     await updateDoc(
-      doc(db,role === "admin" ? "composeChat" : "chatRooms", matchingDocument.id),
+      doc(db, role === "admin" ? "composeChat" : "chatRooms", matchingDocument.id),
       {
         text: updatedText
       }
     );
 
     console.log("Updated document:", matchingDocument);
-  };
+  }, [role, senderId]);
 
   useEffect(() => {
     if (slug) {
       handleRemoveAllNotification(slug);
     }
-  }, [slug, messages]);
+  }, [slug, messages, handleRemoveAllNotification]);
 
   // Helper function to format the date
   const formatDate = (timestamp) => {
@@ -228,7 +275,7 @@ const ComposeChatBoxAdmin = ({ slug,role }) => {
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     return text.split(urlRegex).map((part, index) =>
       urlRegex.test(part) ? (
-        <a key={index} href={part} target="_blank" rel="noopener noreferrer" style={{ color: "blue",textDecoration: "underline" }}>
+        <a key={index} href={part} target="_blank" rel="noopener noreferrer" style={{ color: "blue", textDecoration: "underline" }}>
           {part}
         </a>
       ) : (
@@ -238,7 +285,7 @@ const ComposeChatBoxAdmin = ({ slug,role }) => {
   };
 
   function removeHTMLTags(str) {
-    return str.replace(/<\/?[^>]+(>|$)/g, ""); 
+    return str.replace(/<\/?[^>]+(>|$)/g, "");
   }
 
   return (
@@ -251,6 +298,63 @@ const ComposeChatBoxAdmin = ({ slug,role }) => {
         background: "#fff"
       }}
     >
+      {!loadingAudience && matchingDoc.some((m) => m?.type !== "allvendors") && (
+        <Box
+          sx={{
+            borderBottom: "1px solid #ddd",
+            padding: "12px",
+            background: "#fafafa"
+          }}
+        >
+          <Typography fontWeight={600} mb={1}>
+            Audience Settings
+          </Typography>
+
+          <Box sx={{
+            display: "flex"
+          }}>
+            <RadioGroup
+              row
+              value={audienceMode}
+              onChange={(e) => setAudienceMode(e.target.value)}
+            >
+              <FormControlLabel
+                value="snapshot"
+                control={<Radio />}
+                label="For Old Users"
+              />
+              <FormControlLabel
+                value="persistent"
+                control={<Radio />}
+                label="For New Users"
+              />
+            </RadioGroup>
+            <FormControlLabel
+              control={<Switch checked={stopSpreading} onChange={handleSpreading} />}
+              label="Stop Message Spread"
+              disabled={spreadLoading}
+            />
+
+          </Box>
+
+          {audienceMode !== currentAudienceMode && (
+            <Box mt={1} display="flex" gap={2} alignItems="center">
+              <Button
+                variant="contained"
+                color="warning"
+                onClick={updateAudienceMode}
+              >
+                Update Audience
+              </Button>
+
+              <Typography fontSize={12} color="gray">
+                This affects which users can see this message.
+              </Typography>
+            </Box>
+          )}
+        </Box>
+      )}
+
       <Typography
         p={3}
         component="div"
@@ -322,12 +426,12 @@ const ComposeChatBoxAdmin = ({ slug,role }) => {
                             sx={{
                               background: msg.senderType === "user" ? "#fff" : "#e9e9e9",
                               boxShadow: "0 0 3px #000",
-                              border: "2px solid black", 
+                              border: "2px solid black",
                               borderRadius: "6px",
                               maxWidth: "340px",
                               minWidth: "75px",
                               textAlign: "center",
-                              mb: 1, 
+                              mb: 1,
                             }}
                           >
                             <img
@@ -346,58 +450,58 @@ const ComposeChatBoxAdmin = ({ slug,role }) => {
                       }
                       {
                         msg.text && (
-                        <Typography
-                          p={2}
-                          component="div"
-                          sx={{
-                            background: msg.senderType === "user" ? "#fff" : "#e9e9e9",
-                            boxShadow: "0 0 3px #000",
-                            border: "1px solid #ccc",
-                            borderRadius: "6px",
-                            maxWidth: "100%",
-                            minWidth: "75px",
-                            textAlign: "initial",
-                            mt: 1,
-                          }}
-                        >
                           <Typography
+                            p={2}
+                            component="div"
                             sx={{
-                              wordWrap: "break-word",
-                              whiteSpace: "pre-line", 
+                              background: msg.senderType === "user" ? "#fff" : "#e9e9e9",
+                              boxShadow: "0 0 3px #000",
+                              border: "1px solid #ccc",
+                              borderRadius: "6px",
+                              maxWidth: "100%",
+                              minWidth: "75px",
+                              textAlign: "initial",
+                              mt: 1,
                             }}
                           >
-                            {detectLink(msg.text || "")}
-                          </Typography>
+                            <Typography
+                              sx={{
+                                wordWrap: "break-word",
+                                whiteSpace: "pre-line",
+                              }}
+                            >
+                              {detectLink(msg.text || "")}
+                            </Typography>
 
-                          {msg.productLink && (
-                            <Typography
-                              sx={{ wordWrap: "break-word", marginTop: "15px" }}
-                            >
-                              <a
-                                href={msg.productLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{ color: "blue", textDecoration: "underline",whiteSpace: "nowrap" }}
+                            {msg.productLink && (
+                              <Typography
+                                sx={{ wordWrap: "break-word", marginTop: "15px" }}
                               >
-                                {msg.productLink}
-                              </a>
-                            </Typography>
-                          )}
-                          {msg.shopLink && (
-                            <Typography
-                              sx={{ wordWrap: "break-word", marginTop: "15px" }}
-                            >
-                              <a
-                                href={msg.shopLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{ color: "blue", textDecoration: "underline",whiteSpace: "nowrap" }}
+                                <a
+                                  href={msg.productLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{ color: "blue", textDecoration: "underline", whiteSpace: "nowrap" }}
+                                >
+                                  {msg.productLink}
+                                </a>
+                              </Typography>
+                            )}
+                            {msg.shopLink && (
+                              <Typography
+                                sx={{ wordWrap: "break-word", marginTop: "15px" }}
                               >
-                                {msg.shopLink}
-                              </a>
-                            </Typography>
-                          )}
-                        </Typography>
+                                <a
+                                  href={msg.shopLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{ color: "blue", textDecoration: "underline", whiteSpace: "nowrap" }}
+                                >
+                                  {msg.shopLink}
+                                </a>
+                              </Typography>
+                            )}
+                          </Typography>
                         )
                       }
                     </div>
@@ -431,9 +535,9 @@ const ComposeChatBoxAdmin = ({ slug,role }) => {
                           height={100}
                           style={{ borderRadius: 8, objectFit: "cover" }}
                         />
-                        <Box sx={{display:"flex",flexDirection:"column",textAlign:"left",width:"100%"}}>
-                          <Box sx={{ display: "flex", flexDirection: "column",flexGrow: 1 }}>
-                            <Typography sx={{ fontSize: 14, fontWeight: 600, color: "#333",lineClamp:2 }}>
+                        <Box sx={{ display: "flex", flexDirection: "column", textAlign: "left", width: "100%" }}>
+                          <Box sx={{ display: "flex", flexDirection: "column", flexGrow: 1 }}>
+                            <Typography sx={{ fontSize: 14, fontWeight: 600, color: "#333", lineClamp: 2 }}>
                               {removeHTMLTags(msg?.productData?.productTitle || "")}
                             </Typography>
                             <Typography sx={{ fontSize: 13, color: "gray" }}>
@@ -450,7 +554,7 @@ const ComposeChatBoxAdmin = ({ slug,role }) => {
                                 textTransform: "none",
                                 fontSize: 12,
                                 fontWeight: "bold",
-                                "&:hover": { background:"black"},
+                                "&:hover": { background: "black" },
                               }}
                             >
                               Buy It Now
@@ -484,8 +588,8 @@ const ComposeChatBoxAdmin = ({ slug,role }) => {
                             display: "flex",
                             flexDirection: "column",
                             textAlign: "left",
-                            marginBottom:"53px",
-                            gap:"7px"
+                            marginBottom: "53px",
+                            gap: "7px"
                           }}
                         >
                           <Box
@@ -518,10 +622,10 @@ const ComposeChatBoxAdmin = ({ slug,role }) => {
                                 fontWeight: "bold",
                                 "&:hover": { background: "black" },
                               }}
-                              onClick={()=>{
-                                  const url = `${msg.shopLink}`
-                                  window.open(url, "_blank");
-                                }
+                              onClick={() => {
+                                const url = `${msg.shopLink}`
+                                window.open(url, "_blank");
+                              }
                               }
                             >
                               Visit Now
@@ -652,7 +756,7 @@ const ComposeChatBoxAdmin = ({ slug,role }) => {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Type your reply"
-                minRows={4} 
+                minRows={4}
                 maxRows={10}
                 style={{
                   width: "100%",

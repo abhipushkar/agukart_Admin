@@ -101,8 +101,7 @@ export const ChatProvider = ({ children }) => {
                 }));
 
                 if (pathname === "/pages/message/compose/message") {
-                    const filtered = newMessages.filter((doc) => doc.type === "allvendors");
-                    setComposeChats(filtered);
+                    setComposeChats(newMessages);
                 }
             });
 
@@ -207,18 +206,27 @@ export const ChatProvider = ({ children }) => {
                     const filtered = newMessages.filter((doc) => {
                         if (doc.type !== "allusers") return false;
 
-                        if (doc.audienceMode === "persistent") return true;
+                        if (!doc.userCreatedBefore || !logUserData?.createdAt) return false;
 
+                        const userCreatedAt = new Date(logUserData.createdAt);
+                        const cutoff = doc.userCreatedBefore.toDate();
+
+                        // SNAPSHOT → OLD USERS
                         if (doc.audienceMode === "snapshot") {
-                            if (!doc.userCreatedBefore || !logUserData?.createdAt) return false;
-                            return new Date(logUserData.createdAt) <= doc.userCreatedBefore.toDate();
+                            return userCreatedAt <= cutoff;
                         }
 
-                        return true;
+                        // PERSISTENT → NEW USERS ONLY
+                        if (doc.audienceMode === "persistent") {
+                            return userCreatedAt > cutoff;
+                        }
+
+                        return false;
                     });
 
                     setComposeChats(filtered);
                 }
+
             });
 
         }
