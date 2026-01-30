@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Box, Button, Checkbox, Grid, Typography } from "@mui/material";
+import { Box, Button, Checkbox, Grid, List, ListItem, Typography } from "@mui/material";
 import { collection, getDocs, onSnapshot, orderBy, query } from "firebase/firestore";
 import { db } from "../../../../src/firebase/Firebase";
 import { useProfileData } from "app/contexts/profileContext";
@@ -30,7 +30,7 @@ const ComposeChatAdminList = () => {
   const [notificationNumber, setNotificationNumber] = useState("");
 
   const { composeChats, userDetails, handleCheckboxChange, checkMessage, pinnedMessageHadler } = useChat();
-  console.log({composeChats})
+  console.log({ composeChats })
 
   const designation_id = localStorage.getItem(localStorageKey.designation_id);
 
@@ -283,74 +283,93 @@ const ComposeChatAdminList = () => {
                           </TableCell>
                         }
                         <TableCell sx={{ border: "none" }}>
-                            <Box
-                              sx={{
-                                display: "flex",
-                                alignItems: "center",
-                                wordBreak: "break-all",
-                                cursor: "pointer"
-                              }}
-                              onClick={() => {
-                                const url =`${REACT_APP_BASE_URL}pages/message/compose/message?slug=${chat.id}`
-                                window.open(url, "_blank");
-                              }}
-                            >
-                              <Typography component="span">
-                                <img
-                                  src={
-                                    user?.image ||
-                                    "https://i.etsystatic.com/site-assets/images/avatars/default_avatar.png?width=75"
-                                  }
-                                  style={{
-                                    borderRadius: "50%",
-                                    height: "60px",
-                                    width: "60px"
-                                  }}
-                                  alt="User Avatar"
-                                />
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              wordBreak: "break-all",
+                              cursor: "pointer"
+                            }}
+                            onClick={() => {
+                              const url = `${REACT_APP_BASE_URL}pages/message/compose/message?slug=${chat.id}`
+                              window.open(url, "_blank");
+                            }}
+                          >
+                            <Typography component="span">
+                              <img
+                                src={
+                                  user?.image ||
+                                  "https://i.etsystatic.com/site-assets/images/avatars/default_avatar.png?width=75"
+                                }
+                                style={{
+                                  borderRadius: "50%",
+                                  height: "60px",
+                                  width: "60px"
+                                }}
+                                alt="User Avatar"
+                              />
+                            </Typography>
+
+                            <Box ml={2} sx={{ flexGrow: "1" }}>
+                              <Typography fontWeight="bold">
+                                {user?.name || "Agukart"}
                               </Typography>
-    
-                              <Box ml={2}>
-                                <Typography fontWeight="bold">
-                                  {user?.name || "Agukart"}
-                                </Typography>
-    
-                                <Typography
+
+                              <Typography
+                                sx={{
+                                  textDecoration: "none",
+                                  fontSize: "16px",
+                                  color: "#565675",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                  display: "inline-block",
+                                  width: "600px",
+                                  "&:hover": { textDecoration: "underline" }
+                                }}
+                              >
+                                {lastMessage?.text || "No message available"}
+                              </Typography>
+
+                              {chat?.productId != null && chat?.orderId != null && (
+                                <Box
                                   sx={{
-                                    textDecoration: "none",
-                                    fontSize: "16px",
-                                    color: "#565675",
-                                    overflow: "hidden",
-                                    textOverflow: "ellipsis",
-                                    whiteSpace: "nowrap",
-                                    display: "inline-block",
-                                    width: "200px",
-                                    "&:hover": { textDecoration: "underline" }
+                                    mt: 1,
+                                    backgroundColor: "#fe8e40",
+                                    borderRadius: "20px",
+                                    display: "block",
+                                    width: "fit-content",
+                                    padding: "6px 12px",
+                                    color: "black",
+                                    fontSize: "14px"
                                   }}
                                 >
-                                  {lastMessage?.text || "No message available"}
-                                </Typography>
-    
-                                {chat?.productId != null && chat?.orderId != null && (
-                                  <Box
-                                    sx={{
-                                      mt: 1, 
-                                      backgroundColor: "#fe8e40",
-                                      borderRadius: "20px",
-                                      display: "block",
-                                      width: "fit-content", 
-                                      padding: "6px 12px",
-                                      color: "black",
-                                      fontSize: "14px"
-                                    }}
-                                  >
-                                    Help Request
-                                  </Box>
-                                )}
-    
-                              </Box>
+                                  Help Request
+                                </Box>
+                              )}
                             </Box>
+                            {
+                              chat.type === "allvendors"
+                                ? <Typography component={"span"} sx={{ color: "primary.main", fontWeight: "bold" }}>For All Vendors</Typography>
+                                : chat.audienceMode === "snapshot"
+                                  ? <Typography component={"span"} sx={{ color: "primary.dark", fontWeight: "bold" }}>For All Old Users</Typography>
+                                  : chat.audienceMode === "persistent"
+                                    ? <Typography component={"span"} sx={{ color: "secondary.dark", fontWeight: "bold" }}>For All New Users</Typography>
+                                    : <Typography component={"span"} sx={{ color: "success.light", fontWeight: "bold" }}>For All Users</Typography>
+                            }
+                          </Box>
                         </TableCell>
+                        {/* <TableCell sx={{ border: "none" }}>
+                          {
+                            chat.type === "allvendors"
+                              ? <Typography component={"span"} sx={{ color: "primary.main", fontWeight: "bold" }}>For All Vendors</Typography>
+                              : chat.audienceMode === "snapshot"
+                                ? <Typography component={"span"} sx={{ color: "primary.dark", fontWeight: "bold" }}>For All Old Users</Typography>
+                                : chat.audienceMode === "persistent"
+                                  ? <Typography component={"span"} sx={{ color: "secondary.dark", fontWeight: "bold" }}>For All New Users</Typography>
+                                  : <Typography component={"span"} sx={{ color: "success.light", fontWeight: "bold" }}>For All Users</Typography>
+                          }
+                        </TableCell> */}
                         <TableCell sx={{ border: "none" }}>
                           <Box>
                             {!isNotification?.length ? (

@@ -1,7 +1,7 @@
 import axios from "axios";
 import { toast } from "react-toastify";
 // import { ROUTE_CONSTANT } from "app/constant/routeContanst";
-import {BASE_URL,LOGIN_BASE_URL} from "../../config.js";
+import { BASE_URL, LOGIN_BASE_URL } from "../../config.js";
 
 export const ApiService = {
   post: async (url, data, accessToken) => {
@@ -26,7 +26,7 @@ export const ApiService = {
       throw error;
     }
   },
-    put: async (url, data, accessToken) => {
+  put: async (url, data, accessToken) => {
     try {
       const res = await axios.put(`${BASE_URL}/${url}`, data, {
         headers: {

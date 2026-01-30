@@ -1,14 +1,7 @@
 import {
   Box,
   Button,
-  FormControl,
-  Icon,
-  IconButton,
-  InputLabel,
-  MenuItem,
   Paper,
-  Select,
-  Switch,
   Table,
   TableBody,
   TableCell,
@@ -16,19 +9,10 @@ import {
   TableHead,
   TablePagination,
   TableRow,
-  TextField,
-  TableSortLabel,
   Grid,
   Typography,
-  Autocomplete,
-  Checkbox,
-  ListItem,
-  List,
-  Menu,
-  InputAdornment
 } from "@mui/material";
-import React, { useCallback, useEffect } from "react";
-import SearchIcon from "@mui/icons-material/Search";
+import React, { useEffect } from "react";
 import Tab from "@mui/material/Tab";
 import TabContext from "@mui/lab/TabContext";
 import TabList from "@mui/lab/TabList";
@@ -41,12 +25,10 @@ import { localStorageKey } from "app/constant/localStorageKey";
 import { useNavigate } from "react-router-dom";
 import { ApiService } from "app/services/ApiService";
 import { apiEndpoints } from "app/constant/apiEndpoints";
-import Rating from "@mui/material/Rating";
-import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
-import ClearIcon from "@mui/icons-material/Clear";
 import ConfirmModal from "app/components/ConfirmModal";
 import ReviewDialog from "../reviews/ReviewModal";
 import EditIcon from '@mui/icons-material/Edit';
+import { useCallback } from "react";
 
 const AffiliateUsers = () => {
   const auth_key = localStorage.getItem(localStorageKey.auth_key);
@@ -90,14 +72,14 @@ const AffiliateUsers = () => {
     setRoute(ROUTE_CONSTANT.login);
   };
 
-  const handleOpen = (type, msg) => {
+  const handleOpen = useCallback((type, msg) => {
     setMsg(msg?.message);
     setOpen(true);
     setType(type);
     if (msg?.response?.status === 401) {
       logOut();
     }
-  };
+  }, []);
 
   const handleClose = () => {
     setOpen(false);
@@ -124,7 +106,7 @@ const AffiliateUsers = () => {
     setPage(0);
   };
 
-  const getAffiliateUsers = async () => {
+  const getAffiliateUsers = useCallback(async () => {
     try {
       setUsers([]);
       const res = await ApiService.get(`${apiEndpoints.getAffiliateUsers}/${tab}`, auth_key);
@@ -133,7 +115,7 @@ const AffiliateUsers = () => {
     } catch (error) {
       handleOpen("error", error);
     }
-  };
+  }, [auth_key, handleOpen, tab]);
 
   const changeUserStatus = async () => {
     try {
@@ -143,7 +125,7 @@ const AffiliateUsers = () => {
         _id: id,
         affiliate_commission: 0
       };
-      if (type1 == "approved") {
+      if (type1 === "approved") {
         payload.affiliate_commission = affiliateCommision
       }
       const res = await ApiService.post(apiEndpoints.changeAffiliateUserStatus, payload, auth_key);
@@ -164,7 +146,7 @@ const AffiliateUsers = () => {
 
   useEffect(() => {
     getAffiliateUsers();
-  }, [tab]);
+  }, [getAffiliateUsers, tab]);
 
   const capitalizeFirstWord = (str) => {
     if (!str) return "";
@@ -212,9 +194,9 @@ const AffiliateUsers = () => {
                   <TableCell>Email</TableCell>
                   <TableCell>Mobile No.</TableCell>
                   {
-                     tab === "approved" && (
+                    tab === "approved" && (
                       <TableCell>Affiliate Commission(In %)</TableCell>
-                     )
+                    )
                   }
                   <TableCell sx={{ textAlign: "center" }}>Action</TableCell>
                 </TableRow>
@@ -282,7 +264,7 @@ const AffiliateUsers = () => {
                 </TableBody>
               ) : (
                 <TableBody scope="row">
-                  <TableCell colSpan={tab == "pending" ? 5 : 4} sx={{ textAlign: "center" }}>
+                  <TableCell colSpan={tab === "pending" ? 5 : 4} sx={{ textAlign: "center" }}>
                     No Affiliate Users Found
                   </TableCell>
                 </TableBody>
