@@ -177,7 +177,6 @@ const ComposeChatBoxAdmin = ({ slug, role }) => {
             createdAt: new Date(),
             isNotification: false,
             messageSenderId: matchingDocument.data.receiverId,
-            isNotification: false,
             productId: lastText?.productId,
           }
         ];

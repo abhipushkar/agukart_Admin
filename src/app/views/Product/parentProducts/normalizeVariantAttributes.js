@@ -61,6 +61,18 @@ export const getAttributesByIds = (variant, attributeIds) => {
 };
 
 /**
+ * Generates a unique key for a combination
+ */
+export const generateCombinationKey = (combination) => {
+    if (!combination) return '';
+
+    return Object.keys(combination)
+        .sort()
+        .map(key => combination[key]._id || combination[key])
+        .join('_');
+};
+
+/**
  * Converts Innervariations object from ID-based to full objects
  */
 export const expandInnervariations = (innervariations, variants) => {

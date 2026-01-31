@@ -167,7 +167,9 @@ export default function AddProductNew() {
         const errors = validateForm();
         if (Object.keys(errors).length > 0) {
             setInputErrors(errors);
-            handleOpen("error", "Please fix all validation errors before submitting.");
+            handleOpen("error", `Please fix all validation errors before submitting.`);
+            console.log("Input Errors\n", inputErrors, errors);
+
             return;
         }
 

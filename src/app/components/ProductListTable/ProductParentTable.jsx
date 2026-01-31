@@ -30,7 +30,8 @@ export default function ProductParentTable({
     setLoadingSkus,
     parentVariants,
     checkForDuplicateSkus,
-    selectedVendor // Added selectedVendor prop
+    selectedVendor, // Added selectedVendor prop
+    combinationKeys
 }) {
     const [sellerSkyValues, setSellerSkyValues] = React.useState(
         sellerSky ? sellerSky : Array(combinations.length).fill("")
@@ -81,13 +82,24 @@ export default function ProductParentTable({
         return null;
     };
 
-    const validateSkuAndVariants = async (sku, index) => {
+    const combinationKeyToIndex = React.useMemo(() => {
+        const map = {};
+        combinationKeys?.forEach((key, index) => {
+            if (key) {
+                map[key] = index;
+            }
+        });
+        return map;
+    }, [combinationKeys]);
+
+    const validateSkuAndVariants = useCallback(async (sku, index, combinationKey) => {
         const trimmedSku = trimValue(sku);
 
         // Check for duplicate SKUs first
         const duplicateError = checkForDuplicateSkus(trimmedSku, index);
         if (duplicateError) {
-            setSkuErrors(prev => ({ ...prev, [index]: duplicateError }));
+            const errorKey = combinationKey || index;
+            setSkuErrors(prev => ({ ...prev, [errorKey]: duplicateError }));
 
             // Clear the product data if it's a duplicate SKU
             const newInputsFields = [...variantArrValues];
@@ -148,7 +160,8 @@ export default function ProductParentTable({
                     return;
                 }
 
-                setSkuErrors(prev => ({ ...prev, [index]: "" }));
+                const errorKey = combinationKey || index;
+                setSkuErrors(prev => ({ ...prev, [errorKey]: "" }));
 
                 let sale_start_date = obj.sale_start_date ? dayjs(obj.sale_start_date) : "";
                 let sale_end_date = obj.sale_end_date ? dayjs(obj.sale_end_date) : "";
@@ -191,19 +204,20 @@ export default function ProductParentTable({
         } finally {
             setLoadingSkus(prev => ({ ...prev, [index]: false }));
         }
-    };
+    }, [auth_key, checkForDuplicateSkus, parentVariants, selectedVendor, setLoadingSkus, setSkuErrors, setVariantArrValue, variantArrValues]);
 
     const debouncedValidateSku = useCallback((sku, index) => {
         const trimmedSku = trimValue(sku);
+        const combinationKey = combinationKeys?.[index];
 
         if (debounceTimers.current[index]) {
             clearTimeout(debounceTimers.current[index]);
         }
 
         debounceTimers.current[index] = setTimeout(() => {
-            validateSkuAndVariants(trimmedSku, index);
+            validateSkuAndVariants(trimmedSku, index, combinationKey);
         }, 500);
-    }, [variantArrValues, selectedVendor]); // Added selectedVendor dependency
+    }, [combinationKeys, validateSkuAndVariants]);
 
     // Revalidate all SKUs when vendor changes
     useEffect(() => {
@@ -376,6 +390,8 @@ export default function ProductParentTable({
                             const currentVariantData = variantArrValues[index] || {};
                             const isExistingProduct = currentVariantData.isExistingProduct;
                             const disableFields = shouldDisableFields(currentVariantData);
+                            const combinationKey = combinationKeys?.[index];
+                            const currentSkuError = combinationKey ? skuErrors[combinationKey] : skuErrors[index];
 
                             return (
                                 <TableRow sx={{ "&:last-child td, &:last-child th": { border: 0 } }} key={index}>
@@ -399,8 +415,8 @@ export default function ProductParentTable({
                                                 size="small"
                                                 value={sellerSkyValues[index] || ""}
                                                 onChange={(e) => handleSellerSkuChange(index, e)}
-                                                error={!!skuErrors[index]}
-                                                helperText={skuErrors[index]}
+                                                error={!!currentSkuError}
+                                                helperText={currentSkuError}
                                                 id="outlined-adornment-quantity"
                                                 placeholder="Seller SKU"
                                                 InputProps={{

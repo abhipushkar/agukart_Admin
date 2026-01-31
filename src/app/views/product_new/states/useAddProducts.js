@@ -339,6 +339,22 @@ export const useProductFormStore = create(
                 inputErrors: { ...state.inputErrors, ...updates }
             })),
 
+            clearCombinationErrors: (type) =>
+                set((state) => {
+                    const updatedErrors = { ...state.inputErrors };
+
+                    Object.keys(updatedErrors).forEach((key) => {
+                        if (type === "price" && key.startsWith("Price-")) {
+                            delete updatedErrors[key];
+                        }
+                        if (type === "quantity" && key.startsWith("Quantity-")) {
+                            delete updatedErrors[key];
+                        }
+                    });
+
+                    return { inputErrors: updatedErrors };
+                }),
+
             setCombinationError: (combinationError) => set({ combinationError }),
 
             setShowAll: (showAll) => set({ showAll }),
@@ -898,6 +914,55 @@ export const useProductFormStore = create(
                 if (!state.formValues?.isCheckedPrice && !state.formData.salePrice) errors.salePrice = "Sale Price is Required";
                 if (!state.formValues?.isCheckedQuantity && !state.formData.quantity) errors.quantity = "Quantity is Required";
                 if (!state.formData.exchangePolicy) errors.exchangePolicy = "Return and exchange policy is required";
+
+                const isTrue = (val) => val === true || val === "true";
+                const isEmpty = (val) =>
+                    val === "" || val === null || val === undefined;
+
+                // ========== COMBINATION PRICE / QUANTITY VALIDATION ==========
+                if (state.formData.isCombination === "true") {
+                    const {
+                        isCheckedPrice,
+                        isCheckedQuantity,
+                        prices: priceControllerVariant,
+                        quantities: qtyControllerVariant,
+                    } = state.formValues;
+
+                    const priceToggle = isTrue(isCheckedPrice);
+                    const qtyToggle = isTrue(isCheckedQuantity);
+
+                    const combinations = state.combinations || [];
+
+                    combinations.forEach((group) => {
+                        const isPriceController =
+                            priceToggle && group.variant_name === priceControllerVariant;
+
+                        const isQtyController =
+                            qtyToggle && group.variant_name === qtyControllerVariant;
+
+                        group.combinations?.forEach((combo, index) => {
+                            const isVisible =
+                                combo.isVisible === true || combo.isVisible === "true";
+                            if (!isVisible) return;
+
+                            // ✅ PRICE VALIDATION (ONLY if toggle ON AND controller)
+                            if (priceToggle && isPriceController) {
+                                if (isEmpty(combo.price)) {
+                                    errors[`Price-${group.variant_name}-${index}`] =
+                                        "Price is required";
+                                }
+                            }
+
+                            // ✅ QUANTITY VALIDATION (ONLY if toggle ON AND controller)
+                            if (qtyToggle && isQtyController) {
+                                if (isEmpty(combo.qty)) {
+                                    errors[`Quantity-${group.variant_name}-${index}`] =
+                                        "Quantity is required";
+                                }
+                            }
+                        });
+                    });
+                }
 
                 return errors;
             }

@@ -886,7 +886,7 @@ const OrderHistory = () => {
                               <Box>
                                 <Typography fontSize={16}>
                                   Order item ID:{" "}
-                                  <Box fontSize={16} component="span">
+                                  <Box fontSize={12} component="span">
                                     {getDisplayValue(item?._id)}
                                   </Box>
                                 </Typography>

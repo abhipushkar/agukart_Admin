@@ -95,6 +95,7 @@ const CombinationsTable = ({ isSynced }) => {
         formValues,
         variationsData,
         combinationError,
+        inputErrors,
         showAll,
         setShowAll,
         handleToggle,
@@ -148,9 +149,23 @@ const CombinationsTable = ({ isSynced }) => {
         <Box>
             {combinations.map((comb, combindex) => {
                 const itemsToShow = showAll ? comb.combinations : comb.combinations.slice(0, 5);
+                const showsPrice =
+                    (variationsData.length >= 2 ? formValues?.prices === comb.variant_name : true) &&
+                    (formValues?.isCheckedPrice === true || formValues?.isCheckedPrice === "true");
 
-                console.log("Combinations", comb.combinations[1].isVisible);
+                const showsQty =
+                    (variationsData.length >= 2 ? formValues?.quantities === comb.variant_name : true) &&
+                    (formValues?.isCheckedQuantity === true || formValues?.isCheckedQuantity === "true");
 
+                const hasVariantError =
+                    Object.keys(inputErrors).some((key) => {
+                        if (!key.includes(`-${comb.variant_name}-`)) return false;
+
+                        if (key.startsWith("Price-") && showsPrice) return true;
+                        if (key.startsWith("Quantity-") && showsQty) return true;
+
+                        return false;
+                    });
 
                 return (
                     <DraggableCombinationTable
@@ -195,6 +210,14 @@ const CombinationsTable = ({ isSynced }) => {
                                 </Box>
                             </Box>
                         </Box>
+
+                        {hasVariantError && (
+                            <Box sx={{ px: 2, py: 1, background: "#fff4f4", borderBottom: "1px solid #f44336" }}>
+                                <Typography color="error" fontSize={13}>
+                                    Please fix price / quantity errors for {comb.variant_name}
+                                </Typography>
+                            </Box>
+                        )}
 
                         <TableContainer component={Paper} sx={{ border: 'none', borderRadius: 0 }}>
                             <Table>
@@ -245,8 +268,8 @@ const CombinationsTable = ({ isSynced }) => {
                                                             value={item.price || ""}
                                                             onChange={(e) => handleCombChange(e, combindex, index)}
                                                             size="small"
-                                                            error={!!combinationError[`Price-${comb.variant_name}-${index}`]}
-                                                            helperText={combinationError[`Price-${comb.variant_name}-${index}`]}
+                                                            error={!!inputErrors[`Price-${comb.variant_name}-${index}`]}
+                                                            helperText={inputErrors[`Price-${comb.variant_name}-${index}`]}
                                                         />
                                                     </TableCell>
                                                 )}
@@ -259,8 +282,8 @@ const CombinationsTable = ({ isSynced }) => {
                                                             value={item.qty || ""}
                                                             onChange={(e) => handleCombChange(e, combindex, index)}
                                                             size="small"
-                                                            error={!!combinationError[`Quantity-${comb.variant_name}-${index}`]}
-                                                            helperText={combinationError[`Quantity-${comb.variant_name}-${index}`]}
+                                                            error={!!inputErrors[`Quantity-${comb.variant_name}-${index}`]}
+                                                            helperText={inputErrors[`Quantity-${comb.variant_name}-${index}`]}
                                                         />
                                                     </TableCell>
                                                 )}

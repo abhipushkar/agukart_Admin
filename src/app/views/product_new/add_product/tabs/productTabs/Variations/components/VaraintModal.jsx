@@ -64,6 +64,7 @@ const VariantModal = ({ show, handleCloseVariant }) => {
         setFormData,
         formValues,
         setFormValues,
+        clearCombinationErrors,
         varientName,
         parentProductData
     } = useProductFormStore();
@@ -963,6 +964,15 @@ const VariantModal = ({ show, handleCloseVariant }) => {
         if (name === "isCheckedPrice" || name === "isCheckedQuantity") {
             setFormValues({ [name]: checked });
 
+            // 🔥 CLEAR ERRORS WHEN TOGGLED OFF
+            if (!checked) {
+                if (name === "isCheckedPrice") {
+                    clearCombinationErrors("price");
+                }
+                if (name === "isCheckedQuantity") {
+                    clearCombinationErrors("quantity");
+                }
+            }
             // Clear the corresponding form data when toggled on
             if (checked) {
                 if (name === "isCheckedPrice") {

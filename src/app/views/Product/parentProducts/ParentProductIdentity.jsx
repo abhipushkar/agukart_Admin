@@ -33,7 +33,8 @@ import {
     normalizeVariantList,
     expandInnervariations,
     compressInnervariations,
-    getAttributesByIds
+    getAttributesByIds,
+    generateCombinationKey
 } from "./normalizeVariantAttributes";
 import { useRef } from "react";
 
@@ -260,13 +261,6 @@ const ParentProductIdentity = ({ productId }) => {
         setInputErrors((prev) => ({ ...prev, variations: "" }));
     };
 
-    const generateCombinationKey = (combination) => {
-        return Object.keys(combination)
-            .sort()
-            .map(key => combination[key]._id)
-            .join('_');
-    };
-
     const deterministicSort = (a, b) => {
         if (a.sort_order !== b.sort_order) {
             return a.sort_order - b.sort_order;
@@ -305,19 +299,51 @@ const ParentProductIdentity = ({ productId }) => {
         return combinations;
     };
 
-    const preserveCombinationData = (newCombinations, combinationMap, currentVariantData, currentSellerSky) => {
+    const preserveCombinationData = (newCombinations, currentVariantData, currentSellerSky, currentSkuErrors, oldCombinations) => {
         const preservedVariantData = [];
         const preservedSellerSky = [];
+
+        // Generate keys for new and old combinations
+        const newCombinationKeys = newCombinations.map(comb => generateCombinationKey(comb));
+        const oldCombinationKeys = oldCombinations.map(comb => generateCombinationKey(comb));
+
+        // Clean up SKU errors for removed combinations
+        const cleanedSkuErrors = {};
+
+        Object.entries(currentSkuErrors).forEach(([key, error]) => {
+            // Handle numeric index-based keys
+            if (!isNaN(key)) {
+                const index = parseInt(key);
+                if (index < oldCombinationKeys.length) {
+                    const oldCombKey = oldCombinationKeys[index];
+                    if (oldCombKey && newCombinationKeys.includes(oldCombKey)) {
+                        // Find new index for this combination
+                        const newIndex = newCombinationKeys.indexOf(oldCombKey);
+                        cleanedSkuErrors[newIndex] = error;
+                    }
+                }
+            } else if (newCombinationKeys.includes(key)) {
+                // Key is already a combination key and still exists
+                const newIndex = newCombinationKeys.indexOf(key);
+                cleanedSkuErrors[newIndex] = error;
+            }
+            // Errors for removed combinations are automatically filtered out
+        });
 
         newCombinations.forEach((newComb, newIndex) => {
             const combKey = generateCombinationKey(newComb);
 
-            const existingIndex = combinationMap.get(combKey);
+            // Try to find matching combination in old data using the key
+            const oldIndex = oldCombinationKeys.indexOf(combKey);
 
-            if (existingIndex !== undefined && currentVariantData[existingIndex]) {
-                preservedVariantData[newIndex] = { ...currentVariantData[existingIndex] };
-                preservedSellerSky[newIndex] = currentSellerSky[existingIndex] || "";
+            if (oldIndex !== -1 && currentVariantData[oldIndex]) {
+                // Preserve data for matching combination
+                preservedVariantData[newIndex] = { ...currentVariantData[oldIndex] };
+                preservedSellerSky[newIndex] = currentSellerSky[oldIndex] || "";
+
+                // Also preserve SKU error if it exists (already handled in cleanedSkuErrors)
             } else {
+                // New combination - initialize empty
                 preservedVariantData[newIndex] = {
                     _id: "",
                     product_id: "",
@@ -325,13 +351,18 @@ const ParentProductIdentity = ({ productId }) => {
                     price: "",
                     sale_start_date: "",
                     sale_end_date: "",
-                    qty: ""
+                    qty: "",
+                    isExistingProduct: false
                 };
                 preservedSellerSky[newIndex] = "";
             }
         });
 
-        return { preservedVariantData, preservedSellerSky };
+        return {
+            preservedVariantData,
+            preservedSellerSky,
+            preservedSkuErrors: cleanedSkuErrors
+        };
     };
 
     const updateCombinationMap = (combinations) => {
@@ -385,14 +416,25 @@ const ParentProductIdentity = ({ productId }) => {
         const expandedInnervariations = expandInnervariations(updatedInnervariations, normalizedVariantList);
         const newCombinations = generateCombinations(expandedInnervariations);
 
-        const { preservedVariantData, preservedSellerSky } = preserveCombinationData(
+        // Get current combinations BEFORE updating state
+        const currentCombinations = getCurrentCombinations();
+
+        // Preserve data for unchanged combinations
+        const { preservedVariantData, preservedSellerSky, preservedSkuErrors } = preserveCombinationData(
             newCombinations,
-            combinationMap,
             variantArrValues,
-            sellerSky
+            sellerSky,
+            skuErrors,
+            currentCombinations
         );
 
-        updateCombinationMap(newCombinations);
+        // Update combination map with new indices
+        const newMap = new Map();
+        newCombinations.forEach((comb, index) => {
+            const key = generateCombinationKey(comb);
+            newMap.set(key, index);
+        });
+        setCombinationMap(newMap);
 
         // FIX: Use batching for all state updates
         ReactDOM.unstable_batchedUpdates(() => {
@@ -403,9 +445,10 @@ const ParentProductIdentity = ({ productId }) => {
 
             setVariantArrValue(preservedVariantData);
             setSellerSku(preservedSellerSky);
+            setSkuErrors(preservedSkuErrors); // Update SKU errors too
         });
 
-        // Get previous attribute IDs
+        // Get previous attribute IDs for product variations sync
         const previousAttributeIds = formData.Innervariations[variantName] || [];
         const removedAttributeIds = previousAttributeIds.filter(id => !attributeIds.includes(id));
 
@@ -1828,6 +1871,7 @@ const ParentProductIdentity = ({ productId }) => {
                                             parentVariants={formData.variantData}
                                             checkForDuplicateSkus={checkForDuplicateSkus}
                                             selectedVendor={formData.vendor}
+                                            combinationKeys={currentCombinations.map(comb => generateCombinationKey(comb))}
                                         />
                                     </>
                                 )}
