@@ -644,7 +644,7 @@ const ProductRow = ({ product, index }) => {
             </TableRow>
 
             {/* Expanded variations */}
-            {isExpanded && hasVariations && product.productData.map((variation) => (
+            {!filters.isSearched && isExpanded && hasVariations && product.productData.map((variation) => (
                 <VariationRow
                     key={variation._id}
                     variation={variation}
@@ -1154,7 +1154,9 @@ const ProductTableNew = () => {
                 </TableHead>
 
                 <TableBody>
-                    {visibleProducts.length > 0 && visibleProducts[0] !== 'No Product Found' ? (
+                    {!filters.isSearched &&
+                        visibleProducts.length > 0 &&
+                        visibleProducts[0] !== 'No Product Found' ? (
                         visibleProducts.map((product, index) => (
                             <ProductRow
                                 key={product._id}
@@ -1162,6 +1164,37 @@ const ProductTableNew = () => {
                                 index={index}
                             />
                         ))
+                    ) : filters.isSearched &&
+                        visibleProducts.length > 0 &&
+                        visibleProducts[0] !== 'No Product Found' ? (
+                        visibleProducts.map((product, index) => {
+                            if (product.type === 'variations') {
+                                const searchValue = filters.search.trim().toLowerCase();
+
+                                return product.productData
+                                    .filter((variation) =>
+                                        variation.sku_code
+                                            ?.toLowerCase()
+                                            .includes(searchValue)
+                                    )
+                                    .map((variation) => (
+                                        <VariationRow
+                                            key={variation._id}
+                                            variation={variation}
+                                            parentProduct={product}
+                                        />
+                                    ));
+                            }
+
+                            // product.type === 'product'
+                            return (
+                                <ProductRow
+                                    key={product._id}
+                                    product={product}
+                                    index={index}
+                                />
+                            );
+                        })
                     ) : (
                         <TableRow>
                             <TableCell colSpan={columnHeaders.length} align="center">
@@ -1172,6 +1205,7 @@ const ProductTableNew = () => {
                         </TableRow>
                     )}
                 </TableBody>
+
             </Table>
         </TableContainer>
     );

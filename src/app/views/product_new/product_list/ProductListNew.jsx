@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Box,
     Button,
@@ -29,18 +29,18 @@ import {
     Clear as ClearIcon,
     ArrowDropDown as ArrowDropDownIcon
 } from '@mui/icons-material';
-import {useNavigate, useLocation} from 'react-router-dom';
-import {exportToExcel} from 'app/utils/excelExport';
-import {ROUTE_CONSTANT} from 'app/constant/routeContanst';
-import {toast} from 'react-toastify';
-import {useProductStore} from "../states/useProductStore";
+import { useNavigate, useLocation } from 'react-router-dom';
+import { exportToExcel } from 'app/utils/excelExport';
+import { ROUTE_CONSTANT } from 'app/constant/routeContanst';
+import { toast } from 'react-toastify';
+import { useProductStore } from "../states/useProductStore";
 import ProductTableNew from "./components/ProductTableNew";
-import {localStorageKey} from "../../../constant/localStorageKey";
+import { localStorageKey } from "../../../constant/localStorageKey";
 import Switch from "@mui/material/Switch";
 
 const IOSSwitch = styled((props) => (
     <Switch focusVisibleClassName=".Mui-focusVisible" disableRipple {...props} />
-))(({theme}) => ({
+))(({ theme }) => ({
     width: 42,
     height: 26,
     padding: 0,
@@ -137,7 +137,7 @@ const ProductListNew = () => {
     // Local state
     const [categories, setCategories] = useState([]);
     const [actionAnchorEl, setActionAnchorEl] = useState(null);
-    const [confirmModal, setConfirmModal] = useState({open: false, type: '', message: ''});
+    const [confirmModal, setConfirmModal] = useState({ open: false, type: '', message: '' });
 
     // Column options for hide/show
     const columnOptions = [
@@ -182,7 +182,7 @@ const ProductListNew = () => {
 
     // Get available actions based on current filter status and selected products
     const getAvailableActions = () => {
-        const {status} = filters;
+        const { status } = filters;
         const selectedStatuses = getSelectedProductsStatus();
 
         // If no products selected, return empty array
@@ -206,27 +206,27 @@ const ProductListNew = () => {
         switch (status) {
             case 'active':
                 return [
-                    {key: 'inactive', label: 'Inactive'},
-                    {key: 'delete', label: 'Delete'}
+                    { key: 'inactive', label: 'Inactive' },
+                    { key: 'delete', label: 'Delete' }
                 ];
             case 'inactive':
                 return [
-                    {key: 'active', label: 'Active'},
-                    {key: 'delete', label: 'Delete'}
+                    { key: 'active', label: 'Active' },
+                    { key: 'delete', label: 'Delete' }
                 ];
             case 'sold-out':
                 return [
-                    {key: 'delete', label: 'Delete'}
+                    { key: 'delete', label: 'Delete' }
                 ];
             case 'draft':
                 return [
-                    {key: 'active', label: 'Active'},
-                    {key: 'delete', label: 'Delete'}
+                    { key: 'active', label: 'Active' },
+                    { key: 'delete', label: 'Delete' }
                 ];
             case 'delete':
                 return [
-                    {key: 'active', label: 'Active'},
-                    {key: 'inactive', label: 'Inactive'}
+                    { key: 'active', label: 'Active' },
+                    { key: 'inactive', label: 'Inactive' }
                 ];
             case 'deleteByAdmin':
                 return [];
@@ -240,36 +240,36 @@ const ProductListNew = () => {
         switch (status) {
             case 'active':
                 return [
-                    {key: 'inactive', label: 'Inactive'},
-                    {key: 'delete', label: 'Delete'}
+                    { key: 'inactive', label: 'Inactive' },
+                    { key: 'delete', label: 'Delete' }
                 ];
             case 'inactive':
                 return [
-                    {key: 'active', label: 'Active'},
-                    {key: 'delete', label: 'Delete'}
+                    { key: 'active', label: 'Active' },
+                    { key: 'delete', label: 'Delete' }
                 ];
             case 'sold-out':
                 return [
-                    {key: 'delete', label: 'Delete'}
+                    { key: 'delete', label: 'Delete' }
                 ];
             case 'draft':
                 return [
-                    {key: 'active', label: 'Active'},
-                    {key: 'delete', label: 'Delete'}
+                    { key: 'active', label: 'Active' },
+                    { key: 'delete', label: 'Delete' }
                 ];
             case 'delete':
                 return [
-                    {key: 'active', label: 'Active'},
-                    {key: 'inactive', label: 'Inactive'}
+                    { key: 'active', label: 'Active' },
+                    { key: 'inactive', label: 'Inactive' }
                 ];
             case 'deleteByAdmin':
                 return [];
             default:
                 return [
-                    {key: 'active', label: 'Active'},
-                    {key: 'inactive', label: 'Inactive'},
-                    {key: 'draft', label: 'Draft'},
-                    {key: 'delete', label: 'Delete'}
+                    { key: 'active', label: 'Active' },
+                    { key: 'inactive', label: 'Inactive' },
+                    { key: 'draft', label: 'Draft' },
+                    { key: 'delete', label: 'Delete' }
                 ];
         }
     };
@@ -277,10 +277,10 @@ const ProductListNew = () => {
     // Get common actions when multiple statuses are selected
     const getCommonActionsForMixedStatus = (selectedStatuses) => {
         const allPossibleActions = [
-            {key: 'active', label: 'Active'},
-            {key: 'inactive', label: 'Inactive'},
-            {key: 'draft', label: 'Draft'},
-            {key: 'delete', label: 'Delete'}
+            { key: 'active', label: 'Active' },
+            { key: 'inactive', label: 'Inactive' },
+            { key: 'draft', label: 'Draft' },
+            { key: 'delete', label: 'Delete' }
         ];
 
         // Filter actions that are valid for ALL selected statuses
@@ -296,7 +296,7 @@ const ProductListNew = () => {
     useEffect(() => {
         const hash = location.hash.replace('#', '');
         if (hash && ['all', 'active', 'inactive', 'sold-out', 'draft', 'delete', 'deleteByAdmin'].includes(hash)) {
-            setFilters({status: hash});
+            setFilters({ status: hash });
         }
     }, [location.hash]);
 
@@ -324,7 +324,7 @@ const ProductListNew = () => {
     // Handle status filter change with hash routing
     const handleStatusChange = (event) => {
         const newStatus = event.target.value;
-        setFilters({status: newStatus});
+        setFilters({ status: newStatus });
 
         // Update URL hash
         if (newStatus && newStatus !== 'all') {
@@ -372,7 +372,7 @@ const ProductListNew = () => {
     // Handle column visibility change
     const handleColumnVisibilityChange = (event) => {
         const value = event.target.value;
-        setFilters({hiddenColumns: value});
+        setFilters({ hiddenColumns: value });
     };
 
     // Export in chunks for large datasets
@@ -470,15 +470,15 @@ const ProductListNew = () => {
     const availableActions = getAvailableActions();
     const selectedStatuses = getSelectedProductsStatus();
 
-    console.log("Sorting Filters: ", filters.sorting);
+    // console.log("Sorting Filters: ", filters.sorting);
 
     return (
-        <Box sx={{margin: '30px'}}>
+        <Box sx={{ margin: '30px' }}>
             {/* Header */}
-            <Box sx={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3}}>
-                <Breadcrumb routeSegments={[{name: 'Product', path: ''}, {name: 'Product List'}]}/>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+                <Breadcrumb routeSegments={[{ name: 'Product', path: '' }, { name: 'Product List' }]} />
 
-                <Box sx={{display: 'flex', gap: 2}}>
+                <Box sx={{ display: 'flex', gap: 2 }}>
                     <Link href={ROUTE_CONSTANT.catalog.product.parentProducts}>
                         <Button
                             variant="contained"
@@ -501,18 +501,18 @@ const ProductListNew = () => {
             </Box>
 
             {/* Filters and Actions */}
-            <Box sx={{display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap', alignItems: 'center'}}>
+            <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>
                 {/* Bulk Actions */}
-                <Paper sx={{display: 'flex', alignItems: 'center',}}>
+                <Paper sx={{ display: 'flex', alignItems: 'center', }}>
                     <Checkbox
                         checked={isAllSelected}
                         onChange={(e) => e.target.checked ? selectAll(products) : deselectAll()}
                         size="small"
                     />
-                    <Typography variant="body2" sx={{mx: 1}}>
+                    <Typography variant="body2" sx={{ mx: 1 }}>
                         {selection.productIds.length} selected
                         {filters.status === 'all' && selectedStatuses.size > 0 && (
-                            <Typography variant="caption" sx={{ml: 1, color: 'text.secondary'}}>
+                            <Typography variant="caption" sx={{ ml: 1, color: 'text.secondary' }}>
                                 ({Array.from(selectedStatuses).join(', ')})
                             </Typography>
                         )}
@@ -522,7 +522,7 @@ const ProductListNew = () => {
                         size="small"
                         onClick={(e) => setActionAnchorEl(e.currentTarget)}
                         disabled={selection.productIds.length === 0 || availableActions.length === 0}
-                        endIcon={<ArrowDropDownIcon/>}
+                        endIcon={<ArrowDropDownIcon />}
                     >
                         Actions
                     </Button>
@@ -544,12 +544,12 @@ const ProductListNew = () => {
                 </Paper>
 
                 {/* Category Filter */}
-                <FormControl size="small" sx={{minWidth: 200}}>
+                <FormControl size="small" sx={{ minWidth: 200 }}>
                     <InputLabel>Category</InputLabel>
                     <Select
                         value={filters.category}
                         label="Category"
-                        onChange={(e) => setFilters({category: e.target.value})}
+                        onChange={(e) => setFilters({ category: e.target.value })}
                     >
                         <MenuItem value="">All Categories</MenuItem>
                         {allActiveCategories.map(category => (
@@ -591,22 +591,22 @@ const ProductListNew = () => {
                 </FormControl>
 
                 {/* Search */}
-                <Box sx={{display: 'flex', gap: 1, alignItems: 'center'}}>
+                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
                     <TextField
                         size="small"
                         label="Search SKU, Title, Product Id"
                         value={filters.search}
-                        onChange={(e) => setFilters({search: e.target.value})}
+                        onChange={(e) => setFilters({ search: e.target.value })}
                         onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                        sx={{minWidth: 250}}
+                        sx={{ minWidth: 250 }}
                         InputProps={{
                             endAdornment: filters.search && (
                                 <InputAdornment position="end">
                                     <IconButton
                                         size="small"
-                                        onClick={() => setFilters({search: ''})}
+                                        onClick={() => setFilters({ search: '' })}
                                     >
-                                        <ClearIcon/>
+                                        <ClearIcon />
                                     </IconButton>
                                 </InputAdornment>
                             )
@@ -619,10 +619,10 @@ const ProductListNew = () => {
             </Box>
 
             {/* Status Filter and Column Preferences */}
-            <Paper sx={{p: 1, mb: 2, backgroundColor: '#f5f5f5'}}>
-                <Box sx={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+            <Paper sx={{ p: 1, mb: 2, backgroundColor: '#f5f5f5' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     {/* Status Filter */}
-                    <Box sx={{display: 'flex', alignItems: 'center', gap: 2}}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                         <Typography variant="body2" fontWeight="bold">Filters:</Typography>
                         <Typography variant="body2">Status:</Typography>
                         <RadioGroup
@@ -630,14 +630,14 @@ const ProductListNew = () => {
                             value={filters.status}
                             onChange={handleStatusChange}
                         >
-                            <FormControlLabel value="all" control={<Radio/>} label="All"/>
-                            <FormControlLabel value="active" control={<Radio/>} label="Active"/>
-                            <FormControlLabel value="inactive" control={<Radio/>} label="Inactive"/>
-                            <FormControlLabel value="sold-out" control={<Radio/>} label="Sold Out"/>
-                            <FormControlLabel value="draft" control={<Radio/>} label="Draft"/>
-                            <FormControlLabel value="delete" control={<Radio/>} label="Deleted"/>
+                            <FormControlLabel value="all" control={<Radio />} label="All" />
+                            <FormControlLabel value="active" control={<Radio />} label="Active" />
+                            <FormControlLabel value="inactive" control={<Radio />} label="Inactive" />
+                            <FormControlLabel value="sold-out" control={<Radio />} label="Sold Out" />
+                            <FormControlLabel value="draft" control={<Radio />} label="Draft" />
+                            <FormControlLabel value="delete" control={<Radio />} label="Deleted" />
                             {localStorage.getItem(localStorageKey.designation_id) === "2" && (
-                                <FormControlLabel value="deleteByAdmin" control={<Radio/>} label="Deleted By Admin"/>)}
+                                <FormControlLabel value="deleteByAdmin" control={<Radio />} label="Deleted By Admin" />)}
                         </RadioGroup>
                     </Box>
 
@@ -647,24 +647,24 @@ const ProductListNew = () => {
                         justifyContent: "center",
                     }}>
                         <FormControlLabel value={showFeaturedOnly}
-                                          onChange={event => setShowFeaturedOnly(event.target.checked)}
-                                          control={<Switch sx={{m: 1}}/>} label={"Show only Featured"}/>
+                            onChange={event => setShowFeaturedOnly(event.target.checked)}
+                            control={<Switch sx={{ m: 1 }} />} label={"Show only Featured"} />
                     </FormControl>
 
                     {/* Column Preferences */}
-                    <FormControl size="small" sx={{minWidth: 300}}>
+                    <FormControl size="small" sx={{ minWidth: 300 }}>
                         <InputLabel>Columns</InputLabel>
                         <Select
                             multiple
                             value={filters.hiddenColumns}
                             onChange={handleColumnVisibilityChange}
-                            input={<OutlinedInput label="Columns"/>}
+                            input={<OutlinedInput label="Columns" />}
                             renderValue={(selected) => `${selected.length} columns hidden`}
                         >
                             {columnOptions.map(column => (
                                 <MenuItem key={column} value={column}>
-                                    <Checkbox checked={!filters.hiddenColumns.includes(column)}/>
-                                    <ListItemText primary={column}/>
+                                    <Checkbox checked={!filters.hiddenColumns.includes(column)} />
+                                    <ListItemText primary={column} />
                                 </MenuItem>
                             ))}
                         </Select>
@@ -673,7 +673,7 @@ const ProductListNew = () => {
             </Paper>
 
             {/* Product Table */}
-            <ProductTableNew/>
+            <ProductTableNew />
 
             {/* Pagination */}
             <TablePagination
@@ -682,7 +682,7 @@ const ProductListNew = () => {
                 count={filteredProducts.length}
                 rowsPerPage={pagination.rowsPerPage}
                 page={pagination.page}
-                onPageChange={(_, newPage) => setPagination({page: newPage})}
+                onPageChange={(_, newPage) => setPagination({ page: newPage })}
                 onRowsPerPageChange={(e) => setPagination({
                     rowsPerPage: parseInt(e.target.value, 10),
                     page: 0
@@ -692,7 +692,7 @@ const ProductListNew = () => {
             {/* Confirm Modal */}
             <ConfirmModal
                 open={confirmModal.open}
-                handleClose={() => setConfirmModal({open: false, type: '', message: ''})}
+                handleClose={() => setConfirmModal({ open: false, type: '', message: '' })}
                 type={confirmModal.type}
                 msg={confirmModal.message}
             />
