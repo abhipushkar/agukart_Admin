@@ -1953,13 +1953,13 @@ const ParentProductIdentity = ({ productId }) => {
                                     gap: "5px"
                                 }}
                             >
-                                <Button
+                                {currentTab === "combination" && (<Button
                                     variant="outlined"
                                     onClick={() => setBulkImportOpen(true)}
                                     disabled={!currentCombinations || currentCombinations.length === 0}
                                 >
                                     Bulk Import SKUs
-                                </Button>
+                                </Button>)}
                                 <Button
                                     disabled={issubmitLoader ? true : false}
                                     variant="contained"
