@@ -325,6 +325,7 @@ const ProductListNew = () => {
     const handleStatusChange = (event) => {
         const newStatus = event.target.value;
         setFilters({ status: newStatus });
+        setPagination({ page: 0 })
 
         // Update URL hash
         if (newStatus && newStatus !== 'all') {
