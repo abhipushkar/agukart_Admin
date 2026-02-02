@@ -1,7 +1,7 @@
-import {create} from 'zustand';
-import {ApiService} from 'app/services/ApiService';
-import {apiEndpoints} from 'app/constant/apiEndpoints';
-import {localStorageKey} from 'app/constant/localStorageKey';
+import { create } from 'zustand';
+import { ApiService } from 'app/services/ApiService';
+import { apiEndpoints } from 'app/constant/apiEndpoints';
+import { localStorageKey } from 'app/constant/localStorageKey';
 
 // Default hidden columns - Image Badge is hidden by default
 const DEFAULT_HIDDEN_COLUMNS = ['Image Badge'];
@@ -19,6 +19,7 @@ export const useProductStore = create((set, get) => ({
     },
     filters: {
         search: '',
+        isSearched: false,
         status: 'all',
         category: '',
         sorting: {
@@ -40,16 +41,16 @@ export const useProductStore = create((set, get) => ({
     allActiveCategories: [],
 
     setShowFeaturedOnly: (value) => {
-        set({showFeaturedOnly: value});
+        set({ showFeaturedOnly: value });
     },
 
     // Actions
-    setLoading: (loading) => set({loading}),
-    setActionLoading: (actionLoading) => set({actionLoading}),
+    setLoading: (loading) => set({ loading }),
+    setActionLoading: (actionLoading) => set({ actionLoading }),
 
     setFilters: (filters) => {
         set(state => ({
-            filters: {...state.filters, ...filters}
+            filters: { ...state.filters, ...filters }
         }));
 
         if (filters.hiddenColumns !== undefined) {
@@ -59,11 +60,11 @@ export const useProductStore = create((set, get) => ({
 
     // ... rest of the store remains the same
     setPagination: (pagination) => set(state => ({
-        pagination: {...state.pagination, ...pagination}
+        pagination: { ...state.pagination, ...pagination }
     })),
 
     setSelection: (selection) => set(state => ({
-        selection: {...state.selection, ...selection}
+        selection: { ...state.selection, ...selection }
     })),
 
     // Expanded rows management
@@ -75,7 +76,7 @@ export const useProductStore = create((set, get) => ({
             } else {
                 newExpandedRows.add(productId);
             }
-            return {expandedRows: newExpandedRows};
+            return { expandedRows: newExpandedRows };
         });
     },
 
@@ -93,7 +94,7 @@ export const useProductStore = create((set, get) => ({
 
     // Fetch products
     fetchProducts: async () => {
-        const {filters, pagination, showFeaturedOnly} = get();
+        const { filters, pagination, showFeaturedOnly } = get();
 
         try {
             const url = `${apiEndpoints.getProduct}?type=${filters.status}&category=${filters.category}&search=${filters.search.trim()}&featured=${showFeaturedOnly ? true : ''}&sort=${filters.sorting.sortBy ? JSON.stringify({
@@ -106,7 +107,7 @@ export const useProductStore = create((set, get) => ({
                 set({
                     products: res.data.data,
                     filteredProducts: res.data.data,
-                    pagination: {...pagination, totalCount: res.data.data.length}
+                    pagination: { ...pagination, totalCount: res.data.data.length }
                 });
             }
         } catch (error) {
@@ -141,7 +142,7 @@ export const useProductStore = create((set, get) => ({
 
                 const flatArray = get().flattenArray(res?.data?.subCatgory);
 
-                set({allActiveCategories: flatArray});
+                set({ allActiveCategories: flatArray });
 
                 // setAllActiveCategory([
                 //   { subs: [{ title: "All Product", subs: [], id: "" }, ...res?.data?.subCatgory] }
@@ -154,108 +155,123 @@ export const useProductStore = create((set, get) => ({
 
     // Search products
     searchProducts: async () => {
+        const { filters, pagination, showFeaturedOnly, setFilters, setPagination } = get();
         try {
-            set({actionLoading: true});
-            await get().fetchProducts();
+            set({ actionLoading: true });
+            const url = `${apiEndpoints.getProduct}?type=${filters.status}&category=${filters.category}&search=${filters.search.trim()}&featured=${showFeaturedOnly ? true : ''}&sort=${filters.sorting.sortBy ? JSON.stringify({
+                [filters.sorting.sortBy]: filters.sorting.order,
+            }) : ""}&page=${pagination.page + 1}&limit=${pagination.rowsPerPage}`;
+            const auth_key = localStorage.getItem(localStorageKey.auth_key);
+            const res = await ApiService.get(url, auth_key);
+
+            if (res.status === 200) {
+                if (filters.search.length > 0) setFilters({ isSearched: true })
+                else setFilters({ isSearched: false })
+                set({
+                    products: res.data.data,
+                    filteredProducts: res.data.data,
+                    pagination: { ...pagination, page: 0, totalCount: res.data.data.length }
+                });
+            }
         } catch (e) {
             console.error('Error searching products:', e);
             throw e;
         } finally {
-            set({actionLoading: false});
+            set({ actionLoading: false });
         }
     },
 
     // Toggle featured status
     toggleFeatured: async (productId, currentStatus) => {
-        set({actionLoading: true});
+        set({ actionLoading: true });
 
         try {
             const auth_key = localStorage.getItem(localStorageKey.auth_key);
-            const payload = {_id: productId, featured: !currentStatus};
+            const payload = { _id: productId, featured: !currentStatus };
 
             const res = await ApiService.post(apiEndpoints.changeFeatureStatus, payload, auth_key);
 
             if (res.status === 200) {
                 await get().fetchProducts();
-                return {success: true, message: res.data?.message};
+                return { success: true, message: res.data?.message };
             }
         } catch (error) {
             console.error('Error toggling featured status:', error);
             throw error;
         } finally {
-            set({actionLoading: false});
+            set({ actionLoading: false });
         }
     },
 
     // Update product field
     updateProductField: async (productId, fieldName, value) => {
-        set({actionLoading: true});
+        set({ actionLoading: true });
 
         try {
             const auth_key = localStorage.getItem(localStorageKey.auth_key);
-            const payload = {[fieldName]: value, _id: productId};
+            const payload = { [fieldName]: value, _id: productId };
 
             const res = await ApiService.post(apiEndpoints.updateProductByField, payload, auth_key);
 
             if (res.status === 200) {
                 await get().fetchProducts();
-                return {success: true};
+                return { success: true };
             }
         } catch (error) {
             console.error('Error updating product field:', error);
             throw error;
         } finally {
-            set({actionLoading: false});
+            set({ actionLoading: false });
         }
     },
 
     // Update sort order
     updateSortOrder: async (productId, sortOrder) => {
-        set({actionLoading: true});
+        set({ actionLoading: true });
 
         try {
             const auth_key = localStorage.getItem(localStorageKey.auth_key);
-            const payload = {sort_order: sortOrder, _id: productId};
+            const payload = { sort_order: sortOrder, _id: productId };
 
             const res = await ApiService.post(apiEndpoints.updateSortOrderProduct, payload, auth_key);
 
             if (res.status === 200) {
                 await get().fetchProducts();
-                return {success: true};
+                return { success: true };
             }
         } catch (error) {
             console.error('Error updating sort order:', error);
             throw error;
         } finally {
-            set({actionLoading: false});
+            set({ actionLoading: false });
         }
     },
 
     // Update badge
     updateBadge: async (productId, badge) => {
-        set({actionLoading: true});
+        set({ actionLoading: true });
 
         try {
             const auth_key = localStorage.getItem(localStorageKey.auth_key);
-            const payload = {product_id: productId, badge};
+            const payload = { product_id: productId, badge };
 
             const res = await ApiService.post(apiEndpoints.changeProductBadge, payload, auth_key);
 
             if (res.status === 200) {
                 await get().fetchProducts();
-                return {success: true};
+                return { success: true };
             }
         } catch (error) {
             console.error('Error updating badge:', error);
             throw error;
         } finally {
-            set({actionLoading: false});
+            set({ actionLoading: false });
         }
     },
 
     // Delete product
     deleteProduct: async (productId) => {
-        set({actionLoading: true});
+        set({ actionLoading: true });
 
         try {
             const auth_key = localStorage.getItem(localStorageKey.auth_key);
@@ -263,27 +279,27 @@ export const useProductStore = create((set, get) => ({
 
             if (res.status === 200) {
                 await get().fetchProducts();
-                return {success: true, message: res.data?.message};
+                return { success: true, message: res.data?.message };
             }
         } catch (error) {
             console.error('Error deleting product:', error);
             throw error;
         } finally {
-            set({actionLoading: false});
+            set({ actionLoading: false });
         }
     },
 
     // Bulk actions
     bulkUpdateStatus: async (status, deleteStatus = false) => {
-        const {selection} = get();
+        const { selection } = get();
 
         if (selection.productIds.length === 0) return;
 
-        set({actionLoading: true});
+        set({ actionLoading: true });
 
         try {
             const auth_key = localStorage.getItem(localStorageKey.auth_key);
-            let payload = {_id: selection.productIds};
+            let payload = { _id: selection.productIds };
 
             if (status === 'delete') {
                 payload.delete = deleteStatus;
@@ -298,13 +314,13 @@ export const useProductStore = create((set, get) => ({
             if (res.status === 200) {
                 await get().fetchProducts();
                 get().clearSelection();
-                return {success: true, message: res.data?.message};
+                return { success: true, message: res.data?.message };
             }
         } catch (error) {
             console.error('Error in bulk update:', error);
             throw error;
         } finally {
-            set({actionLoading: false});
+            set({ actionLoading: false });
         }
     },
 
@@ -390,14 +406,14 @@ export const useProductStore = create((set, get) => ({
 
     deleteProductByAdmin: async (id) => {
         try {
-            set(_ => ({actionLoading: true}));
+            set(_ => ({ actionLoading: true }));
             const auth_key = localStorage.getItem(localStorageKey.auth_key);
             await ApiService.put(`${apiEndpoints.deleteByAdmin}/${id}`, {}, auth_key);
             await get().fetchProducts();
         } catch (e) {
             console.error('Error in deleteByAdmin:', e);
         } finally {
-            set(_ => ({actionLoading: false}))
+            set(_ => ({ actionLoading: false }))
         }
     },
 

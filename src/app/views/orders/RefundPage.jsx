@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Box,
     Typography,
@@ -8,7 +8,6 @@ import {
     TableContainer,
     TableHead,
     TableRow,
-    Paper,
     Select,
     MenuItem,
     TextField,
@@ -17,29 +16,36 @@ import {
     InputAdornment,
     FormControl,
     InputLabel,
-    Card,
-    CardContent,
     Alert,
-    Divider,
-    CircularProgress
+    CircularProgress,
 } from '@mui/material';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useCallback } from 'react';
 import { ApiService } from 'app/services/ApiService';
-import { toast } from 'react-toastify';
 import { localStorageKey } from 'app/constant/localStorageKey';
 
 const RefundPage = () => {
-    const [searchParams] = useSearchParams();
-    const authToken = localStorage.getItem(localStorageKey.auth_key);
+    const [searchParams, setSearchParams] = useSearchParams();
     const suborderId = searchParams.get('subOrder');
-    const mode = searchParams.get('mode'); // 'refund' or 'cancel'
+    const mode = searchParams.get('mode');
     const navigate = useNavigate();
 
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
     const [refundData, setRefundData] = useState(null);
     const [isCancelMode, setIsCancelMode] = useState(mode === 'cancel');
-    const [internalNotes, setInternalNotes] = useState('');
+    const [isFormValid, setIsFormValid] = useState(true);
+
+    const currencySymbols = {
+        USD: '$',
+        EUR: '€',
+        GBP: '£',
+        CAD: '$',
+        AUD: '$',
+        JPY: '¥',
+        INR: '₹'
+    };
 
     // Refund reasons EXACTLY as per screenshot - with correct casing
     const refundReasons = [
@@ -55,502 +61,330 @@ const RefundPage = () => {
         'Pricing Error'
     ];
 
-    // Function to strip HTML from title
-    const stripHtml = useCallback((html) => {
-        if (!html) return '';
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = html;
-        return tempDiv.textContent || tempDiv.innerText || '';
-    }, []);
+    const parseNumber = (value) => {
+        if (value === '' || value === undefined || value === null) return 0;
+        const num = parseFloat(value);
+        return isNaN(num) ? 0 : Math.max(0, num);
+    };
+    const updateItemAtIndex = (items, index, updater) =>
+        items.map((item, i) => (i === index ? updater(item) : item));
 
-    // Function to get full image URL
-    const getImageUrl = useCallback((imageName) => {
-        if (!imageName) return '';
-        // Check if it's already a full URL
-        if (imageName.startsWith('http')) {
-            return imageName;
+    const initializeData = useCallback(async (mode, res) => {
+        try {
+            const auth_key = localStorage.getItem(localStorageKey.auth_key);
+            res = await ApiService.get(`refund-context/${suborderId}`, auth_key);
+        } catch (error) {
+            setError({ "message": error })
+            console.log('error fetching', error);
         }
-        // Handle different possible image formats
-        return `https://api.agukart.com/uploads/product/${imageName}`;
-    }, []);
+        const data = res.data;
+        const itemsWithDerivedValues = data.items.map(item => {
+            return {
+                ...item,
+                title: item.title?.replace(/<\/?[^>]+(>|$)/g, ""),
+                entered_refund_amount: 0,
+                net_refund_amount: 0,
+                reason_code: '',
+                voucher_adjustment_amount: 0,
+            };
+        });
 
-    // Calculate derived values for an item - REALTIME CALCULATION
-    const calculateItemDerivedValues = useCallback((item) => {
-        const enteredRefund = typeof item.enteredRefund === 'number' ? item.enteredRefund : 0;
-        const cashPaid = item.price - item.voucherApplied - (item.refundedCash || 0);
+        let initialRefundData = {
+            ...data,
+            items: itemsWithDerivedValues,
+            note_to_yourself: '',
+            shipping_refund: 0
 
-        // Calculate max refundable based on original price minus what's already refunded
-        const maxRefundable = Math.max(0, item.price - (item.refundedCash || 0) - (item.refundedVoucher || 0));
-
-        // Voucher adjustment calculation
-        let voucherAdjustment = 0;
-        if (enteredRefund > cashPaid) {
-            voucherAdjustment = Math.min(enteredRefund - cashPaid, item.voucherApplied || 0);
-        }
-
-        const netRefund = Math.max(0, enteredRefund - voucherAdjustment);
-
-        return {
-            cashPaid,
-            maxRefundable,
-            voucherAdjustment,
-            netRefund
         };
+
+        if (mode === 'cancel') {
+            const shippingRefund = initialRefundData.shipping.paid - initialRefundData.shipping.refunded;
+            initialRefundData = {
+                ...initialRefundData,
+                items: initialRefundData.items.map(item => {
+                    const maxRefundable = item.amount - parseNumber(item.refunded_cash_amount);
+                    return {
+                        ...item,
+                        entered_refund_amount: maxRefundable,
+                        net_refund_amount: maxRefundable,
+                        reason_code: 'Buyer Cancelled'
+                    };
+                }),
+                shipping_refund: shippingRefund
+            };
+        }
+        console.log("initial", initialRefundData);
+        setRefundData(initialRefundData);
     }, []);
 
-    // Fetch refund context from backend API
-    const fetchRefundContext = useCallback(async () => {
-        if (!suborderId) {
-            setError('Suborder ID is required');
-            setLoading(false);
+
+    useEffect(() => {
+        initializeData(mode);
+        setLoading(false);
+    }, [suborderId, mode]);
+
+
+    // Handle item refund amount change - FIXED: Use string value and parse on blur
+    const handleItemRefundChange = (index, value) => {
+        setRefundData(prev => {
+            if (!prev) return prev;
+
+            return {
+                ...prev,
+                items: updateItemAtIndex(prev.items, index, item => ({
+                    ...item,
+                    entered_refund_amount: value,
+                    net_refund_amount: value,
+                }))
+            };
+        });
+    };
+
+    // Handle item refund blur - calculate derived values when user leaves field
+    const handleItemRefundBlur = (index) => {
+        setRefundData(prev => {
+            if (!prev) return prev;
+
+            const items = updateItemAtIndex(prev.items, index, item => {
+                const validValue = parseNumber(item.entered_refund_amount);
+                const maxAllowed = item.amount - item.refunded_cash_amount;
+                if (validValue > maxAllowed) return item;
+                const updatedItem = {
+                    ...item,
+                    entered_refund_amount: validValue,
+                    net_refund_amount: validValue
+                };
+
+                return {
+                    ...updatedItem,
+                };
+            });
+
+            return {
+                ...prev,
+                items
+            };
+        });
+    };
+
+    // Handle reason_code change
+    const handleReasonChange = (index, reason_code) => {
+        setRefundData(prev => {
+            if (!prev) return prev;
+
+            return {
+                ...prev,
+                items: updateItemAtIndex(prev.items, index, item => ({
+                    ...item,
+                    reason_code
+                }))
+            };
+        });
+    };
+
+    // Handle shipping refund change - FIXED: Use string value
+    const handleShippingRefundChange = (value) => {
+        setRefundData(prev => {
+            if (!prev) return prev;
+
+            return {
+                ...prev,
+                shipping_refund: value
+            };
+        });
+    };
+
+    // Handle shipping refund blur
+    const handleShippingRefundBlur = () => {
+        setRefundData(prev => {
+            if (!prev) return prev;
+
+            const num = parseNumber(prev.shipping_refund);
+            const maxAllowed = prev.shipping.paid - prev.shipping.refunded;
+
+            return {
+                ...prev,
+                shipping_refund: Math.min(num, maxAllowed),
+            };
+        });
+    };
+
+
+    const handleVoucherChange = (index, value) => {
+        setRefundData(prev => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                items: updateItemAtIndex(prev.items, index, item => ({
+                    ...item,
+                    voucher_adjustment_amount: value,
+                }))
+            };
+        });
+    };
+
+    const handleVoucherChangeBlur = (index) => {
+        setRefundData(prev => {
+            if (!prev) return prev;
+
+            const items = updateItemAtIndex(prev.items, index, item => {
+                const validValue = parseNumber(item.voucher_adjustment_amount);
+                const maxAllowed = item.refunded_voucher_amount
+                if (item.voucher_adjustment_amount > maxAllowed) return item;
+                return {
+                    ...item,
+                    voucher_adjustment_amount: validValue
+                };
+            });
+            return {
+                ...prev,
+                items
+            };
+        });
+    };
+
+
+    useEffect(() => {
+        if (!refundData) {
+            setIsFormValid(false);
             return;
         }
 
-        try {
-            setLoading(true);
-            const response = await ApiService.get(`refund-context/${suborderId}`, authToken);
+        const isValid = refundData.items.every(item => {
+            const maxAllowed = item.amount - item.refunded_cash_amount;
 
-            if (response.data) {
-                const apiData = response.data;
+            if (item.entered_refund_amount > maxAllowed) return false;
+            if (item.entered_refund_amount > 0 && !item.reason_code) return false;
 
-                // Transform API response to match UI data structure
-                const transformedData = {
-                    orderId: apiData.order_id,
-                    suborderId: apiData.sub_order_id,
-                    currency: apiData.currency,
-                    customerName: apiData.customer_name || 'Customer',
-                    items: apiData.items.map(item => ({
-                        orderItemId: item.item_id,
-                        title: stripHtml(item.title),
-                        rawTitle: item.title,
-                        image: getImageUrl(item.image),
-                        quantity: item.quantity,
-                        price: item.amount,
-                        // Note: The actual API might not have these fields yet
-                        voucherApplied: item.voucher_applied || 0,
-                        refundedCash: item.refunded_cash_amount || 0,
-                        refundedVoucher: item.refunded_voucher_amount || 0,
-                        // Frontend state fields
-                        enteredRefund: 0,
-                        reason: '',
-                    })),
-                    shipping: {
-                        paid: apiData.shipping?.paid || 0,
-                        refunded: apiData.shipping?.refunded || 0
-                    }
-                };
-
-                // Calculate initial derived values for each item
-                const itemsWithCalculations = transformedData.items.map(item => {
-                    const calculated = calculateItemDerivedValues({
-                        ...item,
-                        enteredRefund: 0
-                    });
-                    return {
-                        ...item,
-                        ...calculated
-                    };
-                });
-
-                const initialRefundData = {
-                    ...transformedData,
-                    items: itemsWithCalculations,
-                    shippingRefund: 0,
-                    maxShippingRefund: transformedData.shipping.paid - transformedData.shipping.refunded
-                };
-
-                // If mode is cancel, auto-fill cancel mode
-                if (mode === 'cancel') {
-                    const newItems = initialRefundData.items.map(item => {
-                        const maxRefundable = Math.max(0, item.price - item.refundedCash - item.refundedVoucher);
-                        const updatedItem = {
-                            ...item,
-                            enteredRefund: maxRefundable,
-                            reason: 'Buyer Cancelled'
-                        };
-                        const derived = calculateItemDerivedValues(updatedItem);
-                        return {
-                            ...updatedItem,
-                            ...derived
-                        };
-                    });
-
-                    initialRefundData.items = newItems;
-                    initialRefundData.shippingRefund = initialRefundData.shipping.paid - initialRefundData.shipping.refunded;
-                }
-
-                setRefundData(initialRefundData);
-                setError(null);
-            }
-        } catch (error) {
-            console.error('Error fetching refund context:', error);
-            setError('Failed to load refund data. Please try again.');
-            toast.error('Failed to load refund data');
-        } finally {
-            setLoading(false);
+            return true;
+        });
+        if (refundData.shipping_refund > (refundData.shipping.paid - refundData.shipping.refunded)) {
+            setIsFormValid(false);
+            return;
         }
-    }, [authToken, mode, suborderId, stripHtml, getImageUrl, calculateItemDerivedValues]);
-
-    // Initialize with backend API data
-    useEffect(() => {
-        if (suborderId) {
-            fetchRefundContext();
-        } else {
-            setError('No suborder ID provided');
-            setLoading(false);
-        }
-    }, [suborderId, mode, fetchRefundContext]);
-
-    // Handle item refund amount change with realtime calculation
-    const handleItemRefundChange = useCallback((index, value) => {
-        if (!refundData) return;
-
-        const newItems = [...refundData.items];
-        newItems[index] = {
-            ...newItems[index],
-            enteredRefund: value // Keep as string for typing
-        };
-
-        setRefundData({
-            ...refundData,
-            items: newItems
-        });
+        setIsFormValid(isValid);
     }, [refundData]);
 
-    // Handle item refund blur with realtime calculation
-    const handleItemRefundBlur = useCallback((index) => {
-        if (!refundData) return;
-
-        const newItems = [...refundData.items];
-        const item = newItems[index];
-        const value = item.enteredRefund;
-
-        // Parse the value on blur
-        const numValue = value === '' || value === undefined ? 0 : parseFloat(value);
-        const maxRefundable = Math.max(0, item.price - item.refundedCash - item.refundedVoucher);
-        const validValue = isNaN(numValue) ? 0 : Math.max(0, Math.min(numValue, maxRefundable));
-
-        const updatedItem = {
-            ...item,
-            enteredRefund: validValue
-        };
-
-        // Recalculate derived values in realtime
-        const derived = calculateItemDerivedValues(updatedItem);
-
-        newItems[index] = {
-            ...updatedItem,
-            ...derived
-        };
-
-        setRefundData({
-            ...refundData,
-            items: newItems
-        });
-    }, [refundData, calculateItemDerivedValues]);
-
-    // Handle reason change
-    const handleReasonChange = useCallback((index, reason) => {
-        if (!refundData) return;
-
-        const newItems = [...refundData.items];
-        newItems[index].reason = reason;
-
-        setRefundData({
-            ...refundData,
-            items: newItems
-        });
-    }, [refundData]);
-
-    // Handle shipping refund change
-    const handleShippingRefundChange = useCallback((value) => {
-        if (!refundData) return;
-
-        setRefundData({
-            ...refundData,
-            shippingRefund: value
-        });
-    }, [refundData]);
-
-    // Handle shipping refund blur
-    const handleShippingRefundBlur = useCallback(() => {
-        if (!refundData) return;
-
-        const value = refundData.shippingRefund;
-        const numValue = value === '' || value === undefined ? 0 : parseFloat(value);
-        const maxShipping = refundData.shipping.paid - refundData.shipping.refunded;
-        const validValue = isNaN(numValue) ? 0 : Math.max(0, Math.min(numValue, maxShipping));
-
-        setRefundData({
-            ...refundData,
-            shippingRefund: validValue
-        });
-    }, [refundData]);
-
-    // Handle internal notes change
-    const handleNotesChange = useCallback((e) => {
-        setInternalNotes(e.target.value);
-    }, []);
-
-    // Toggle cancel mode with realtime calculations
-    const toggleCancelMode = useCallback(() => {
+    // Toggle cancel mode
+    const toggleCancelMode = () => {
         if (!refundData) return;
 
         const newCancelMode = !isCancelMode;
         setIsCancelMode(newCancelMode);
 
+        const newParams = new URLSearchParams(searchParams);
+        newParams.set("mode", newCancelMode ? "cancel" : "refund");
+        setSearchParams(newParams);
+
         if (newCancelMode) {
-            // Auto-fill maximum refundable amounts for all items with realtime calculation
             const newItems = refundData.items.map(item => {
-                const maxRefundable = Math.max(0, item.price - item.refundedCash - item.refundedVoucher);
-                const updatedItem = {
-                    ...item,
-                    enteredRefund: maxRefundable,
-                    reason: 'Buyer Cancelled'
-                };
-                const derived = calculateItemDerivedValues(updatedItem);
+                const maxRefundable = item.amount - parseNumber(item.refunded_cash_amount);
                 return {
-                    ...updatedItem,
-                    ...derived
+                    ...item,
+                    entered_refund_amount: maxRefundable,
+                    net_refund_amount: maxRefundable,
+                    reason_code: 'Buyer Cancelled'
                 };
+
             });
 
-            // Auto-fill shipping refund
             setRefundData({
                 ...refundData,
                 items: newItems,
-                shippingRefund: refundData.shipping.paid - refundData.shipping.refunded
             });
         } else {
-            // Reset to zero with realtime calculation
-            const newItems = refundData.items.map(item => {
-                const updatedItem = {
-                    ...item,
-                    enteredRefund: 0,
-                    reason: ''
-                };
-                const derived = calculateItemDerivedValues(updatedItem);
-                return {
-                    ...updatedItem,
-                    ...derived
-                };
-            });
-
-            setRefundData({
-                ...refundData,
-                items: newItems,
-                shippingRefund: 0
-            });
+            // REFUND MODE → reset
+            setIsFormValid(false);
+            initializeData("refund");
+            setIsFormValid(true);
         }
-    }, [refundData, isCancelMode, calculateItemDerivedValues]);
+    };
 
-    // REAL-TIME CALCULATIONS FOR SUMMARY - Using useMemo for performance
-    const summaryCalculations = useMemo(() => {
+    // Calculate totals for the summary panel
+    const calculateTotals = () => {
         if (!refundData) {
             return {
-                totalItemRefund: 0,
-                totalShippingRefund: 0,
-                totalRefundAmount: 0,
-                totalVoucherAdjustment: 0,
-                netAmountToRefund: 0,
-                totalBeforeRefunded: 0,
-                totalOrderAmount: 0,
-                remainingRefundable: 0
+                refundAmount: 0,
+                orderAmount: 0,
+                beforeRefunded: 0,
+                enteredOrderRefund: 0
             };
         }
 
-        // Calculate totals from items with realtime updates
-        const totals = refundData.items.reduce((acc, item) => {
-            const enteredRefund = typeof item.enteredRefund === 'number' ? item.enteredRefund : 0;
-            const voucherAdjustment = item.voucherAdjustment || 0;
-            const netRefund = item.netRefund || 0;
-            const beforeRefunded = (item.refundedCash || 0) + (item.refundedVoucher || 0);
-            const remaining = Math.max(0, item.price - beforeRefunded - enteredRefund);
+        let orderAmount = 0;
+        const enteredOrderRefund = refundData.items.reduce((sum, item) => {
+            orderAmount = item.amount + orderAmount;
+            return sum + (typeof item.entered_refund_amount === 'number' ? item.entered_refund_amount : 0);
+        }, 0);
 
-            return {
-                totalItemRefund: acc.totalItemRefund + enteredRefund,
-                totalVoucherAdjustment: acc.totalVoucherAdjustment + voucherAdjustment,
-                totalNetRefund: acc.totalNetRefund + netRefund,
-                totalBeforeRefunded: acc.totalBeforeRefunded + beforeRefunded,
-                totalOrderAmount: acc.totalOrderAmount + item.price,
-                remainingRefundable: acc.remainingRefundable + remaining
-            };
-        }, {
-            totalItemRefund: 0,
-            totalVoucherAdjustment: 0,
-            totalNetRefund: 0,
-            totalBeforeRefunded: 0,
-            totalOrderAmount: 0,
-            remainingRefundable: 0
-        });
+        const refundAmount = enteredOrderRefund + parseNumber(refundData.shipping_refund);
+        const beforeRefunded = refundData.items.reduce((sum, item) => {
+            const refunded_cash_amount = typeof item.refunded_cash_amount === 'number' ? item.refunded_cash_amount : 0;
+            return sum + refunded_cash_amount + refundData.shipping.refunded;
+        }, 0);
 
-        const shippingRefund = typeof refundData.shippingRefund === 'number' ? refundData.shippingRefund : 0;
-        const totalRefundAmount = totals.totalItemRefund + shippingRefund;
-        const netAmountToRefund = totalRefundAmount - totals.totalVoucherAdjustment;
+        orderAmount = orderAmount + refundData.shipping.paid;
 
         return {
-            totalItemRefund: totals.totalItemRefund,
-            totalShippingRefund: shippingRefund,
-            totalRefundAmount,
-            totalVoucherAdjustment: totals.totalVoucherAdjustment,
-            netAmountToRefund,
-            totalBeforeRefunded: totals.totalBeforeRefunded,
-            totalOrderAmount: totals.totalOrderAmount,
-            remainingRefundable: totals.remainingRefundable,
-            maxShippingRefund: refundData.maxShippingRefund || 0
+            refundAmount,
+            beforeRefunded,
+            orderAmount,
+            enteredOrderRefund
         };
-    }, [refundData]);
-
-    // Validate form with realtime calculations
-    const validateForm = useCallback(() => {
-        if (!refundData) return false;
-
-        // Rule 1: Any item has refund > 0 and no reason selected
-        const hasInvalidReason = refundData.items.some(item => {
-            const entered = typeof item.enteredRefund === 'number' ? item.enteredRefund : 0;
-            return entered > 0 && !item.reason;
-        });
-
-        if (hasInvalidReason) return false;
-
-        // Rule 2: Check if any refund exceeds max refundable
-        const exceedsMaxRefundable = refundData.items.some(item => {
-            const entered = typeof item.enteredRefund === 'number' ? item.enteredRefund : 0;
-            const maxRefundable = Math.max(0, item.price - item.refundedCash - item.refundedVoucher);
-            return entered > maxRefundable;
-        });
-
-        if (exceedsMaxRefundable) return false;
-
-        // Rule 3: Shipping refund exceeds remaining shipping
-        const shippingRefund = typeof refundData.shippingRefund === 'number' ? refundData.shippingRefund : 0;
-        const maxShippingRefund = refundData.shipping.paid - refundData.shipping.refunded;
-        if (shippingRefund > maxShippingRefund) return false;
-
-        // Rule 4: Check if net amount to refund is negative
-        if (summaryCalculations.netAmountToRefund < 0) return false;
-
-        return true;
-    }, [refundData, summaryCalculations]);
-
-    // Handle refund submission
-    const handleRefundSubmit = async () => {
-        if (!validateForm()) {
-            toast.error('Please fix validation errors before submitting');
-            return;
-        }
-
-        try {
-            setLoading(true);
-
-            // Prepare items payload with calculated values
-            const itemsPayload = refundData.items
-                .filter(item => {
-                    const entered = typeof item.enteredRefund === 'number' ? item.enteredRefund : 0;
-                    return entered > 0;
-                })
-                .map(item => ({
-                    item_id: item.orderItemId,
-                    reason_code: item.reason,
-                    entered_refund_amount: typeof item.enteredRefund === 'number' ? item.enteredRefund : 0,
-                    voucher_adjustment_amount: item.voucherAdjustment || 0,
-                    net_refund_amount: item.netRefund || 0,
-                }));
-
-            const payload = {
-                items: itemsPayload,
-                shipping_refund: typeof refundData.shippingRefund === 'number' ? refundData.shippingRefund : 0,
-                notes: internalNotes || '',
-            };
-
-            const response = await ApiService.post(`refund/${suborderId}`, payload, authToken);
-
-            if (response.data) {
-                toast.success('Refund submitted successfully!');
-                navigate(-1);
-            }
-        } catch (error) {
-            console.error('Error submitting refund:', error);
-            toast.error(error?.response?.data?.message || 'Failed to submit refund');
-        } finally {
-            setLoading(false);
-        }
     };
-
-    // Handle cancel submission
-    const handleCancelSubmit = async () => {
-        try {
-            setLoading(true);
-
-            const payload = {
-                notes: internalNotes || ''
-            };
-
-            const response = await ApiService.post(`cancel/${suborderId}`, payload, authToken);
-
-            if (response.data) {
-                toast.success('Order cancelled successfully!');
-                navigate(-1);
-            }
-        } catch (error) {
-            console.error('Error cancelling order:', error);
-            toast.error(error?.response?.data?.message || 'Failed to cancel order');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // Handle form submission based on mode
-    const handleSubmit = async () => {
-        if (isCancelMode) {
-            await handleCancelSubmit();
-        } else {
-            await handleRefundSubmit();
-        }
-    };
+    const totals = calculateTotals();
 
     // Handle cancel
-    const handleCancel = useCallback(() => {
-        navigate(-1);
-    }, [navigate]);
+    const handleCancel = () => {
+        navigate(-1); // Go back to previous page
+    };
 
-    // Retry loading refund context
-    const handleRetry = useCallback(() => {
-        fetchRefundContext();
-    }, [fetchRefundContext]);
+    // Handle form submission
+    const handleSubmit = async () => {
+        if (!isFormValid) {
+            alert('Please fix validation errors before submitting');
+            return;
+        }
+        try {
+            if (isCancelMode) {
+                setSubmitting(true);
+                const auth_key = localStorage.getItem(localStorageKey.auth_key);
+                const res = await ApiService.post(`cancel/${suborderId}`, refundData, auth_key);
+                console.log(res);
+            }
+            else {
+                setSubmitting(true);
+                const auth_key = localStorage.getItem(localStorageKey.auth_key);
+                const res = await ApiService.post(`refund/${suborderId}`, refundData, auth_key);
+                console.log(res)
+            }
+        } catch (error) {
+            console.log({ 'error message': error })
+        }
 
-    // Format display value for inputs
-    const formatDisplayValue = useCallback((value) => {
-        if (value === undefined || value === null) return '';
-        if (typeof value === 'number') return value.toString();
-        return value;
-    }, []);
+        setSubmitting(false);
+    };
 
-    if (loading && !refundData) {
+    if (loading) {
         return (
             <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
                 <CircularProgress />
-                <Typography sx={{ ml: 2 }}>Loading refund data...</Typography>
             </Box>
         );
     }
 
-    if (error && !refundData) {
+    if (error) {
         return (
             <Box p={3}>
                 <Alert severity="error">{error}</Alert>
-                <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
-                    <Button onClick={handleCancel}>
-                        Go Back
-                    </Button>
-                    <Button variant="contained" onClick={handleRetry}>
-                        Retry
-                    </Button>
-                </Box>
+                <Button onClick={() => navigate(-1)} sx={{ mt: 2 }}>
+                    Go Back
+                </Button>
             </Box>
         );
     }
 
+    // Show UI even if refundData is null
     if (!refundData) {
         return (
             <Box p={3}>
@@ -559,23 +393,31 @@ const RefundPage = () => {
         );
     }
 
-    const isFormValid = validateForm();
-    const shippingValidationError = summaryCalculations.totalShippingRefund > summaryCalculations.maxShippingRefund;
+    const shippingRefund = typeof refundData.shippingRefund === 'number' ? refundData.shipping_refund : 0;
+    const shippingValidationError = shippingRefund > refundData.shipping.paid - refundData.shipping.refunded;
+
+    // Format display value for inputs (convert number to string for display)
+    const formatDisplayValue = (value) => {
+        if (value === undefined || value === null) return '';
+        if (typeof value === 'number') return value.toFixed(2).toString();
+        return value;
+    };
 
     return (
-        <Box sx={{ p: 3, maxWidth: 1440, margin: '0 auto' }}>
+        <Box sx={{ p: 3, maxWidth: 1300, margin: '0 auto' }}>
+            {/* Header - EXACT text from screenshot */}
             <Typography variant="h4" gutterBottom sx={{ fontWeight: 600, mb: 4 }}>
                 Refund Or Cancel Order
             </Typography>
 
+            {/* Cancel Mode Toggle */}
             <Box sx={{ mb: 3, display: 'flex', alignItems: 'center' }}>
                 <Button
                     variant={isCancelMode ? "contained" : "outlined"}
                     onClick={toggleCancelMode}
                     sx={{ mr: 2 }}
-                    disabled={loading}
                 >
-                    Cancel instead of refund
+                    {isCancelMode ? "Refund instead of cancel" : "Cancel instead of refund"}
                 </Button>
                 {isCancelMode && (
                     <Typography variant="body2" color="warning.main">
@@ -584,345 +426,362 @@ const RefundPage = () => {
                 )}
             </Box>
 
-            {loading && (
-                <Box display="flex" justifyContent="center" sx={{ mb: 2 }}>
-                    <CircularProgress size={24} />
-                    <Typography variant="body2" sx={{ ml: 2 }}>
-                        Processing...
-                    </Typography>
-                </Box>
-            )}
-
             <Grid container spacing={3}>
-                <Grid item xs={12} md={8}>
-                    <Card>
-                        <CardContent>
-                            <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>
-                                Ordered items
-                            </Typography>
+                {/* Left Column - Refund Items Table */}
+                <Grid item xs={12} md={8.5}>
 
-                            <TableContainer component={Paper} variant="outlined" sx={{
-                                p: 2
-                            }}>
-                                <Table>
-                                    <TableHead>
-                                        <TableRow>
-                                            <TableCell sx={{ fontWeight: 600 }}>Item</TableCell>
-                                            <TableCell sx={{ fontWeight: 600 }} align='center'>Image</TableCell>
-                                            <TableCell align="right" sx={{ fontWeight: 600 }}>Order Amount</TableCell>
-                                            <TableCell align="right" sx={{ fontWeight: 600 }}>Before Refunded</TableCell>
-                                            <TableCell align="right" sx={{ fontWeight: 600 }}>Amount to refund</TableCell>
-                                        </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                        {refundData.items.map((item, index) => {
-                                            const beforeRefunded = (item.refundedCash || 0) + (item.refundedVoucher || 0);
 
-                                            return (
-                                                <React.Fragment key={item.orderItemId}>
-                                                    <TableRow>
-                                                        <TableCell>
-                                                            <Box>
-                                                                <Typography variant="body2" sx={{ fontWeight: 500, mb: 1 }}>
-                                                                    {item.title}
-                                                                </Typography>
-                                                                <Typography variant="caption" color="text.secondary" display="block">
+                    {/* Section header - EXACT text from screenshot */}
+                    <Box sx={{
+                        border: '1px solid',
+                        borderColor: 'grey.300',
+                        borderRadius: 1,
+                        bgcolor: 'white',
+                    }}>
+                        <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, color: 'rgba(20, 89, 135, 0.8)', borderBottom: '1px solid', borderColor: 'grey.300', p: 1, bgcolor: 'rgba(29, 149, 196, 0.09)' }}>
+                            Ordered items
+                        </Typography>
+
+                        <TableContainer >
+                            <Table>
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell sx={{ pl: 1, fontWeight: 600, width: '50%' }}>Item</TableCell>
+                                        <TableCell align="right" sx={{ pl: 1, fontWeight: 600, width: '15%' }}>Order Amount</TableCell>
+                                        <TableCell align="right" sx={{ pl: 1, fontWeight: 600, width: '15%' }}>Before Refunded</TableCell>
+                                        <TableCell align="right" sx={{ px: 1, fontWeight: 600, width: '20%' }}>Amount to refund</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {refundData.items.map((item, index) => {
+
+                                        return (
+                                            <React.Fragment key={item.item_id}>
+                                                {/* Main Item Row */}
+                                                <TableRow>
+                                                    <TableCell sx={{
+                                                        wordBreak: 'normal',
+                                                        overflowWrap: 'break-word',
+                                                        pl: 1
+                                                    }}>
+                                                        <Box>
+                                                            <Box sx={{
+                                                                display: 'grid', gridTemplateColumns: 'auto 1fr',
+                                                                gridTemplateRows: 'auto auto',
+                                                                columnGap: 2,
+                                                                rowGap: 2,
+                                                                alignItems: 'center'
+                                                            }}>
+                                                                <a
+                                                                    href=""
+                                                                    target="_blank"
+                                                                    style={{ textDecoration: "none" }}
+                                                                >
+                                                                    <Typography
+                                                                        variant="body2"
+                                                                        sx={{
+                                                                            fontWeight: 500, color: "rgba(20, 98, 151, 0.95)", "&:hover": { textDecoration: "underline" }, cursor: "pointer",
+                                                                        }}
+                                                                    >
+                                                                        {item.title}
+                                                                    </Typography>
+                                                                </a>
+                                                                <img src={`https://api.agukart.com/uploads/product/${item.image}`} alt={""} style={{ height: "125px", width: "125px", objectFit: "cover", aspectRatio: "1/1" }} />
+                                                                <Typography variant="caption" color="text.secondary">
                                                                     Quantity: {item.quantity}
                                                                 </Typography>
-                                                                {!isCancelMode && (
-                                                                    <FormControl fullWidth size="small" sx={{ mt: 1, minWidth: 200 }}>
-                                                                        <InputLabel>Reason for refund</InputLabel>
-                                                                        <Select
-                                                                            value={item.reason}
-                                                                            onChange={(e) => handleReasonChange(index, e.target.value)}
-                                                                            label="Reason for refund"
-                                                                            disabled={isCancelMode || loading}
-                                                                        >
-                                                                            <MenuItem value="">
-                                                                                <em>Select a reason</em>
-                                                                            </MenuItem>
-                                                                            {refundReasons.map(reason => (
-                                                                                <MenuItem key={reason} value={reason}>
-                                                                                    {reason}
-                                                                                </MenuItem>
-                                                                            ))}
-                                                                        </Select>
-                                                                    </FormControl>
-                                                                )}
-                                                                {isCancelMode && (
-                                                                    <Typography variant="caption" color="text.secondary">
-                                                                        Reason: {item.reason}
-                                                                    </Typography>
-                                                                )}
                                                             </Box>
-                                                        </TableCell>
-                                                        <TableCell align='right' sx={{
-                                                            p: 0,
-                                                        }}>
-                                                            {item.image && (
-                                                                <Box
-                                                                    component="img"
-                                                                    src={item.image}
-                                                                    alt={item.title}
-                                                                    sx={{
-                                                                        width: 130,
-                                                                        height: 130,
-                                                                        objectFit: 'cover',
-                                                                        borderRadius: 1
-                                                                    }}
-                                                                    onError={(e) => {
-                                                                        e.target.src = 'https://via.placeholder.com/130x130?text=No+Image';
-                                                                    }}
-                                                                />
+                                                            {!isCancelMode && (
+                                                                <FormControl fullWidth size="small" sx={{ mt: 1, minWidth: 200 }}>
+                                                                    <InputLabel>Reason for refund</InputLabel>
+                                                                    <Select
+                                                                        value={item.reason_code}
+                                                                        onChange={(e) => handleReasonChange(index, e.target.value)}
+                                                                        label="Reason for refund"
+                                                                        disabled={isCancelMode}
+                                                                    >
+                                                                        <MenuItem value="">
+                                                                            <em>Select a reason_code</em>
+                                                                        </MenuItem>
+                                                                        {refundReasons.map(reason_code => (
+                                                                            <MenuItem key={reason_code} value={reason_code}>
+                                                                                {reason_code}
+                                                                            </MenuItem>
+                                                                        ))}
+                                                                    </Select>
+                                                                </FormControl>
                                                             )}
+                                                            {isCancelMode && (
+                                                                <Typography variant="caption" color="text.secondary">
+                                                                    Reason: {item.reason_code}
+                                                                </Typography>
+                                                            )}
+                                                        </Box>
+                                                    </TableCell>
+                                                    <TableCell align="right">
+                                                        ${item.amount.toFixed(2)}
+                                                    </TableCell>
+                                                    <TableCell
+                                                        align="right"
+                                                        sx={{
+                                                            color: Number(item.refunded_cash_amount) > 0 ? "error.main" : "inherit",
+                                                        }}
+                                                    >
+                                                        ${Number(item.refunded_cash_amount ?? 0).toFixed(2)}
+                                                    </TableCell>
+
+                                                    <TableCell align="right">
+                                                        <TextField
+                                                            type="number"
+                                                            size="small"
+                                                            value={formatDisplayValue(item.entered_refund_amount)}
+                                                            onChange={(e) => handleItemRefundChange(index, e.target.value)}
+                                                            onBlur={() => handleItemRefundBlur(index)}
+                                                            InputProps={{
+                                                                startAdornment: (
+                                                                    <InputAdornment position="start">{currencySymbols[refundData.currency] || refundData.currency}</InputAdornment>
+                                                                ),
+                                                            }}
+                                                            disabled={isCancelMode}
+                                                            sx={{ width: 120 }}
+                                                        />
+                                                    </TableCell>
+                                                </TableRow>
+
+                                                {/* Voucher Discount Row (Conditional) - EXACT label from screenshot */}
+                                                {item.refunded_voucher_amount > 0 && (
+                                                    <TableRow>
+                                                        <TableCell>
+                                                            <Typography variant="body2" sx={{ fontWeight: 500, ml: 2 }}>
+                                                                Agukart Voucher Discount
+                                                            </Typography>
                                                         </TableCell>
                                                         <TableCell align="right">
-                                                            ${item.price?.toFixed(2)}
+                                                            <Typography variant="body2" color="violet">
+                                                                -${item.refunded_voucher_amount.toFixed(2)}
+                                                            </Typography>
                                                         </TableCell>
                                                         <TableCell align="right">
-                                                            ${beforeRefunded?.toFixed(2)}
+                                                            <Typography variant="body2" color="violet">
+                                                                -${item.refunded_voucher_amount.toFixed(2)}
+                                                            </Typography>
                                                         </TableCell>
                                                         <TableCell align="right">
                                                             <TextField
                                                                 type="number"
                                                                 size="small"
-                                                                value={formatDisplayValue(item.enteredRefund)}
-                                                                onChange={(e) => handleItemRefundChange(index, e.target.value)}
-                                                                onBlur={() => handleItemRefundBlur(index)}
+                                                                value={formatDisplayValue(item.voucher_adjustment_amount)}
+                                                                onChange={(e) => handleVoucherChange(e.target.value)}
+                                                                onBlur={handleVoucherChangeBlur}
                                                                 InputProps={{
-                                                                    startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                                                                    startAdornment: (
+                                                                        <InputAdornment position="start">{currencySymbols[refundData.currency] || refundData.currency}</InputAdornment>
+                                                                    ),
                                                                 }}
-                                                                disabled={isCancelMode || loading}
+                                                                disabled={isCancelMode}
                                                                 sx={{ width: 120 }}
-                                                                inputProps={{
-                                                                    step: "0.01",
-                                                                    min: "0",
-                                                                    max: Math.max(0, item.price - item.refundedCash - item.refundedVoucher)
-                                                                }}
                                                             />
+
                                                         </TableCell>
                                                     </TableRow>
+                                                )}
 
-                                                    {item.voucherAdjustment > 0 && (
-                                                        <TableRow sx={{ backgroundColor: 'action.hover' }}>
-                                                            <TableCell colSpan={4}>
-                                                                <Typography variant="body2" sx={{ fontWeight: 500, ml: 2 }}>
-                                                                    Agukart Voucher Discount
-                                                                </Typography>
-                                                            </TableCell>
-                                                            <TableCell align="right">
-                                                                <Typography variant="body2" color="error.main">
-                                                                    -${item.voucherAdjustment?.toFixed(2)}
-                                                                </Typography>
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    )}
-                                                </React.Fragment>
-                                            );
-                                        })}
+                                            </React.Fragment>
+                                        );
+                                    })}
+                                    {/* SHIPPING ROW */}
+                                    <TableRow>
+                                        <TableCell sx={{ pl: 1 }}>
+                                            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                                Shipping
+                                            </Typography>
+                                        </TableCell>
+                                        <TableCell align="right">
+                                            ${refundData.shipping.paid.toFixed(2)}
+                                        </TableCell>
+                                        <TableCell align="right">
+                                            ${refundData.shipping.refunded.toFixed(2)}
+                                        </TableCell>
+                                        <TableCell align="right">
+                                            <TextField
+                                                type="number"
+                                                size="small"
+                                                value={formatDisplayValue(refundData.shipping_refund)}
+                                                onChange={(e) => handleShippingRefundChange(e.target.value)}
+                                                onBlur={() => handleShippingRefundBlur()}
+                                                InputProps={{
+                                                    startAdornment: (
+                                                        <InputAdornment position="start">{currencySymbols[refundData.currency] || refundData.currency}</InputAdornment>
+                                                    ),
+                                                }}
+                                                disabled={isCancelMode}
+                                                sx={{ width: 120 }}
+                                            />
+                                        </TableCell>
+                                    </TableRow>
 
-                                        <TableRow>
-                                            <TableCell colSpan={5}>
-                                                <Divider sx={{ my: 1 }} />
-                                            </TableCell>
-                                        </TableRow>
-                                        <TableRow>
-                                            <TableCell>
-                                                <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                                                    Shipping
-                                                </Typography>
-                                            </TableCell>
-                                            <TableCell></TableCell>
-                                            <TableCell align="right">
-                                                ${refundData.shipping.paid?.toFixed(2)}
-                                            </TableCell>
-                                            <TableCell align="right">
-                                                ${refundData.shipping.refunded?.toFixed(2)}
-                                            </TableCell>
-                                            <TableCell align="right">
-                                                <TextField
-                                                    type="number"
-                                                    size="small"
-                                                    value={formatDisplayValue(refundData.shippingRefund)}
-                                                    onChange={(e) => handleShippingRefundChange(e.target.value)}
-                                                    onBlur={handleShippingRefundBlur}
-                                                    InputProps={{
-                                                        startAdornment: <InputAdornment position="start">$</InputAdornment>,
-                                                    }}
-                                                    disabled={isCancelMode || loading}
-                                                    sx={{ width: 120 }}
-                                                    inputProps={{
-                                                        step: "0.01",
-                                                        min: "0",
-                                                        max: summaryCalculations.maxShippingRefund
-                                                    }}
-                                                />
-                                            </TableCell>
-                                        </TableRow>
-                                    </TableBody>
-                                </Table>
-                            </TableContainer>
 
-                            <Box sx={{ mt: 3 }}>
-                                <Typography variant="body2" color="text.secondary" gutterBottom>
-                                    Note to yourself:
-                                </Typography>
-                                <TextField
-                                    fullWidth
-                                    multiline
-                                    rows={2}
-                                    placeholder="Add any internal notes..."
-                                    variant="outlined"
-                                    size="small"
-                                    value={internalNotes}
-                                    onChange={handleNotesChange}
-                                    disabled={loading}
-                                />
-                            </Box>
-                        </CardContent>
-                    </Card>
+                                    <TableRow>
+                                        <TableCell sx={{ pl: 1 }}>
+                                            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                                Total
+                                            </Typography>
+                                        </TableCell>
+                                        <TableCell align="right" sx={{ fontWeight: 500 }}>
+                                            ${totals.orderAmount.toFixed(2)}
+                                        </TableCell>
+                                        <TableCell align="right">
+                                            ${totals.beforeRefunded.toFixed(2)}
+                                        </TableCell>
+                                        <TableCell align="right">
+                                            <Typography sx={{ color: 'red', fontWeight: 500 }}>
+                                                ${totals.refundAmount.toFixed(2)}
+                                            </Typography>
+                                        </TableCell>
+                                    </TableRow>
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    </Box>
+
+                    {/* Note to yourself section */}
+                    <Box sx={{ mt: 3 }}>
+                        <Typography variant="body2" color="text.secondary" gutterBottom>
+                            Note to yourself:
+                        </Typography>
+                        <TextField
+                            fullWidth
+                            multiline
+                            rows={2}
+                            placeholder="Add any internal notes..."
+                            variant="outlined"
+                            size="small"
+                            value={refundData.note_to_yourself}
+                            onChange={(e) =>
+                                setRefundData((prev) => ({
+                                    ...prev,
+                                    note_to_yourself: e.target.value,
+                                }))
+                            }
+                        />
+                    </Box>
+
+
                 </Grid>
 
-                {/* Right Column - Refund Summary Panel with REAL-TIME CALCULATIONS */}
-                <Grid item xs={12} md={4}>
-                    <Card>
-                        <CardContent>
-                            <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
-                                Order summary
+                {/* Right Column - Refund Summary Panel */}
+                <Grid item xs={12} md={3.5}>
+
+                    <Box
+                        sx={{
+                            border: '1px solid',
+                            borderColor: 'grey.300',
+                            borderRadius: 1,
+                            bgcolor: 'white'
+                        }}
+                    >
+                        <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, color: 'rgba(20, 89, 135, 0.8)', borderBottom: '1px solid', borderColor: 'grey.300', p: 1, bgcolor: 'rgba(29, 149, 196, 0.09)' }}>
+                            Order summary
+                        </Typography>
+                        <Box sx={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gridTemplateRows: 'auto auto', columnGap: 1, rowGap: 2, py: 2 }}>
+                            <Typography variant="body2" gutterBottom sx={{ pl: 1 }}>
+                                Customer:
                             </Typography>
-
-                            <Typography variant="body2" gutterBottom>
-                                Customer: {refundData.customerName}
+                            <Typography variant="body2" gutterBottom sx={{ fontWeight: 500 }}>
+                                {refundData.customer_name}
                             </Typography>
-                            <Typography variant="body2" gutterBottom sx={{ mb: 3 }}>
-                                Order ID: {refundData.orderId}
+                            <Typography variant="body2" gutterBottom sx={{ pl: 1 }}>
+                                Order ID:
                             </Typography>
-
-                            <Divider sx={{ my: 2 }} />
-
-                            {/* Order Totals Section */}
-                            <Box sx={{ mb: 3 }}>
-                                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                                    Order Totals
-                                </Typography>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                                    <Typography variant="body2">Items Total:</Typography>
-                                    <Typography variant="body2">
-                                        ${summaryCalculations.totalOrderAmount.toFixed(2)}
-                                    </Typography>
-                                </Box>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                                    <Typography variant="body2">Shipping:</Typography>
-                                    <Typography variant="body2">
-                                        ${refundData.shipping.paid.toFixed(2)}
-                                    </Typography>
-                                </Box>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                                    <Typography variant="body2">Already Refunded:</Typography>
-                                    <Typography variant="body2">
-                                        ${summaryCalculations.totalBeforeRefunded.toFixed(2)}
-                                    </Typography>
-                                </Box>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    <Typography variant="body2">Remaining Refundable:</Typography>
-                                    <Typography variant="body2" color="primary.main" fontWeight={500}>
-                                        ${summaryCalculations.remainingRefundable.toFixed(2)}
-                                    </Typography>
-                                </Box>
-                            </Box>
-
-                            <Divider sx={{ my: 2 }} />
-
-                            <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
-                                Refund summary
+                            <Typography variant="body2" gutterBottom sx={{ color: 'rgba(20, 98, 151, 0.95)' }}>
+                                {refundData.order_id}
                             </Typography>
+                        </Box>
+                    </Box>
 
-                            {/* Item Refunds */}
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                                <Typography variant="body2">Item refunds:</Typography>
+                    <Box sx={{
+                        border: '1px solid',
+                        borderColor: 'grey.300',
+                        borderRadius: 1,
+                        bgcolor: 'white',
+                        mt: 3
+                    }}>
+                        <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, color: 'rgba(20, 89, 135, 0.8)', borderBottom: '1px solid', borderColor: 'grey.300', p: 1, bgcolor: 'rgba(29, 149, 196, 0.09)' }}>
+                            Refund summary
+                        </Typography>
+
+                        {/* Refund Amount */}
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', p: 1 }}>
+                            <Typography variant="body2">Refund amount</Typography>
+                            <Typography variant="body2">
+                                ${totals.enteredOrderRefund.toFixed(2)}
+                            </Typography>
+                        </Box>
+
+                        {/* Return Shipping */}
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', p: 1 }}>
+                            <Typography variant="body2">Refund shipping</Typography>
+                            <Typography variant="body2">
+                                ${refundData.shipping_refund.toFixed(2)}
+                            </Typography>
+                        </Box>
+
+                        {/* Voucher Adjustment (Conditional) - EXACT label from screenshot */}
+                        {refundData.isVoucherApplied && (
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', p: 1 }}>
+                                <Typography variant="body2">Agukart Voucher Adjustment</Typography>
                                 <Typography variant="body2">
-                                    ${summaryCalculations.totalItemRefund.toFixed(2)}
+                                    -${refundData.voucher_adjustment_amount}
                                 </Typography>
                             </Box>
+                        )}
+                        <hr
+                            style={{
+                                width: "50px",
+                                marginLeft: "auto",
+                                marginRight: "6px",
+                            }}
+                        />
 
-                            {/* Shipping Refund */}
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                                <Typography variant="body2">Shipping refund:</Typography>
-                                <Typography variant="body2">
-                                    ${summaryCalculations.totalShippingRefund.toFixed(2)}
-                                </Typography>
-                            </Box>
+                        {/* Amount to refund */}
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', p: 1, mb: 1 }}>
+                            <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                                Amount to refund
+                            </Typography>
+                            <Typography variant="body1" sx={{ fontWeight: 600, color: 'red' }}>
+                                ${totals.refundAmount.toFixed(2)}
+                            </Typography>
+                        </Box>
+                    </Box>
 
-                            {/* Subtotal */}
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1, pt: 1 }}>
-                                <Typography variant="body2" fontWeight={500}>
-                                    Subtotal:
-                                </Typography>
-                                <Typography variant="body2" fontWeight={500}>
-                                    ${summaryCalculations.totalRefundAmount.toFixed(2)}
-                                </Typography>
-                            </Box>
+                    {/* Action Buttons - EXACT text from screenshot */}
+                    <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
+                        <Button
+                            variant="outlined"
+                            fullWidth
+                            onClick={handleCancel}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="contained"
+                            fullWidth
+                            onClick={handleSubmit}
+                            disabled={!isFormValid || submitting}
+                        >
+                            {submitting ? 'submitting' : 'Submit refund'}
+                        </Button>
+                    </Box>
 
-                            {/* Voucher Adjustment */}
-                            {/* {summaryCalculations.totalVoucherAdjustment > 0 && ( */}
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                                <Typography variant="body2">Agukart Voucher Adjustment:</Typography>
-                                <Typography variant="body2" color="error.main">
-                                    -${summaryCalculations.totalVoucherAdjustment.toFixed(2)}
-                                </Typography>
-                            </Box>
-                            {/* )} */}
+                    {!isFormValid && (
+                        <Alert severity="warning" sx={{ mt: 2 }}>
+                            {shippingValidationError ?
+                                'Shipping refund cannot exceed remaining shipping amount' :
+                                'Please fix all validation errors before submitting'
+                            }
+                        </Alert>
+                    )}
 
-                            <Divider sx={{ my: 2 }} />
-
-                            {/* Amount to refund - MAIN TOTAL */}
-                            <Box sx={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                mb: 3,
-                                p: 2,
-                                backgroundColor: 'action.hover',
-                                borderRadius: 1
-                            }}>
-                                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                                    Amount to refund:
-                                </Typography>
-                                <Typography variant="h6" sx={{ fontWeight: 600, color: 'primary.main' }}>
-                                    ${summaryCalculations.netAmountToRefund.toFixed(2)}
-                                </Typography>
-                            </Box>
-
-                            {/* Validation Messages */}
-                            {!isFormValid && !loading && (
-                                <Alert severity="warning" sx={{ mt: 2 }}>
-                                    {shippingValidationError ?
-                                        'Shipping refund cannot exceed remaining shipping amount' :
-                                        'Please fix all validation errors before submitting'
-                                    }
-                                </Alert>
-                            )}
-
-                            {/* Action Buttons */}
-                            <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
-                                <Button
-                                    variant="outlined"
-                                    fullWidth
-                                    onClick={handleCancel}
-                                    disabled={loading}
-                                >
-                                    Cancel
-                                </Button>
-                                <Button
-                                    variant="contained"
-                                    fullWidth
-                                    onClick={handleSubmit}
-                                    disabled={!isFormValid || loading}
-                                >
-                                    {isCancelMode ? 'Submit cancel' : 'Submit refund'}
-                                </Button>
-                            </Box>
-                        </CardContent>
-                    </Card>
                 </Grid>
             </Grid>
         </Box>
