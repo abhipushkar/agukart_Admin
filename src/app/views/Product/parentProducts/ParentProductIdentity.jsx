@@ -37,6 +37,7 @@ import {
     generateCombinationKey
 } from "./normalizeVariantAttributes";
 import { useRef } from "react";
+import BulkSkuImport from "./bulkSkuImport";
 
 const ParentProductIdentity = ({ productId }) => {
     const [formData, setFormData] = React.useState({
@@ -68,6 +69,7 @@ const ParentProductIdentity = ({ productId }) => {
     const [images, setImages] = React.useState(formData.images);
     const [isCoponentLoader, setIsconponentLoader] = useState(false);
     const [issubmitLoader, setIsSubmitLoader] = useState(false);
+    const [bulkImportOpen, setBulkImportOpen] = useState(false);
 
     const [variantArrValues, setVariantArrValue] = useState([]);
     const [skuErrors, setSkuErrors] = useState({});
@@ -259,6 +261,48 @@ const ParentProductIdentity = ({ productId }) => {
         }
 
         setInputErrors((prev) => ({ ...prev, variations: "" }));
+    };
+
+    const handleBulkImport = (skuArray) => {
+        // Update sellerSky array
+        const newSellerSky = [...sellerSky];
+
+        // Fill or update SKUs based on the imported array
+        skuArray.forEach((sku, index) => {
+            if (index < newSellerSky.length) {
+                newSellerSky[index] = sku;
+            } else {
+                newSellerSky[index] = sku;
+            }
+        });
+
+        // Fill remaining slots with empty strings if imported array is shorter
+        for (let i = skuArray.length; i < newSellerSky.length; i++) {
+            newSellerSky[i] = "";
+        }
+
+        // Update state
+        setSellerSku(newSellerSky);
+
+        // Trigger validation for each SKU
+        setTimeout(() => {
+            newSellerSky.forEach((sku, index) => {
+                if (sku && sku.trim()) {
+                    // Trigger debounced validation for each SKU
+                    const timer = setTimeout(() => {
+                        // This will trigger the validation in ProductParentTable
+                        setSellerSku(prev => {
+                            const newSkus = [...prev];
+                            newSkus[index] = sku;
+                            return newSkus;
+                        });
+                    }, 100);
+                    return () => clearTimeout(timer);
+                }
+            });
+        }, 0);
+
+        toast.success(`Imported ${skuArray.length} SKUs successfully`);
     };
 
     const deterministicSort = (a, b) => {
@@ -1910,6 +1954,13 @@ const ParentProductIdentity = ({ productId }) => {
                                 }}
                             >
                                 <Button
+                                    variant="outlined"
+                                    onClick={() => setBulkImportOpen(true)}
+                                    disabled={!currentCombinations || currentCombinations.length === 0}
+                                >
+                                    Bulk Import SKUs
+                                </Button>
+                                <Button
                                     disabled={issubmitLoader ? true : false}
                                     variant="contained"
                                     onClick={parentsubmitHandle}
@@ -1919,6 +1970,14 @@ const ParentProductIdentity = ({ productId }) => {
                                 </Button>
                             </Box>
                         </Box>
+
+                        <BulkSkuImport
+                            open={bulkImportOpen}
+                            onClose={() => setBulkImportOpen(false)}
+                            onImport={handleBulkImport}
+                            combinations={currentCombinations}
+                            existingSkus={sellerSky}
+                        />
                     </Box>
                 </>
             )}
