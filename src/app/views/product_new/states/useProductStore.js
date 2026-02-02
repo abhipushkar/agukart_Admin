@@ -155,7 +155,7 @@ export const useProductStore = create((set, get) => ({
 
     // Search products
     searchProducts: async () => {
-        const { filters, pagination, showFeaturedOnly, setFilters, setPagination } = get();
+        const { filters, pagination, showFeaturedOnly, setFilters } = get();
         try {
             set({ actionLoading: true });
             const url = `${apiEndpoints.getProduct}?type=${filters.status}&category=${filters.category}&search=${filters.search.trim()}&featured=${showFeaturedOnly ? true : ''}&sort=${filters.sorting.sortBy ? JSON.stringify({
