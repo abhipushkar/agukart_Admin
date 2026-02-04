@@ -1,4 +1,4 @@
-name: Deploy Admin Panel to DigitalOcean
+name: Deploy Admin Panel to AWS EC2
 
 on:
   push:
@@ -22,28 +22,20 @@ jobs:
         run: |
           mkdir -p ~/.ssh
           ssh-keyscan github.com >> ~/.ssh/known_hosts
-          ssh-keyscan 165.22.9.131 >> ~/.ssh/known_hosts
+          ssh-keyscan 65.1.111.83 >> ~/.ssh/known_hosts
 
-      - name: Deploy Admin Panel
+      - name: Deploy Admin Panel (AWS)
         run: |
-          ssh root@165.22.9.131 "
-            git config --global --add safe.directory /var/www/html/adminpanel &&
+          ssh ubuntu@65.1.111.83 "
             cd /var/www/html/adminpanel &&
             git fetch origin &&
-            git reset --hard HEAD &&
-            git checkout main &&
-            git pull origin main &&
+            git reset --hard origin/main &&
             npm install --legacy-peer-deps &&
-            npm run build
-          "
-
-      - name: Restart Apache
-        run: |
-          ssh root@165.22.9.131 "
-            systemctl restart apache2
+            npm run build &&
+            pm2 restart adminpanel || pm2 start npm --name adminpanel -- start
           "
 
       - name: Verify deployment
         run: |
-          echo "✅ Deployment completed successfully!"
-          echo "🔗 Application should be available at: https://admin.agukart.com/"
+          echo '✅ Admin Panel deployed successfully!'
+          echo '🔗 https://admin.agukart.com'

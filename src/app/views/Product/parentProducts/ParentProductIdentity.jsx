@@ -149,7 +149,7 @@ const ParentProductIdentity = ({ productId }) => {
         }
     }, [handleOpen]);
 
-    const getBrandList = async () => {
+    const getBrandList = useCallback(async () => {
         try {
             const res = await ApiService.get(apiEndpoints.getBrand, auth_key);
             if (res.status === 200) {
@@ -158,9 +158,9 @@ const ParentProductIdentity = ({ productId }) => {
         } catch (error) {
             handleApiError(error, "Failed to load brands");
         }
-    };
+    }, [auth_key, handleApiError]);
 
-    const getVendors = async () => {
+    const getVendors = useCallback(async () => {
         try {
             setVendorLoading(true);
             const res = await ApiService.get(apiEndpoints.getVendorsList, auth_key);
@@ -172,7 +172,7 @@ const ParentProductIdentity = ({ productId }) => {
         } finally {
             setVendorLoading(false);
         }
-    };
+    }, [auth_key, handleApiError]);
 
     const trimValue = (value) => {
         if (typeof value === 'string') {
@@ -202,7 +202,7 @@ const ParentProductIdentity = ({ productId }) => {
         })));
     };
 
-    const getVaraintList = async () => {
+    const getVaraintList = useCallback(async () => {
         try {
             const typeParam = "type=Product";
             const urlWithParam = `${apiEndpoints.getAllActiveVarient}?${typeParam}`;
@@ -216,7 +216,18 @@ const ParentProductIdentity = ({ productId }) => {
         } catch (error) {
             handleApiError(error, "Failed to load variants");
         }
-    };
+    }, [auth_key, handleApiError]);
+
+    const getChildCategory = useCallback(async () => {
+        try {
+            const res = await ApiService.get(apiEndpoints.getChildCategory, auth_key);
+            if (res.status === 200) {
+                setAllCategory(res?.data?.data);
+            }
+        } catch (error) {
+            handleApiError(error, "Failed to load categories");
+        }
+    }, [auth_key, handleApiError]);
 
     React.useEffect(() => {
         setIsClient(true);
@@ -224,7 +235,7 @@ const ParentProductIdentity = ({ productId }) => {
         getVaraintList();
         getChildCategory();
         getVendors();
-    }, []);
+    }, [getBrandList, getChildCategory, getVaraintList, getVendors]);
 
     React.useEffect(() => {
         if (Object.keys(formData.Innervariations).length > 0) {
@@ -573,16 +584,7 @@ const ParentProductIdentity = ({ productId }) => {
         });
     };
 
-    const getChildCategory = async () => {
-        try {
-            const res = await ApiService.get(apiEndpoints.getChildCategory, auth_key);
-            if (res.status === 200) {
-                setAllCategory(res?.data?.data);
-            }
-        } catch (error) {
-            handleApiError(error, "Failed to load categories");
-        }
-    };
+
 
     const navigate = useNavigate();
 
