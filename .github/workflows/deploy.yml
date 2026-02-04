@@ -18,14 +18,14 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.AWS_SSH_KEY }}
 
-      - name: Add EC2 to known hosts
+      - name: Disable host key checking
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H 65.1.111.83 >> ~/.ssh/known_hosts
+          echo -e "Host *\n\tStrictHostKeyChecking no\n\tUserKnownHostsFile=/dev/null\n" > ~/.ssh/config
 
       - name: Deploy Admin Panel
         run: |
-          ssh ubuntu@65.1.111.83 << 'EOF'
+          ssh -o StrictHostKeyChecking=no ubuntu@65.1.111.83 << 'EOF'
             set -e
 
             echo "🚀 Deploying Admin Panel..."
