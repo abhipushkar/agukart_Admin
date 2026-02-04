@@ -1,4 +1,4 @@
-name: Deploy Admin Panel to AWS EC2
+name: Deploy Admin Panel to AWS
 
 on:
   push:
@@ -10,32 +10,46 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up SSH
+      - name: Setup SSH agent
         uses: webfactory/ssh-agent@v0.7.0
         with:
-          ssh-private-key: ${{ secrets.DEPLOY_KEY }}
+          ssh-private-key: ${{ secrets.AWS_SSH_KEY }}
 
-      - name: Add known hosts
+      - name: Add EC2 to known hosts
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan github.com >> ~/.ssh/known_hosts || true
-          ssh-keyscan 65.1.111.83 >> ~/.ssh/known_hosts || true
+          ssh-keyscan -H ${{ secrets.AWS_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Deploy Admin Panel (AWS)
+      - name: Deploy Admin Panel
         run: |
-          ssh ubuntu@65.1.111.83 "
-            cd /var/www/html/adminpanel &&
-            git fetch origin &&
-            git reset --hard origin/main &&
-            npm install --legacy-peer-deps &&
-            npm run build &&
-            pm2 restart adminpanel || pm2 start npm --name adminpanel -- start
-          "
+          ssh ${{ secrets.AWS_USER }}@${{ secrets.AWS_HOST }} << 'EOF'
+            set -e
+
+            echo "🚀 Deploying Admin Panel..."
+
+            cd /var/www/html/adminpanel
+
+            git fetch origin
+            git reset --hard origin/main
+
+            npm install --legacy-peer-deps
+            npm run build
+
+            pm2 stop adminpanel || true
+            pm2 delete adminpanel || true
+
+            pm2 start npx --name adminpanel -- serve -s build -l 3001
+            pm2 save
+
+            sudo systemctl reload nginx
+
+            echo "✅ Admin Panel deployed successfully"
+          EOF
 
       - name: Verify deployment
         run: |
-          echo '✅ Admin Panel deployed successfully!'
-          echo '🔗 https://admin.agukart.com'
+          echo "✅ Deployment completed"
+          echo "🔗 https://admin.agukart.com"
