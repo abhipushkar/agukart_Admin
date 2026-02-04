@@ -1,4 +1,4 @@
-name: Deploy Admin Panel to DigitalOcean
+name: Deploy Admin Panel to AWS
 
 on:
   push:
@@ -10,40 +10,43 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up SSH
+      - name: Setup SSH agent
         uses: webfactory/ssh-agent@v0.7.0
         with:
-          ssh-private-key: ${{ secrets.DEPLOY_KEY }}
+          ssh-private-key: ${{ secrets.AWS_SSH_KEY }}
 
-      - name: Add known hosts
+      - name: Disable host key checking
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan github.com >> ~/.ssh/known_hosts
-          ssh-keyscan 165.22.9.131 >> ~/.ssh/known_hosts
+          echo -e "Host *\n\tStrictHostKeyChecking no\n\tUserKnownHostsFile=/dev/null\n" > ~/.ssh/config
 
       - name: Deploy Admin Panel
         run: |
-          ssh root@165.22.9.131 "
-            git config --global --add safe.directory /var/www/html/adminpanel &&
-            cd /var/www/html/adminpanel &&
-            git fetch origin &&
-            git reset --hard HEAD &&
-            git checkout main &&
-            git pull origin main &&
-            npm install --legacy-peer-deps &&
-            npm run build
-          "
+          ssh -o StrictHostKeyChecking=no ubuntu@65.1.111.83 << 'EOF'
+            set -e
 
-      - name: Restart Apache
-        run: |
-          ssh root@165.22.9.131 "
-            systemctl restart apache2
-          "
+            echo "🚀 Deploying Admin Panel..."
+
+            cd /var/www/html/adminpanel
+            git fetch origin
+            git reset --hard origin/main
+
+            npm install --legacy-peer-deps
+            npm run build
+
+            pm2 delete adminpanel || true
+            pm2 start npx --name adminpanel -- serve -s build -l 3001
+            pm2 save
+
+            sudo systemctl reload nginx
+
+            echo "✅ Admin Panel deployed successfully"
+          EOF
 
       - name: Verify deployment
         run: |
-          echo "✅ Deployment completed successfully!"
-          echo "🔗 Application should be available at: https://admin.agukart.com/"
+          echo "✅ Deployment completed"
+          echo "🔗 https://admin.agukart.com"
