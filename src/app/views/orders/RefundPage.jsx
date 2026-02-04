@@ -204,7 +204,7 @@ const RefundPage = () => {
 
             return {
                 ...prev,
-                shipping_refund: Math.min(num, maxAllowed),
+                shipping_refund: Math.min(num, maxAllowed).toFixed(2),
             };
         });
     };
@@ -722,7 +722,7 @@ const RefundPage = () => {
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', p: 1 }}>
                             <Typography variant="body2">Refund shipping</Typography>
                             <Typography variant="body2">
-                                ${refundData.shipping_refund.toFixed(2)}
+                                ${refundData.shipping_refund}
                             </Typography>
                         </Box>
 
