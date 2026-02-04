@@ -87,7 +87,6 @@ export const expandInnervariations = (innervariations, variants) => {
             result[variantName] = getAttributesByIds(variant, attributeIds);
         }
     });
-
     return result;
 };
 
