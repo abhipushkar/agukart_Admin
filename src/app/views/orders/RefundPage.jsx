@@ -21,6 +21,7 @@ import {
 } from '@mui/material';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useCallback } from 'react';
+import { toast } from 'react-toastify';
 import { ApiService } from 'app/services/ApiService';
 import { localStorageKey } from 'app/constant/localStorageKey';
 
@@ -93,8 +94,8 @@ const RefundPage = () => {
             ...data,
             items: itemsWithDerivedValues,
             note_to_yourself: '',
-            shipping_refund: 0
-
+            shipping_refund: 0,
+            entered_shipping_refund: 0,
         };
 
         if (mode === 'cancel') {
@@ -189,7 +190,7 @@ const RefundPage = () => {
 
             return {
                 ...prev,
-                shipping_refund: value
+                entered_shipping_refund: value
             };
         });
     };
@@ -199,12 +200,13 @@ const RefundPage = () => {
         setRefundData(prev => {
             if (!prev) return prev;
 
-            const num = parseNumber(prev.shipping_refund);
+            const num = parseNumber(prev.entered_shipping_refund);
             const maxAllowed = prev.shipping.paid - prev.shipping.refunded;
 
             return {
                 ...prev,
-                shipping_refund: Math.min(num, maxAllowed).toFixed(2),
+                entered_shipping_refund: Math.min(num, maxAllowed),
+                shipping_refund: Math.min(num, maxAllowed),
             };
         });
     };
@@ -317,7 +319,7 @@ const RefundPage = () => {
             return sum + (typeof item.entered_refund_amount === 'number' ? item.entered_refund_amount : 0);
         }, 0);
 
-        const refundAmount = enteredOrderRefund + parseNumber(refundData.shipping_refund);
+        const refundAmount = enteredOrderRefund + refundData.shipping_refund;
         const beforeRefunded = refundData.items.reduce((sum, item) => {
             const refunded_cash_amount = typeof item.refunded_cash_amount === 'number' ? item.refunded_cash_amount : 0;
             return sum + refunded_cash_amount + refundData.shipping.refunded;
@@ -606,7 +608,7 @@ const RefundPage = () => {
                                             <TextField
                                                 type="number"
                                                 size="small"
-                                                value={formatDisplayValue(refundData.shipping_refund)}
+                                                value={formatDisplayValue(refundData.entered_shipping_refund)}
                                                 onChange={(e) => handleShippingRefundChange(e.target.value)}
                                                 onBlur={() => handleShippingRefundBlur()}
                                                 InputProps={{
@@ -722,7 +724,7 @@ const RefundPage = () => {
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', p: 1 }}>
                             <Typography variant="body2">Refund shipping</Typography>
                             <Typography variant="body2">
-                                ${refundData.shipping_refund}
+                                ${refundData.shipping_refund.toFixed(2)}
                             </Typography>
                         </Box>
 
