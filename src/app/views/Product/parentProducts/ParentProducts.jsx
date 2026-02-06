@@ -84,6 +84,7 @@ class ProductErrorBoundary extends React.Component {
 const ParentProducts = () => {
     const [query, setQuery] = useSearchParams();
     const queryId = query.get("id");
+    const listing = query.get("listing");
 
     return (
         <>
@@ -107,7 +108,7 @@ const ParentProducts = () => {
                     >
                         {/* Wrap with Error Boundary */}
                         <ProductErrorBoundary>
-                            <ParentProductIdentity productId={queryId} />
+                            <ParentProductIdentity productId={queryId} listing={listing} />
                         </ProductErrorBoundary>
                     </Box>
                 </Box>

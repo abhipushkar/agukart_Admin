@@ -22,13 +22,13 @@ import {
     Paper,
     Divider,
     Typography,
-    Card,
-    CardContent
+    // Card,
+    // CardContent
 } from "@mui/material";
 
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
-import { toast } from "react-toastify";
+// import { toast } from "react-toastify";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import styled from "@emotion/styled";
 import { ApiService } from "app/services/ApiService";
@@ -43,15 +43,16 @@ import { Dropdown, DropdownMenuItem, DropdownNestedMenuItem } from "./DropDown";
 
 import PropTypes from "prop-types";
 import CloseIcon from "@mui/icons-material/Close";
-import ClearIcon from "@mui/icons-material/Clear";
+// import ClearIcon from "@mui/icons-material/Clear";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 
-import { autocompleteClasses } from "@mui/material/Autocomplete";
+// import { autocompleteClasses } from "@mui/material/Autocomplete";
 
 import Autocomplete from "@mui/material/Autocomplete";
-import { TextRotateVerticalRounded } from "@mui/icons-material";
+// import { TextRotateVerticalRounded } from "@mui/icons-material";
 import ConfirmModal from "app/components/ConfirmModal";
+import { useCallback } from "react";
 
 function Tag(props) {
     const { label, onDelete, ...other } = props;
@@ -79,8 +80,8 @@ const StyledContainer = styled("div")(({ theme }) => ({
     }
 }));
 
-const ITEM_HEIGHT = 48;
-const ITEM_PADDING_TOP = 8;
+// const ITEM_HEIGHT = 48;
+// const ITEM_PADDING_TOP = 8;
 
 // Operator mappings based on field selection
 const getOperatorsForField = (field) => {
@@ -99,19 +100,19 @@ const Add = () => {
     const [image, setImage] = useState(null);
     const [getCatData, setCatData] = useState({});
     console.log(getCatData, "f");
-    const [query, setQuery] = useSearchParams();
+    const [query] = useSearchParams();
     const [allActiveCategory, setAllActiveCategory] = useState([]);
     const [selectedCatLable, setSelectedCatLable] = useState("Select Category");
     const [selectedCatId, setSelectedCatId] = useState("");
     console.log({ selectedCatId })
     const [loading, setLoading] = useState(false);
     const [imagePreview, setImagePreview] = useState(null);
-    const [render, setRander] = useState(true);
+    // const [render, setRander] = useState(true);
     const [varintList, setVariantList] = useState([]);
     const [attributeList, setAttributeList] = useState([]);
-    const [editCatLable, setEditCatLable] = useState("");
-    const [selectdVariantLable, setSelectedVarintLabel] = useState([]);
-    const [endCatName, setEndCatName] = useState("");
+    // const [editCatLable, setEditCatLable] = useState("");
+    // const [selectdVariantLable, setSelectedVarintLabel] = useState([]);
+    // const [endCatName, setEndCatName] = useState("");
     const [topRatedImg, setTopRatedImg] = useState(null);
     const [topRatedUrl, setTopRatedUrl] = useState(null);
     console.log("selectedCatLable------", selectedCatLable);
@@ -128,7 +129,7 @@ const Add = () => {
     const [filteredAttributes, setFilteredAttributes] = useState([]);
 
     // State to track parent category data
-    const [parentCategoryData, setParentCategoryData] = useState(null);
+    // const [parentCategoryData, setParentCategoryData] = useState(null);
 
     const validationSchema = Yup.object().shape({
         name: Yup.string().required("Name is required"),
@@ -138,13 +139,13 @@ const Add = () => {
         metaDescription: Yup.string().required("Meta Description is required"),
     });
 
-    const [selectedVariant, setSelectedVariant] = useState([]);
+    // const [selectedVariant, setSelectedVariant] = useState([]);
     const [selectedVariantIds, setSelectedVariantIds] = useState([]);
     const [SelectedEditVariant, setSelectedEditVariant] = useState([]);
     const [SelectedEditAttribute, setSelectedEditAttribute] = useState([]);
 
-    const [search, setSearch] = useState("");
-    const [SearchList, setSearchList] = useState([]);
+    // const [search, setSearch] = useState("");
+    // const [SearchList, setSearchList] = useState([]);
 
     const [open, setOpen] = useState(false);
     const [type, setType] = useState("");
@@ -158,14 +159,14 @@ const Add = () => {
         setRoute(ROUTE_CONSTANT.login);
     };
 
-    const handleOpen = (type, msg) => {
+    const handleOpen = useCallback((type, msg) => {
         setMsg(msg?.message);
         setOpen(true);
         setType(type);
         if (msg?.response?.status === 401) {
             logOut();
         }
-    };
+    }, [])
 
     const handleClose = () => {
         setOpen(false);
@@ -176,10 +177,10 @@ const Add = () => {
         setMsg(null);
     };
 
-    const handleChange = (event, value) => {
-        setSelectedVariantIds(value.map((option) => option._id));
-        setSelectedEditVariant(value);
-    };
+    // const handleChange = (event, value) => {
+    //     setSelectedVariantIds(value.map((option) => option._id));
+    //     setSelectedEditVariant(value);
+    // };
 
     const handleImageChange = (e, name) => {
         const file = e.target.files[0];
@@ -240,11 +241,24 @@ const Add = () => {
 
     // Process conditions before submitting - extract only IDs
     const processConditionsForSubmit = (conditions) => {
-        return conditions.map(condition => ({
-            field: condition.field,
-            operator: condition.operator,
-            value: extractValueIds(condition.value, condition.field)
-        }));
+        // If isAutomatic is false, don't send any conditions
+        if (!isAutomatic) {
+            return [];
+        }
+
+        // Filter out empty conditions and convert valid ones
+        const validConditions = conditions
+            .filter(condition => {
+                // Check if condition has all required fields and values
+                return condition.field && condition.operator && condition.value;
+            })
+            .map(condition => ({
+                field: condition.field,
+                operator: condition.operator,
+                value: extractValueIds(condition.value, condition.field)
+            }));
+
+        return validConditions;
     };
 
     // Improved findObjectsByIds function with better error handling
@@ -300,13 +314,13 @@ const Add = () => {
     };
 
     // Get parent category data when selectedCatId changes
-    const getParentCategoryData = async (parentId) => {
+    const getParentCategoryData = useCallback(async (parentId) => {
         if (!parentId) return;
 
         try {
             const res = await ApiService.get(`${apiEndpoints.editCategory}/${parentId}`, auth_key);
             if (res.status === 200) {
-                setParentCategoryData(res?.data?.data);
+                // setParentCategoryData(res?.data?.data);
 
                 // Auto-populate variants and attributes if current selection is empty
                 if (SelectedEditVariant.length === 0 && res?.data?.data?.variant_data?.length > 0) {
@@ -320,10 +334,10 @@ const Add = () => {
         } catch (error) {
             console.error("Error fetching parent category data:", error);
         }
-    };
+    }, [SelectedEditAttribute.length, SelectedEditVariant.length, auth_key])
 
     // Get filtered variants and attributes based on selected categories
-    const getFilteredVariantsAndAttributes = async (categoryIds) => {
+    const getFilteredVariantsAndAttributes = useCallback(async (categoryIds) => {
         if (categoryIds.length === 0 || categoryScope === "all") {
             setFilteredVariants(varintList);
             setFilteredAttributes(attributeList);
@@ -401,7 +415,7 @@ const Add = () => {
             setFilteredVariants(varintList);
             setFilteredAttributes(attributeList);
         }
-    };
+    }, [attributeList, auth_key, categoryScope, varintList]);
 
     const handleSubmit = async (values) => {
         console.log("Original values:", values);
@@ -419,7 +433,6 @@ const Add = () => {
             meta_description: values.metaDescription,
             variant_id: selectedVariantIds,
             attributeList_id: SelectedEditAttribute.map(attr => attr._id),
-            conditions: processedConditions,
             conditionType: values.conditionType,
             bestseller: values.bestSelling,
             restricted_keywords: values.tags,
@@ -427,6 +440,10 @@ const Add = () => {
             categoryScope: categoryScope,
             selectedCategories: selectedCategories.map(cat => cat._id)
         };
+
+        if (isAutomatic) {
+            payload.conditions = processedConditions;
+        }
 
         const variant_id = SelectedEditVariant.map((variant) => {
             return variant._id;
@@ -474,7 +491,7 @@ const Add = () => {
     };
 
     // Get parent categories for dropdown
-    const getParentCategories = async () => {
+    const getParentCategories = useCallback(async () => {
         try {
             console.log("Fetching parent categories...");
             const res = await ApiService.get(apiEndpoints.getParentCatgory, auth_key);
@@ -497,9 +514,21 @@ const Add = () => {
             setParentCategories([]);
             setIsParentCategoriesLoaded(true);
         }
-    };
+    }, [auth_key, getCatData.selectedCategories, queryId])
 
-    const getCategoryData = async () => {
+
+    const catData = useCallback(async (id) => {
+        try {
+            const res = await ApiService.get(`${apiEndpoints.editCategory}/${id}`, auth_key);
+            if (res.status === 200) {
+                // setSelectedCatLable(res?.data?.data?.title);
+            }
+        } catch (error) {
+            handleOpen("error", error?.response?.data || error);
+        }
+    }, [auth_key, handleOpen])
+
+    const getCategoryData = useCallback(async () => {
         if (queryId) {
             try {
                 console.log("Getting category data for:", queryId);
@@ -546,22 +575,16 @@ const Add = () => {
                 handleOpen("error", error?.response?.data || error);
             }
         }
-    };
+    }, [auth_key, catData, getParentCategoryData, handleOpen, isParentCategoriesLoaded, parentCategories, queryId]);
 
-    const getCateLabel = async () => {
+    const getCateLabel = useCallback(async () => {
         try {
             if (getCatData?.parent_id) {
                 const res = await ApiService.get(apiEndpoints.getParentCatgory, auth_key);
-                console.log({ res });
 
                 if (res.status === 200) {
                     const find = res?.data?.data.find((item) => item._id === getCatData?.parent_id);
-                    console.log({ find });
-                    if (find?.title?.includes(">")) {
-                        setSelectedCatLable(find.title);
-                    } else {
-                        setSelectedCatLable("Select Category");
-                    }
+                    setSelectedCatLable(find.title);
                 } else {
                     setSelectedCatLable("Select Category");
                 }
@@ -572,32 +595,22 @@ const Add = () => {
             handleOpen("error", error?.response?.data || error);
             setSelectedCatLable("Select Category");
         }
-    };
+    }, [auth_key, getCatData?.parent_id, handleOpen]);
 
-    const catData = async (id) => {
-        try {
-            const res = await ApiService.get(`${apiEndpoints.editCategory}/${id}`, auth_key);
-            if (res.status === 200) {
-                // setSelectedCatLable(res?.data?.data?.title);
-            }
-        } catch (error) {
-            handleOpen("error", error?.response?.data || error);
-        }
-    };
 
-    const getAllActiveCategory = async () => {
+    const getAllActiveCategory = useCallback(async () => {
         try {
             const res = await ApiService.get(apiEndpoints.getAllActiveCategory, auth_key);
             if (res?.status === 200) {
                 setAllActiveCategory([{ subs: res?.data?.subCatgory }]);
-                setRander(false);
+                // setRander(false);
             }
         } catch (error) {
             handleOpen("error", error?.response?.data || error);
         }
-    };
+    }, [auth_key, handleOpen]);
 
-    const getVaraintList = async () => {
+    const getVaraintList = useCallback(async () => {
         const typeParam = "type=Category";
         const urlWithParam = `${apiEndpoints.getVariant}?${typeParam}&fulldata=true`;
         try {
@@ -605,18 +618,18 @@ const Add = () => {
             console.log("resresres", res);
             if (res.status === 200) {
                 setVariantList(res?.data?.data || []);
-                setSearchList(res?.data?.data || []);
+                // setSearchList(res?.data?.data || []);
                 setFilteredVariants(res?.data?.data || []);
             }
         } catch (error) {
             handleOpen("error", error?.response?.data || error);
             setVariantList([]);
-            setSearchList([]);
+            // setSearchList([]);
             setFilteredVariants([]);
         }
-    };
+    }, [auth_key, handleOpen]);
 
-    const getAttributeList = async () => {
+    const getAttributeList = useCallback(async () => {
         try {
             const res = await ApiService.get("get-attribute-list?fulldata=true", auth_key);
             if (res?.data?.success) {
@@ -628,7 +641,7 @@ const Add = () => {
             setAttributeList([]);
             setFilteredAttributes([]);
         }
-    };
+    }, [auth_key, handleOpen]);
 
     // Load all initial data
     useEffect(() => {
@@ -646,14 +659,14 @@ const Add = () => {
         };
 
         loadInitialData();
-    }, []);
+    }, [getAllActiveCategory, getAttributeList, getParentCategories, getVaraintList]);
 
     // Load category data when queryId changes and parent categories are loaded
     useEffect(() => {
         if (queryId && isParentCategoriesLoaded) {
             getCategoryData();
         }
-    }, [queryId, isParentCategoriesLoaded]);
+    }, [queryId, isParentCategoriesLoaded, getCategoryData]);
 
     // Handle the case when parentCategories load after getCategoryData
     useEffect(() => {
@@ -669,7 +682,7 @@ const Add = () => {
         if (getCatData?.parent_id) {
             getCateLabel();
         }
-    }, [getCatData?.parent_id]);
+    }, [getCatData?.parent_id, getCateLabel]);
 
     useEffect(() => {
         // Update filtered variants and attributes when categories change
@@ -680,14 +693,14 @@ const Add = () => {
             setFilteredVariants(varintList);
             setFilteredAttributes(attributeList);
         }
-    }, [selectedCategories, categoryScope]);
+    }, [selectedCategories, categoryScope, getFilteredVariantsAndAttributes, varintList, attributeList]);
 
     // Effect to get parent category data when selectedCatId changes
     useEffect(() => {
         if (selectedCatId) {
             getParentCategoryData(selectedCatId);
         }
-    }, [selectedCatId]);
+    }, [getParentCategoryData, selectedCatId]);
 
     function returnJSX(subItems) {
         if (!subItems?.length) {
@@ -712,8 +725,8 @@ const Add = () => {
                         onClick={() => {
                             setSelectedCatId(items?.id);
                             setSelectedCatLable(items?.title);
-                            setSelectedVarintLabel([]);
-                            setSelectedVariant([]);
+                            // setSelectedVarintLabel([]);
+                            // setSelectedVariant([]);
                             setSelectedVariantIds([]);
                             getParentCategory(items?.id);
                         }}
@@ -740,10 +753,10 @@ const Add = () => {
         setIsAutomatic(false);
         setCategoryScope("all");
         setSelectedCategories([]);
-        setParentCategoryData(null);
+        // setParentCategoryData(null);
     };
 
-    function findObjectByTitle(data, title) {
+    const findObjectByTitle = useCallback((data, title) => {
         for (let i = 0; i < data.length; i++) {
             if (data[i].title === title) {
                 return data[i];
@@ -756,11 +769,11 @@ const Add = () => {
             }
         }
         return null;
-    }
+    }, [])
 
     useEffect(() => {
-        const obj = findObjectByTitle(allActiveCategory, selectedCatLable);
-    }, [selectedCatLable]);
+        findObjectByTitle(allActiveCategory, selectedCatLable);
+    }, [allActiveCategory, findObjectByTitle, selectedCatLable]);
 
     console.log({ getCatData });
 
@@ -864,7 +877,7 @@ const Add = () => {
                                 }}
                                 value={condition.value?.attributeId || ""}
                                 onChange={(e) => {
-                                    const newAttribute = filteredAttributes.find(attr => attr._id === e.target.value);
+                                    // const newAttribute = filteredAttributes.find(attr => attr._id === e.target.value);
                                     const newValue = {
                                         attributeId: e.target.value,
                                         subAttributeId: "",
@@ -921,7 +934,7 @@ const Add = () => {
             }
 
             // Handle regular attributes (Dropdown, Yes/No, Text)
-            const attributeValues = selectedAttribute?.values || [];
+            // const attributeValues = selectedAttribute?.values || [];
             const selectedValuesCount = condition.value?.valueIds?.length || 0;
 
             return (

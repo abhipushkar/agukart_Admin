@@ -39,7 +39,7 @@ import {
 import { useRef } from "react";
 import BulkSkuImport from "./bulkSkuImport";
 
-const ParentProductIdentity = ({ productId }) => {
+const ParentProductIdentity = ({ productId, listing }) => {
     const [formData, setFormData] = React.useState({
         productTitle: "",
         description: "",
@@ -810,7 +810,7 @@ const ParentProductIdentity = ({ productId }) => {
             const formDataObj = new FormData();
 
             // Append all product data
-            formDataObj.append("_id", productId ? productId : "new");
+            formDataObj.append("_id", listing === "copy" ? "new" : (productId ? productId : "new"));
             formDataObj.append("product_title", trimValue(formData.productTitle));
             formDataObj.append("description", trimValue(formData.description));
             formDataObj.append("seller_sku", trimValue(formData.sellerSku));
@@ -1069,7 +1069,7 @@ const ParentProductIdentity = ({ productId }) => {
                 const formDataUpdates = {
                     productTitle: resData?.product_title || "",
                     description: resData?.description || "",
-                    sellerSku: resData?.seller_sku || "",
+                    sellerSku: listing === 'copy' ? "" : resData?.seller_sku || "",
                     images: [{ src: `${res?.data?.base_url}${resData?.image}` }],
                     zoom: resData?.zoom || { scale: 1, x: 0, y: 0 },
                     variant_id: resData?.variant_id?.map((option) => option?._id) || [],
@@ -1141,6 +1141,12 @@ const ParentProductIdentity = ({ productId }) => {
                     setParentId(resData?._id);
                     setVarientAttribute(resData?.variant_attribute_id?.map((option) => option._id) || []);
                     setProductVariations(finalProductVariations);
+
+                    // Empty SKUs when listing is "copy"
+                    if (listing === 'copy') {
+                        setSellerSku([]);
+                        setSkuErrors({});
+                    }
                 });
 
                 // ADD CACHING FOR SKU VALIDATION
@@ -1156,60 +1162,11 @@ const ParentProductIdentity = ({ productId }) => {
                 // KEEP ALL EXISTING SKU LOADING CODE BELOW - DO NOT MODIFY
                 if (shouldFetchSkus && resData?.sku && resData?.sku.length > 0) {
                     console.log('Loading SKU data...');
-                    const arr = resData.sku.map(async (sku, i) => {
-                        // Check cache first
-                        if (skuCache.has(sku)) {
-                            return skuCache.get(sku);
-                        }
 
-                        if (!sku) {
-                            const emptyResult = {
-                                _id: "",
-                                product_id: "",
-                                sale_price: "",
-                                price: "",
-                                sale_start_date: "",
-                                sale_end_date: "",
-                                qty: ""
-                            };
-                            skuCache.set(sku, emptyResult);
-                            return emptyResult;
-                        }
-
-                        let url = apiEndpoints.getProductBySku + `/${sku}`;
-                        const res = await ApiService.get(url, auth_key);
-
-                        if (res.status === 200) {
-                            let obj = res.data.data;
-                            let sale_start_date = obj.sale_start_date ? dayjs(obj.sale_start_date) : "";
-                            let sale_end_date = obj.sale_end_date ? dayjs(obj.sale_end_date) : "";
-
-                            const variantError = validateChildProductVariants(obj, resData?.variant_id);
-
-                            if (variantError) {
-                                setSkuErrors(prev => ({
-                                    ...prev,
-                                    [i]: variantError
-                                }));
-                            }
-
-                            const result = {
-                                ...obj,
-                                _id: obj.product_id,
-                                product_id: obj.product_id,
-                                sale_end_date,
-                                sale_start_date,
-                                price: obj.price || "",
-                                sale_price: obj.sale_price || "",
-                                qty: obj.qty || "",
-                                isExistingProduct: true
-                            };
-
-                            skuCache.set(sku, result);
-                            return result;
-                        }
-
-                        const errorResult = {
+                    // If listing is "copy", skip loading SKUs
+                    if (listing === 'copy') {
+                        console.log('Skipping SKU load for copy operation');
+                        const emptyResults = resData.sku.map(() => ({
                             _id: "",
                             product_id: "",
                             sale_price: "",
@@ -1217,16 +1174,11 @@ const ParentProductIdentity = ({ productId }) => {
                             sale_start_date: "",
                             sale_end_date: "",
                             qty: ""
-                        };
-                        skuCache.set(sku, errorResult);
-                        return errorResult;
-                    });
+                        }));
 
-                    Promise.all(arr).then((results) => {
-                        // FIX: Batch these updates too
                         ReactDOM.unstable_batchedUpdates(() => {
-                            setVariantArrValue(results);
-                            setSellerSku(resData.sku);
+                            setVariantArrValue(emptyResults);
+                            setSellerSku([]); // Empty array for copy operation
                         });
 
                         if (resData?.combinations) {
@@ -1238,16 +1190,108 @@ const ParentProductIdentity = ({ productId }) => {
                             });
                             setCombinationMap(initialMap);
                         }
-                    }).catch(error => {
-                        console.error('Error loading SKU data:', error);
-                        handleApiError(error, "Failed to load SKU data");
+                    } else {
+                        // Original SKU loading logic for non-copy operations
+                        const arr = resData.sku.map(async (sku, i) => {
+                            // Check cache first
+                            if (skuCache.has(sku)) {
+                                return skuCache.get(sku);
+                            }
+
+                            if (!sku) {
+                                const emptyResult = {
+                                    _id: "",
+                                    product_id: "",
+                                    sale_price: "",
+                                    price: "",
+                                    sale_start_date: "",
+                                    sale_end_date: "",
+                                    qty: ""
+                                };
+                                skuCache.set(sku, emptyResult);
+                                return emptyResult;
+                            }
+
+                            let url = apiEndpoints.getProductBySku + `/${sku}`;
+                            const res = await ApiService.get(url, auth_key);
+
+                            if (res.status === 200) {
+                                let obj = res.data.data;
+                                let sale_start_date = obj.sale_start_date ? dayjs(obj.sale_start_date) : "";
+                                let sale_end_date = obj.sale_end_date ? dayjs(obj.sale_end_date) : "";
+
+                                const variantError = validateChildProductVariants(obj, resData?.variant_id);
+
+                                if (variantError) {
+                                    setSkuErrors(prev => ({
+                                        ...prev,
+                                        [i]: variantError
+                                    }));
+                                }
+
+                                const result = {
+                                    ...obj,
+                                    _id: obj.product_id,
+                                    product_id: obj.product_id,
+                                    sale_end_date,
+                                    sale_start_date,
+                                    price: obj.price || "",
+                                    sale_price: obj.sale_price || "",
+                                    qty: obj.qty || "",
+                                    isExistingProduct: true
+                                };
+
+                                skuCache.set(sku, result);
+                                return result;
+                            }
+
+                            const errorResult = {
+                                _id: "",
+                                product_id: "",
+                                sale_price: "",
+                                price: "",
+                                sale_start_date: "",
+                                sale_end_date: "",
+                                qty: ""
+                            };
+                            skuCache.set(sku, errorResult);
+                            return errorResult;
+                        });
+
+                        Promise.all(arr).then((results) => {
+                            // FIX: Batch these updates too
+                            ReactDOM.unstable_batchedUpdates(() => {
+                                setVariantArrValue(results);
+                                setSellerSku(resData.sku);
+                            });
+
+                            if (resData?.combinations) {
+                                const initialMap = new Map();
+                                resData.combinations.forEach((comb, index) => {
+                                    if (comb.comb) {
+                                        initialMap.set(comb.comb.replace(/,/g, '_'), index);
+                                    }
+                                });
+                                setCombinationMap(initialMap);
+                            }
+                        }).catch(error => {
+                            console.error('Error loading SKU data:', error);
+                            handleApiError(error, "Failed to load SKU data");
+                        });
+                    }
+                } else if (listing === 'copy') {
+                    // If there are no SKUs in the data, still clear existing SKUs for copy operation
+                    ReactDOM.unstable_batchedUpdates(() => {
+                        setSellerSku([]);
+                        setSkuErrors({});
+                        setVariantArrValue([]);
                     });
                 }
             }
         } catch (error) {
             handleApiError(error, "Failed to load product details");
         }
-    }, [auth_key, handleApiError, productId, vendors, sellerSky, variantArrValues]); // Added sellerSky and variantArrValues to dependencies
+    }, [auth_key, handleApiError, productId, vendors, sellerSky, variantArrValues, listing]); // Added listing to dependencies // Added sellerSky and variantArrValues to dependencies
 
     useEffect(() => {
         if (productId) {
@@ -1307,7 +1351,7 @@ const ParentProductIdentity = ({ productId }) => {
             getParentProductDetail();
             hasLoadedProductData.current = true;
         }
-    }, [getParentProductDetail, productId, vendors]);
+    }, [getParentProductDetail, productId, vendors, listing]);
 
     // Also add cleanup to reset the flag when component unmounts
     useEffect(() => {

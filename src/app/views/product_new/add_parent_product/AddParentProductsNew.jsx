@@ -15,8 +15,6 @@ const ParentProducts = () => {
     const [query] = useSearchParams();
     const queryId = query.get("id");
 
-    console.log("I'm the new parent product add page");
-
     return (
         <Container>
             <Box sx={{ py: "16px", marginTop: "30px" }} component={Paper}>

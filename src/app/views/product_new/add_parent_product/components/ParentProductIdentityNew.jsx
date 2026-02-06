@@ -36,7 +36,7 @@ const ParentProductIdentityNew = ({ productId }) => {
 
     useEffect(() => {
         initializeData(productId);
-    }, [productId]);
+    }, [initializeData, productId]);
 
     const formDataHandler = (e) => {
         const trimmedValue = trimValue(e.target.value);
