@@ -53,6 +53,7 @@ import Autocomplete from "@mui/material/Autocomplete";
 // import { TextRotateVerticalRounded } from "@mui/icons-material";
 import ConfirmModal from "app/components/ConfirmModal";
 import { useCallback } from "react";
+import { useRef } from "react";
 
 function Tag(props) {
     const { label, onDelete, ...other } = props;
@@ -528,7 +529,7 @@ const Add = () => {
         }
     }, [auth_key, handleOpen])
 
-    const getCategoryData = useCallback(async () => {
+    const getCategoryData = async () => {
         if (queryId) {
             try {
                 console.log("Getting category data for:", queryId);
@@ -557,25 +558,18 @@ const Add = () => {
                     if (res?.data?.data?.categoryScope) {
                         setCategoryScope(res?.data?.data?.categoryScope);
                     }
-                    if (res?.data?.data?.selectedCategories) {
-                        console.log("Setting selected categories from API:", res?.data?.data?.selectedCategories);
 
-                        // Wait for parent categories to be loaded before setting selected categories
-                        if (isParentCategoriesLoaded && parentCategories.length > 0) {
-                            const selectedCats = findObjectsByIds(res?.data?.data?.selectedCategories, parentCategories);
-                            console.log("Found selected categories immediately:", selectedCats);
-                            setSelectedCategories(selectedCats);
-                        } else {
-                            console.log("Parent categories not loaded yet, will set selected categories later");
-                            // This will be handled by the useEffect below
-                        }
-                    }
+                    // Don't set selectedCategories here - let the useEffect handle it
+                    // when parentCategories are loaded
+
+                    // Just store the data, the useEffect will handle it
+                    setCatData(res?.data?.data);
                 }
             } catch (error) {
                 handleOpen("error", error?.response?.data || error);
             }
         }
-    }, [auth_key, catData, getParentCategoryData, handleOpen, isParentCategoriesLoaded, parentCategories, queryId]);
+    };
 
     const getCateLabel = useCallback(async () => {
         try {
@@ -666,17 +660,33 @@ const Add = () => {
         if (queryId && isParentCategoriesLoaded) {
             getCategoryData();
         }
-    }, [queryId, isParentCategoriesLoaded, getCategoryData]);
+    }, [queryId, isParentCategoriesLoaded]);
 
-    // Handle the case when parentCategories load after getCategoryData
+    // Fix 1: Use a ref to track if we've already processed the initial data
+    const hasProcessedInitialData = useRef(false);
+
+    // Fix 2: Update the problematic useEffect
     useEffect(() => {
-        if (queryId && getCatData?.selectedCategories && isParentCategoriesLoaded && parentCategories.length > 0) {
+        if (queryId &&
+            getCatData?.selectedCategories &&
+            isParentCategoriesLoaded &&
+            parentCategories.length > 0 &&
+            !hasProcessedInitialData.current) {
+
             console.log("Re-setting selected categories with loaded parentCategories");
             const selectedCats = findObjectsByIds(getCatData.selectedCategories, parentCategories);
             console.log("Final selected categories:", selectedCats);
             setSelectedCategories(selectedCats);
+
+            // Mark as processed to prevent infinite loop
+            hasProcessedInitialData.current = true;
         }
-    }, [parentCategories, isParentCategoriesLoaded, queryId, getCatData]);
+    }, [parentCategories, isParentCategoriesLoaded, queryId]); // Remove getCatData from dependencies
+
+    // Fix 3: Reset the ref when queryId changes
+    useEffect(() => {
+        hasProcessedInitialData.current = false;
+    }, [queryId]);
 
     useEffect(() => {
         if (getCatData?.parent_id) {
@@ -684,16 +694,22 @@ const Add = () => {
         }
     }, [getCatData?.parent_id, getCateLabel]);
 
+    // Replace the problematic useEffect with this:
     useEffect(() => {
-        // Update filtered variants and attributes when categories change
-        if (selectedCategories && selectedCategories.length > 0) {
-            const categoryIds = selectedCategories.map(cat => cat._id || cat.id).filter(id => id);
-            getFilteredVariantsAndAttributes(categoryIds);
-        } else {
-            setFilteredVariants(varintList);
-            setFilteredAttributes(attributeList);
+        // Only run this once when parent categories are loaded
+        if (queryId && isParentCategoriesLoaded && parentCategories.length > 0) {
+            const shouldSetSelectedCategories =
+                getCatData?.selectedCategories &&
+                selectedCategories.length === 0; // Only set if not already set
+
+            if (shouldSetSelectedCategories) {
+                console.log("Setting selected categories from API");
+                const selectedCats = findObjectsByIds(getCatData.selectedCategories, parentCategories);
+                console.log("Found selected categories:", selectedCats);
+                setSelectedCategories(selectedCats);
+            }
         }
-    }, [selectedCategories, categoryScope, getFilteredVariantsAndAttributes, varintList, attributeList]);
+    }, [isParentCategoriesLoaded, queryId, parentCategories]); // Remove getCatData
 
     // Effect to get parent category data when selectedCatId changes
     useEffect(() => {

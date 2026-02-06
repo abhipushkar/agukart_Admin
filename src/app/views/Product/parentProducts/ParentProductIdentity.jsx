@@ -182,10 +182,10 @@ const ParentProductIdentity = ({ productId, listing }) => {
     };
 
     const formDataHandler = (e) => {
-        const trimmedValue = trimValue(e.target.value);
+        const { name, value } = e.target;
         setFormData((prev) => ({
             ...prev,
-            [e.target.name]: trimmedValue
+            [name]: value
         }));
     };
 
@@ -1070,7 +1070,7 @@ const ParentProductIdentity = ({ productId, listing }) => {
                     productTitle: resData?.product_title || "",
                     description: resData?.description || "",
                     sellerSku: listing === 'copy' ? "" : resData?.seller_sku || "",
-                    images: [{ src: `${res?.data?.base_url}${resData?.image}` }],
+                    images: listing === 'copy' ? [] : [{ src: `${res?.data?.base_url}${resData?.image}` }],
                     zoom: resData?.zoom || { scale: 1, x: 0, y: 0 },
                     variant_id: resData?.variant_id?.map((option) => option?._id) || [],
                     variant_name: resData?.variant_id?.map((option) => option?.variant_name) || [],

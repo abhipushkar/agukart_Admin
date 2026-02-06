@@ -22,7 +22,6 @@ import {
     TextField,
     Tooltip
 } from "@mui/material";
-import ViewColumnIcon from "@mui/icons-material/ViewColumn";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import EditIcon from "@mui/icons-material/Edit";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
