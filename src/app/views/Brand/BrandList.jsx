@@ -36,7 +36,7 @@ const Container = styled("div")(({ theme }) => ({
 
 const BrandList = () => {
   const label = { inputProps: { "aria-label": "Switch demo" } };
-  const [rowsPerPage, setRowsPerPage] = useState(25);
+  const [rowsPerPage, setRowsPerPage] = useState(200);
   const [page, setPage] = useState(0);
   const [allBrands, setAllBrands] = useState([]);
   const [excelData, setExcelData] = useState([]);
@@ -217,12 +217,12 @@ const BrandList = () => {
 
   const sortedRows = orderBy
     ? [...allBrands].sort((a, b) =>
-        order === "asc"
-          ? sortComparator(a, b, orderBy)
-          : order === "desc"
+      order === "asc"
+        ? sortComparator(a, b, orderBy)
+        : order === "desc"
           ? sortComparator(b, a, orderBy)
           : 0
-      )
+    )
     : allBrands;
 
   return (
@@ -348,7 +348,7 @@ const BrandList = () => {
           </Table>
         </TableContainer>
         <TablePagination
-          rowsPerPageOptions={[25, 50, 75, 100]}
+          rowsPerPageOptions={[25, 50, 75, 100, 200]}
           component="div"
           count={allBrands.length}
           rowsPerPage={rowsPerPage}

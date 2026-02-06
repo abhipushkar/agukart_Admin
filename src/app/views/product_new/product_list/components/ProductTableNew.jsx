@@ -626,7 +626,8 @@ const ProductRow = ({ product, index }) => {
                                 </MenuItem>
                             </a>
                             <a
-                                href={`${ROUTE_CONSTANT.catalog.product.parentProducts}?id=${product._id}&listing=copy`}
+                                href={product.type === 'variations'
+                                    ? `${ROUTE_CONSTANT.catalog.product.parentProducts}?id=${product._id}&listing=copy` : `${ROUTE_CONSTANT.catalog.product.add}?_id=${product._id}&listing=copy`}
                                 className="w-full h-full block"
                                 style={{ textDecoration: 'none', color: 'inherit' }}
                             >

@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
-import {Breadcrumb} from "app/components";
-import {Icon, TablePagination, TextField, CircularProgress, TableContainer, Link} from "@mui/material";
-import {useState, useEffect, useCallback, useRef} from "react";
+import { Breadcrumb } from "app/components";
+import { Icon, TablePagination, TextField, CircularProgress, TableContainer, Link } from "@mui/material";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
     Box,
     Button,
@@ -19,25 +19,25 @@ import {
 } from "@mui/material";
 import React from "react";
 import Switch from "@mui/material/Switch";
-import {useNavigate} from "react-router-dom";
-import {ROUTE_CONSTANT} from "app/constant/routeContanst";
-import {ApiService} from "app/services/ApiService";
-import {apiEndpoints} from "app/constant/apiEndpoints";
-import {localStorageKey} from "app/constant/localStorageKey";
-import {exportToExcel} from "app/utils/excelExport";
-import {toast} from "react-toastify";
+import { useNavigate } from "react-router-dom";
+import { ROUTE_CONSTANT } from "app/constant/routeContanst";
+import { ApiService } from "app/services/ApiService";
+import { apiEndpoints } from "app/constant/apiEndpoints";
+import { localStorageKey } from "app/constant/localStorageKey";
+import { exportToExcel } from "app/utils/excelExport";
+import { toast } from "react-toastify";
 import OutlinedInput from "@mui/material/OutlinedInput";
 import ListItemText from "@mui/material/ListItemText";
 import Checkbox from "@mui/material/Checkbox";
 import ConfirmModal from "app/components/ConfirmModal";
 import debounce from "lodash.debounce";
 
-const Container = styled("div")(({theme}) => ({
+const Container = styled("div")(({ theme }) => ({
     margin: "30px",
-    [theme.breakpoints.down("sm")]: {margin: "16px"},
+    [theme.breakpoints.down("sm")]: { margin: "16px" },
     "& .breadcrumb": {
         marginBottom: "30px",
-        [theme.breakpoints.down("sm")]: {marginBottom: "16px"}
+        [theme.breakpoints.down("sm")]: { marginBottom: "16px" }
     }
 }));
 
@@ -56,11 +56,11 @@ const MenuProps = {
 const COLUMN_OPTIONS = ["Display Layout", "Short Order", "Status", "Categories", "Product", "Action"];
 
 const SORTING_OPTIONS = [
-    {value: {sortBy: 'variant_name', order: 1}, label: 'Name (A to Z)'},
-    {value: {sortBy: 'variant_name', order: -1}, label: 'Name (Z to A)'},
-    {value: {sortBy: 'createdAt', order: -1}, label: 'Date Created (New to Old)'},
-    {value: {sortBy: 'createdAt', order: 1}, label: 'Date Created (Old to New)'},
-    {value: {sortBy: 'updatedAt', order: -1}, label: 'Last Updated'},
+    { value: { sortBy: 'variant_name', order: 1 }, label: 'Name (A to Z)' },
+    { value: { sortBy: 'variant_name', order: -1 }, label: 'Name (Z to A)' },
+    { value: { sortBy: 'createdAt', order: -1 }, label: 'Date Created (New to Old)' },
+    { value: { sortBy: 'createdAt', order: 1 }, label: 'Date Created (Old to New)' },
+    { value: { sortBy: 'updatedAt', order: -1 }, label: 'Last Updated' },
 ];
 
 const VariantList = () => {
@@ -68,7 +68,7 @@ const VariantList = () => {
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
 
     // State management
-    const [rowsPerPage, setRowsPerPage] = useState(25);
+    const [rowsPerPage, setRowsPerPage] = useState(200);
     const [page, setPage] = useState(0);
     const [allVariants, setAllVariants] = useState([]);
     const [totalCount, setTotalCount] = useState(0);
@@ -82,7 +82,7 @@ const VariantList = () => {
     const [type, setType] = useState("");
     const [route, setRoute] = useState(null);
     const [msg, setMsg] = useState(null);
-    const [sorting, setSorting] = useState({sortBy: "createdAt", order: -1});
+    const [sorting, setSorting] = useState({ sortBy: "variant_name", order: 1 });
     const [loading, setLoading] = useState(false);
     const [updatingIds, setUpdatingIds] = useState(new Set());
     const [excelData, setExcelData] = useState([]);
@@ -182,7 +182,7 @@ const VariantList = () => {
 
                 const myNewList = variants.map((e, i) => {
                     const serialNumber = (page * rowsPerPage) + i + 1;
-                    return {"S.No": serialNumber, ...e};
+                    return { "S.No": serialNumber, ...e };
                 });
 
                 const newExcelData = myNewList?.map((e, i) => ({
@@ -261,7 +261,7 @@ const VariantList = () => {
         toggleStatus(row, 'product_status', apiEndpoints.changeStatusVariantProduct), [toggleStatus]);
 
     const handleSortingChange = (e) => {
-        const newSorting = e.target.value ? JSON.parse(e.target.value) : {sortBy: '', order: 1};
+        const newSorting = e.target.value ? JSON.parse(e.target.value) : { sortBy: '', order: 1 };
         setSorting(newSorting);
         setPage(0);
     };
@@ -280,13 +280,13 @@ const VariantList = () => {
     return (
         <Container>
             <Box
-                sx={{display: "flex", alignItems: "center", justifyContent: "space-between"}}
+                sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
                 className="breadcrumb"
             >
-                <Breadcrumb routeSegments={[{name: "Variant", path: ""}, {name: "Variant List"}]}/>
+                <Breadcrumb routeSegments={[{ name: "Variant", path: "" }, { name: "Variant List" }]} />
                 <Box display={"flex"} gap={"16px"} alignItems={"center"}>
                     {/* Sorting Filter */}
-                    <FormControl size="small" sx={{minWidth: 200}}>
+                    <FormControl size="small" sx={{ minWidth: 200 }}>
                         <InputLabel>Sort By</InputLabel>
                         <Select
                             value={JSON.stringify(sorting)}
@@ -316,8 +316,8 @@ const VariantList = () => {
                     <FormControl
                         sx={{
                             width: 300,
-                            "& .MuiOutlinedInput-root": {height: "38px"},
-                            "& .MuiFormLabel-root": {top: "-7px"}
+                            "& .MuiOutlinedInput-root": { height: "38px" },
+                            "& .MuiFormLabel-root": { top: "-7px" }
                         }}
                     >
                         <InputLabel id="column-preference-label">Columns Hidden</InputLabel>
@@ -326,14 +326,14 @@ const VariantList = () => {
                             multiple
                             value={personName}
                             onChange={handleColumnPreferenceChange}
-                            input={<OutlinedInput label="Columns Hidden"/>}
+                            input={<OutlinedInput label="Columns Hidden" />}
                             renderValue={(selected) => `${selected.length} columns hidden`}
                             MenuProps={MenuProps}
                         >
                             {COLUMN_OPTIONS.map((name) => (
                                 <MenuItem key={name} value={name}>
-                                    <Checkbox checked={personName.includes(name)}/>
-                                    <ListItemText primary={name}/>
+                                    <Checkbox checked={personName.includes(name)} />
+                                    <ListItemText primary={name} />
                                 </MenuItem>
                             ))}
                         </Select>
@@ -353,7 +353,7 @@ const VariantList = () => {
                     <Link href={`${ROUTE_CONSTANT.catalog.variant.add}`}>
                         <Button
                             variant="contained"
-                            sx={{whiteSpace: "nowrap", width: "180px", minWidth: "120px"}}
+                            sx={{ whiteSpace: "nowrap", width: "180px", minWidth: "120px" }}
                         >
                             Add Variant
                         </Button>
@@ -362,7 +362,7 @@ const VariantList = () => {
                     <Button
                         onClick={handleExport}
                         variant="contained"
-                        sx={{whiteSpace: "nowrap", width: "180px", minWidth: "120px"}}
+                        sx={{ whiteSpace: "nowrap", width: "180px", minWidth: "120px" }}
                         disabled={excelData.length === 0}
                     >
                         Export Variants
@@ -372,12 +372,12 @@ const VariantList = () => {
 
             {/* Loading Overlay */}
             {loading && (
-                <Box sx={{display: 'flex', justifyContent: 'center', my: 2}}>
-                    <CircularProgress/>
+                <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
+                    <CircularProgress />
                 </Box>
             )}
 
-            <Box sx={{position: 'relative'}}>
+            <Box sx={{ position: 'relative' }}>
                 <TableContainer
                     sx={{
                         paddingLeft: 2,
@@ -391,7 +391,7 @@ const VariantList = () => {
                         sx={{
                             width: "max-content",
                             minWidth: "100%",
-                            '.MuiTableCell-root': {padding: '12px 5px'}
+                            '.MuiTableCell-root': { padding: '12px 5px' }
                         }}
                     >
                         <TableHead>
@@ -403,7 +403,7 @@ const VariantList = () => {
                                 {!personName.includes("Categories") && <TableCell>Categories</TableCell>}
                                 {!personName.includes("Product") && <TableCell>Product</TableCell>}
                                 {!personName.includes("Action") &&
-                                    <TableCell sx={{textAlign: "center"}}>Action</TableCell>}
+                                    <TableCell sx={{ textAlign: "center" }}>Action</TableCell>}
                             </TableRow>
                         </TableHead>
                         <TableBody>
@@ -425,7 +425,7 @@ const VariantList = () => {
 
                                         {!personName.includes("Status") && (
                                             <TableCell>
-                                                <Box sx={{position: 'relative'}}>
+                                                <Box sx={{ position: 'relative' }}>
                                                     <Switch
                                                         onChange={() => changeVariantStatus(row)}
                                                         checked={row.status}
@@ -449,7 +449,7 @@ const VariantList = () => {
 
                                         {!personName.includes("Categories") && (
                                             <TableCell>
-                                                <Box sx={{position: 'relative'}}>
+                                                <Box sx={{ position: 'relative' }}>
                                                     <Switch
                                                         onChange={() => changeVariantCateStatus(row)}
                                                         checked={row.category_status}
@@ -473,7 +473,7 @@ const VariantList = () => {
 
                                         {!personName.includes("Product") && (
                                             <TableCell>
-                                                <Box sx={{position: 'relative'}}>
+                                                <Box sx={{ position: 'relative' }}>
                                                     <Switch
                                                         onChange={() => changeVariantProductStatus(row)}
                                                         checked={row.product_status}
@@ -496,7 +496,7 @@ const VariantList = () => {
                                         )}
 
                                         {!personName.includes("Action") && (
-                                            <TableCell sx={{textAlign: "center"}}>
+                                            <TableCell sx={{ textAlign: "center" }}>
                                                 <IconButton
                                                     onClick={() => {
                                                         handleOpen("variantDelete");
@@ -504,7 +504,7 @@ const VariantList = () => {
                                                     }}
                                                     disabled={isUpdating(row._id)}
                                                 >
-                                                    <Icon sx={{color: "#DC3545"}}>delete</Icon>
+                                                    <Icon sx={{ color: "#DC3545" }}>delete</Icon>
                                                 </IconButton>
                                                 <Link href={`${ROUTE_CONSTANT.catalog.variant.add}?id=${row._id}`}>
                                                     <IconButton
@@ -531,7 +531,7 @@ const VariantList = () => {
 
                 {/* Pagination */}
                 <TablePagination
-                    rowsPerPageOptions={[25, 50, 75, 100]}
+                    rowsPerPageOptions={[25, 50, 75, 100, 200]}
                     component="div"
                     count={totalCount}
                     rowsPerPage={rowsPerPage}

@@ -21,7 +21,7 @@ import {
 } from "@mui/material";
 import { Icon } from "@mui/material";
 import Switch from "@mui/material/Switch";
-import {Link, useNavigate} from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ROUTE_CONSTANT } from "app/constant/routeContanst";
 import { ApiService } from "app/services/ApiService";
 import { localStorageKey } from "app/constant/localStorageKey";
@@ -63,7 +63,7 @@ const List = () => {
     const [categoryList, setCategoryList] = useState([]);
     const [excelData, setExcelData] = useState([]);
     const [page, setPage] = useState(0);
-    const [rowsPerPage, setRowsPerPage] = useState(25);
+    const [rowsPerPage, setRowsPerPage] = useState(200);
     const [search, setSearch] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [open, setOpen] = useState(false);
@@ -89,7 +89,7 @@ const List = () => {
     // Sorting state
     const [order, setOrder] = useState("none");
     const [orderBy, setOrderBy] = useState(null);
-    const [serverSorting, setServerSorting] = useState({ sortBy: "createdAt", order: -1 });
+    const [serverSorting, setServerSorting] = useState({ sortBy: "parent", order: 1 });
 
     const navigate = useNavigate();
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
@@ -444,7 +444,7 @@ const List = () => {
                         to={ROUTE_CONSTANT.catalog.adminCategory.add}
                     >
                         <Button variant="contained"
-                                sx={{ whiteSpace: "nowrap", width: "180px", minWidth: "120px" }}>
+                            sx={{ whiteSpace: "nowrap", width: "180px", minWidth: "120px" }}>
                             Add Admin Category
                         </Button>
                     </Link>
@@ -559,10 +559,10 @@ const List = () => {
                                             <CircularProgress />
                                         </TableCell>
                                     </TableRow>
-                                ):(
+                                ) : (
                                     <>
                                         {
-                                            sortedRows?.length > 0 ?(
+                                            sortedRows?.length > 0 ? (
                                                 <>
                                                     {
                                                         sortedRows.map((row, i) => {
@@ -638,7 +638,7 @@ const List = () => {
                                                         })
                                                     }
                                                 </>
-                                            ):(
+                                            ) : (
                                                 <TableRow>
                                                     <TableCell colSpan={8} sx={{ textAlign: "center" }}>
                                                         {loading ? 'Loading admin categories...' : 'No admin categories found'}
@@ -653,7 +653,7 @@ const List = () => {
                     </Table>
                 </TableContainer>
                 <TablePagination
-                    rowsPerPageOptions={[25, 50, 75, 100]}
+                    rowsPerPageOptions={[25, 50, 75, 100, 200]}
                     component="div"
                     count={pagination.total}
                     rowsPerPage={rowsPerPage}

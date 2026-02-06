@@ -59,10 +59,10 @@ const AttributesList = () => {
 
     // Pagination state
     const [page, setPage] = useState(0);
-    const [rowsPerPage, setRowsPerPage] = useState(25);
+    const [rowsPerPage, setRowsPerPage] = useState(200);
 
     // Sorting state
-    const [sorting, setSorting] = useState({ sortBy: "createdAt", order: -1 });
+    const [sorting, setSorting] = useState({ sortBy: "name", order: 1 });
 
     // UI state
     const navigate = useNavigate();
@@ -516,7 +516,7 @@ const AttributesList = () => {
 
                 {/* Pagination */}
                 <TablePagination
-                    rowsPerPageOptions={[25, 50, 75, 100]}
+                    rowsPerPageOptions={[25, 50, 75, 100, 200]}
                     component="div"
                     count={totalCount} // Changed from attributes.length to totalCount
                     rowsPerPage={rowsPerPage}

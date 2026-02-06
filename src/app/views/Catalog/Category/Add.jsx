@@ -334,7 +334,7 @@ const Add = () => {
         } catch (error) {
             console.error("Error fetching parent category data:", error);
         }
-    }, [SelectedEditAttribute.length, SelectedEditVariant.length, auth_key])
+    }, [auth_key])
 
     // Get filtered variants and attributes based on selected categories
     const getFilteredVariantsAndAttributes = useCallback(async (categoryIds) => {
