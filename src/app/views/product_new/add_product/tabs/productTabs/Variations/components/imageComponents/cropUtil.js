@@ -30,38 +30,47 @@ export const getCroppedImg = async (imageSrc, pixelCrop, rotation = 0) => {
 
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('No canvas context');
 
-        if (!ctx) {
-            throw new Error('Could not get canvas context');
-        }
+        const radians = (rotation * Math.PI) / 180;
 
-        const maxSize = Math.max(image.width, image.height);
-        const safeArea = 2 * ((maxSize / 2) * Math.sqrt(2));
+        // calculate bounding box of rotated image
+        const sin = Math.abs(Math.sin(radians));
+        const cos = Math.abs(Math.cos(radians));
 
-        // Set canvas dimensions
-        canvas.width = safeArea;
-        canvas.height = safeArea;
+        const rotatedWidth =
+            image.width * cos + image.height * sin;
+        const rotatedHeight =
+            image.width * sin + image.height * cos;
 
-        ctx.translate(safeArea / 2, safeArea / 2);
-        ctx.rotate((rotation * Math.PI) / 180);
-        ctx.translate(-safeArea / 2, -safeArea / 2);
+        // create a canvas that fits the rotated image
+        const rotateCanvas = document.createElement('canvas');
+        rotateCanvas.width = rotatedWidth;
+        rotateCanvas.height = rotatedHeight;
 
-        ctx.drawImage(
-            image,
-            safeArea / 2 - image.width / 2,
-            safeArea / 2 - image.height / 2
-        );
+        const rotateCtx = rotateCanvas.getContext('2d');
+        if (!rotateCtx) throw new Error('No rotate context');
 
-        const data = ctx.getImageData(0, 0, safeArea, safeArea);
+        // rotate around image center
+        rotateCtx.translate(rotatedWidth / 2, rotatedHeight / 2);
+        rotateCtx.rotate(radians);
+        rotateCtx.translate(-image.width / 2, -image.height / 2);
+        rotateCtx.drawImage(image, 0, 0);
 
-        // Set final canvas dimensions for cropped area
+        // crop canvas
         canvas.width = pixelCrop.width;
         canvas.height = pixelCrop.height;
 
-        ctx.putImageData(
-            data,
-            Math.round(0 - safeArea / 2 + image.width / 2 - pixelCrop.x),
-            Math.round(0 - safeArea / 2 + image.height / 2 - pixelCrop.y)
+        ctx.drawImage(
+            rotateCanvas,
+            pixelCrop.x,
+            pixelCrop.y,
+            pixelCrop.width,
+            pixelCrop.height,
+            0,
+            0,
+            pixelCrop.width,
+            pixelCrop.height
         );
 
         return new Promise((resolve, reject) => {

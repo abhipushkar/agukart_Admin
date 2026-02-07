@@ -476,7 +476,9 @@ const ProductRow = ({ product, index }) => {
                             {!filters.hiddenColumns.includes('Product Title') && (
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
                                     <a
-                                        href={`${REACT_APP_WEB_URL}/products/${product._id}`}
+                                        href={product.type === 'variations'
+                                            ? `${REACT_APP_WEB_URL}/products/${product.productData.find(child => child.productStatus === 'active')._id}`
+                                            : `${REACT_APP_WEB_URL}/products/${product._id}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         style={{

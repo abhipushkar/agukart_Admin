@@ -13,10 +13,10 @@ import {
     IconButton,
     Grid
 } from "@mui/material";
-import {LocalizationProvider, DatePicker} from "@mui/x-date-pickers";
-import {AdapterDayjs} from "@mui/x-date-pickers/AdapterDayjs";
-import {useProductFormStore} from "../../../../states/useAddProducts";
-import {useState, useEffect, useRef} from "react";
+import { LocalizationProvider, DatePicker } from "@mui/x-date-pickers";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { useProductFormStore } from "../../../../states/useAddProducts";
+import { useState, useEffect, useRef } from "react";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 
@@ -33,34 +33,59 @@ export default function ProductDetails() {
 
     useEffect(() => {
         if (dynamicFields.length === 0) {
-            setFormData({dynamicFields: {}});
+            setFormData({ dynamicFields: {} });
         }
     }, [dynamicFields]);
 
     const formDataHandler = (e) => {
-        setFormData({[e.target.name]: e.target.value});
+        setFormData({ [e.target.name]: e.target.value });
+    };
+
+    const parseTerm = (term) => {
+        if (Array.isArray(term)) {
+            return term.map(t => t.trim());
+        }
+        if (typeof term === 'string') {
+            term = term.trim();
+            const newTerms = term.split(',').map(t => t.trim());
+            return newTerms;
+        }
     };
 
     const handleChange = (event, newKeys) => {
-        const titles = newKeys?.map((option) => (typeof option === "string" ? option : option.title));
-        setFormData({serchTemsKeyArray: titles});
+        const titles = newKeys?.reduce((acc, option) => {
+            return acc.concat(
+                typeof option === 'object'
+                    ? option.title
+                    : parseTerm(option)
+            )
+        }, []);
+        setFormData({ serchTemsKeyArray: titles });
         setError("");
     };
 
     const handleAddKey = () => {
         if (formData.searchTerms.trim() && !formData.serchTemsKeyArray.includes(formData.searchTerms.trim())) {
-            const newKey = formData.searchTerms.trim();
-            setFormData({serchTemsKeyArray: [...formData.serchTemsKeyArray, newKey]});
+            const newKey = parseTerm(formData.searchTerms)
+            setFormData({ serchTemsKeyArray: [...formData.serchTemsKeyArray, ...newKey] });
         }
+    };
+
+    const onSearchTermBlur = () => {
+        const terms = formData.serchTemsKeyArray;
+        const parsedterms = terms.reduce((acc, term) => {
+            return acc.concat(parseTerm(term))
+        }, []);
+        setFormData({ serchTemsKeyArray: parsedterms })
     };
 
     const handleDelete = (keyToDelete) => () => {
         const updatedKeys = formData.serchTemsKeyArray.filter((k) => k !== keyToDelete);
-        setFormData({serchTemsKeyArray: updatedKeys});
+        setFormData({ serchTemsKeyArray: updatedKeys });
     };
 
     const handleDateChange = (dateType) => (newDate) => {
-        setFormData({[dateType]: newDate});
+        setFormData({ [dateType]: newDate });
     };
 
     const handleDynamicFieldChange = (fieldName, value) => {
@@ -96,14 +121,14 @@ export default function ProductDetails() {
         const currentInstances = formData.dynamicFields?.[`${parentFieldName}_instances`] || 0;
         if (currentInstances > 0) {
             // Remove all subfields for this instance
-            const updatedDynamicFields = {...formData.dynamicFields};
+            const updatedDynamicFields = { ...formData.dynamicFields };
             Object.keys(updatedDynamicFields).forEach(key => {
                 if (key.startsWith(`${parentFieldName}[${index}]`)) {
                     delete updatedDynamicFields[key];
                 }
             });
             updatedDynamicFields[`${parentFieldName}_instances`] = currentInstances - 1;
-            setFormData({dynamicFields: updatedDynamicFields});
+            setFormData({ dynamicFields: updatedDynamicFields });
         }
     };
 
@@ -136,7 +161,7 @@ export default function ProductDetails() {
                         <Chip
                             variant="outlined"
                             label={typeof option === "string" ? option : option.title}
-                            {...getTagProps({index})}
+                            {...getTagProps({ index })}
                             onDelete={handleDelete(option)}
                             size="small"
                         />
@@ -147,7 +172,7 @@ export default function ProductDetails() {
                             size="small"
                             variant="outlined"
                             color="primary"
-                            sx={{cursor: 'pointer'}}
+                            sx={{ cursor: 'pointer' }}
                             onClick={() => setIsSearchFocused(true)}
                         />
                     )}
@@ -160,7 +185,7 @@ export default function ProductDetails() {
             <Chip
                 variant="outlined"
                 label={typeof option === "string" ? option : option.title}
-                {...getTagProps({index})}
+                {...getTagProps({ index })}
                 onDelete={handleDelete(option)}
                 size="small"
             />
@@ -178,7 +203,7 @@ export default function ProductDetails() {
                     {visibleChips.map((option, index) => (
                         <Chip
                             label={option}
-                            {...getTagProps({index})}
+                            {...getTagProps({ index })}
                             size="small"
                         />
                     ))}
@@ -197,7 +222,7 @@ export default function ProductDetails() {
         return value?.map((option, index) => (
             <Chip
                 label={option}
-                {...getTagProps({index})}
+                {...getTagProps({ index })}
                 size="small"
             />
         ));
@@ -215,8 +240,8 @@ export default function ProductDetails() {
                         onChange={(e) => handleDynamicFieldChange(field.name, e.target.value)}
                         sx={{
                             width: "50%",
-                            "& .MuiInputBase-root": {height: "40px"},
-                            "& .MuiFormLabel-root": {top: "-7px"}
+                            "& .MuiInputBase-root": { height: "40px" },
+                            "& .MuiFormLabel-root": { top: "-7px" }
                         }}
                     />
                 );
@@ -231,8 +256,8 @@ export default function ProductDetails() {
                         onChange={(e) => handleDynamicFieldChange(field.name, e.target.value)}
                         sx={{
                             width: "50%",
-                            "& .MuiInputBase-root": {height: "40px"},
-                            "& .MuiFormLabel-root": {top: "-7px"}
+                            "& .MuiInputBase-root": { height: "40px" },
+                            "& .MuiFormLabel-root": { top: "-7px" }
                         }}
                     />
                 );
@@ -246,8 +271,8 @@ export default function ProductDetails() {
                             value={formData.dynamicFields?.[field.name] || ""}
                             onChange={(e) => handleDynamicFieldChange(field.name, e.target.value)}
                         >
-                            <FormControlLabel value="Yes" control={<Radio/>} label="Yes"/>
-                            <FormControlLabel value="No" control={<Radio/>} label="No"/>
+                            <FormControlLabel value="Yes" control={<Radio />} label="Yes" />
+                            <FormControlLabel value="No" control={<Radio />} label="No" />
                         </RadioGroup>
                     </FormControl>
                 );
@@ -286,7 +311,7 @@ export default function ProductDetails() {
             case "Compound":
                 const instances = getCompoundInstances(field.name);
                 return (
-                    Array.from({length: instances}).map((_, instanceIndex) => (
+                    Array.from({ length: instances }).map((_, instanceIndex) => (
                         <Box key={instanceIndex} sx={{
                             border: "1px solid #ddd",
                             p: 2,
@@ -303,12 +328,12 @@ export default function ProductDetails() {
                                         gap: 0.2,
                                         alignItems: "start"
                                     }}>
-                                        <Box sx={{width: "100%"}}>
+                                        <Box sx={{ width: "100%" }}>
                                             <Typography variant="body2" fontWeight="bold">
                                                 {subField.name}
                                             </Typography>
                                         </Box>
-                                        <Box sx={{width: "100%"}}>
+                                        <Box sx={{ width: "100%" }}>
                                             {renderSubField(subField, field.name, instanceIndex)}
                                         </Box>
                                     </Grid>
@@ -359,8 +384,8 @@ export default function ProductDetails() {
                             value={value || ""}
                             onChange={(e, value) => handleCompoundFieldChange(parentFieldName, subField.name, value, instanceIndex)}
                         >
-                            <FormControlLabel value="Yes" control={<Radio size="small"/>} label="Yes"/>
-                            <FormControlLabel value="No" control={<Radio size="small"/>} label="No"/>
+                            <FormControlLabel value="Yes" control={<Radio size="small" />} label="Yes" />
+                            <FormControlLabel value="No" control={<Radio size="small" />} label="No" />
                         </RadioGroup>
                     </FormControl>
                 );
@@ -392,17 +417,17 @@ export default function ProductDetails() {
     };
 
     return (
-        <Box sx={{display: "flex", flexDirection: "column", gap: "15px", maxWidth: "1200px", mx: "auto"}}>
-            <Box sx={{mt: 4}}>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: "15px", maxWidth: "1200px", mx: "auto" }}>
+            <Box sx={{ mt: 4 }}>
                 {/* Customizations */}
-                <Box sx={{display: "flex", gap: "20px", mb: 3}}>
-                    <Box sx={{fontSize: "14px", fontWeight: 700, width: "12.8%", display: "flex", textWrap: "wrap"}}>
+                <Box sx={{ display: "flex", gap: "20px", mb: 3 }}>
+                    <Box sx={{ fontSize: "14px", fontWeight: 700, width: "12.8%", display: "flex", textWrap: "wrap" }}>
                         Customizations
 
                     </Box>
-                    <Box sx={{width: "87.2%"}}>
+                    <Box sx={{ width: "87.2%" }}>
                         <FormControl>
-                            <FormLabel sx={{fontWeight: "700", color: "darkblue"}}>
+                            <FormLabel sx={{ fontWeight: "700", color: "darkblue" }}>
                                 Does this product have customizations?
                             </FormLabel>
                             <RadioGroup
@@ -411,22 +436,22 @@ export default function ProductDetails() {
                                 onChange={formDataHandler}
                                 row
                             >
-                                <FormControlLabel value="Yes" control={<Radio/>} label="Yes"/>
-                                <FormControlLabel value="No" control={<Radio/>} label="No"/>
+                                <FormControlLabel value="Yes" control={<Radio />} label="Yes" />
+                                <FormControlLabel value="No" control={<Radio />} label="No" />
                             </RadioGroup>
                         </FormControl>
                     </Box>
                 </Box>
 
                 {/* Popular Gifts */}
-                <Box sx={{display: "flex", gap: "20px", mb: 3}}>
-                    <Box sx={{fontSize: "14px", fontWeight: 700, width: "12.8%", display: "flex", textWrap: "wrap"}}>
+                <Box sx={{ display: "flex", gap: "20px", mb: 3 }}>
+                    <Box sx={{ fontSize: "14px", fontWeight: 700, width: "12.8%", display: "flex", textWrap: "wrap" }}>
                         Popular Gifts
 
                     </Box>
-                    <Box sx={{width: "87.2%"}}>
+                    <Box sx={{ width: "87.2%" }}>
                         <FormControl>
-                            <FormLabel sx={{fontWeight: "700", color: "darkblue"}}>
+                            <FormLabel sx={{ fontWeight: "700", color: "darkblue" }}>
                                 Popular Gifts?
                             </FormLabel>
                             <RadioGroup
@@ -435,22 +460,22 @@ export default function ProductDetails() {
                                 onChange={formDataHandler}
                                 row
                             >
-                                <FormControlLabel value="Yes" control={<Radio/>} label="Yes"/>
-                                <FormControlLabel value="No" control={<Radio/>} label="No"/>
+                                <FormControlLabel value="Yes" control={<Radio />} label="Yes" />
+                                <FormControlLabel value="No" control={<Radio />} label="No" />
                             </RadioGroup>
                         </FormControl>
                     </Box>
                 </Box>
 
                 {/* Best Selling Product */}
-                <Box sx={{display: "flex", gap: "20px", mb: 3}}>
-                    <Box sx={{fontSize: "14px", fontWeight: 700, width: "12.8%", display: "flex", textWrap: "wrap"}}>
+                <Box sx={{ display: "flex", gap: "20px", mb: 3 }}>
+                    <Box sx={{ fontSize: "14px", fontWeight: 700, width: "12.8%", display: "flex", textWrap: "wrap" }}>
                         Is the best selling product
 
                     </Box>
-                    <Box sx={{width: "87.2%"}}>
+                    <Box sx={{ width: "87.2%" }}>
                         <FormControl>
-                            <FormLabel sx={{fontWeight: "700", color: "darkblue"}}>
+                            <FormLabel sx={{ fontWeight: "700", color: "darkblue" }}>
                                 Is the best selling product?
                             </FormLabel>
                             <RadioGroup
@@ -459,8 +484,8 @@ export default function ProductDetails() {
                                 onChange={formDataHandler}
                                 row
                             >
-                                <FormControlLabel value="Yes" control={<Radio/>} label="Yes"/>
-                                <FormControlLabel value="No" control={<Radio/>} label="No"/>
+                                <FormControlLabel value="Yes" control={<Radio />} label="Yes" />
+                                <FormControlLabel value="No" control={<Radio />} label="No" />
                             </RadioGroup>
                         </FormControl>
                     </Box>
@@ -469,8 +494,8 @@ export default function ProductDetails() {
 
             {/* Dynamic Fields Section */}
             {dynamicFields.length > 0 && (
-                <Box sx={{mt: 2}}>
-                    <Box sx={{display: "flex", flexDirection: "column", gap: 3}}>
+                <Box sx={{ mt: 2 }}>
+                    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
                         {dynamicFields.map((field, index) => (
                             <Box key={index} sx={{
                                 display: "flex",
@@ -491,7 +516,7 @@ export default function ProductDetails() {
                                     {/*)}*/}
                                     :
                                 </Box>
-                                <Box sx={{width: "85%"}}>
+                                <Box sx={{ width: "85%" }}>
                                     {renderDynamicField(field)}
                                 </Box>
                             </Box>
@@ -501,21 +526,21 @@ export default function ProductDetails() {
             )}
 
             {/* Static Fields Section */}
-            <Box sx={{mt: 4}}>
+            <Box sx={{ mt: 4 }}>
                 {/* Launch Date */}
-                <Box sx={{display: "flex", gap: "20px", mb: 3}}>
-                    <Box sx={{fontSize: "14px", fontWeight: 700, width: "15%", display: "flex", textWrap: "wrap"}}>
+                <Box sx={{ display: "flex", gap: "20px", mb: 3 }}>
+                    <Box sx={{ fontSize: "14px", fontWeight: 700, width: "15%", display: "flex", textWrap: "wrap" }}>
                         Launch Date
 
                     </Box>
-                    <Box sx={{width: "25%"}}>
+                    <Box sx={{ width: "25%" }}>
                         <LocalizationProvider dateAdapter={AdapterDayjs}>
                             <DatePicker
                                 label="Select Launch Date"
                                 sx={{
                                     width: "100%",
-                                    "& .MuiInputBase-root": {height: "40px"},
-                                    "& .MuiFormLabel-root": {top: "-7px"}
+                                    "& .MuiInputBase-root": { height: "40px" },
+                                    "& .MuiFormLabel-root": { top: "-7px" }
                                 }}
                                 value={formData.launchData}
                                 onChange={handleDateChange("launchData")}
@@ -526,19 +551,19 @@ export default function ProductDetails() {
                 </Box>
 
                 {/* Release Date */}
-                <Box sx={{display: "flex", gap: "20px", mb: 3}}>
-                    <Box sx={{fontSize: "14px", fontWeight: 700, width: "15%", display: "flex", textWrap: "wrap"}}>
+                <Box sx={{ display: "flex", gap: "20px", mb: 3 }}>
+                    <Box sx={{ fontSize: "14px", fontWeight: 700, width: "15%", display: "flex", textWrap: "wrap" }}>
                         Release Date
 
                     </Box>
-                    <Box sx={{width: "25%"}}>
+                    <Box sx={{ width: "25%" }}>
                         <LocalizationProvider dateAdapter={AdapterDayjs}>
                             <DatePicker
                                 label="Select Release Date"
                                 sx={{
                                     width: "100%",
-                                    "& .MuiInputBase-root": {height: "40px"},
-                                    "& .MuiFormLabel-root": {top: "-7px"}
+                                    "& .MuiInputBase-root": { height: "40px" },
+                                    "& .MuiFormLabel-root": { top: "-7px" }
                                 }}
                                 value={formData.releaseDate}
                                 onChange={handleDateChange("releaseDate")}
@@ -549,12 +574,12 @@ export default function ProductDetails() {
                 </Box>
 
                 {/* Search Terms */}
-                <Box sx={{display: "flex", gap: "20px", position: "relative", mb: 3}}>
-                    <Box sx={{fontSize: "14px", fontWeight: 700, width: "15%", display: "flex", textWrap: "wrap"}}>
+                <Box sx={{ display: "flex", gap: "20px", position: "relative", mb: 3 }}>
+                    <Box sx={{ fontSize: "14px", fontWeight: 700, width: "15%", display: "flex", textWrap: "wrap" }}>
                         Search Terms
 
                     </Box>
-                    <Box sx={{width: "85%"}}>
+                    <Box sx={{ width: "85%" }}>
                         <Autocomplete
                             multiple
                             freeSolo
@@ -573,9 +598,10 @@ export default function ProductDetails() {
                                 // if (formData.serchTemsKeyArray?.length <= 0) {
                                 //     setError("Search Terms is Required");
                                 // }
+                                onSearchTermBlur();
                             }}
                             onInputChange={(e, newInputValue) => {
-                                setFormData({searchTerms: newInputValue});
+                                setFormData({ searchTerms: newInputValue });
                                 setError("");
                             }}
                             renderTags={renderSearchTags}
@@ -583,8 +609,8 @@ export default function ProductDetails() {
                                 <TextField
                                     sx={{
                                         width: "100%",
-                                        "& .MuiInputBase-root": {padding: "0 11px"},
-                                        "& .MuiFormLabel-root": {top: "-7px"}
+                                        "& .MuiInputBase-root": { padding: "0 11px" },
+                                        "& .MuiFormLabel-root": { top: "-7px" }
                                     }}
                                     {...params}
                                     variant="outlined"
@@ -594,12 +620,17 @@ export default function ProductDetails() {
                                         if (event.key === "Enter") {
                                             handleAddKey();
                                         }
+                                        if (event.key === ',') {
+                                            event.preventDefault();
+                                            handleAddKey();
+                                            setFormData({ searchTerms: '' });
+                                        }
                                     }}
                                 />
                             )}
                         />
                         {error && (
-                            <Typography sx={{fontSize: "12px", color: "#FF3D57", ml: "14px", mr: "14px", mt: "3px"}}>
+                            <Typography sx={{ fontSize: "12px", color: "#FF3D57", ml: "14px", mr: "14px", mt: "3px" }}>
                                 {error}
                             </Typography>
                         )}
