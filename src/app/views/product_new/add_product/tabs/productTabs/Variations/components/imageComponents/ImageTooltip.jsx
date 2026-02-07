@@ -22,20 +22,20 @@ import Cropper from 'react-easy-crop';
 import { createBlobUrl, fetchImageAsBlob, getCroppedImg, revokeBlobUrl } from './cropUtil';
 
 const ImageTooltip = ({
-                          imageUrl,
-                          originalImage,
-                          editData,
-                          editedImage,
-                          onImageChange,
-                          onImageRemove,
-                          onImageEdit,
-                          isEditable,
-                          children,
-                          combindex,
-                          rowIndex,
-                          imageType,
-                          imageIndex
-                      }) => {
+    imageUrl,
+    originalImage,
+    editData,
+    editedImage,
+    onImageChange,
+    onImageRemove,
+    onImageEdit,
+    isEditable,
+    children,
+    combindex,
+    rowIndex,
+    imageType,
+    imageIndex
+}) => {
     const [open, setOpen] = useState(false);
     const [cropDialogOpen, setCropDialogOpen] = useState(false);
     const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -50,7 +50,7 @@ const ImageTooltip = ({
             const parsedEditData = typeof editData === "string" ? JSON.parse(editData) : editData;
             setZoom(parsedEditData?.scale || 1);
             setCrop({ x: parsedEditData?.x || 0, y: parsedEditData?.y || 0 });
-            setRotation(0);
+            setRotation(parsedEditData.rotation || 0);
         }
     }, [editData]);
 
