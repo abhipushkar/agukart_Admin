@@ -127,7 +127,7 @@ const List = () => {
         const xData = myNewList.map((e, i) => {
           let obj = {
             "S.NO": i + 1,
-            "Policy title": e?.policy_title,
+            "Policy title": `${e?.policy_title} (${e?.productCount})`,
             "return": e?.return,
             "exchange": e?.exchange,
             "days": e?.days,
@@ -399,9 +399,9 @@ const List = () => {
                       <TableRow key={row._id}>
                         <TableCell>{row["S.No"]}</TableCell>
                         {!personName?.includes("Policy Title") && (
-                          <TableCell sx={{ wordBreak: "break-word" }}>{capitalizeFirstLetter(row.policyTitle || "")}</TableCell>
+                          <TableCell sx={{ wordBreak: "break-word" }}>{capitalizeFirstLetter(row.policyTitle || "")} ({row.productCount})</TableCell>
                         )}
-                        <TableCell>{row.returnExchangeTime}</TableCell>
+                        <TableCell>{row.returnExchangeTime} </TableCell>
                         <TableCell>
                           <Switch
                             onClick={() => {

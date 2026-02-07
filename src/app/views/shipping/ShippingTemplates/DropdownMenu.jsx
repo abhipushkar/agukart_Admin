@@ -1,15 +1,31 @@
 import React from 'react';
-import { Menu, MenuItem, IconButton } from '@mui/material';
+import {
+  Menu,
+  MenuItem,
+  IconButton,
+  Tooltip
+} from '@mui/material';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 
-const DropdownMenu = ({ onEdit, onCopy, onSetDefault, onDelete }) => {
+const DropdownMenu = ({
+  isAdmin,
+  onEdit,
+  onCopy,
+  onSetDefault,
+  onDelete,
+  productCount
+}) => {
   const [anchorEl, setAnchorEl] = React.useState(null);
+
   const handleClick = (event) => {
     setAnchorEl(event.currentTarget);
   };
+
   const handleClose = () => {
     setAnchorEl(null);
   };
+
+  const isDeleteDisabled = productCount > 0;
 
   return (
     <div>
@@ -26,10 +42,30 @@ const DropdownMenu = ({ onEdit, onCopy, onSetDefault, onDelete }) => {
         open={Boolean(anchorEl)}
         onClose={handleClose}
       >
-        <MenuItem onClick={() => { handleClose(); onEdit(); }}>Edit Template</MenuItem>
+        {!isAdmin && <MenuItem onClick={() => { handleClose(); onEdit(); }}>Edit Template</MenuItem>}
         <MenuItem onClick={() => { handleClose(); onCopy(); }}>Copy to a New Template</MenuItem>
-        <MenuItem onClick={() => { handleClose(); onSetDefault(); }}>Set as Default Template</MenuItem>
-        <MenuItem onClick={() => { handleClose(); onDelete(); }}>Delete</MenuItem>
+        {!isAdmin && <MenuItem onClick={() => { handleClose(); onSetDefault(); }}>Set as Default Template</MenuItem>}
+        {!isAdmin && (
+          <Tooltip
+            title={isDeleteDisabled ? `This shipping template is used in ${productCount} products. You cannot delete it.` : ""}
+            placement="left"
+          >
+            <span>
+              <MenuItem
+                onClick={() => {
+                  handleClose();
+                  if (!isDeleteDisabled) {
+                    onDelete();
+                  }
+                }}
+                disabled={isDeleteDisabled}
+                style={isDeleteDisabled ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+              >
+                Delete
+              </MenuItem>
+            </span>
+          </Tooltip>
+        )}
       </Menu>
     </div>
   );

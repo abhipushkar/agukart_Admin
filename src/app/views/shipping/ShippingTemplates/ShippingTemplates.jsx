@@ -9,6 +9,7 @@ import {
   ListItem,
   ListItemText,
   List,
+  Typography,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import InternationalShipping from "./InternationalShipping";
@@ -49,28 +50,28 @@ const ShippingTemplates = ({ queryId }) => {
   // Handle modal open/close
   const handleShippingTemplateOpen = () => setOpenTemplate(true);
   const handleShippingTemplateClose = () => setOpenTemplate(false);
-   const logOut = () => {
-      localStorage.removeItem(localStorageKey.auth_key);
-      localStorage.removeItem(localStorageKey.designation_id);
-      localStorage.removeItem(localStorageKey.vendorId);
-      setRoute(ROUTE_CONSTANT.login);
-    };
-    const handleOpen = (type, msg) => {
-      setMsg(msg?.message);
-      setOpen(true);
-      setType(type);
-      if (msg?.response?.status === 401) {
-        logOut();
-      }
-    };
-    const handleClose = () => {
-      setOpen(false);
-      if (route !== null) {
-        navigate(route);
-      }
-      setRoute(null);
-      setMsg(null);
-    };
+  const logOut = () => {
+    localStorage.removeItem(localStorageKey.auth_key);
+    localStorage.removeItem(localStorageKey.designation_id);
+    localStorage.removeItem(localStorageKey.vendorId);
+    setRoute(ROUTE_CONSTANT.login);
+  };
+  const handleOpen = (type, msg) => {
+    setMsg(msg?.message);
+    setOpen(true);
+    setType(type);
+    if (msg?.response?.status === 401) {
+      logOut();
+    }
+  };
+  const handleClose = () => {
+    setOpen(false);
+    if (route !== null) {
+      navigate(route);
+    }
+    setRoute(null);
+    setMsg(null);
+  };
   // Toggle shipping template view
   const handleToggleShippingTemplate = () => {
     setToggleShippingTemplate(true);
@@ -144,13 +145,13 @@ const ShippingTemplates = ({ queryId }) => {
     })
   }
 
-  const handleSetDefault = async(id) => {
+  const handleSetDefault = async (id) => {
     try {
       const payload = {
-        id:id,
-        isDefault:true
+        id: id,
+        isDefault: true
       };
-      const res = await ApiService.post(`${apiEndpoints.setDefaultTemplate}`,payload,auth_key);
+      const res = await ApiService.post(`${apiEndpoints.setDefaultTemplate}`, payload, auth_key);
       if (res.status === 200) {
         getAllTemplateData();
         handleOpen("success", res?.data);
@@ -164,9 +165,9 @@ const ShippingTemplates = ({ queryId }) => {
   const handleDelete = async (id) => {
     try {
       const payload = {
-        id:id
+        id: id
       }
-      const res = await ApiService.post(`${apiEndpoints.deleteShippingTemplate}`,payload,auth_key);
+      const res = await ApiService.post(`${apiEndpoints.deleteShippingTemplate}`, payload, auth_key);
       if (res.status === 200) {
         getAllTemplateData();
         handleOpen("success", res?.data);
@@ -176,6 +177,54 @@ const ShippingTemplates = ({ queryId }) => {
       handleOpen("error", error);
     }
   }
+
+  // Add this function before the return statement
+  const handleDeleteClick = (template) => {
+    if (template.productCount > 0) {
+      handleOpen("error", {
+        message: `This shipping template is used in ${template.productCount} products. You cannot delete it.`
+      });
+    } else {
+      setTemplateToDelete(template._id);
+      setOpenDeleteConfirm(true);
+      setDeleteTemplateName(template.title);
+    }
+  };
+
+  // Add these new states near your other useState declarations
+  const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
+  const [templateToDelete, setTemplateToDelete] = useState(null);
+  const [deleteTemplateName, setDeleteTemplateName] = useState("");
+
+  // Add a confirmDelete function
+  const confirmDelete = async () => {
+    if (templateToDelete) {
+      try {
+        const payload = {
+          id: templateToDelete
+        }
+        const res = await ApiService.post(`${apiEndpoints.deleteShippingTemplate}`, payload, auth_key);
+        if (res.status === 200) {
+          getAllTemplateData();
+          handleOpen("success", res?.data);
+        }
+      } catch (error) {
+        console.error("Error deleting template:", error);
+        handleOpen("error", error);
+      } finally {
+        setOpenDeleteConfirm(false);
+        setTemplateToDelete(null);
+        setDeleteTemplateName("");
+      }
+    }
+  };
+
+  // Add this function to close the delete confirmation
+  const closeDeleteConfirm = () => {
+    setOpenDeleteConfirm(false);
+    setTemplateToDelete(null);
+    setDeleteTemplateName("");
+  };
 
   return (
     <>
@@ -204,7 +253,7 @@ const ShippingTemplates = ({ queryId }) => {
                     alignItems: "center",
                   }}
                 >
-                  <ListItemText primary={template.title} />
+                  <ListItemText primary={template.title} secondary={`${template.productCount} products using this template`} />
                   <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                     {template.isDefault && (
                       <Button
@@ -216,11 +265,20 @@ const ShippingTemplates = ({ queryId }) => {
                         Default
                       </Button>
                     )}
-                    <DropdownMenu
+                    {/* <DropdownMenu
+                      isAdmin={!template.vendor_id}
                       onEdit={() => handleEdit(template._id)}
                       onCopy={() => handleCopy(template)}
-                      onSetDefault={() =>handleSetDefault(template._id)}
+                      onSetDefault={() => handleSetDefault(template._id)}
                       onDelete={() => handleDelete(template._id)}
+                    /> */}
+                    <DropdownMenu
+                      isAdmin={!template.vendor_id}
+                      onEdit={() => handleEdit(template._id)}
+                      onCopy={() => handleCopy(template)}
+                      onSetDefault={() => handleSetDefault(template._id)}
+                      onDelete={() => handleDeleteClick(template)}
+                      productCount={template.productCount}
                     />
                   </div>
                 </ListItem>
@@ -272,7 +330,27 @@ const ShippingTemplates = ({ queryId }) => {
           </Button>
         </DialogActions>
       </Dialog>
-      <ConfirmModal open={open} handleClose={handleClose} type={type} msg={msg} />   
+      <ConfirmModal open={open} handleClose={handleClose} type={type} msg={msg} />
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={openDeleteConfirm} onClose={closeDeleteConfirm}>
+        <DialogTitle>Delete Confirmation</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete the template "{deleteTemplateName}"?
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+            This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeDeleteConfirm} color="secondary">
+            Cancel
+          </Button>
+          <Button onClick={confirmDelete} variant="contained" color="error">
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };

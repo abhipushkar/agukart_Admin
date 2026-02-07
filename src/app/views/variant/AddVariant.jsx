@@ -4,16 +4,11 @@ import {
     Button,
     CircularProgress,
     Divider,
-    FormControl,
-    InputLabel,
-    MenuItem,
     Paper,
-    Select,
     Stack,
     Switch,
     TextField,
     Typography,
-    Grid,
     Table,
     TableBody,
     TableCell,
@@ -30,17 +25,17 @@ import {
 } from "@mui/material";
 import AppsIcon from "@mui/icons-material/Apps";
 import React from "react";
-import {Formik} from "formik";
+import { Formik } from "formik";
 import * as Yup from "yup";
-import {useState} from "react";
-import {ApiService} from "app/services/ApiService";
-import {localStorageKey} from "app/constant/localStorageKey";
-import {apiEndpoints} from "app/constant/apiEndpoints";
-import {useNavigate, useSearchParams} from "react-router-dom";
-import {ROUTE_CONSTANT} from "app/constant/routeContanst";
-import {useEffect} from "react";
-import {EditTwoTone, Close, Delete, Visibility} from "@mui/icons-material";
-import {Fragment} from "react";
+import { useState } from "react";
+import { ApiService } from "app/services/ApiService";
+import { localStorageKey } from "app/constant/localStorageKey";
+import { apiEndpoints } from "app/constant/apiEndpoints";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { ROUTE_CONSTANT } from "app/constant/routeContanst";
+import { useEffect } from "react";
+import { EditTwoTone, Close, Delete, Visibility } from "@mui/icons-material";
+import { Fragment } from "react";
 import ConfirmModal from "app/components/ConfirmModal";
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
@@ -65,8 +60,8 @@ const quillModules = {
     toolbar: [
         [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
         ['bold', 'italic', 'underline', 'strike'],
-        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-        [{ 'indent': '-1'}, { 'indent': '+1' }],
+        [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+        [{ 'indent': '-1' }, { 'indent': '+1' }],
         ['link', 'image'],
         ['clean']
     ],
@@ -142,16 +137,16 @@ const ImageTooltip = ({ imageUrl, onImageChange, onImageRemove, children }) => {
 
 // Draggable Table Row Component
 const DraggableTableRow = ({
-                               children,
-                               index,
-                               onDragStart,
-                               onDragOver,
-                               onDrop,
-                               onDragEnd,
-                               isDragging,
-                               isDragOver,
-                               ...props
-                           }) => {
+    children,
+    index,
+    onDragStart,
+    onDragOver,
+    onDrop,
+    onDragEnd,
+    isDragging,
+    isDragOver,
+    ...props
+}) => {
     const handleDragStart = (e) => {
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/plain', index.toString());
@@ -220,7 +215,9 @@ const AddVariant = () => {
             previewImage: null,
             thumbnailImage: null,
             previewImageUrl: "",
-            thumbnailImageUrl: ""
+            thumbnailImageUrl: "",
+            removePreview: false, // NEW: Track preview image removal
+            removeThumbnail: false // NEW: Track thumbnail removal
         }
     ]);
     console.log("inputFieldsinputFields", inputFields);
@@ -238,7 +235,8 @@ const AddVariant = () => {
         guide_file: null,
         guide_type: "",
         guide_file_url: "",
-        guide_description: ""
+        guide_description: "",
+        removeGuideFile: false // NEW: Track guide file removal
     });
 
     const [deleteValue, setDeleteValue] = useState([]);
@@ -316,7 +314,8 @@ const AddVariant = () => {
             guide_file: file,
             guide_file_url: URL.createObjectURL(file),
             guide_type: isImageFile(file) ? 'image' : 'document',
-            guide_name: prev.guide_name || file.name
+            guide_name: prev.guide_name || file.name,
+            removeGuideFile: false // Reset removal flag if new file is uploaded
         }));
     };
 
@@ -342,7 +341,8 @@ const AddVariant = () => {
             ...prev,
             guide_file: null,
             guide_file_url: "",
-            guide_type: ""
+            guide_type: "",
+            removeGuideFile: true // NEW: Set removal flag
         }));
     };
 
@@ -417,7 +417,9 @@ const AddVariant = () => {
             previewImage: null,
             thumbnailImage: null,
             previewImageUrl: "",
-            thumbnailImageUrl: ""
+            thumbnailImageUrl: "",
+            removePreview: false, // NEW
+            removeThumbnail: false // NEW
         });
         setInputFields(newInputFields);
     };
@@ -442,7 +444,9 @@ const AddVariant = () => {
             previewImage: null,
             thumbnailImage: null,
             previewImageUrl: "",
-            thumbnailImageUrl: ""
+            thumbnailImageUrl: "",
+            removePreview: false, // NEW
+            removeThumbnail: false // NEW
         }));
 
         setInputFields(prev => [...prev, ...newAttributes]);
@@ -487,21 +491,43 @@ const AddVariant = () => {
         setInputFields(newInputFields);
     };
 
+    const handleImageRemove = (index, type) => {
+        const newInputFields = [...inputFields];
+        newInputFields[index][type] = null;
+        newInputFields[index][`${type}Url`] = "";
+
+        // Map image type to removal flag
+        const removalFlags = {
+            previewImage: "removePreview",
+            thumbnailImage: "removeThumbnail"
+        };
+
+        if (removalFlags[type]) {
+            newInputFields[index][removalFlags[type]] = true;
+        }
+
+        setInputFields(newInputFields);
+    };
+
     const handleImageUpload = (index, type, event) => {
         const file = event.target.files[0];
         if (file) {
             const newInputFields = [...inputFields];
             newInputFields[index][type] = file;
             newInputFields[index][`${type}Url`] = URL.createObjectURL(file);
+
+            // Map image type to removal flag
+            const removalFlags = {
+                previewImage: "removePreview",
+                thumbnailImage: "removeThumbnail"
+            };
+
+            if (removalFlags[type]) {
+                newInputFields[index][removalFlags[type]] = false;
+            }
+
             setInputFields(newInputFields);
         }
-    };
-
-    const handleImageRemove = (index, type) => {
-        const newInputFields = [...inputFields];
-        newInputFields[index][type] = null;
-        newInputFields[index][`${type}Url`] = "";
-        setInputFields(newInputFields);
     };
 
     const handleOpenImageDialog = (imageUrl) => {
@@ -529,11 +555,13 @@ const AddVariant = () => {
 
         variant_attribute = validFields.map((e) => ({
             attr_name: e.attributeValue,
-            sort_order: e.sortOrder, // Use the drag-and-drop assigned sortOrder
+            sort_order: e.sortOrder,
             _id: "new",
             status: e.status,
             previewImage: e.previewImage,
-            thumbnailImage: e.thumbnailImage
+            thumbnailImage: e.thumbnailImage,
+            removePreview: false, // Not needed for new entries
+            removeThumbnail: false // Not needed for new entries
         }));
 
         // Create FormData to handle file uploads
@@ -545,6 +573,7 @@ const AddVariant = () => {
         formData.append("guide_name", guideFields.guide_name || "");
         formData.append("guide_type", guideFields.guide_type || "");
         formData.append("guide_description", guideFields.guide_description || "");
+        formData.append("remove_guide_file", guideFields.removeGuideFile ? "true" : "false"); // NEW
         if (guideFields.guide_file) {
             formData.append("guide_file", guideFields.guide_file);
         }
@@ -554,6 +583,8 @@ const AddVariant = () => {
             formData.append(`variant_attr[${index}][sort_order]`, attr.sort_order);
             formData.append(`variant_attr[${index}][status]`, attr.status);
             formData.append(`variant_attr[${index}][_id]`, attr._id);
+            formData.append(`variant_attr[${index}][remove_preview]`, "false"); // NEW
+            formData.append(`variant_attr[${index}][remove_thumbnail]`, "false"); // NEW
 
             if (attr.previewImage) {
                 formData.append(`variant_attr[${index}][preview_image]`, attr.previewImage);
@@ -564,7 +595,7 @@ const AddVariant = () => {
             }
         });
 
-        console.log({formData: Object.fromEntries(formData)});
+        console.log({ formData: Object.fromEntries(formData) });
         try {
             setLoading(true);
             const res = await ApiService.postImage(apiEndpoints.addVariant, formData, auth_key);
@@ -599,7 +630,9 @@ const AddVariant = () => {
                         previewImage: null,
                         thumbnailImage: null,
                         previewImageUrl: e.preview_image || "",
-                        thumbnailImageUrl: e.thumbnail || ""
+                        thumbnailImageUrl: e.thumbnail || "",
+                        removePreview: false, // NEW: Initialize removal flags
+                        removeThumbnail: false // NEW: Initialize removal flags
                     };
                 });
                 setInputFields(variantAttr);
@@ -610,7 +643,8 @@ const AddVariant = () => {
                     guide_file: res.data.variant.guide_file || null,
                     guide_type: res.data.variant.guide_type || "",
                     guide_file_url: res.data.variant.guide_file || "",
-                    guide_description: res.data.variant.guide_description || ""
+                    guide_description: res.data.variant.guide_description || "",
+                    removeGuideFile: false // NEW: Initialize removal flag
                 });
             }
         } catch (error) {
@@ -620,26 +654,29 @@ const AddVariant = () => {
     };
 
     const editVariantHandler = async (values) => {
-        // Use the current sortOrder from drag-and-drop position
         const renamedInputFields = inputFields.map(
             ({
-                 id,
-                 attributeValue,
-                 sortOrder,
-                 status,
-                 _id,
-                 previewImage,
-                 thumbnailImage,
-                 previewImageUrl,
-                 thumbnailImageUrl,
-                 ...rest
-             }) => ({
+                id,
+                attributeValue,
+                sortOrder,
+                status,
+                _id,
+                previewImage,
+                thumbnailImage,
+                previewImageUrl,
+                thumbnailImageUrl,
+                removePreview, // NEW
+                removeThumbnail, // NEW
+                ...rest
+            }) => ({
                 attr_name: attributeValue,
-                sort_order: sortOrder, // Use the current sortOrder from drag-and-drop
+                sort_order: sortOrder,
                 status: status,
                 _id: _id,
                 previewImage: previewImage,
                 thumbnailImage: thumbnailImage,
+                removePreview: removePreview || false, // NEW
+                removeThumbnail: removeThumbnail || false, // NEW
                 ...rest
             })
         );
@@ -654,6 +691,7 @@ const AddVariant = () => {
         formData.append("guide_name", guideFields.guide_name || "");
         formData.append("guide_type", guideFields.guide_type || "");
         formData.append("guide_description", guideFields.guide_description || "");
+        formData.append("remove_guide_file", guideFields.removeGuideFile ? "true" : "false"); // NEW
         if (guideFields.guide_file) {
             formData.append("guide_file", guideFields.guide_file);
         }
@@ -663,6 +701,8 @@ const AddVariant = () => {
             formData.append(`variant_attr[${index}][sort_order]`, attr.sort_order);
             formData.append(`variant_attr[${index}][status]`, attr.status);
             formData.append(`variant_attr[${index}][_id]`, attr._id);
+            formData.append(`variant_attr[${index}][remove_preview]`, attr.removePreview ? "true" : "false"); // NEW
+            formData.append(`variant_attr[${index}][remove_thumbnail]`, attr.removeThumbnail ? "true" : "false"); // NEW
 
             if (attr.previewImage) {
                 formData.append(`variant_attr[${index}][preview_image]`, attr.previewImage);
@@ -707,7 +747,9 @@ const AddVariant = () => {
                 previewImage: null,
                 thumbnailImage: null,
                 previewImageUrl: "",
-                thumbnailImageUrl: ""
+                thumbnailImageUrl: "",
+                removePreview: false, // NEW
+                removeThumbnail: false // NEW
             }
         ]);
         setBulkInput("");
@@ -716,45 +758,46 @@ const AddVariant = () => {
             guide_file: null,
             guide_type: "",
             guide_file_url: "",
-            guide_description: ""
+            guide_description: "",
+            removeGuideFile: false // NEW
         });
     };
 
     return (
         <Fragment>
-            <Box sx={{margin: "30px", display: "flex", flexDirection: "column", gap: "16px"}}>
-                <Box sx={{py: "16px", marginBottom: "20px"}} component={Paper}>
-                    <Stack sx={{ml: "24px", mb: "12px"}} gap={1} direction={"row"}>
+            <Box sx={{ margin: "30px", display: "flex", flexDirection: "column", gap: "16px" }}>
+                <Box sx={{ py: "16px", marginBottom: "20px" }} component={Paper}>
+                    <Stack sx={{ ml: "24px", mb: "12px" }} gap={1} direction={"row"}>
                         <Box>
-                            <AppsIcon/>
+                            <AppsIcon />
                         </Box>
                         <Box>
-                            <Typography sx={{fontWeight: "600", fontSize: "18px"}}>Go To</Typography>
+                            <Typography sx={{ fontWeight: "600", fontSize: "18px" }}>Go To</Typography>
                         </Box>
                     </Stack>
-                    <Divider/>
-                    <Box sx={{ml: "24px", mt: "16px"}}>
+                    <Divider />
+                    <Box sx={{ ml: "24px", mt: "16px" }}>
                         <Button
                             onClick={() => navigate(ROUTE_CONSTANT.catalog.variant.list)}
-                            startIcon={<AppsIcon/>}
+                            startIcon={<AppsIcon />}
                             variant="contained"
                         >
                             Variant List
                         </Button>
                     </Box>
                 </Box>
-                <Box sx={{py: "16px"}} component={Paper}>
-                    <Stack sx={{ml: "16px", mb: "12px"}} gap={1} direction={"row"}>
+                <Box sx={{ py: "16px" }} component={Paper}>
+                    <Stack sx={{ ml: "16px", mb: "12px" }} gap={1} direction={"row"}>
                         <Box>
-                            <AppsIcon/>
+                            <AppsIcon />
                         </Box>
                         <Box>
-                            <Typography sx={{fontWeight: "600", fontSize: "18px"}}>
+                            <Typography sx={{ fontWeight: "600", fontSize: "18px" }}>
                                 {queryId ? "Edit Variant" : "Add Variant"}
                             </Typography>
                         </Box>
                     </Stack>
-                    <Divider/>
+                    <Divider />
 
                     <Formik
                         initialValues={{
@@ -772,10 +815,10 @@ const AddVariant = () => {
                             }
                         }}
                     >
-                        {({values, handleChange, handleSubmit, errors, touched}) => {
+                        {({ values, handleChange, handleSubmit, errors, touched }) => {
                             return (
                                 <form onSubmit={handleSubmit}>
-                                    <Stack gap={"16px"} sx={{p: "16px"}}>
+                                    <Stack gap={"16px"} sx={{ p: "16px" }}>
                                         <TextField
                                             id="name"
                                             name="name"
@@ -940,13 +983,13 @@ const AddVariant = () => {
                                         </Box>
                                     </Box>
 
-                                    <Box sx={{p: "16px"}}>
-                                        <Typography variant="h6" sx={{mb: 2}}>
+                                    <Box sx={{ p: "16px" }}>
+                                        <Typography variant="h6" sx={{ mb: 2 }}>
                                             Variant Attributes
                                         </Typography>
 
                                         <TableContainer component={Paper} variant="outlined">
-                                            <Table sx={{minWidth: 650}} aria-label="variant attributes table">
+                                            <Table sx={{ minWidth: 650 }} aria-label="variant attributes table">
                                                 <TableHead>
                                                     <TableRow>
                                                         <TableCell width="50px">Drag</TableCell>
@@ -1040,9 +1083,9 @@ const AddVariant = () => {
                                                                             component="label"
                                                                             variant="outlined"
                                                                             size="small"
-                                                                            sx={{mb: 1, aspectRatio: "1/1", width: "30px"}}
+                                                                            sx={{ mb: 1, aspectRatio: "1/1", width: "30px" }}
                                                                         >
-                                                                            <AddPhotoAlternateIcon/>
+                                                                            <AddPhotoAlternateIcon />
                                                                             <VisuallyHiddenInput
                                                                                 type="file"
                                                                                 onChange={(e) => handleImageUpload(index, "previewImage", e)}
@@ -1095,7 +1138,7 @@ const AddVariant = () => {
                                                                                 width: "30px"
                                                                             }}
                                                                         >
-                                                                            <AddPhotoAlternateIcon/>
+                                                                            <AddPhotoAlternateIcon />
                                                                             <VisuallyHiddenInput
                                                                                 type="file"
                                                                                 onChange={(e) => handleImageUpload(index, "thumbnailImage", e)}
@@ -1140,7 +1183,7 @@ const AddVariant = () => {
                                             </Table>
                                         </TableContainer>
 
-                                        <Box sx={{display: 'flex', gap: 2, mt: 2, flexWrap: 'wrap'}}>
+                                        <Box sx={{ display: 'flex', gap: 2, mt: 2, flexWrap: 'wrap' }}>
                                             <Button
                                                 variant="contained"
                                                 color="primary"
@@ -1159,7 +1202,7 @@ const AddVariant = () => {
                                                 Add Multiple Attributes
                                             </Button>
 
-                                            <Box sx={{flex: 1}}>
+                                            <Box sx={{ flex: 1 }}>
                                                 <Typography variant="caption" color="text.secondary">
                                                     Total Attributes: {inputFields.length} |
                                                     Drag and drop to reorder attributes
@@ -1168,11 +1211,11 @@ const AddVariant = () => {
                                         </Box>
                                     </Box>
 
-                                    <Box sx={{ml: "16px", mt: "16px", width: "100%"}}>
+                                    <Box sx={{ ml: "16px", mt: "16px", width: "100%" }}>
                                         <Button
-                                            endIcon={loading ? <CircularProgress size={15}/> : ""}
+                                            endIcon={loading ? <CircularProgress size={15} /> : ""}
                                             disabled={loading ? true : false}
-                                            sx={{mr: "16px"}}
+                                            sx={{ mr: "16px" }}
                                             variant="contained"
                                             color="primary"
                                             type="submit"
@@ -1207,8 +1250,8 @@ const AddVariant = () => {
                     Add Multiple Attributes
                 </DialogTitle>
                 <DialogContent>
-                    <Box sx={{mt: 2}}>
-                        <Typography variant="body1" sx={{mb: 2}}>
+                    <Box sx={{ mt: 2 }}>
+                        <Typography variant="body1" sx={{ mb: 2 }}>
                             Enter attribute names separated by commas. Each attribute will be added as a separate row.
                         </Typography>
 
@@ -1223,11 +1266,11 @@ const AddVariant = () => {
                         />
 
                         {bulkInput && (
-                            <Box sx={{mt: 2, p: 2, backgroundColor: '#f5f5f5', borderRadius: 1}}>
-                                <Typography variant="subtitle2" sx={{mb: 1}}>
+                            <Box sx={{ mt: 2, p: 2, backgroundColor: '#f5f5f5', borderRadius: 1 }}>
+                                <Typography variant="subtitle2" sx={{ mb: 1 }}>
                                     Preview - Will add {bulkInput.split(',').filter(attr => attr.trim()).length} attributes:
                                 </Typography>
-                                <Box sx={{display: 'flex', flexWrap: 'wrap', gap: 1}}>
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                                     {bulkInput.split(',').map((attr, index) => (
                                         attr.trim() && (
                                             <Chip

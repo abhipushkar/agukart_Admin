@@ -21,7 +21,8 @@ import {
   DialogTitle,
   FormControlLabel,
   FormGroup,
-  IconButton
+  IconButton,
+  Grid // Added Grid for better layout
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import { ApiService } from "app/services/ApiService";
@@ -54,8 +55,8 @@ const InternationalShipping = ({
     twoDays: new Set(),
     oneDay: new Set()
   });
-  console.log({alreadySelectedRegions})
-  const [openSection,setOpenSection] = useState("");
+  console.log({ alreadySelectedRegions })
+  const [openSection, setOpenSection] = useState("");
   const [regionToEdit, setRegionToEdit] = useState(null);
   const [selectAll, setSelectAll] = useState(false);
   const [countryData, setCountryData] = useState([]);
@@ -63,6 +64,11 @@ const InternationalShipping = ({
   const [type, setType] = useState("");
   const [route, setRoute] = useState(null);
   const [msg, setMsg] = useState(null);
+
+  // Add global min/max days state
+  const [globalMinDays, setGlobalMinDays] = useState(0);
+  const [globalMaxDays, setGlobalMaxDays] = useState(0);
+
   const handleAddRow = (section) => {
     const newRow = {
       region: [],
@@ -89,13 +95,26 @@ const InternationalShipping = ({
     }));
   };
 
+  // Calculate final transit time (local + global)
+  const calculateFinalTransitTime = (localMin, localMax) => {
+    const finalMin = (parseInt(localMin) || 0) + (parseInt(globalMinDays) || 0);
+    const finalMax = (parseInt(localMax) || 0) + (parseInt(globalMaxDays) || 0);
+    return { finalMin, finalMax };
+  };
+
+  // Update the renderTable function to show final transit times
   const renderTable = (section) => (
     <TableContainer component={Paper} sx={{ marginTop: 2 }}>
       <Table>
         <TableHead>
           <TableRow>
             <TableCell>Regions</TableCell>
-            <TableCell>Transit Time (Min / Max Days)</TableCell>
+            <TableCell>
+              Transit Time
+              <Typography variant="body2" color="textSecondary">
+                (Local Days / Final Days)
+              </Typography>
+            </TableCell>
             <TableCell>
               Shipping Fee
               <Typography variant="body2" color="textSecondary">
@@ -106,90 +125,127 @@ const InternationalShipping = ({
           </TableRow>
         </TableHead>
         <TableBody>
-          {shippingTemplateData[section]?.map((row, index) => (
-            <TableRow key={index}>
-              <TableCell>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  {row.region.join(", ")}
-                  <IconButton onClick={() => handleEditRegion(index, section)}>
-                    <EditIcon />
-                  </IconButton>
-                </Box>
-              </TableCell>
-              <TableCell>
-                <Box sx={{ display: "flex", gap: 2 }}>
-                  <TextField
-                    value={row.transitTime.minDays}
-                    onChange={(e) => {
-                      if (/^\d*$/.test(e.target.value)) {
-                        handleRowChange(section, index, "transitTime", {
-                          ...row.transitTime,
-                          minDays: e.target.value
-                        });
-                      }
-                    }}
-                    placeholder="Min Days"
-                    sx={{ width: "40%" }}
-                  />
-                  <TextField
-                    value={row.transitTime.maxDays}
-                    onChange={(e) => {
-                      if (/^\d*$/.test(e.target.value)) {
-                        handleRowChange(section, index, "transitTime", {
-                          ...row.transitTime,
-                          maxDays: e.target.value
-                        });
-                      }
-                    }}
-                    placeholder="Max Days"
-                    sx={{ width: "40%" }}
-                  />
-                </Box>
-              </TableCell>
-              <TableCell>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <TextField
-                    value={row.shippingFee.perOrder}
-                    onChange={(e) => {
-                      if (/^\d*$/.test(e.target.value)) {
-                        handleRowChange(section, index, "shippingFee", {
-                          ...row.shippingFee,
-                          perOrder: e.target.value
-                        });
-                      }
-                    }}
-                    placeholder="Per Order"
-                    sx={{ width: "40%" }}
-                  />
-                  <Typography variant="body1" sx={{ fontWeight: "bold" }}>
-                    +
-                  </Typography>
-                  <TextField
-                    value={row.shippingFee.perItem}
-                    onChange={(e) => {
-                      if (/^\d*$/.test(e.target.value)) {
-                        handleRowChange(section, index, "shippingFee", {
-                          ...row.shippingFee,
-                          perItem: e.target.value
-                        });
-                      }
-                    }}
-                    placeholder="Per Item"
-                    sx={{ width: "40%" }}
-                  />
-                </Box>
-              </TableCell>
-              <TableCell>
-                <Button
-                  variant="text"
-                  color="error"
-                  onClick={() => handleDeleteRow(section, index)}
-                >
-                  Delete
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
+          {shippingTemplateData[section]?.map((row, index) => {
+            const { finalMin, finalMax } = calculateFinalTransitTime(row.transitTime.minDays, row.transitTime.maxDays);
+
+            return (
+              <TableRow key={index}>
+                <TableCell>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    {row.region.join(", ")}
+                    <IconButton onClick={() => handleEditRegion(index, section)}>
+                      <EditIcon />
+                    </IconButton>
+                  </Box>
+                </TableCell>
+                <TableCell>
+                  <Box sx={{ display: "flex", gap: 2, flexDirection: "column" }}>
+                    <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+                      <TextField
+                        value={row.transitTime.minDays}
+                        onChange={(e) => {
+                          if (/^\d*$/.test(e.target.value)) {
+                            handleRowChange(section, index, "transitTime", {
+                              ...row.transitTime,
+                              minDays: e.target.value
+                            });
+                          }
+                        }}
+                        placeholder="Local Min Days"
+                        sx={{ width: "40%" }}
+                        size="small"
+                      />
+                      <Typography variant="body2" color="textSecondary">
+                        →
+                      </Typography>
+                      <TextField
+                        value={finalMin}
+                        placeholder="Final Min Days"
+                        sx={{ width: "40%" }}
+                        size="small"
+                        InputProps={{
+                          readOnly: true,
+                        }}
+                      />
+                    </Box>
+                    <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+                      <TextField
+                        value={row.transitTime.maxDays}
+                        onChange={(e) => {
+                          if (/^\d*$/.test(e.target.value)) {
+                            handleRowChange(section, index, "transitTime", {
+                              ...row.transitTime,
+                              maxDays: e.target.value
+                            });
+                          }
+                        }}
+                        placeholder="Local Max Days"
+                        sx={{ width: "40%" }}
+                        size="small"
+                      />
+                      <Typography variant="body2" color="textSecondary">
+                        →
+                      </Typography>
+                      <TextField
+                        value={finalMax}
+                        placeholder="Final Max Days"
+                        sx={{ width: "40%" }}
+                        size="small"
+                        InputProps={{
+                          readOnly: true,
+                        }}
+                      />
+                    </Box>
+                  </Box>
+                </TableCell>
+                <TableCell>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <TextField
+                      value={row.shippingFee.perOrder}
+                      onChange={(e) => {
+                        if (/^\d*$/.test(e.target.value)) {
+                          handleRowChange(section, index, "shippingFee", {
+                            ...row.shippingFee,
+                            perOrder: e.target.value
+                          });
+                        }
+                      }}
+                      placeholder="Per Order"
+                      sx={{ width: "40%" }}
+                      size="small"
+                    />
+                    <Typography variant="body1" sx={{ fontWeight: "bold" }}>
+                      +
+                    </Typography>
+                    <TextField
+                      value={row.shippingFee.perItem}
+                      onChange={(e) => {
+                        if (/^\d*$/.test(e.target.value)) {
+                          handleRowChange(section, index, "shippingFee", {
+                            ...row.shippingFee,
+                            perItem: e.target.value
+                          });
+                        }
+                      }}
+                      placeholder="Per Item"
+                      sx={{ width: "40%" }}
+                      size="small"
+                    />
+                  </Box>
+                </TableCell>
+                <TableCell>
+                  <Button
+                    variant="text"
+                    color="error"
+                    onClick={() => handleDeleteRow(section, index)}
+                    size="small"
+                  >
+                    Delete
+                  </Button>
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
       <Button
@@ -197,6 +253,7 @@ const InternationalShipping = ({
         color="primary"
         onClick={() => handleAddRow(section)}
         sx={{ margin: 2 }}
+        size="small"
       >
         Add New Region
       </Button>
@@ -215,7 +272,7 @@ const InternationalShipping = ({
     setAlreadySelectedRegions((prev) => ({
       ...prev,
       [section]: selectedRegions
-    }));  
+    }));
     setRegionToEdit({ index, section });
     setSelectedCountries(shippingTemplateData[section][index].region);
     setOpenRegionModal(true);
@@ -240,7 +297,7 @@ const InternationalShipping = ({
     if (selectAll) {
       setSelectedCountries([]);
     } else {
-      const unselectedCountries = countryData.filter(country => 
+      const unselectedCountries = countryData.filter(country =>
         !alreadySelectedRegions[openSection]?.has(country)
       );
       setSelectedCountries(unselectedCountries);
@@ -286,10 +343,31 @@ const InternationalShipping = ({
 
   const handleSaveShippingTemplate = async () => {
     try {
+      // Create a deep copy of shippingTemplateData to include final calculations
+      const shippingTemplateDataWithCalculations = { ...shippingTemplateData };
+
+      // Calculate final transit times for each section
+      Object.keys(shippingTemplateDataWithCalculations).forEach(section => {
+        shippingTemplateDataWithCalculations[section] = shippingTemplateDataWithCalculations[section].map(row => {
+          const { finalMin, finalMax } = calculateFinalTransitTime(row.transitTime.minDays, row.transitTime.maxDays);
+          return {
+            ...row,
+            calculatedTransitTime: {
+              finalMin,
+              finalMax
+            }
+          };
+        });
+      });
+
       const payload = {
         _id: queryId ? queryId : "new",
         title: title,
-        shippingTemplateData: shippingTemplateData
+        globalTransitTime: {
+          minDays: globalMinDays,
+          maxDays: globalMaxDays
+        },
+        shippingTemplateData: shippingTemplateDataWithCalculations
       };
       const res = await ApiService.post(apiEndpoints.addShippingTemplate, payload, auth_key);
       if (res?.status == 200) {
@@ -297,6 +375,8 @@ const InternationalShipping = ({
           setToggleShippingTemplate(false);
           setShippingTemplateData({ standardShipping: [], expedited: [], twoDays: [], oneDay: [] });
           setTitle("");
+          setGlobalMinDays(0);
+          setGlobalMaxDays(0);
           getAllTemplateData();
         }
         handleOpen("success", res?.data);
@@ -322,6 +402,32 @@ const InternationalShipping = ({
     }
   }, [auth_key]);
 
+  // Fetch template data if queryId exists
+  useEffect(() => {
+    const fetchTemplateData = async () => {
+      if (queryId) {
+        try {
+          const res = await ApiService.get(
+            `${apiEndpoints.getShippingTemplateById}/${queryId}`,
+            auth_key
+          );
+          if (res.status === 200) {
+            // Set global days from API if available
+            if (res.data.template.globalTransitTime) {
+              setGlobalMinDays(res.data.template.globalTransitTime.minDays || 0);
+              setGlobalMaxDays(res.data.template.globalTransitTime.maxDays || 0);
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching template data:", error);
+          handleOpen("error", error);
+        }
+      }
+    };
+
+    fetchTemplateData();
+  }, [queryId]);
+
   useEffect(() => {
     getCountryList();
   }, []);
@@ -335,6 +441,7 @@ const InternationalShipping = ({
             color="primary"
             startIcon={<ArrowBackIcon />}
             onClick={() => window.history.back()}
+            sx={{ mb: 2 }}
           >
             Back
           </Button>
@@ -344,16 +451,66 @@ const InternationalShipping = ({
         <Typography variant="h4" gutterBottom>
           Shipping Template
         </Typography>
-        <Box sx={{ marginBottom: 3 }}>
-          <TextField
-            label="Shipping Template Name"
-            variant="outlined"
-            fullWidth
-            placeholder="Enter template name"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-        </Box>
+
+        {/* Template Name and Global Transit Time Fields */}
+        <Grid container spacing={2} sx={{ marginBottom: 3 }}>
+          <Grid item xs={12} md={6}>
+            <TextField
+              label="Shipping Template Name"
+              variant="outlined"
+              fullWidth
+              placeholder="Enter template name"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <Paper sx={{ p: 2 }}>
+              <Typography variant="subtitle1" gutterBottom fontWeight="bold">
+                Global Transit Time (Days)
+              </Typography>
+              <Typography variant="body2" color="textSecondary" gutterBottom>
+                These will be added to all local transit times
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={6}>
+                  <TextField
+                    label="Global Min Days"
+                    variant="outlined"
+                    fullWidth
+                    type="number"
+                    value={globalMinDays}
+                    onChange={(e) => {
+                      if (/^\d*$/.test(e.target.value)) {
+                        setGlobalMinDays(e.target.value);
+                      }
+                    }}
+                    InputProps={{
+                      inputProps: { min: 0 }
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={6}>
+                  <TextField
+                    label="Global Max Days"
+                    variant="outlined"
+                    fullWidth
+                    type="number"
+                    value={globalMaxDays}
+                    onChange={(e) => {
+                      if (/^\d*$/.test(e.target.value)) {
+                        setGlobalMaxDays(e.target.value);
+                      }
+                    }}
+                    InputProps={{
+                      inputProps: { min: 0 }
+                    }}
+                  />
+                </Grid>
+              </Grid>
+            </Paper>
+          </Grid>
+        </Grid>
 
         {/* Standard Shipping */}
         <Box>
@@ -406,6 +563,7 @@ const InternationalShipping = ({
           </Typography>
           <Collapse in={openSections.oneDay}>{renderTable("oneDay")}</Collapse>
         </Box>
+
         <Box sx={{ textAlign: "right", marginTop: 2 }}>
           <Button variant="contained" color="primary" onClick={handleSaveShippingTemplate}>
             Save
@@ -422,7 +580,7 @@ const InternationalShipping = ({
                 label="Select All"
               />
               {countryData.map((country, idx) => {
-                const isAlreadySelectedElsewhere = alreadySelectedRegions[openSection]?.has(country) || false;         
+                const isAlreadySelectedElsewhere = alreadySelectedRegions[openSection]?.has(country) || false;
                 return <FormControlLabel
                   key={idx}
                   control={

@@ -12,10 +12,9 @@ import { useSearchParams } from "react-router-dom";
 import GeneralShippingSettings from "./GeneralShippingSettings/GeneralShippingSettings";
 import ShippingTemplates from "./ShippingTemplates/ShippingTemplates";
 import { useEffect } from "react";
-import { set } from "lodash";
 
 const ShippingSettings = () => {
-  const [query, setQuery] = useSearchParams();
+  const [query] = useSearchParams();
   const queryId = query.get("id");
   const [tab, setTab] = useState("general shipping settings");
 
@@ -26,7 +25,7 @@ const ShippingSettings = () => {
   useEffect(() => {
     if (queryId) {
       setTab("shipping templates");
-    }else{
+    } else {
       setTab("general shipping settings");
     }
   }, [queryId]);
@@ -62,10 +61,10 @@ const ShippingSettings = () => {
         </Grid>
         <Box>
           {tab === "general shipping settings" && (
-            <GeneralShippingSettings/>
+            <GeneralShippingSettings />
           )}
           {tab === "shipping templates" && (
-            <ShippingTemplates queryId = {queryId}/>
+            <ShippingTemplates queryId={queryId} />
           )}
         </Box>
       </Box>
