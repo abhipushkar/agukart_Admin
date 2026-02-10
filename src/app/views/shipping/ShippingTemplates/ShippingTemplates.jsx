@@ -273,7 +273,7 @@ const ShippingTemplates = ({ queryId }) => {
                       onDelete={() => handleDelete(template._id)}
                     /> */}
                     <DropdownMenu
-                      isAdmin={!template.vendor_id}
+                      isAdmin={!template.vendor_id && localStorage.getItem(localStorageKey.designation_id) === '3'}
                       onEdit={() => handleEdit(template._id)}
                       onCopy={() => handleCopy(template)}
                       onSetDefault={() => handleSetDefault(template._id)}

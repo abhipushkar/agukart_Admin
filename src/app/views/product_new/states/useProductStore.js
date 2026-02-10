@@ -14,7 +14,7 @@ export const useProductStore = create((set, get) => ({
     actionLoading: false,
     pagination: {
         page: 0,
-        rowsPerPage: 25,
+        rowsPerPage: 50,
         totalCount: 0
     },
     filters: {
@@ -31,6 +31,7 @@ export const useProductStore = create((set, get) => ({
     selection: {
         productIds: [],
         variationIds: [],
+        flatSelectedProducts: [],
         totalProductCount: 0,
         totalVariationCount: 0
     },
@@ -329,12 +330,13 @@ export const useProductStore = create((set, get) => ({
         selection: {
             productIds: [],
             variationIds: [],
+            flatSelectedProducts: [],
             totalProductCount: 0,
             totalVariationCount: 0
         }
     }),
 
-    toggleProductSelection: (productId, productData = []) => {
+    toggleProductSelection: (productId, productData = [], sku) => {
         set(state => {
             const newProductIds = state.selection.productIds.includes(productId)
                 ? state.selection.productIds.filter(id => id !== productId)
@@ -347,12 +349,55 @@ export const useProductStore = create((set, get) => ({
             const newVariationIds = allVariationsSelected
                 ? [...state.selection.variationIds, productId].filter((v, i, a) => a.indexOf(v) === i)
                 : state.selection.variationIds.filter(id => id !== productId);
+            console.log(productData, sku);
+            let newFlatSelected = []
+            if (productData.length > 0) {
+                const childItems = productData.map(child => ({
+                    id: child._id,
+                    sku: child.sku_code,
+                }));
 
+                const allChildrenSelected = childItems.every(child =>
+                    state.selection.flatSelectedProducts.some(
+                        selected => selected.id === child.id
+                    )
+                );
+
+                newFlatSelected = allChildrenSelected
+                    ? state.selection.flatSelectedProducts.filter(
+                        selected => !childItems.some(child => child.id === selected.id)
+                    )
+                    : [
+                        ...state.selection.flatSelectedProducts,
+                        ...childItems.filter(
+                            child =>
+                                !state.selection.flatSelectedProducts.some(
+                                    selected => selected.id === child.id
+                                )
+                        )
+                    ];
+            }
+            else {
+                const exists = state.selection.flatSelectedProducts.some(
+                    selected => selected.id === productId
+                );
+                //remove if already exists else insert
+                newFlatSelected = exists
+                    ? state.selection.flatSelectedProducts.filter(
+                        selected => selected.id !== productId
+                    )
+                    : [
+                        ...state.selection.flatSelectedProducts,
+                        { id: productId, sku: sku }
+                    ];
+            }
+            console.log(newFlatSelected)
             return {
                 selection: {
                     ...state.selection,
                     productIds: newProductIds,
-                    variationIds: newVariationIds
+                    variationIds: newVariationIds,
+                    flatSelectedProducts: newFlatSelected
                 }
             };
         });
@@ -381,23 +426,31 @@ export const useProductStore = create((set, get) => ({
     },
 
     selectAll: (products) => {
+        const allProductsFlat = []
         const allProductIds = products
             .filter(product => product.type === 'product')
-            .map(product => product._id)
+            .map(product => {
+                allProductsFlat.push({ id: product._id, sku: product.sku_code });
+                return product._id;
+            })
             .concat(
                 products
                     .filter(product => product.type === 'variations')
-                    .flatMap(product => product.productData.map(item => item._id))
+                    .flatMap(product => product.productData.map(item => {
+                        allProductsFlat.push({ id: product._id, sku: product.sku_code });
+                        return item._id;
+                    }))
             );
 
         const allVariationIds = products
             .filter(product => product.type === 'variations')
             .map(product => product._id);
-
+        console.log(allProductsFlat);
         set({
             selection: {
                 productIds: allProductIds,
                 variationIds: allVariationIds,
+                flatSelectedProducts: allProductsFlat,
                 totalProductCount: allProductIds.length,
                 totalVariationCount: allVariationIds.length
             }
@@ -421,6 +474,7 @@ export const useProductStore = create((set, get) => ({
         selection: {
             productIds: [],
             variationIds: [],
+            flatSelectedProducts: [],
             totalProductCount: 0,
             totalVariationCount: 0
         }

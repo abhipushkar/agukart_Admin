@@ -165,8 +165,8 @@ const List = () => {
             });
 
             // Add search if provided
-            if (debouncedSearch.trim()) {
-                params.append('search', debouncedSearch.trim());
+            if (debouncedSearch) {
+                params.append('search', debouncedSearch);
             }
 
             // Add server-side sorting if provided

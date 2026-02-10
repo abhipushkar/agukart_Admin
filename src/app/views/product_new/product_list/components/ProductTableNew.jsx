@@ -367,7 +367,7 @@ const ProductRow = ({ product, index }) => {
                     <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                         <Checkbox
                             checked={isSelected}
-                            onChange={() => toggleProductSelection(product._id, product.productData || [])}
+                            onChange={() => toggleProductSelection(product._id, product.productData || [], isProduct ? product.sku_code : product.seller_sku)}
                             size="small"
                             disabled={actionLoading}
                             sx={{ padding: '4px' }}
@@ -652,6 +652,7 @@ const ProductRow = ({ product, index }) => {
                     key={variation._id}
                     variation={variation}
                     parentProduct={product}
+                    isParentSelected={isSelected}
                 />
             ))}
         </>
@@ -659,7 +660,7 @@ const ProductRow = ({ product, index }) => {
 };
 
 // Variation Row Component
-const VariationRow = ({ variation, parentProduct }) => {
+const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
     const {
         actionLoading,
         selection,
@@ -785,9 +786,9 @@ const VariationRow = ({ variation, parentProduct }) => {
                 <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                     <Checkbox
                         checked={isSelected}
-                        onChange={() => toggleProductSelection(variation._id, [])}
+                        onChange={() => toggleProductSelection(variation._id, [], variation.sku_code)}
                         size="small"
-                        disabled={actionLoading}
+                        disabled={actionLoading || isParentSelected}
                         sx={{ padding: '4px' }}
                     />
                 </Box>

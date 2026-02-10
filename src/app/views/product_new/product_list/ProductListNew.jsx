@@ -5,6 +5,7 @@ import {
     FormControl,
     InputLabel,
     Select,
+    Autocomplete,
     MenuItem,
     TextField,
     RadioGroup,
@@ -37,6 +38,7 @@ import { useProductStore } from "../states/useProductStore";
 import ProductTableNew from "./components/ProductTableNew";
 import { localStorageKey } from "../../../constant/localStorageKey";
 import Switch from "@mui/material/Switch";
+import ShippingTemplateDialog from './components/ShippingTemplateDialog';
 
 const IOSSwitch = styled((props) => (
     <Switch focusVisibleClassName=".Mui-focusVisible" disableRipple {...props} />
@@ -138,6 +140,7 @@ const ProductListNew = () => {
     const [categories, setCategories] = useState([]);
     const [actionAnchorEl, setActionAnchorEl] = useState(null);
     const [confirmModal, setConfirmModal] = useState({ open: false, type: '', message: '' });
+    const [shippingDialogOpen, setShippingDialogOpen] = useState(false);
 
     // Column options for hide/show
     const columnOptions = [
@@ -153,6 +156,10 @@ const ProductListNew = () => {
         'Sort Order',
         'Image Badge'
     ];
+
+    const handleShippingDialogClose = () => {
+        setShippingDialogOpen(false);
+    };
 
     // Get status of selected products
     const getSelectedProductsStatus = () => {
@@ -207,7 +214,8 @@ const ProductListNew = () => {
             case 'active':
                 return [
                     { key: 'inactive', label: 'Inactive' },
-                    { key: 'delete', label: 'Delete' }
+                    { key: 'delete', label: 'Delete' },
+                    ...(localStorage.getItem(localStorageKey.designation_id) === '3' ? [{ key: 'template', label: 'Change Shipping Template' }] : [])
                 ];
             case 'inactive':
                 return [
@@ -241,7 +249,8 @@ const ProductListNew = () => {
             case 'active':
                 return [
                     { key: 'inactive', label: 'Inactive' },
-                    { key: 'delete', label: 'Delete' }
+                    { key: 'delete', label: 'Delete' },
+                    ...(localStorage.getItem(localStorageKey.designation_id) === '3' ? [{ key: 'template', label: 'Change Shipping Template' }] : [])
                 ];
             case 'inactive':
                 return [
@@ -356,6 +365,10 @@ const ProductListNew = () => {
                     break;
                 case 'delete':
                     result = await bulkUpdateStatus('delete', true);
+                    break;
+                case 'template':
+                    setActionAnchorEl(null);
+                    setShippingDialogOpen(true);
                     break;
                 default:
                     return;
@@ -536,7 +549,9 @@ const ProductListNew = () => {
                         {availableActions.map((action) => (
                             <MenuItem
                                 key={action.key}
-                                onClick={() => handleBulkAction(action.key)}
+                                onClick={() => {
+                                    handleBulkAction(action.key);
+                                }}
                             >
                                 {action.label}
                             </MenuItem>
@@ -544,21 +559,44 @@ const ProductListNew = () => {
                     </Menu>
                 </Paper>
 
+                <ShippingTemplateDialog
+                    isOpen={shippingDialogOpen}
+                    onClose={handleShippingDialogClose}
+                />
+
                 {/* Category Filter */}
                 <FormControl size="small" sx={{ minWidth: 200 }}>
-                    <InputLabel>Category</InputLabel>
-                    <Select
-                        value={filters.category}
-                        label="Category"
-                        onChange={(e) => setFilters({ category: e.target.value })}
-                    >
-                        <MenuItem value="">All Categories</MenuItem>
-                        {allActiveCategories.map(category => (
-                            <MenuItem key={category.id} value={category.id}>
-                                {category.title}
-                            </MenuItem>
-                        ))}
-                    </Select>
+                    <Autocomplete
+                        size="small"
+                        options={allActiveCategories}
+                        filterOptions={(options, { inputValue }) =>
+                            options.filter(option =>
+                                option.title
+                                    .toLowerCase()
+                                    .includes(inputValue.toLowerCase())
+                            )
+                        }
+                        value={
+                            allActiveCategories.find(
+                                (cat) => cat.id === filters.category
+                            ) || null
+                        }
+                        onChange={(_, newValue) => {
+                            setFilters({
+                                category: newValue ? newValue.id : ''
+                            });
+                        }}
+                        getOptionLabel={(option) => option.title || ''}
+                        isOptionEqualToValue={(option, value) => option.id === value.id}
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                label="Category"
+                                placeholder="All Categories"
+                            />
+                        )}
+                        clearOnEscape
+                    />
                 </FormControl>
 
                 {/* Sorting Filter */}
