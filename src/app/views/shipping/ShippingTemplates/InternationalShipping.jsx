@@ -66,8 +66,10 @@ const InternationalShipping = ({
   const [msg, setMsg] = useState(null);
 
   // Add global min/max days state
-  const [globalMinDays, setGlobalMinDays] = useState(0);
-  const [globalMaxDays, setGlobalMaxDays] = useState(0);
+  const storedTransitTimes = JSON.parse(localStorage.getItem('globalTransitTimeData') || '[]');
+  const globalTransitTimeData = storedTransitTimes.find(gttd => gttd.shippingTemplateId === queryId) || {};   // Find matching record
+  const [globalMinDays, setGlobalMinDays] = useState(globalTransitTimeData.globalMinDays || 0);
+  const [globalMaxDays, setGlobalMaxDays] = useState(globalTransitTimeData.globalMaxDays || 0);
 
   const handleAddRow = (section) => {
     const newRow = {
@@ -126,7 +128,7 @@ const InternationalShipping = ({
         </TableHead>
         <TableBody>
           {shippingTemplateData[section]?.map((row, index) => {
-            const { finalMin, finalMax } = calculateFinalTransitTime(row.transitTime.minDays, row.transitTime.maxDays);
+            const { finalMin, finalMax } = calculateFinalTransitTime(row.constantTransitTime?.constMinDays ?? row.transitTime.minDays, row.constantTransitTime?.constMaxDays ?? row.transitTime.maxDays);
 
             return (
               <TableRow key={index}>
@@ -142,7 +144,7 @@ const InternationalShipping = ({
                   <Box sx={{ display: "flex", gap: 2, flexDirection: "column" }}>
                     <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
                       <TextField
-                        value={row.transitTime.minDays}
+                        value={row.constantTransitTime?.constMinDays ?? row.transitTime.minDays}
                         onChange={(e) => {
                           if (/^\d*$/.test(e.target.value)) {
                             handleRowChange(section, index, "transitTime", {
@@ -158,7 +160,7 @@ const InternationalShipping = ({
                       <Typography variant="body2" color="textSecondary">
                         →
                       </Typography>
-                      <TextField
+                      {/* <TextField
                         value={finalMin}
                         placeholder="Final Min Days"
                         sx={{ width: "40%" }}
@@ -166,11 +168,14 @@ const InternationalShipping = ({
                         InputProps={{
                           readOnly: true,
                         }}
-                      />
+                      /> */}
+                      <Typography>
+                        {finalMin}
+                      </Typography>
                     </Box>
                     <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
                       <TextField
-                        value={row.transitTime.maxDays}
+                        value={row.constantTransitTime?.constMaxDays ?? row.transitTime.maxDays}
                         onChange={(e) => {
                           if (/^\d*$/.test(e.target.value)) {
                             handleRowChange(section, index, "transitTime", {
@@ -186,7 +191,7 @@ const InternationalShipping = ({
                       <Typography variant="body2" color="textSecondary">
                         →
                       </Typography>
-                      <TextField
+                      {/* <TextField
                         value={finalMax}
                         placeholder="Final Max Days"
                         sx={{ width: "40%" }}
@@ -194,7 +199,10 @@ const InternationalShipping = ({
                         InputProps={{
                           readOnly: true,
                         }}
-                      />
+                      /> */}
+                      <Typography>
+                        {finalMax}
+                      </Typography>
                     </Box>
                   </Box>
                 </TableCell>
@@ -343,18 +351,60 @@ const InternationalShipping = ({
 
   const handleSaveShippingTemplate = async () => {
     try {
+
+      // Get existing shpping data from local storage
+      const storedTransitTimes = JSON.parse(
+        localStorage.getItem('globalTransitTimeData') || '[]'
+      );
+
+      // Check if entry already exists
+      const existingIndex = storedTransitTimes.findIndex(
+        item => item.shippingTemplateId === queryId
+      );
+
+      if (existingIndex !== -1) {
+        // Update existing
+        storedTransitTimes[existingIndex] = {
+          shippingTemplateId: queryId,
+          globalMinDays,
+          globalMaxDays
+        };
+      } else {
+        // Add new
+        storedTransitTimes.push({
+          shippingTemplateId: queryId,
+          globalMinDays,
+          globalMaxDays
+        });
+      }
+
+      // Save back to localStorage
+      localStorage.setItem(
+        'globalTransitTimeData',
+        JSON.stringify(storedTransitTimes)
+      );
       // Create a deep copy of shippingTemplateData to include final calculations
       const shippingTemplateDataWithCalculations = { ...shippingTemplateData };
 
       // Calculate final transit times for each section
       Object.keys(shippingTemplateDataWithCalculations).forEach(section => {
         shippingTemplateDataWithCalculations[section] = shippingTemplateDataWithCalculations[section].map(row => {
-          const { finalMin, finalMax } = calculateFinalTransitTime(row.transitTime.minDays, row.transitTime.maxDays);
+          const constMin = row.transitTime.minDays;
+          const constMax = row.transitTime.maxDays;
+          const { finalMin, finalMax } = calculateFinalTransitTime(row.constantTransitTime?.constMinDays ?? row.transitTime.minDays, row.constantTransitTime?.constMaxDays ?? row.transitTime.maxDays);
           return {
             ...row,
             calculatedTransitTime: {
               finalMin,
               finalMax
+            },
+            transitTime: {
+              minDays: finalMin,
+              maxDays: finalMax
+            },
+            constantTransitTime: row.constantTransitTime ?? {
+              constMinDays: constMin,
+              constMaxDays: constMax
             }
           };
         });
