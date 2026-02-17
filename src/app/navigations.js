@@ -21,7 +21,7 @@ export const vendorNavigations = [
     },
     {
         name: "Product",
-        iconText: "product",
+        icon: "shop",
         path: ROUTE_CONSTANT.catalog.product.list
     },
     {
@@ -165,10 +165,10 @@ export const managerNavigations = [
             { name: "Admin Category", iconText: "CT", path: ROUTE_CONSTANT.catalog.adminCategory.list },
             { name: "Brand", iconText: "book", path: ROUTE_CONSTANT.brand.list },
             { name: "Variant", iconText: "book", path: ROUTE_CONSTANT.catalog.variant.list },
-            { name: "Product", iconText: "product", path: ROUTE_CONSTANT.catalog.product.list },
             { name: "Occasions", iconText: "event", path: ROUTE_CONSTANT.catalog.occasions.list },
         ]
     },
+    { name: "Product", icon: "shop", path: ROUTE_CONSTANT.catalog.product.list },
     {
         name: "Gift Card",
         icon: "gift",
@@ -313,7 +313,7 @@ export const navigations = [
     },
     {
         name: "Product",
-        iconText: "product",
+        icon: "shop",
         path: ROUTE_CONSTANT.catalog.product.list
     },
     {
@@ -341,6 +341,23 @@ export const navigations = [
                 name: "Occasions",
                 iconText: "event",
                 path: ROUTE_CONSTANT.catalog.occasions.list
+            },
+            {
+                name: "URL Generator",
+                iconText: "url",
+                path: ROUTE_CONSTANT.catalog.url.list,
+                // children: [
+                //     {
+                //         name: "List",
+                //         iconText: "list",
+                //         path: ROUTE_CONSTANT.catalog.url.list,
+                //     },
+                //     {
+                //         name: "Add",
+                //         iconText: "add",
+                //         path: ROUTE_CONSTANT.catalog.url.add,
+                //     }
+                // ]
             }
         ]
     },

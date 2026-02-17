@@ -51,6 +51,10 @@ export const ROUTE_CONSTANT = {
         promotionalOffer: {
             list: "/catalog/promotional-offer-list",
             add: "/catalog/add-promotional-offer"
+        },
+        url: {
+            list: "/catalog/url/list",
+            add: "/catalog/url/add"
         }
     },
     storeSetting: {
