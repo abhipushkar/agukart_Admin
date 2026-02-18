@@ -95,8 +95,8 @@ export default function Add() {
     const fetchUrlDetails = async () => {
         try {
             setPageLoading(true);
-            const res = await UrlService.getDetail(slug);
-
+            const res = await UrlService.getDetail(queryId);
+            console.log(res.data);
             if (res.status === 200) {
                 const data = res?.data?.data || res?.data || {};
 
@@ -104,18 +104,18 @@ export default function Add() {
                     name: data.name || "",
                     description: data.description || "",
                     link: data?.link || "",
-                    file: null,
+                    file: data?.file || null,
                     slug: data.slug || queryId
                 });
 
-                if (data?.link) {
-                    setSubmittedUrl(data?.link);
+                if (data?.file) {
+                    setSubmittedUrl(data?.file);
                 }
 
-                if (data.fileUrl) {
-                    setFileName(data.fileName || "Attached file");
-                    if (data.fileUrl.match(/\.(jpeg|jpg|gif|png|webp)$/i)) {
-                        setFilePreview(data.fileUrl);
+                if (data.file) {
+                    setFileName(data.name || "Attached file");
+                    if (data.file.match(/\.(jpeg|jpg|gif|png|webp)$/i)) {
+                        setFilePreview(data.file);
                     }
                 }
             }
@@ -179,8 +179,13 @@ export default function Add() {
             if (values.file) {
                 formData.append("file", values.file);
             }
-
-            const res = await UrlService.saveUrl(formData);
+            let res;
+            if (isEditMode) {
+                res = await UrlService.editUrl(formData, queryId);
+            }
+            else {
+                res = await UrlService.saveUrl(formData);
+            }
 
             if (res.status === 200 || res.status === 201) {
                 // Get the returned URL from response
@@ -324,6 +329,7 @@ export default function Add() {
                                                 <input
                                                     type="file"
                                                     accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+                                                    disabled={isEditMode}
                                                     style={{ display: "none" }}
                                                     id="file-upload"
                                                     onChange={(e) => handleFileChange(e, setFieldValue)}

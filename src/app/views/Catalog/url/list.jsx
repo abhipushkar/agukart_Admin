@@ -25,6 +25,7 @@ import ConfirmModal from "app/components/ConfirmModal";
 import debounce from "lodash.debounce";
 import SearchIcon from "@mui/icons-material/Search";
 import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import { toast } from "react-toastify";
 import UrlService from "app/services/UrlService";
@@ -132,6 +133,20 @@ export default function List() {
         setMsg(null);
     };
 
+    const handleDelete = async (id) => {
+        try {
+            const res = await UrlService.deleteUrl(id);
+            if (res.status === 200) {
+                toast.success(res.message);
+                setUrlList(prev =>
+                    prev.filter(item => item._id !== id)
+                );
+            }
+        } catch (error) {
+            toast.error(error);
+        }
+    };
+
     const handleCopyToClipboard = (url) => {
         navigator.clipboard.writeText(url).then(() => {
             toast.success("Copied");
@@ -154,7 +169,7 @@ export default function List() {
             }
 
             const res = await UrlService.getList(params);
-
+            console.log(res.data);
             if (res.status === 200) {
                 const urls = res?.data?.data || [];
                 const pagination = res?.data?.pagination || { total: urls.length };
@@ -290,19 +305,27 @@ export default function List() {
                                                 <CopyButton
                                                     variant="contained"
                                                     startIcon={<ContentCopyIcon />}
-                                                    onClick={() => handleCopyToClipboard(row.link || row.url || "")}
+                                                    onClick={() => handleCopyToClipboard(row.file || "")}
                                                 >
                                                     URL Copy
                                                 </CopyButton>
                                             </TableCell>
                                             <TableCell>
-                                                <IconButton
-                                                    component={Link}
-                                                    to={`${ROUTE_CONSTANT.catalog.url.add}?id=${row._id || row.id}&slug=${row.slug}`}
-                                                    sx={{ color: "#1976d2" }}
-                                                >
-                                                    <EditIcon />
-                                                </IconButton>
+                                                <Box display="flex" gap={5}>
+                                                    <IconButton
+                                                        component={Link}
+                                                        to={`${ROUTE_CONSTANT.catalog.url.edit}?id=${row._id || row.id}&slug=${row.slug}`}
+                                                        sx={{ color: "#1976d2" }}
+                                                    >
+                                                        <EditIcon />
+                                                    </IconButton>
+                                                    <IconButton
+                                                        onClick={() => handleDelete(row._id || row.id)}
+                                                        color="error"
+                                                    >
+                                                        <DeleteIcon />
+                                                    </IconButton>
+                                                </Box>
                                             </TableCell>
                                         </TableRow>
                                     ))

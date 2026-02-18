@@ -9,7 +9,8 @@ class UrlService {
 
     // GET /url-list - List with pagination
     getList(params) {
-        return ApiService.get("url-list", this.auth_key, { params });
+        const query = new URLSearchParams(params).toString();
+        return ApiService.get(`url-list?${query}`, this.auth_key);
     }
 
     // POST /createUrl - Create with _id: "new", Update with _id: queryId
@@ -17,9 +18,19 @@ class UrlService {
         return ApiService.postImage("createUrl", formData, this.auth_key);
     }
 
+    // PUT update existing url
+    editUrl(payload, id) {
+        return ApiService.put(`url-resource/${id}`, payload, this.auth_key);
+    }
+
     // GET /url-page/:slug - Get single URL details for edit
-    getDetail(slug) {
-        return ApiService.get(`url-page/${slug}`, this.auth_key);
+    getDetail(id) {
+        return ApiService.get(`url-page-by-id/${id}`, this.auth_key);
+    }
+
+    //DELETE
+    deleteUrl(id) {
+        return ApiService.delete(`delete-url/${id}`, this.auth_key);
     }
 }
 
