@@ -54,7 +54,8 @@ export const ROUTE_CONSTANT = {
         },
         url: {
             list: "/catalog/url/list",
-            add: "/catalog/url/add"
+            add: "/catalog/url/add",
+            edit: "/catalog/url/edit"
         }
     },
     storeSetting: {

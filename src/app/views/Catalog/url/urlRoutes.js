@@ -4,5 +4,6 @@ import Add from "./add";
 
 export const urlRoutes = [
     { name: "URL", path: ROUTE_CONSTANT.catalog.url.list, element: <List /> },
-    { name: "URL", path: ROUTE_CONSTANT.catalog.url.add, element: <Add /> }
+    { name: "URL", path: ROUTE_CONSTANT.catalog.url.add, element: <Add /> },
+    { name: "URL", path: ROUTE_CONSTANT.catalog.url.edit, element: <Add /> }
 ]
