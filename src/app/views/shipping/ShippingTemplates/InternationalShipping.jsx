@@ -64,6 +64,7 @@ const InternationalShipping = ({
   const [type, setType] = useState("");
   const [route, setRoute] = useState(null);
   const [msg, setMsg] = useState(null);
+  const [expandedRows, setExpandedRows] = useState({});
 
   // Add global min/max days state
   const storedTransitTimes = JSON.parse(localStorage.getItem('globalTransitTimeData') || '[]');
@@ -107,40 +108,67 @@ const InternationalShipping = ({
   // Update the renderTable function to show final transit times
   const renderTable = (section) => (
     <TableContainer component={Paper} sx={{ marginTop: 2 }}>
-      <Table>
+      <Table sx={{ tableLayout: 'fixed' }}>
         <TableHead>
           <TableRow>
-            <TableCell>Regions</TableCell>
-            <TableCell>
+            <TableCell sx={{ p: 1, width: '40%' }}>Regions</TableCell>
+            <TableCell sx={{ width: '30%', px: 2 }}>
               Transit Time
               <Typography variant="body2" color="textSecondary">
                 (Local Days / Final Days)
               </Typography>
             </TableCell>
-            <TableCell>
+            <TableCell sx={{ width: '20%' }}>
               Shipping Fee
               <Typography variant="body2" color="textSecondary">
                 (Per Order / Per Item)
               </Typography>
             </TableCell>
-            <TableCell>Action</TableCell>
+            <TableCell sx={{ width: '10%' }}>Action</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
           {shippingTemplateData[section]?.map((row, index) => {
             const { finalMin, finalMax } = calculateFinalTransitTime(row.constantTransitTime?.constMinDays ?? row.transitTime.minDays, row.constantTransitTime?.constMaxDays ?? row.transitTime.maxDays);
 
+            const regionText = row.region.join(", ");
+            const rowKey = `${section}-${index}`;
+            const isExpanded = expandedRows[rowKey] || false;
+            const shouldTruncate = regionText.length > 200;
+            const displayText = isExpanded ? regionText : regionText.substring(0, 200);
+
+            const toggleExpand = () => {
+              setExpandedRows((prev) => ({
+                ...prev,
+                [rowKey]: !prev[rowKey]
+              }));
+            };
+
             return (
-              <TableRow key={index}>
-                <TableCell>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    {row.region.join(", ")}
-                    <IconButton onClick={() => handleEditRegion(index, section)}>
-                      <EditIcon />
+              <TableRow key={index} sx={{ maxHeight: '115.5px' }}>
+                <TableCell sx={{ p: 1, width: '40%' }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: 'wrap' }}>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="body2">
+                        {displayText}
+                        {shouldTruncate && !isExpanded && '...'}
+                      </Typography>
+                      {shouldTruncate && (
+                        <Button
+                          size="small"
+                          onClick={toggleExpand}
+                          sx={{ p: 0, mt: 0.5, textTransform: 'none' }}
+                        >
+                          {isExpanded ? 'View Less' : 'View More'}
+                        </Button>
+                      )}
+                    </Box>
+                    <IconButton onClick={() => handleEditRegion(index, section)} size="small">
+                      <EditIcon fontSize="small" />
                     </IconButton>
                   </Box>
                 </TableCell>
-                <TableCell>
+                <TableCell sx={{ width: '30%', px: 2 }}>
                   <Box sx={{ display: "flex", gap: 2, flexDirection: "column" }}>
                     <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
                       <TextField
@@ -206,7 +234,7 @@ const InternationalShipping = ({
                     </Box>
                   </Box>
                 </TableCell>
-                <TableCell>
+                <TableCell sx={{ width: '20%' }}>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                     <TextField
                       value={row.shippingFee.perOrder}
@@ -241,7 +269,7 @@ const InternationalShipping = ({
                     />
                   </Box>
                 </TableCell>
-                <TableCell>
+                <TableCell sx={{ width: '10%' }}>
                   <Button
                     variant="text"
                     color="error"
@@ -344,6 +372,8 @@ const InternationalShipping = ({
     setOpen(false);
     if (route !== null) {
       navigate(route);
+    } else {
+      navigate(-1);
     }
     setRoute(null);
     setMsg(null);
@@ -467,6 +497,13 @@ const InternationalShipping = ({
               setGlobalMinDays(res.data.template.globalTransitTime.minDays || 0);
               setGlobalMaxDays(res.data.template.globalTransitTime.maxDays || 0);
             }
+            const openState = {
+              standardShipping: (res.data.template?.shippingTemplateData?.standardShipping?.length || 0) > 0,
+              expedited: (res.data.template?.shippingTemplateData?.expedited?.length || 0) > 0,
+              twoDays: (res.data.template?.shippingTemplateData?.twoDays?.length || 0) > 0,
+              oneDay: (res.data.template?.shippingTemplateData?.oneDay?.length || 0) > 0
+            };
+            setOpenSections(openState);
           }
         } catch (error) {
           console.error("Error fetching template data:", error);
@@ -479,6 +516,14 @@ const InternationalShipping = ({
   }, [queryId]);
 
   useEffect(() => {
+    if (!queryId) {
+      setOpenSections({
+        standardShipping: true,
+        expedited: false,
+        twoDays: false,
+        oneDay: false,
+      });
+    }
     getCountryList();
   }, []);
 
@@ -517,7 +562,7 @@ const InternationalShipping = ({
           <Grid item xs={12} md={6}>
             <Paper sx={{ p: 2 }}>
               <Typography variant="subtitle1" gutterBottom fontWeight="bold">
-                Global Transit Time (Days)
+                Processing Time (Days)
               </Typography>
               <Typography variant="body2" color="textSecondary" gutterBottom>
                 These will be added to all local transit times
