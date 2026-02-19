@@ -10,6 +10,7 @@ import {
   CircularProgress,
   Autocomplete
 } from "@mui/material";
+import Chip from "@mui/material/Chip";
 import Typography from "@mui/material/Typography";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
@@ -19,28 +20,12 @@ import styled from "@emotion/styled";
 import { ApiService } from "app/services/ApiService";
 import { apiEndpoints } from "app/constant/apiEndpoints";
 import { localStorageKey } from "app/constant/localStorageKey";
-import PropTypes from "prop-types";
-import CloseIcon from "@mui/icons-material/Close";
 import { useCallback } from "react";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import ConfirmModal from "app/components/ConfirmModal";
 import QuillDes from "app/components/ReactQuillTextEditor/ReactQuillTextEditor/QuilDes";
 import TextEditor from "app/components/TextEditor/TextEditor";
 
-function Tag(props) {
-  const { label, onDelete, ...other } = props;
-  return (
-    <div {...other}>
-      <span>{label}</span>
-      <CloseIcon onClick={onDelete} />
-    </div>
-  );
-}
-
-Tag.propTypes = {
-  label: PropTypes.string.isRequired,
-  onDelete: PropTypes.func.isRequired
-};
 
 const theme = createTheme();
 
@@ -70,8 +55,8 @@ const HomePage = () => {
     box3CatName: [],
     box4CatId: [],
     box4CatName: [],
-    headerText:"",
-    description:"",
+    headerText: "",
+    description: "",
   });
   const [errors, setErrors] = useState({
     box1Title: "",
@@ -82,8 +67,8 @@ const HomePage = () => {
     box2CatName: "",
     box3CatName: "",
     box4CatName: "",
-    headerText:"",
-    description:"",
+    headerText: "",
+    description: "",
   });
   const [image1, setImage1] = useState(null);
   const [image2, setImage2] = useState(null);
@@ -141,26 +126,38 @@ const HomePage = () => {
 
   const handleBox1Change = (event, value) => {
     if (value.length <= 4) {
-      setFormValues((prv) => ({ ...prv, box1CatId: value.map((option) => option?._id) }));
-      setFormValues((prv) => ({ ...prv, box1CatName: value }));
+      setFormValues((prev) => ({
+        ...prev,
+        box1CatId: value.map((option) => option._id),
+        box1CatName: value
+      }));
     }
   };
   const handleBox2Change = (event, value) => {
     if (value.length <= 1) {
-      setFormValues((prv) => ({ ...prv, box2CatId: value.map((option) => option?._id) }));
-      setFormValues((prv) => ({ ...prv, box2CatName: value }));
+      setFormValues((prev) => ({
+        ...prev,
+        box2CatId: value.map((option) => option._id),
+        box2CatName: value
+      }));
     }
   };
   const handleBox3Change = (event, value) => {
     if (value.length <= 4) {
-      setFormValues((prv) => ({ ...prv, box3CatId: value.map((option) => option?._id) }));
-      setFormValues((prv) => ({ ...prv, box3CatName: value }));
+      setFormValues((prev) => ({
+        ...prev,
+        box3CatId: value.map((option) => option._id),
+        box3CatName: value
+      }));
     }
   };
   const handleBox4Change = (event, value) => {
     if (value.length <= 4) {
-      setFormValues((prv) => ({ ...prv, box4CatId: value.map((option) => option?._id) }));
-      setFormValues((prv) => ({ ...prv, box4CatName: value }));
+      setFormValues((prev) => ({
+        ...prev,
+        box4CatId: value.map((option) => option._id),
+        box4CatName: value
+      }));
     }
   };
 
@@ -241,8 +238,8 @@ const HomePage = () => {
           formData.append("box4_title", formValues.box4Title);
           formData.append("box4_category", JSON.stringify(formValues.box4CatId));
         }
-        formData.append("header_text",formValues.headerText);
-        formData.append("description",formValues.description);
+        formData.append("header_text", formValues.headerText);
+        formData.append("description", formValues.description);
         const res = await ApiService.postImage(apiEndpoints.addDeal, formData, auth_key);
         if (res?.status === 200) {
           navigate(ROUTE_CONSTANT.dashboard);
@@ -274,15 +271,15 @@ const HomePage = () => {
           box3Title: resData?.box3_title,
           box4Title: resData?.box4_title,
           box1CatId: resData?.box1_category?.map((option) => option?._id),
-          box1CatName: resData?.box1_category,
+          // box1CatName: resData?.box1_category,
           box2CatId: resData?.box2_category?.map((option) => option?._id),
-          box2CatName: resData?.box2_category,
+          // box2CatName: resData?.box2_category,
           box3CatId: resData?.box3_category?.map((option) => option?._id),
-          box3CatName: resData?.box3_category,
+          // box3CatName: resData?.box3_category,
           box4CatId: resData?.box4_category?.map((option) => option?._id),
-          box4CatName: resData?.box4_category,
-          headerText:resData?.header_text,
-          description:resData?.description
+          // box4CatName: resData?.box4_category,
+          headerText: resData?.header_text,
+          description: resData?.description
         }));
         setImgUrl1(baseUrl + resData?.deal_1);
         setImgUrl2(baseUrl + resData?.deal_2);
@@ -303,7 +300,33 @@ const HomePage = () => {
 
       const res = await ApiService.get(url, auth_key);
       if (res.status === 200) {
-        const myNewList = res?.data?.data.map((e, i) => {
+        // Flatten nested categories into paths
+        const flattenedCategories = [];
+
+        const flattenNestedCategories = (categories, parentPath = '') => {
+          categories?.forEach((category) => {
+            const currentPath = parentPath
+              ? `${parentPath} > ${category.title}`
+              : category.title;
+
+            // Add current category with its path
+            flattenedCategories.push({
+              ...category,
+              _id: category._id,
+              title: currentPath,
+              originalTitle: category.title
+            });
+
+            // Recursively process sub-categories
+            if (category.subs && category.subs.length > 0) {
+              flattenNestedCategories(category.subs, currentPath);
+            }
+          });
+        };
+
+        flattenNestedCategories(res?.data?.data);
+
+        const myNewList = flattenedCategories.map((e, i) => {
           return { "S.No": i + 1, ...e };
         });
         setAllActiveCat(myNewList);
@@ -316,7 +339,27 @@ const HomePage = () => {
   useEffect(() => {
     getDeal();
     getActiveCategory();
-  }, []);
+  }, [getDeal, getActiveCategory]);
+
+  useEffect(() => {
+    if (allActiveCat.length > 0) {
+      setFormValues((prev) => ({
+        ...prev,
+        box1CatName: allActiveCat.filter(cat =>
+          prev.box1CatId.includes(cat._id)
+        ),
+        box2CatName: allActiveCat.filter(cat =>
+          prev.box2CatId.includes(cat._id)
+        ),
+        box3CatName: allActiveCat.filter(cat =>
+          prev.box3CatId.includes(cat._id)
+        ),
+        box4CatName: allActiveCat.filter(cat =>
+          prev.box4CatId.includes(cat._id)
+        ),
+      }));
+    }
+  }, [allActiveCat]);
 
   return (
     <ThemeProvider theme={theme}>
@@ -480,6 +523,16 @@ const HomePage = () => {
                 id="multiple-limit-tags"
                 options={allActiveCat}
                 getOptionLabel={(option) => option.title}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip
+                      {...getTagProps({ index })}
+                      key={option._id}
+                      label={option.originalTitle}
+                      size="small"
+                    />
+                  ))
+                }
                 renderInput={(params) => {
                   return <TextField {...params} label="Category " placeholder="Select Category " sx={{
                     width: "100%",
@@ -496,7 +549,6 @@ const HomePage = () => {
 
                 onChange={handleBox1Change}
                 value={formValues?.box1CatName}
-                defaultValue={formValues?.box1CatName.length > 0 ? formValues?.box1CatName : []}
                 name="box1CatName"
                 isOptionEqualToValue={(option, value) => option._id === value._id}
               />
@@ -549,6 +601,16 @@ const HomePage = () => {
                 id="multiple-limit-tags"
                 options={allActiveCat}
                 getOptionLabel={(option) => option.title}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip
+                      {...getTagProps({ index })}
+                      key={option._id}
+                      label={option.originalTitle}
+                      size="small"
+                    />
+                  ))
+                }
                 renderInput={(params) => {
                   return <TextField {...params} label="Category " placeholder="Select Category " sx={{
                     width: "100%",
@@ -564,7 +626,6 @@ const HomePage = () => {
                 }}
                 onChange={handleBox2Change}
                 value={formValues?.box2CatName}
-                defaultValue={formValues?.box2CatName.length > 0 ? formValues?.box2CatName : []}
                 name="box2CatName"
                 isOptionEqualToValue={(option, value) => option._id === value._id}
               />
@@ -617,6 +678,16 @@ const HomePage = () => {
                 id="multiple-limit-tags"
                 options={allActiveCat}
                 getOptionLabel={(option) => option.title}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip
+                      {...getTagProps({ index })}
+                      key={option._id}
+                      label={option.originalTitle}
+                      size="small"
+                    />
+                  ))
+                }
                 renderInput={(params) => {
                   return <TextField {...params} label="Category " placeholder="Select Category " sx={{
                     width: "100%",
@@ -632,7 +703,6 @@ const HomePage = () => {
                 }}
                 onChange={handleBox3Change}
                 value={formValues?.box3CatName}
-                defaultValue={formValues?.box3CatName.length > 0 ? formValues?.box3CatName : []}
                 name="box3CatName"
                 isOptionEqualToValue={(option, value) => option._id === value._id}
               />
@@ -685,6 +755,16 @@ const HomePage = () => {
                 id="multiple-limit-tags"
                 options={allActiveCat}
                 getOptionLabel={(option) => option.title}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip
+                      {...getTagProps({ index })}
+                      key={option._id}
+                      label={option.originalTitle}
+                      size="small"
+                    />
+                  ))
+                }
                 renderInput={(params) => {
                   return <TextField {...params} label="Category " placeholder="Select Category " sx={{
                     width: "100%",
@@ -705,7 +785,6 @@ const HomePage = () => {
                 //   }
                 // }}
                 value={formValues?.box4CatName}
-                defaultValue={formValues?.box4CatName.length > 0 ? formValues?.box4CatName : []}
                 name="box4CatName"
                 isOptionEqualToValue={(option, value) => option._id === value._id}
               />
@@ -750,37 +829,37 @@ const HomePage = () => {
                 }}
               />
             </Box>
-            
+
             <h2>Home Page Description</h2>
             {/* <TextEditor name="description" value={formValues?.description} setFormValues={setFormValues}/> */}
             <Box width={"100%"}>
+              <Box
+                sx={{
+                  width: "100%"
+                }}
+              >
                 <Box
-                    sx={{
-                        width: "100%"
-                    }}
+                  sx={{
+                    height: "auto",
+                    width: "100%"
+                  }}
                 >
-                    <Box
-                        sx={{
-                            height: "auto", 
-                            width: "100%"
-                        }}
-                        >
-                        <QuillDes formValues={formValues} setFormValues={setFormValues} setErrors={setErrors} />
-                        </Box>
-                        {errors.description && (
-                        <Typography
-                            sx={{
-                            fontSize: "12px",
-                            color: "#FF3D57",
-                            marginLeft: "14px",
-                            marginRight: "14px",
-                            marginTop: "3px"
-                            }}
-                        >
-                            {errors.description}
-                        </Typography>
-                        )}
+                  <QuillDes formValues={formValues} setFormValues={setFormValues} setErrors={setErrors} />
                 </Box>
+                {errors.description && (
+                  <Typography
+                    sx={{
+                      fontSize: "12px",
+                      color: "#FF3D57",
+                      marginLeft: "14px",
+                      marginRight: "14px",
+                      marginTop: "3px"
+                    }}
+                  >
+                    {errors.description}
+                  </Typography>
+                )}
+              </Box>
             </Box>
             <Button
               endIcon={loading ? <CircularProgress size={15} /> : ""}

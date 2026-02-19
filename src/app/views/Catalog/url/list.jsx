@@ -86,6 +86,7 @@ export default function List() {
     const [type, setType] = useState("");
     const [msg, setMsg] = useState(null);
     const [route, setRoute] = useState(null);
+    const [urlId, setUrlId] = useState("");
 
     const navigate = useNavigate();
     const debounceRef = useRef();
@@ -133,14 +134,15 @@ export default function List() {
         setMsg(null);
     };
 
-    const handleDelete = async (id) => {
+    const handleDelete = async (urlId) => {
         try {
-            const res = await UrlService.deleteUrl(id);
+            const res = await UrlService.deleteUrl(urlId);
             if (res.status === 200) {
                 toast.success(res.message);
                 setUrlList(prev =>
-                    prev.filter(item => item._id !== id)
+                    prev.filter(item => item._id !== urlId)
                 );
+                setUrlId("");
             }
         } catch (error) {
             toast.error(error);
@@ -320,7 +322,10 @@ export default function List() {
                                                         <EditIcon />
                                                     </IconButton>
                                                     <IconButton
-                                                        onClick={() => handleDelete(row._id || row.id)}
+                                                        onClick={() => {
+                                                            handleOpen("urlDelete", `Are you sure you want to delete ${row.name}?`);
+                                                            setUrlId(row._id || row.id);
+                                                        }}
                                                         color="error"
                                                     >
                                                         <DeleteIcon />
@@ -360,6 +365,7 @@ export default function List() {
                 handleClose={handleClose}
                 type={type}
                 msg={msg}
+                handleDelete={() => handleDelete(urlId)}
             />
         </Container>
     );

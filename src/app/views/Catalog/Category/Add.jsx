@@ -314,23 +314,14 @@ const Add = () => {
         });
     };
 
-    // Get parent category data when selectedCatId changes
+    // Get parent category data when selectedCatId changes (optional, kept for potential future use)
     const getParentCategoryData = useCallback(async (parentId) => {
         if (!parentId) return;
 
         try {
             const res = await ApiService.get(`${apiEndpoints.editCategory}/${parentId}`, auth_key);
             if (res.status === 200) {
-                // setParentCategoryData(res?.data?.data);
-
-                // Auto-populate variants and attributes if current selection is empty
-                if (SelectedEditVariant.length === 0 && res?.data?.data?.variant_data?.length > 0) {
-                    setSelectedEditVariant(res?.data?.data?.variant_data || []);
-                }
-
-                if (SelectedEditAttribute.length === 0 && res?.data?.data?.attributeList_data?.length > 0) {
-                    setSelectedEditAttribute(res?.data?.data?.attributeList_data || []);
-                }
+                console.log("Parent category data:", res?.data?.data);
             }
         } catch (error) {
             console.error("Error fetching parent category data:", error);
@@ -540,16 +531,43 @@ const Add = () => {
                     setCatData(res?.data?.data);
                     setSelectedCatId(res?.data?.data?.parent_id);
 
+                    let currentVariants = res?.data?.data?.variant_data || [];
+                    let currentAttributes = res?.data?.data?.attributeList_data || [];
+
+                    // Fetch and merge parent category data if parent_id exists
                     if (res?.data?.data?.parent_id) {
-                        catData(res?.data?.data?.parent_id);
-                        // Get parent category data for auto-population
-                        getParentCategoryData(res?.data?.data?.parent_id);
+                        try {
+                            catData(res?.data?.data?.parent_id);
+                            const parentRes = await ApiService.get(`${apiEndpoints.editCategory}/${res?.data?.data?.parent_id}`, auth_key);
+
+                            if (parentRes.status === 200) {
+                                const parentVariants = parentRes?.data?.data?.variant_data || [];
+                                const parentAttributes = parentRes?.data?.data?.attributeList_data || [];
+
+                                // Merge parent variants without duplicates
+                                if (parentVariants.length > 0) {
+                                    const currentVariantIds = new Set(currentVariants.map(v => v._id));
+                                    const newParentVariants = parentVariants.filter(pv => !currentVariantIds.has(pv._id));
+                                    currentVariants = [...currentVariants, ...newParentVariants];
+                                }
+
+                                // Merge parent attributes without duplicates
+                                if (parentAttributes.length > 0) {
+                                    const currentAttributeIds = new Set(currentAttributes.map(a => a._id));
+                                    const newParentAttributes = parentAttributes.filter(pa => !currentAttributeIds.has(pa._id));
+                                    currentAttributes = [...currentAttributes, ...newParentAttributes];
+                                }
+                            }
+                        } catch (error) {
+                            console.error("Error fetching parent category data:", error);
+                        }
                     } else {
                         setSelectedCatLable("Select Category");
                     }
 
-                    setSelectedEditVariant(res?.data?.data?.variant_data || []);
-                    setSelectedEditAttribute(res?.data?.data?.attributeList_data || []);
+                    // Set the merged data
+                    setSelectedEditVariant(currentVariants);
+                    setSelectedEditAttribute(currentAttributes);
 
                     // Set initial conditions data
                     if (res?.data?.data?.isAutomatic) {

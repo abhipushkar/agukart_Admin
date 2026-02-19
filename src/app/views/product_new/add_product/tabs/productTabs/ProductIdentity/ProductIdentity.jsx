@@ -58,6 +58,8 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
 
     const handleVendorChange = (newValue) => {
         handleFieldChange('vendor', newValue ? newValue._id : "");
+        handleFieldChange('shipingTemplates', ""); // clear shippingTemplates field on vendor change 
+        handleFieldChange('exchangePolicy', ""); // clear exchangePolicy field on vendor change
     };
 
     const handleCategoryChange = (newValue) => {

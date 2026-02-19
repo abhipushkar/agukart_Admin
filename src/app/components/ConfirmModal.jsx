@@ -20,7 +20,7 @@ export default function ConfirmModal({
   open,
   handleClose,
   handleReset,
-    onConfirm,
+  onConfirm,
   type,
   msg,
   handleRemoveFields,
@@ -33,20 +33,20 @@ export default function ConfirmModal({
 }) {
 
   const handleConfirm = () => {
-      if (onConfirm) {
-          onConfirm();
-      }
+    if (onConfirm) {
+      onConfirm();
+    }
     else if (type === "remove") {
       handleRemoveFields();
     } else if (type === "reset") {
       handleReset();
-    } else if (type === "blogStatus" || type === "brandStatus" || type === "adminCatStatus" || type === "catStatus" || type === "vendorStatus" || type === "sliderStatus" || type === "couponStatus" || type=="promotionalOfferStatus" || type==="giftCardCategoryStatus" || type==="giftCardStatus" || type === "bannerStatus" || type === "bestSellingStatus" || type === "policyStatus" || type === "storeStatus" || type === "customerStatus" || type === "voucherStatus") {
+    } else if (type === "blogStatus" || type === "brandStatus" || type === "adminCatStatus" || type === "catStatus" || type === "vendorStatus" || type === "sliderStatus" || type === "couponStatus" || type == "promotionalOfferStatus" || type === "giftCardCategoryStatus" || type === "giftCardStatus" || type === "bannerStatus" || type === "bestSellingStatus" || type === "policyStatus" || type === "storeStatus" || type === "customerStatus" || type === "voucherStatus") {
       handleStatusChange();
     } else if (type === "popularGiftStatus") {
       handlePopularGiftStatusChange()
-    }else if (type === "blogFeaturedStatus" || type === "brandFeaturedStatus" || type === "adminCatPopularStatus" || type === "catTopRatedStatus") {
+    } else if (type === "blogFeaturedStatus" || type === "brandFeaturedStatus" || type === "adminCatPopularStatus" || type === "catTopRatedStatus") {
       handleFeaturedStatusChange()
-    } else if (type === "blogDelete" || type === "sliderDelete" || type === "deleteMember" || type === "deleteShopPhoto" || type === "variantDelete" || type === "couponDelete" || type==="promotionalOfferDelete" || type==="giftCardCategoryDelete" || type==="giftCardDelete" || type === "bannerDelete" || type === "policyDelete" || type === "storeDelete" || type === "voucherDelete") {
+    } else if (type === "blogDelete" || type === "sliderDelete" || type === "deleteMember" || type === "deleteShopPhoto" || type === "variantDelete" || type === "couponDelete" || type === "promotionalOfferDelete" || type === "giftCardCategoryDelete" || type === "giftCardDelete" || type === "bannerDelete" || type === "policyDelete" || type === "storeDelete" || type === "voucherDelete" || type === "urlDelete") {
       handleDelete()
     } else if (type === "adminSpecialCatStatus") {
       handleSpecialCatStatusChange()
@@ -78,7 +78,7 @@ export default function ConfirmModal({
             </Typography>
             <Typography component="div">
               <Typography id="modal-modal-title" variant="h6" component="h2">
-                {type=="success"?"Confirmation":type=="error"?"Failed":"Warning"}
+                {type == "success" ? "Confirmation" : type == "error" ? "Failed" : "Warning"}
               </Typography>
               <Typography id="modal-modal-description">
                 {type === "remove" && "Are you sure you want to remove variant attribute?"}
@@ -120,7 +120,7 @@ export default function ConfirmModal({
                 {type === "customerStatus" && "Are you sure you want to change customer account status?"}
                 {type === "voucherStatus" && "Are you sure you want to change voucher status?"}
                 {type === "voucherDelete" && "Are you sure you want to delete?"}
-                {msg && msg} 
+                {msg && msg}
               </Typography>
             </Typography>
           </Typography>
