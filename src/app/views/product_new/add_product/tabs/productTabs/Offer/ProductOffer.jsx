@@ -45,12 +45,12 @@ const ProductOffer = () => {
     };
 
     useEffect(() => {
-        if(formValues.isCheckedPrice) {
-            setFormData({salePrice: 0});
+        if (formValues.isCheckedPrice) {
+            setFormData({ salePrice: 0 });
         }
 
-        if(formValues.isCheckedQuantity) {
-            setFormData({quantity: 0});
+        if (formValues.isCheckedQuantity) {
+            setFormData({ quantity: 0 });
         }
     }, [formValues]);
 
@@ -227,7 +227,7 @@ const ProductOffer = () => {
                             disabled={formValues.isCheckedPrice}
                             onBlur={() => {
                                 if (!formData.salePrice) {
-                                    setInputErrors({salePrice: "Sale Price is Required" });
+                                    setInputErrors({ salePrice: "Sale Price is Required" });
                                 }
                             }}
                             id="sale-price"

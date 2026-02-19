@@ -147,8 +147,8 @@ const OrderHistory = () => {
     switch (name) {
       case "standardShipping": return "Standard Delivery";
       case "expedited": return "Express Delivery";
-      case "twoDays": return "Two days";
-      case "oneDay": return "One day";
+      case "globalExpress": return "Global Express Shipping";
+      case "priorityExpress": return "Priority Express Shipping";
       default: return getDisplayValue(name);
     }
   }, [order]);

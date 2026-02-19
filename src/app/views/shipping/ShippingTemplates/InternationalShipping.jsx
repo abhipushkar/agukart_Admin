@@ -52,8 +52,8 @@ const InternationalShipping = ({
   const [alreadySelectedRegions, setAlreadySelectedRegions] = useState({
     standardShipping: new Set(),
     expedited: new Set(),
-    twoDays: new Set(),
-    oneDay: new Set()
+    globalExpress: new Set(),
+    priorityExpress: new Set()
   });
   console.log({ alreadySelectedRegions })
   const [openSection, setOpenSection] = useState("");
@@ -453,7 +453,7 @@ const InternationalShipping = ({
       if (res?.status == 200) {
         if (!queryId) {
           setToggleShippingTemplate(false);
-          setShippingTemplateData({ standardShipping: [], expedited: [], twoDays: [], oneDay: [] });
+          setShippingTemplateData({ standardShipping: [], expedited: [], globalExpress: [], priorityExpress: [] });
           setTitle("");
           setGlobalMinDays(0);
           setGlobalMaxDays(0);
@@ -500,8 +500,8 @@ const InternationalShipping = ({
             const openState = {
               standardShipping: (res.data.template?.shippingTemplateData?.standardShipping?.length || 0) > 0,
               expedited: (res.data.template?.shippingTemplateData?.expedited?.length || 0) > 0,
-              twoDays: (res.data.template?.shippingTemplateData?.twoDays?.length || 0) > 0,
-              oneDay: (res.data.template?.shippingTemplateData?.oneDay?.length || 0) > 0
+              globalExpress: (res.data.template?.shippingTemplateData?.globalExpress?.length || 0) > 0,
+              priorityExpress: (res.data.template?.shippingTemplateData?.priorityExpress?.length || 0) > 0
             };
             setOpenSections(openState);
           }
@@ -520,8 +520,8 @@ const InternationalShipping = ({
       setOpenSections({
         standardShipping: true,
         expedited: false,
-        twoDays: false,
-        oneDay: false,
+        globalExpress: false,
+        priorityExpress: false,
       });
     }
     getCountryList();
@@ -633,30 +633,30 @@ const InternationalShipping = ({
           <Collapse in={openSections.expedited}>{renderTable("expedited")}</Collapse>
         </Box>
 
-        {/* Two-Day Delivery */}
+        {/* Global Express Delivery */}
         <Box>
-          <Checkbox checked={openSections.twoDays} onChange={() => setOpenSections({ ...openSections, twoDays: !openSections.twoDays })} />
+          <Checkbox checked={openSections.globalExpress} onChange={() => setOpenSections({ ...openSections, globalExpress: !openSections.globalExpress })} />
           <Typography
             variant="h6"
             sx={{ display: "inline", cursor: "pointer" }}
-            onClick={() => setOpenSections({ ...openSections, twoDays: !openSections.twoDays })}
+            onClick={() => setOpenSections({ ...openSections, globalExpress: !openSections.globalExpress })}
           >
-            Two-Day Delivery
+            Global Express Delivery
           </Typography>
-          <Collapse in={openSections.twoDays}>{renderTable("twoDays")}</Collapse>
+          <Collapse in={openSections.globalExpress}>{renderTable("globalExpress")}</Collapse>
         </Box>
 
-        {/* One-Day Delivery */}
+        {/* Priority Express Delivery */}
         <Box>
-          <Checkbox checked={openSections.oneDay} onChange={() => setOpenSections({ ...openSections, oneDay: !openSections.oneDay })} />
+          <Checkbox checked={openSections.priorityExpress} onChange={() => setOpenSections({ ...openSections, priorityExpress: !openSections.priorityExpress })} />
           <Typography
             variant="h6"
             sx={{ display: "inline", cursor: "pointer" }}
-            onClick={() => setOpenSections({ ...openSections, oneDay: !openSections.oneDay })}
+            onClick={() => setOpenSections({ ...openSections, priorityExpress: !openSections.priorityExpress })}
           >
-            One-Day Delivery
+            Priority Express Delivery
           </Typography>
-          <Collapse in={openSections.oneDay}>{renderTable("oneDay")}</Collapse>
+          <Collapse in={openSections.priorityExpress}>{renderTable("priorityExpress")}</Collapse>
         </Box>
 
         <Box sx={{ textAlign: "right", marginTop: 2 }}>

@@ -29,15 +29,14 @@ const ShippingTemplates = ({ queryId }) => {
   const [shippingTemplateData, setShippingTemplateData] = useState({
     standardShipping: [],
     expedited: [],
-    twoDays: [],
-    oneDay: [],
+    globalExpress: [],
+    priorityExpress: [],
   });
-  console.log({ shippingTemplateData });
   const [openSections, setOpenSections] = useState({
     standardShipping: false,
     expedited: false,
-    twoDays: false,
-    oneDay: false
+    globalExpress: false,
+    priorityExpress: false
   });
 
   const [toggleShippingTemplate, setToggleShippingTemplate] = useState(false);
@@ -114,8 +113,8 @@ const ShippingTemplates = ({ queryId }) => {
         setOpenSections({
           standardShipping: true,
           expedited: true,
-          twoDays: true,
-          oneDay: true
+          globalExpress: true,
+          priorityExpress: true
         })
       }
     } catch (error) {
@@ -140,8 +139,8 @@ const ShippingTemplates = ({ queryId }) => {
     setOpenSections({
       standardShipping: true,
       expedited: true,
-      twoDays: true,
-      oneDay: true
+      globalExpress: true,
+      priorityExpress: true
     })
   }
 
