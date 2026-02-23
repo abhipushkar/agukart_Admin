@@ -157,5 +157,27 @@ export const ApiService = {
       toast.error(error?.response?.data?.message);
       throw error;
     }
+  },
+  patch: async (url, data, accessToken) => {
+    try {
+      const res = await axios.patch(`${BASE_URL}/${url}`, data, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json; charset=utf-8",
+          Accept: "application/json"
+        }
+      });
+      return res;
+    } catch (error) {
+      if (!error) {
+        toast.error("Somthing Went Wrong ");
+        return;
+      }
+      if (!error?.response?.data?.message) {
+        toast.error(error?.message);
+      }
+      toast.error(error?.response?.data?.message);
+      throw error;
+    }
   }
 };

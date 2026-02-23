@@ -42,6 +42,7 @@ import { attributeRoutes } from "./views/attributes/attribute_routes";
 import { productsRoutesNew } from "./views/product_new/product_routes/product_routes_new";
 import { vendorBannerImageRoutes } from "./views/vendor.banner.images/vendor_routes";
 import { urlRoutes } from "./views/Catalog/url/urlRoutes";
+import { ShippingServiceRoutes } from "./views/ShippingService/ShippingServiceRoutes";
 // DASHBOARD PAGE
 const Analytics = Loadable(lazy(() => import("app/views/dashboard/Analytics")));
 
@@ -99,6 +100,7 @@ const routes = [
             ...ReviewsRoutes,
             ...AffiliateRoutes,
             ...ShippingSettingsRoutes,
+            ...ShippingServiceRoutes,
             ...MonthlyReportsRoutes,
             ...StoreSettingroutes,
             ...PolicySettingroutes,

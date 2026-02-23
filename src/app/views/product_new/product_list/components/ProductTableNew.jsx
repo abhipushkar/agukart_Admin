@@ -260,6 +260,9 @@ const ProductRow = ({ product, index }) => {
     const hasVariations = product.productData?.length > 0;
     const isExpanded = expandedRows.has(product._id);
     const isSelected = selection.productIds.includes(product._id);
+    const activeChild = product.productData?.find(
+        child => child.productStatus === 'active'
+    );
 
     // Check if all Product Information sub-columns are hidden
     const showProductInfoColumn = !filters.hiddenColumns.includes('Product Id') ||
@@ -477,8 +480,13 @@ const ProductRow = ({ product, index }) => {
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
                                     <a
                                         href={product.type === 'variations'
-                                            ? `${REACT_APP_WEB_URL}/products/${product.productData.find(child => child.productStatus === 'active')._id}`
-                                            : `${REACT_APP_WEB_URL}/products/${product._id}`}
+                                            ? activeChild
+                                                ? `${REACT_APP_WEB_URL}/products/${activeChild._id}`
+                                                : undefined
+                                            : product.status === 'active'
+                                                ? `${REACT_APP_WEB_URL}/products/${product._id}`
+                                                : undefined
+                                        }
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         style={{
