@@ -286,6 +286,15 @@ export const navigations = [
         ]
     },
     {
+        name: "Shipping Services",
+        icon: "local_shipping",
+        path: ROUTE_CONSTANT.shippingService.list,
+        // children: [
+        //     { name: "Add", iconText: "CT", path: ROUTE_CONSTANT.shippingService.add },
+        //     { name: "List", iconText: "CT", path: ROUTE_CONSTANT.shippingService.list },
+        // ]
+    },
+    {
         name: "Message",
         icon: "message",
         path: ROUTE_CONSTANT.message,

@@ -82,6 +82,10 @@ export const ROUTE_CONSTANT = {
             edit: "/shipping/shipping-settings/edit"
         }
     },
+    shippingService: {
+        list: "/service/list",
+        add: "/service/add"
+    },
     giftCard: {
         category: {
             list: "/gift-card/category/list",

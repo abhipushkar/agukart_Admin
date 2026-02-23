@@ -1,18 +1,21 @@
 import { useState, useEffect } from 'react'
 import {
-    Box,
-    Button,
-    Typography,
     Dialog,
     DialogTitle,
     DialogContent,
     DialogActions,
-    Select,
-    MenuItem,
+    Box,
+    Typography,
     FormControl,
     FormLabel,
-    InputLabel
-} from '@mui/material';
+    InputLabel,
+    Select,
+    MenuItem,
+    Button,
+    Chip,
+    Stack,
+    CircularProgress
+} from "@mui/material";
 import { apiEndpoints } from 'app/constant/apiEndpoints';
 import { useProductStore } from '../../states/useProductStore';
 import { localStorageKey } from 'app/constant/localStorageKey';
@@ -21,11 +24,12 @@ import { ApiService } from 'app/services/ApiService';
 const ShippingTemplateDialog = ({ isOpen = false, onClose }) => {
     const { selection } = useProductStore();
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
-    const [shippingTemplates, setshippingTemplates] = useState([]);
-    const [selectedTemplate, setSelectedTemplate] = useState('')
+    const [shippingTemplates, setShippingTemplates] = useState([]);
+    const [selectedTemplate, setSelectedTemplate] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    console.log('flat', selection.flatSelectedProducts);
+    console.log(selection.flatSelectedProducts);
+
     useEffect(() => {
         const getTemplateData = async () => {
             try {
@@ -34,27 +38,28 @@ const ShippingTemplateDialog = ({ isOpen = false, onClose }) => {
                     auth_key
                 );
                 if (res.status === 200) {
-                    console.log('flat', selection.flatSelectedProducts);
                     return res.data.templates;
                 }
             } catch (error) {
                 console.error("Error fetching all templates:", error);
-                setError(error);
+                setError(error.message);
             }
         };
 
         const fetchTemplates = async () => {
             setLoading(true);
             const templates = await getTemplateData();
-            setshippingTemplates(templates || []);
+            setShippingTemplates(templates || []);
             setLoading(false);
         };
 
-        fetchTemplates();
-    }, []);
+        if (isOpen) {
+            fetchTemplates();
+        }
+    }, [isOpen, auth_key]);
 
     const handleChange = (event) => {
-        setError('')
+        setError('');
         setSelectedTemplate(event.target.value);
     };
 
@@ -63,24 +68,29 @@ const ShippingTemplateDialog = ({ isOpen = false, onClose }) => {
         setError('');
         setLoading(false);
         onClose();
-    }
+    };
 
     const handleTemplateChangeSubmit = async () => {
+        if (!selectedTemplate) {
+            setError('Please select a shipping template');
+            return;
+        }
+
         try {
             const payload = {
                 shippingTemplateId: selectedTemplate,
                 productIds: selection.flatSelectedProducts.map(product => product.id)
-            }
+            };
             setLoading(true);
             const res = await ApiService.post(`bulkChangeShippingTemplate`, payload, auth_key);
-            console.log(res);
+
             if (res.status !== 200) {
-                throw new Error(res.message);
+                throw new Error(res.data?.message || 'Failed to update shipping template');
             }
+
             handleDialogClose();
         } catch (error) {
             setError(error.message);
-            console.log(error.message);
             setLoading(false);
             setTimeout(() => {
                 setError('');
@@ -89,73 +99,111 @@ const ShippingTemplateDialog = ({ isOpen = false, onClose }) => {
     };
 
     return (
-        <>
-            <Dialog
-                open={isOpen || false}
-                onClose={handleDialogClose}
-                maxWidth="md"
-                fullWidth
-            >
-                <DialogTitle>
-                    Change Shipping Template
-                </DialogTitle>
-                <DialogContent>
-                    <Box>
-                        Selected Products :{selection.flatSelectedProducts.length}
-                        {/* <Box sx={{ pt: 1, display: 'flex', gap: 1 }}>
-                            {
-                                selection.flatSelectedProducts.map(product => (
-                                    <Typography sx={{ fontWeight: 500 }} key={product.id}>
-                                        {product.sku},
-                                    </Typography>
-                                ))
-                            }
-                        </Box> */}
-                    </Box>
+        <Dialog
+            open={isOpen}
+            onClose={handleDialogClose}
+            maxWidth="md"
+            fullWidth
+            PaperProps={{
+                sx: {
+                    borderRadius: 2,
+                    padding: 1,
 
-                    <FormControl sx={{ p: 2 }}>
-                        <FormLabel sx={{ color: 'inherit', textDecorationColor: 'none' }}>Choose Shipping Template</FormLabel>
-                        <FormControl fullWidth size="small">
-                            <InputLabel id="shipping-template-label">
-                                Shipping Template
-                            </InputLabel>
-                            <Select
-                                labelId="shipping-template-label"
-                                value={selectedTemplate}
-                                label="Shipping Template"
-                                onChange={handleChange}
-                            >
-                                {shippingTemplates.map((template) => (
-                                    <MenuItem key={template._id} value={template._id}>
-                                        {template.title}
-                                    </MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
-                    </FormControl>
-                </DialogContent>
-                <DialogActions>
-                    <Box sx={{ ml: '0px' }}>
-                        {error.length > 0 && (<Typography sx={{ color: 'red', fontWeight: '500' }}>
+                }
+            }}
+        >
+            <DialogTitle sx={{
+                borderBottom: 1,
+                borderColor: 'divider',
+                pb: 2
+            }}>
+                <Typography variant="h6" fontWeight={600}>
+                    Change Shipping Template
+                </Typography>
+            </DialogTitle>
+
+            <DialogContent sx={{ mt: 2 }}>
+                {/* Selected Products Section */}
+                <Box sx={{ mb: 3 }}>
+                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                        Selected Products ({selection.flatSelectedProducts.length})
+                    </Typography>
+                    <Box sx={{
+                        maxHeight: '200px', // Fixed max height for scroll
+                        overflowY: 'auto',
+                        bgcolor: 'background.default',
+                        p: 1.5,
+                        borderRadius: 1,
+                        border: 1,
+                        borderColor: 'divider'
+                    }}>
+                        <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                            {selection.flatSelectedProducts.map((product, index) => (
+                                <Chip
+                                    key={product.id}
+                                    label={product.sku}
+                                    size="small"
+                                    variant="outlined"
+                                    sx={{ m: 0.5 }}
+                                />
+                            ))}
+                        </Stack>
+                    </Box>
+                </Box>
+
+                {/* Shipping Template Selection */}
+                <FormControl fullWidth size="small" sx={{ mt: 2 }}>
+                    <InputLabel id="shipping-template-label">
+                        Shipping Template
+                    </InputLabel>
+                    <Select
+                        labelId="shipping-template-label"
+                        value={selectedTemplate}
+                        label="Shipping Template"
+                        onChange={handleChange}
+                        disabled={loading}
+                    >
+                        {shippingTemplates.map((template) => (
+                            <MenuItem key={template._id} value={template._id}>
+                                {template.title}
+                            </MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
+
+                {/* Error Message */}
+                {error && (
+                    <Box sx={{ mt: 2 }}>
+                        <Typography color="error" variant="body2">
                             {error}
-                        </Typography>)}
+                        </Typography>
                     </Box>
-                    <Box sx={{ ml: 'auto' }}>
-                        <Button onClick={handleDialogClose}>
-                            cancel
-                        </Button>
-                        <Button
-                            variant='contained'
-                            onClick={handleTemplateChangeSubmit}
-                        >
-                            {loading ? 'Submitting' : 'Submit'}
-                        </Button>
-                    </Box>
-                </DialogActions>
-            </Dialog>
-        </>
-    )
-}
+                )}
+            </DialogContent>
+
+            <DialogActions sx={{
+                p: 2.5,
+                gap: 1
+            }}>
+                <Button
+                    onClick={handleDialogClose}
+                    variant="outlined"
+                    disabled={loading}
+                >
+                    Cancel
+                </Button>
+                <Button
+                    variant="contained"
+                    onClick={handleTemplateChangeSubmit}
+                    disabled={loading || !selectedTemplate}
+                    startIcon={loading && <CircularProgress size={18} />}
+                >
+                    {loading ? 'Submitting...' : 'Submit'}
+                </Button>
+            </DialogActions>
+        </Dialog>
+    );
+};
 
 
 export default ShippingTemplateDialog;

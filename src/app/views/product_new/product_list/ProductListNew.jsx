@@ -141,6 +141,7 @@ const ProductListNew = () => {
     const [actionAnchorEl, setActionAnchorEl] = useState(null);
     const [confirmModal, setConfirmModal] = useState({ open: false, type: '', message: '' });
     const [shippingDialogOpen, setShippingDialogOpen] = useState(false);
+    const isVendor = localStorage.getItem(localStorageKey.designation_id) === '3' ? true : false;
 
     // Column options for hide/show
     const columnOptions = [
@@ -215,26 +216,30 @@ const ProductListNew = () => {
                 return [
                     { key: 'inactive', label: 'Inactive' },
                     { key: 'delete', label: 'Delete' },
-                    ...(localStorage.getItem(localStorageKey.designation_id) === '3' ? [{ key: 'template', label: 'Change Shipping Template' }] : [])
+                    ...(isVendor ? [{ key: 'template', label: 'Change Shipping Template' }] : [])
                 ];
             case 'inactive':
                 return [
                     { key: 'active', label: 'Active' },
-                    { key: 'delete', label: 'Delete' }
+                    { key: 'delete', label: 'Delete' },
+                    ...(isVendor ? [{ key: 'template', label: 'Change Shipping Template' }] : [])
                 ];
             case 'sold-out':
                 return [
-                    { key: 'delete', label: 'Delete' }
+                    { key: 'delete', label: 'Delete' },
+                    ...(isVendor ? [{ key: 'template', label: 'Change Shipping Template' }] : [])
                 ];
             case 'draft':
                 return [
                     { key: 'active', label: 'Active' },
-                    { key: 'delete', label: 'Delete' }
+                    { key: 'delete', label: 'Delete' },
+                    ...(isVendor ? [{ key: 'template', label: 'Change Shipping Template' }] : [])
                 ];
             case 'delete':
                 return [
                     { key: 'active', label: 'Active' },
-                    { key: 'inactive', label: 'Inactive' }
+                    { key: 'inactive', label: 'Inactive' },
+                    ...(isVendor ? [{ key: 'template', label: 'Change Shipping Template' }] : [])
                 ];
             case 'deleteByAdmin':
                 return [];
@@ -250,26 +255,30 @@ const ProductListNew = () => {
                 return [
                     { key: 'inactive', label: 'Inactive' },
                     { key: 'delete', label: 'Delete' },
-                    ...(localStorage.getItem(localStorageKey.designation_id) === '3' ? [{ key: 'template', label: 'Change Shipping Template' }] : [])
+                    ...(isVendor ? [{ key: 'template', label: 'Change Shipping Template' }] : [])
                 ];
             case 'inactive':
                 return [
                     { key: 'active', label: 'Active' },
-                    { key: 'delete', label: 'Delete' }
+                    { key: 'delete', label: 'Delete' },
+                    ...(isVendor ? [{ key: 'template', label: 'Change Shipping Template' }] : [])
                 ];
             case 'sold-out':
                 return [
-                    { key: 'delete', label: 'Delete' }
+                    { key: 'delete', label: 'Delete' },
+                    ...(isVendor ? [{ key: 'template', label: 'Change Shipping Template' }] : [])
                 ];
             case 'draft':
                 return [
                     { key: 'active', label: 'Active' },
-                    { key: 'delete', label: 'Delete' }
+                    { key: 'delete', label: 'Delete' },
+                    ...(isVendor ? [{ key: 'template', label: 'Change Shipping Template' }] : [])
                 ];
             case 'delete':
                 return [
                     { key: 'active', label: 'Active' },
-                    { key: 'inactive', label: 'Inactive' }
+                    { key: 'inactive', label: 'Inactive' },
+                    ...(isVendor ? [{ key: 'template', label: 'Change Shipping Template' }] : [])
                 ];
             case 'deleteByAdmin':
                 return [];
@@ -278,7 +287,8 @@ const ProductListNew = () => {
                     { key: 'active', label: 'Active' },
                     { key: 'inactive', label: 'Inactive' },
                     { key: 'draft', label: 'Draft' },
-                    { key: 'delete', label: 'Delete' }
+                    { key: 'delete', label: 'Delete' },
+                    ...(isVendor ? [{ key: 'template', label: 'Change Shipping Template' }] : [])
                 ];
         }
     };
@@ -289,7 +299,8 @@ const ProductListNew = () => {
             { key: 'active', label: 'Active' },
             { key: 'inactive', label: 'Inactive' },
             { key: 'draft', label: 'Draft' },
-            { key: 'delete', label: 'Delete' }
+            { key: 'delete', label: 'Delete' },
+            ...(isVendor ? [{ key: 'template', label: 'Change Shipping Template' }] : [])
         ];
 
         // Filter actions that are valid for ALL selected statuses
