@@ -3,14 +3,12 @@ import Orders from "./Orders";
 import OrderHistory from "./OrderHistory";
 import OrderSlip from "./OrderSlip";
 import RefundPage from "./RefundPage";
+// import CompleteOrder from "./CompleteOrder"; //commented out because its a dialog box now
 
 export const OrdersRoutes = [
   { name: "orders", path: ROUTE_CONSTANT.orders.orderPage, element: <Orders /> },
   { name: "orders", path: ROUTE_CONSTANT.orders.orderHistory, element: <OrderHistory /> },
   { name: "orders", path: ROUTE_CONSTANT.orders.orderSlip, element: <OrderSlip /> },
-  {
-    name: "order-refund",
-    path: ROUTE_CONSTANT.orders.orderRefund,
-    element: <RefundPage />
-  }
+  { name: "order-refund", path: ROUTE_CONSTANT.orders.orderRefund, element: <RefundPage /> },
+  // { name: "complete-order", path: ROUTE_CONSTANT.orders.completeOrder, element: <CompleteOrder /> }
 ];

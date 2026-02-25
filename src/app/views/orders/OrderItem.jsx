@@ -16,17 +16,38 @@ import { useNavigate } from 'react-router-dom';
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import Product from './Product';
 import StarIcon from "@mui/icons-material/Star";
+import CompleteOrder from './CompleteOrder';
+import { useState } from 'react';
 
 
-const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2, handleOpen, setOrderIds, anchorEl, setAnchorEl, anchorEl1, setAnchorEl1, anchorEl3, setAnchorEl3, openMenuIndex, setOpenMenuIndex, openMenuIndex1, setOpenMenuIndex1, baseUrl, orderIds, handleCloseOption, handleCloseOption1, updateOrder, onSelectAllForDate, isDateGroupFullySelected }) => {
-    console.log({ items }, "rfhrthththt");
+const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2, handleOpen, setOrderIds, anchorEl, setAnchorEl, anchorEl1, setAnchorEl1, anchorEl3, setAnchorEl3, openMenuIndex, setOpenMenuIndex, openMenuIndex1, setOpenMenuIndex1, baseUrl, orderIds, handleCloseOption, handleCloseOption1, updateOrder, onSelectAllForDate, isDateGroupFullySelected, selectedSubOrders, setSelectedSubOrders }) => {
+    console.log({ items }, tab, "rfhrthththt");
     const navigate = useNavigate();
-
+    const [open, setOpen] = useState(false);
+    const [completeOrder, setCompleteOrder] = useState([]);
     // Handle checkbox change for SUB-ORDER IDs
-    const handleCheckboxChange = (subOrderId) => {
+    const handleCheckboxChange = (subOrderId, subOrder) => {
         setOrderIds((prev) =>
             prev.includes(subOrderId) ? prev.filter((id) => id !== subOrderId) : [...prev, subOrderId]
         );
+        setSelectedSubOrders((prev) => {
+
+            const exists = prev.some(
+                order =>
+                    (order._id || order.sub_order_id) === subOrderId
+            );
+
+            if (exists) {
+                // deselect
+                return prev.filter(
+                    order =>
+                        (order._id || order.sub_order_id) !== subOrderId
+                );
+            }
+
+            // select
+            return [...prev, subOrder];
+        });
     };
 
     const handleClick = (event, subOrderId) => {
@@ -90,6 +111,16 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
         return value;
     };
 
+    const handleDialogClose = () => {
+        setOpen(false);
+        setCompleteOrder([]);
+    }
+
+    const handleCompleteOrderDialogOpen = (subOrders) => {
+        setCompleteOrder(subOrders);
+        setOpen(true);
+    }
+
     // Get all sub-orders from all sales in this date group
     const getAllSubOrders = () => {
         const subOrders = [];
@@ -120,6 +151,11 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
 
     return (
         <>
+            <CompleteOrder
+                open={open}
+                onClose={handleDialogClose}
+                subOrders={completeOrder}
+            />
             <Grid
                 container
                 width={"100%"}
@@ -200,7 +236,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                         <TableCell align="center">
                                             <Checkbox
                                                 checked={orderIds.includes(subOrderId)}
-                                                onClick={() => handleCheckboxChange(subOrderId)}
+                                                onClick={() => handleCheckboxChange(subOrderId, subOrder)}
                                             />
                                         </TableCell>
                                         <TableCell align="center" colSpan={3}>
@@ -602,8 +638,9 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                                 )}
                                                                 <MenuItem
                                                                     onClick={() => {
-                                                                        updateOrder(subOrderId, "completed");
                                                                         handleCloseOption1();
+                                                                        // navigate(`${ROUTE_CONSTANT.orders.completeOrder}?subOrder=${subOrderId}`, { state: { subOrders: [subOrder] } });
+                                                                        handleCompleteOrderDialogOpen([subOrder])
                                                                     }}
                                                                 >
                                                                     <Button
