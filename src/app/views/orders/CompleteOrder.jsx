@@ -119,7 +119,7 @@ const CompleteOrder = ({ open, onClose, subOrders }) => {
                 sub_order_id: order.sub_order_id,
                 courierName: orderData[order.sub_order_id]?.courierName || '',
                 trackingNumber: orderData[order.sub_order_id]?.trackingNumber || '',
-                trackingStatus: orderData[order.sub_order_id]?.trackingStatus || ''
+                delivery_status: orderData[order.sub_order_id]?.trackingStatus || ''
             }));
 
             const payload = { shipments };

@@ -17,7 +17,8 @@ import {
     ListItem,
     ListItemText,
     ListItemIcon,
-    Divider
+    Divider,
+    Snackbar
 } from '@mui/material';
 import {
     Close as CloseIcon,
@@ -33,6 +34,11 @@ import {
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { useDropzone } from 'react-dropzone';
+import { useNavigate } from 'react-router-dom';
+import { ROUTE_CONSTANT } from '../../constant/routeContanst';
+import { ApiService } from '../../services/ApiService';
+import { fetchAllActiveSubOrders } from './SubOrdersState';
+import { localStorageKey } from 'app/constant/localStorageKey';
 
 // Styled components
 const DropzoneArea = styled(Paper)(({ theme, isDragActive, hasError }) => ({
@@ -83,15 +89,77 @@ const ACCEPTED_FILE_TYPES = {
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 const AddBulkTracking = ({ open, onClose }) => {
+    const navigate = useNavigate();
+
     const [file, setFile] = useState(null);
+    const [parsedShipments, setParsedShipments] = useState(null);
+    const [parseError, setParseError] = useState('');
     const [uploadProgress, setUploadProgress] = useState(0);
     const [uploadStatus, setUploadStatus] = useState(null); // 'uploading', 'success', 'error'
     const [downloadTemplate, setDownloadTemplate] = useState(false);
     const [uploadHistory, setUploadHistory] = useState([]);
     const [error, setError] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [deliveryServices, setDeliveryServices] = useState([]);
+    const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+    const [fetchedSubOrdersMap, setFetchedSubOrdersMap] = useState({});
+    const [isLoadingData, setIsLoadingData] = useState(false);
+    const auth_key = localStorage.getItem(localStorageKey.auth_key);
+
+    React.useEffect(() => {
+        if (open) {
+            const loadData = async () => {
+                setIsLoadingData(true);
+                try {
+                    // Fetch delivery services
+                    const res = await ApiService.get("get-delivery-service", auth_key);
+                    if (res.status === 200) {
+                        setDeliveryServices(res?.data?.data || []);
+                    }
+                } catch (err) {
+                    console.error("Failed to fetch delivery services", err);
+                }
+
+                try {
+                    // Fetch 90 days of active sub orders
+                    const allSubOrders = await fetchAllActiveSubOrders(auth_key);
+                    let map = {};
+                    if (Array.isArray(allSubOrders)) {
+                        console.log(`[AddBulkTracking Sanity Check] Fetched ${allSubOrders.length} total sub-orders from last 90 days api.`);
+                        if (allSubOrders.length > 0) {
+                            console.log(`[AddBulkTracking Sanity Check] Sample sub-order:`, allSubOrders[0]);
+                        }
+
+                        allSubOrders.forEach((subOrder) => {
+                            const subOrderId = subOrder._id || subOrder.sub_order_id;
+                            if (subOrderId) {
+                                map[subOrderId] = subOrder.order_status || 'new';
+                            }
+                        });
+                        console.log(`[AddBulkTracking Sanity Check] validSubOrdersMap built with ${Object.keys(map).length} unique sub_order_ids.`);
+                    }
+                    setFetchedSubOrdersMap(map);
+                } catch (err) {
+                    console.error("Failed to fetch sub orders map", err);
+                }
+
+                setIsLoadingData(false);
+            };
+            loadData();
+        }
+    }, [open, auth_key]);
+
+    const allowedCouriers = React.useMemo(() => {
+        return deliveryServices.map(s => s.name);
+    }, [deliveryServices]);
 
     // Handle file drop
     const onDrop = useCallback((acceptedFiles, rejectedFiles) => {
+        if (isLoadingData) {
+            setError('Please wait until order data implies loading...');
+            return;
+        }
+
         if (rejectedFiles.length > 0) {
             const rejection = rejectedFiles[0];
             if (rejection.errors[0].code === 'file-too-large') {
@@ -107,7 +175,6 @@ const AddBulkTracking = ({ open, onClose }) => {
         if (acceptedFiles.length > 0) {
             setFile(acceptedFiles[0]);
             setError('');
-            simulateUpload(acceptedFiles[0]);
         }
     }, []);
 
@@ -146,12 +213,13 @@ const AddBulkTracking = ({ open, onClose }) => {
         }, 300);
     };
 
-    // Handle file removal
     const handleRemoveFile = () => {
         setFile(null);
         setUploadProgress(0);
         setUploadStatus(null);
         setError('');
+        setParsedShipments(null);
+        setParseError('');
     };
 
     // Handle download template
@@ -163,17 +231,90 @@ const AddBulkTracking = ({ open, onClose }) => {
     };
 
     // Handle submit
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         if (!file) {
             setError('Please upload a file first');
             return;
         }
 
-        // Implement submit logic
-        console.log('Submitting file:', file);
-        onClose();
-    };
+        setIsSubmitting(true);
+        setError('');
 
+        // 1. Process the file via Worker to get parsed shipments
+        console.log(`[AddBulkTracking Sanity Check] Passing file: ${file.name}, validSubOrdersMap size: ${Object.keys(fetchedSubOrdersMap).length}, allowedCouriers size: ${allowedCouriers.length} to Worker.`);
+        const worker = new Worker(new URL('./workers/TrackingWorker.js', import.meta.url));
+
+        worker.onmessage = async (event) => {
+            const { fatalError, shipments } = event.data;
+            console.log(`[AddBulkTracking Sanity Check] Worker returned shipments length:`, shipments?.length);
+            worker.terminate();
+
+            if (fatalError) {
+                setError(`Parse Error: ${fatalError}`);
+                setIsSubmitting(false);
+                return;
+            }
+
+            if (!shipments || shipments.length === 0) {
+                setError('No valid shipments found in the file based on current active orders.');
+                setIsSubmitting(false);
+                return;
+            }
+
+            // 2. Map shipments to payload structure requested by USER
+            try {
+                const payloadShipments = shipments.map(item => ({
+                    sub_order_id: item.sub_order_id,
+                    courierName: item.courierName || '',
+                    trackingNumber: item.trackingNumber || '',
+                    delivery_status: item.trackingStatus || ''
+                }));
+
+                const payload = { shipments: payloadShipments };
+
+                // 3. Make API call
+                const res = await ApiService.post('complete-order', payload, auth_key);
+
+                setSnackbar({
+                    open: true,
+                    message: 'Orders completed successfully',
+                    severity: 'success'
+                });
+
+                if (file) {
+                    try {
+                        const db = await new Promise((resolve, reject) => {
+                            const req = indexedDB.open('TrackingUploadDB', 1);
+                            req.onupgradeneeded = (e) => e.target.result.createObjectStore('uploads');
+                            req.onsuccess = (e) => resolve(e.target.result);
+                            req.onerror = (e) => reject(e.target.error);
+                        });
+                        await new Promise((resolve, reject) => {
+                            const tx = db.transaction('uploads', 'readwrite');
+                            tx.objectStore('uploads').put({ file, validSubOrdersMap: fetchedSubOrdersMap, allowedCouriers }, 'currentUpload');
+                            tx.oncomplete = () => resolve();
+                            tx.onerror = (e) => reject(e.target.error);
+                        });
+                    } catch (e) {
+                        console.error("Failed to save to DB", e);
+                    }
+                }
+
+                // Close dialog after success
+                setTimeout(() => {
+                    onClose();
+                    window.location.reload();
+                    window.open(ROUTE_CONSTANT.orders.trackingUploadStatus, '_blank');
+                }, 1000);
+            } catch (err) {
+                console.error("Failed to complete order API", err);
+                setError(err.response?.data?.message || err.message || 'API request failed.');
+                setIsSubmitting(false);
+            }
+        };
+
+        worker.postMessage({ file, validSubOrdersMap: fetchedSubOrdersMap, allowedCouriers });
+    };
     // Format file size
     const formatFileSize = (bytes) => {
         if (bytes === 0) return '0 Bytes';
@@ -181,6 +322,10 @@ const AddBulkTracking = ({ open, onClose }) => {
         const sizes = ['Bytes', 'KB', 'MB', 'GB'];
         const i = Math.floor(Math.log(bytes) / Math.log(k));
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    };
+
+    const handleCloseSnackbar = () => {
+        setSnackbar(prev => ({ ...prev, open: false }));
     };
 
     return (
@@ -254,25 +399,6 @@ const AddBulkTracking = ({ open, onClose }) => {
                                         {formatFileSize(file.size)}
                                     </Typography>
                                 </Box>
-
-                                {uploadStatus === 'uploading' && (
-                                    <Box sx={{ width: 100 }}>
-                                        <LinearProgress variant="determinate" value={uploadProgress} />
-                                        <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-                                            {uploadProgress}%
-                                        </Typography>
-                                    </Box>
-                                )}
-
-                                {uploadStatus === 'success' && (
-                                    <Chip
-                                        icon={<CheckCircleIcon />}
-                                        label="Uploaded"
-                                        color="success"
-                                        size="small"
-                                    />
-                                )}
-
                                 <IconButton size="small" onClick={handleRemoveFile} sx={{ ml: 1 }}>
                                     <CloseIcon fontSize="small" />
                                 </IconButton>
@@ -310,7 +436,28 @@ const AddBulkTracking = ({ open, onClose }) => {
                                 variant="outlined"
                                 size="medium"
                                 startIcon={<OpenInNewIcon />}
-                                onClick={() => { }} // Leave blank for now
+                                onClick={async () => {
+                                    if (file) {
+                                        try {
+                                            const db = await new Promise((resolve, reject) => {
+                                                const req = indexedDB.open('TrackingUploadDB', 1);
+                                                req.onupgradeneeded = (e) => e.target.result.createObjectStore('uploads');
+                                                req.onsuccess = (e) => resolve(e.target.result);
+                                                req.onerror = (e) => reject(e.target.error);
+                                            });
+                                            await new Promise((resolve, reject) => {
+                                                const tx = db.transaction('uploads', 'readwrite');
+                                                tx.objectStore('uploads').put({ file, validSubOrdersMap: fetchedSubOrdersMap, allowedCouriers }, 'currentUpload');
+                                                tx.oncomplete = () => resolve();
+                                                tx.onerror = (e) => reject(e.target.error);
+                                            });
+                                        } catch (e) {
+                                            console.error("Failed to save to DB", e);
+                                        }
+                                    }
+                                    onClose();
+                                    window.open(ROUTE_CONSTANT.orders.trackingUploadStatus, '_blank');
+                                }}
                                 sx={{
                                     textTransform: 'none',
                                     borderColor: 'divider',
@@ -405,13 +552,25 @@ const AddBulkTracking = ({ open, onClose }) => {
                 <Button
                     variant="contained"
                     onClick={handleSubmit}
-                    disabled={!file || uploadStatus === 'uploading'}
-                    startIcon={<CloudUploadIcon />}
+                    disabled={!file || isSubmitting || isLoadingData}
+                    startIcon={isSubmitting || isLoadingData ? <LinearProgress sx={{ width: 20 }} /> : <CloudUploadIcon />}
                     sx={{ minWidth: 150 }}
                 >
-                    Submit products
+                    {isLoadingData ? 'Loading data...' : isSubmitting ? 'Submitting...' : 'Submit products'}
                 </Button>
             </DialogActions>
+
+            {/* Snackbar for notifications */}
+            <Snackbar
+                open={snackbar.open}
+                autoHideDuration={3000}
+                onClose={handleCloseSnackbar}
+                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+            >
+                <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
+                    {snackbar.message}
+                </Alert>
+            </Snackbar>
         </Dialog>
     );
 };
