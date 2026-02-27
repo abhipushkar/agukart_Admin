@@ -16,17 +16,39 @@ import { useNavigate } from 'react-router-dom';
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import Product from './Product';
 import StarIcon from "@mui/icons-material/Star";
+import CompleteOrder from './CompleteOrder';
+import { useState } from 'react';
 
 
-const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2, handleOpen, setOrderIds, anchorEl, setAnchorEl, anchorEl1, setAnchorEl1, anchorEl3, setAnchorEl3, openMenuIndex, setOpenMenuIndex, openMenuIndex1, setOpenMenuIndex1, baseUrl, orderIds, handleCloseOption, handleCloseOption1, updateOrder, onSelectAllForDate, isDateGroupFullySelected }) => {
-    console.log({ items }, "rfhrthththt");
+const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2, handleOpen, setOrderIds, anchorEl, setAnchorEl, anchorEl1, setAnchorEl1, anchorEl3, setAnchorEl3, openMenuIndex, setOpenMenuIndex, openMenuIndex1, setOpenMenuIndex1, baseUrl, orderIds, handleCloseOption, handleCloseOption1, updateOrder, onSelectAllForDate, isDateGroupFullySelected, selectedSubOrders, setSelectedSubOrders }) => {
+
     const navigate = useNavigate();
-
+    const [open, setOpen] = useState(false);
+    const [completeOrder, setCompleteOrder] = useState([]);
     // Handle checkbox change for SUB-ORDER IDs
-    const handleCheckboxChange = (subOrderId) => {
+    const handleCheckboxChange = (subOrderId, subOrder) => {
+        console.log(subOrder, "here is my sub order");
         setOrderIds((prev) =>
             prev.includes(subOrderId) ? prev.filter((id) => id !== subOrderId) : [...prev, subOrderId]
         );
+        setSelectedSubOrders((prev) => {
+
+            const exists = prev.some(
+                order =>
+                    (order._id || order.sub_order_id) === subOrderId
+            );
+
+            if (exists) {
+                // deselect
+                return prev.filter(
+                    order =>
+                        (order._id || order.sub_order_id) !== subOrderId
+                );
+            }
+
+            // select
+            return [...prev, subOrder];
+        });
     };
 
     const handleClick = (event, subOrderId) => {
@@ -90,6 +112,16 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
         return value;
     };
 
+    const handleDialogClose = () => {
+        setOpen(false);
+        setCompleteOrder([]);
+    }
+
+    const handleCompleteOrderDialogOpen = (subOrders) => {
+        setCompleteOrder(subOrders);
+        setOpen(true);
+    }
+
     // Get all sub-orders from all sales in this date group
     const getAllSubOrders = () => {
         const subOrders = [];
@@ -120,6 +152,11 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
 
     return (
         <>
+            <CompleteOrder
+                open={open}
+                onClose={handleDialogClose}
+                subOrders={completeOrder}
+            />
             <Grid
                 container
                 width={"100%"}
@@ -200,7 +237,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                         <TableCell align="center">
                                             <Checkbox
                                                 checked={orderIds.includes(subOrderId)}
-                                                onClick={() => handleCheckboxChange(subOrderId)}
+                                                onClick={() => handleCheckboxChange(subOrderId, subOrder)}
                                             />
                                         </TableCell>
                                         <TableCell align="center" colSpan={3}>
@@ -367,7 +404,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                         navigate(`${ROUTE_CONSTANT.orders.orderHistory}?sales_id=${parentSale?._id}&sub_order_id=${subOrderId}`);
                                                     }}
                                                 >
-                                                    Reciept Id: {subOrderId?.slice(-8) || "N/A"}
+                                                    Reciept Id: {subOrderId || "N/A"}
                                                 </Typography>
 
                                                 <Typography
@@ -427,44 +464,58 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                 </Typography>
                                                 <Typography>Order {formatDate(parentSale?.createdAt)}</Typography>
                                                 {tab === "completed" && (
-                                                    <Box
-                                                        my={2}
-                                                        sx={{
-                                                            background: "#ededed",
-                                                            padding: "12px 12px",
-                                                            border: "2px solid #000",
-                                                            maxWidth: { xs: "100%", md: "250px" }
-                                                        }}
-                                                    >
-                                                        <Typography
-                                                            component="div"
-                                                            display={"flex"}
-                                                            alignItems={"center"}
-                                                        >
-                                                            <img
-                                                                src="https://i.etsystatic.com/11486790/r/il/09528c/2809353368/il_340x270.2809353368_l0rq.jpg"
-                                                                alt=""
-                                                                style={{
-                                                                    height: "20px",
-                                                                    width: "20px",
-                                                                    objectFit: "contain",
-                                                                    aspectRatio: "1/1"
+                                                    subOrder.items[0]?.shipments?.map((shipment) => {
+                                                        return (
+                                                            <Box
+                                                                key={shipment._id}
+                                                                my={1.5}
+                                                                sx={{
+                                                                    background: "#ededed",
+                                                                    padding: "6px 16px",
+                                                                    border: "2px solid #000",
+                                                                    maxWidth: { xs: "100%", md: "250px" }
                                                                 }}
-                                                            />
-                                                            <Typography component="span" ml={1}>
-                                                                <Link
-                                                                    href="#"
-                                                                    style={{
-                                                                        textDecoration: "underline",
-                                                                        color: "#000"
-                                                                    }}
+                                                            >
+                                                                <Typography
+                                                                    component="div"
+                                                                    display={"flex"}
+                                                                    alignItems={"center"}
                                                                 >
-                                                                    4944646465456465465
-                                                                </Link>
-                                                            </Typography>
-                                                        </Typography>
-                                                        <Typography>Shipped on Jul 24</Typography>
-                                                    </Box>
+                                                                    <img
+                                                                        src={`https://api.agukart.com/uploads/delivery/${shipment.service.logo}`}
+                                                                        alt=""
+                                                                        style={{
+                                                                            height: "20px",
+                                                                            width: "20px",
+                                                                            objectFit: "contain",
+                                                                            aspectRatio: "1/1"
+                                                                        }}
+                                                                    />
+                                                                    <Typography component="span" ml={1}
+                                                                        display={"flex"}
+                                                                        alignItems={"center"}>
+                                                                        <Typography mr={1}>
+                                                                            ({shipment.courierName})
+                                                                        </Typography>
+                                                                        <Link
+                                                                            href={
+                                                                                shipment.service.supportDirectTracking
+                                                                                    ? shipment.service.tracking_url.replace('{tracking_id}', shipment.trackingNumber)
+                                                                                    : shipment.service.tracking_url
+                                                                            }
+                                                                            style={{
+                                                                                textDecoration: "underline",
+                                                                                color: "#000"
+                                                                            }}
+                                                                        >
+                                                                            {shipment.trackingNumber}
+                                                                        </Link>
+                                                                    </Typography>
+                                                                </Typography>
+                                                                <Typography>Shipped on {new Date(shipment.shipped_date).toLocaleDateString('en-GB')}</Typography>
+                                                            </Box>
+                                                        );
+                                                    })
                                                 )}
 
                                                 <Typography component="div" textAlign={"start"}>
@@ -602,8 +653,9 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                                 )}
                                                                 <MenuItem
                                                                     onClick={() => {
-                                                                        updateOrder(subOrderId, "completed");
                                                                         handleCloseOption1();
+                                                                        // navigate(`${ROUTE_CONSTANT.orders.completeOrder}?subOrder=${subOrderId}`, { state: { subOrders: [subOrder] } });
+                                                                        handleCompleteOrderDialogOpen([subOrder])
                                                                     }}
                                                                 >
                                                                     <Button

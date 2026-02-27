@@ -30,7 +30,9 @@ import CloseIcon from "@mui/icons-material/Close";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import Dialog from "@mui/material/Dialog";
 import OrderItem from "./OrderItem";
+import CompleteOrder from "./CompleteOrder";
 import { REACT_APP_WEB_URL } from "config";
+import AddBulkTracking from "./AddBulkTracking";
 
 const Search = styled("span")(({ theme }) => ({
   position: "relative",
@@ -79,6 +81,9 @@ const Orders = () => {
   const [stock, setStock] = useState(0);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+  const [selectedSubOrders, setSelectedSubOrders] = useState([]);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [openBulkTracking, setOpenBulkTracking] = useState(false);
 
   // Use React Router's search params
   const [searchParams, setSearchParams] = useSearchParams();
@@ -110,12 +115,19 @@ const Orders = () => {
 
     // Get all SUB-ORDER IDs for this date group
     const allSubOrderIds = [];
+    const allSubOrders = [];
     dateGroupOrders.sales.forEach(sale => {
       if (sale?.saleDetaildata?.length) {
         sale.saleDetaildata.forEach(subOrder => {
           const subOrderId = subOrder._id || subOrder.sub_order_id;
           if (subOrderId) {
             allSubOrderIds.push(subOrderId);
+            allSubOrders.push({
+              ...subOrder,
+              parentSale: sale,
+              order_id: sale.order_id,
+              sale_id: sale._id,
+            });
           }
         });
       }
@@ -127,6 +139,14 @@ const Orders = () => {
     if (allSelected) {
       // Deselect all sub-orders in this date group
       setOrderIds(prev => prev.filter(id => !allSubOrderIds.includes(id)));
+      setSelectedSubOrders(prev =>
+        prev.filter(
+          order =>
+            !allSubOrderIds.includes(
+              order._id || order.sub_order_id
+            )
+        )
+      );
     } else {
       // Select all sub-orders in this date group
       setOrderIds(prev => {
@@ -137,6 +157,23 @@ const Orders = () => {
           }
         });
         return newIds;
+      });
+      setSelectedSubOrders(prev => {
+        const newSelected = [...prev];
+
+        allSubOrders.forEach(order => {
+          const id = order._id || order.sub_order_id;
+
+          const exists = newSelected.some(
+            o => (o._id || o.sub_order_id) === id
+          );
+
+          if (!exists) {
+            newSelected.push(order);
+          }
+        });
+
+        return newSelected;
       });
     }
   };
@@ -221,6 +258,11 @@ const Orders = () => {
   const handleClick2 = (event) => {
     setAnchorEl2(event.currentTarget);
   };
+
+  const handleDialogClose = () => {
+    setOpenDialog(false);
+  }
+
 
   console.log({ orders });
   console.log({ date });
@@ -329,6 +371,7 @@ const Orders = () => {
     if (!isAllChecked) {
       // Get all SUB-ORDER IDs from all sales
       const allSubOrderIds = [];
+      const allSubOrders = [];
       orders?.forEach((dateGroup) => {
         dateGroup?.sales?.forEach((sale) => {
           if (sale?.saleDetaildata?.length) {
@@ -336,14 +379,22 @@ const Orders = () => {
               const subOrderId = subOrder._id || subOrder.sub_order_id;
               if (subOrderId) {
                 allSubOrderIds.push(subOrderId);
+                allSubOrders.push({
+                  ...subOrder,
+                  parentSale: sale,
+                  order_id: sale.order_id,
+                  sale_id: sale._id,
+                });
               }
             });
           }
         });
       });
       setOrderIds(allSubOrderIds);
+      setSelectedSubOrders(allSubOrders);
     } else {
       setOrderIds([]);
+      setSelectedSubOrders([]);
     }
   };
 
@@ -388,9 +439,25 @@ const Orders = () => {
     }
   };
 
-  console.log(orders, "hhlsoolgllfl");
+  const handleBulkTracking = () => {
+    setOpenBulkTracking(true);
+  };
+
+  const handleBulkTrackingClose = () => {
+    setOpenBulkTracking(false);
+  };
+
   return (
     <>
+      <AddBulkTracking
+        open={openBulkTracking}
+        onClose={handleBulkTrackingClose}
+      />
+      <CompleteOrder
+        open={openDialog}
+        onClose={handleDialogClose}
+        subOrders={selectedSubOrders}
+      />
       <Box sx={{ padding: "30px", background: "#fff" }}>
         <Grid container width={"100%"} m={0} spacing={2} alignItems={"center"}>
           <Grid lg={6} md={6} xs={6}>
@@ -400,41 +467,9 @@ const Orders = () => {
           </Grid>
           <Grid lg={6} md={6} xs={6}>
             <Box sx={{ display: "flex", alignItems: "centre", justifyContent: "end" }}>
-              <Search>
-                <InputBase
-                  placeholder="Search all orders..."
-                  inputProps={{ "aria-label": "search" }}
-                  value={search}
-                  onChange={(e) => { setSearch(e.target.value) }}
-                  sx={{
-                    paddingLeft: "15px",
-                    height: "35px",
-                    border: "none",
-                    "& input": {
-                      height: "35px"
-                    }
-                  }}
-                />
-              </Search>
-              <Typography component="span">
-                <Button
-                  variant="contained"
-                  sx={{
-                    whiteSpace: "nowrap",
-                    borderRadius: "0 4px 4px 0",
-                    background: "#000",
-                    color: "#fff",
-                    height: "35px",
-                    "&:hover": {
-                      background: "#363636"
-                    }
-                  }}
-                  onClick={getOrderList}
-                >
-                  {" "}
-                  <SearchIcon />
-                </Button>
-              </Typography>
+              <Button variant="contained" onClick={handleBulkTracking}>
+                Add Bulk Tracking
+              </Button>
             </Box>
           </Grid>
         </Grid>
@@ -443,30 +478,70 @@ const Orders = () => {
             <Box>
               <TabContext value={tab}>
                 <Box>
-                  <TabList
-                    onChange={handleTabChange}
-                    aria-label="lab API tabs example"
-                    variant="scrollable"
-                    scrollButtons="auto"
-                  >
-                    <Tab label={`Pending ${tab === "pending" ? orderLength : ""}`} value="pending" />
-                    <Tab
-                      label={`Unshipped ${tab === "unshipped" ? orderLength : ""}`}
-                      value="unshipped"
-                    />
-                    <Tab
-                      label={`In Progress ${tab === "in-progress" ? orderLength : ""}`}
-                      value="in-progress"
-                    />
-                    <Tab
-                      label={`Completed ${tab === "completed" ? orderLength : ""}`}
-                      value="completed"
-                    />
-                    <Tab
-                      label={`Hold for Cancel ${tab === "cancelled" ? orderLength : ""}`}
-                      value="cancelled"
-                    />
-                  </TabList>
+                  <Box display={"flex"} justifyContent={"space-between"} alignItems={"center"}>
+                    <TabList
+                      onChange={handleTabChange}
+                      aria-label="lab API tabs example"
+                      variant="scrollable"
+                      scrollButtons="auto"
+                    >
+                      <Tab label={`Pending ${tab === "pending" ? orderLength : ""}`} value="pending" />
+                      <Tab
+                        label={`Unshipped ${tab === "unshipped" ? orderLength : ""}`}
+                        value="unshipped"
+                      />
+                      <Tab
+                        label={`In Progress ${tab === "in-progress" ? orderLength : ""}`}
+                        value="in-progress"
+                      />
+                      <Tab
+                        label={`Completed ${tab === "completed" ? orderLength : ""}`}
+                        value="completed"
+                      />
+                      <Tab
+                        label={`Hold for Cancel ${tab === "cancelled" ? orderLength : ""}`}
+                        value="cancelled"
+                      />
+                    </TabList>
+                    <Box sx={{ display: "flex", alignItems: "centre", justifyContent: "end" }}>
+                      <Search>
+                        <InputBase
+                          placeholder="Search all orders..."
+                          inputProps={{ "aria-label": "search" }}
+                          value={search}
+                          onChange={(e) => { setSearch(e.target.value) }}
+                          sx={{
+                            paddingLeft: "15px",
+                            height: "35px",
+                            border: "none",
+                            "& input": {
+                              height: "35px"
+                            }
+                          }}
+                        />
+                      </Search>
+                      <Typography component="span">
+                        <Button
+                          variant="contained"
+                          sx={{
+                            whiteSpace: "nowrap",
+                            borderRadius: "0 4px 4px 0",
+                            background: "#000",
+                            color: "#fff",
+                            height: "35px",
+                            "&:hover": {
+                              background: "#363636"
+                            }
+                          }}
+                          onClick={getOrderList}
+                        >
+                          {" "}
+                          <SearchIcon />
+                        </Button>
+                      </Typography>
+                    </Box>
+                  </Box>
+
                 </Box>
                 <TabPanel value={tab} sx={{ padding: "24px 0" }}>
                   <Box>
@@ -652,9 +727,11 @@ const Orders = () => {
                                       )}
                                       {(tab === "in-progress" || tab === "unshipped" || tab === "cancelled") && (
                                         <MenuItem
+                                          disabled={orderIds.length === 0}
                                           onClick={() => {
-                                            updateOrder("action", "completed");
                                             setAnchorEl2(null);
+                                            // navigate(`${ROUTE_CONSTANT.orders.completeOrder}`, { state: { subOrders: selectedSubOrders } });
+                                            setOpenDialog(true);
                                           }}
                                         >
                                           Complete Order
@@ -806,6 +883,8 @@ const Orders = () => {
                                 // Pass the select all handler to OrderItem
                                 onSelectAllForDate={handleSelectAllForDate}
                                 isDateGroupFullySelected={isDateGroupFullySelected}
+                                selectedSubOrders={selectedSubOrders}
+                                setSelectedSubOrders={setSelectedSubOrders}
                               />
                             ))
                           ) : (
