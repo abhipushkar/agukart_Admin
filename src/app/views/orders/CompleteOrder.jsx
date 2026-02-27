@@ -23,7 +23,6 @@ import { ApiService } from "app/services/ApiService";
 import { localStorageKey } from 'app/constant/localStorageKey';
 
 const CompleteOrder = ({ open, onClose, subOrders }) => {
-    console.log({ subOrders });
 
     const [deliveryServices, setDeliveryServices] = useState([]);
     const [trackingStatuses] = useState([

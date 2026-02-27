@@ -37,8 +37,9 @@ import { useDropzone } from 'react-dropzone';
 import { useNavigate } from 'react-router-dom';
 import { ROUTE_CONSTANT } from '../../constant/routeContanst';
 import { ApiService } from '../../services/ApiService';
-import { fetchAllActiveSubOrders } from './SubOrdersState';
+import { fetchAllActiveSubOrders } from './useOrderStore';
 import { localStorageKey } from 'app/constant/localStorageKey';
+import { useBulkTrackingStore } from "./useBulkTrackingStore";
 
 // Styled components
 const DropzoneArea = styled(Paper)(({ theme, isDragActive, hasError }) => ({
@@ -90,6 +91,7 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 const AddBulkTracking = ({ open, onClose }) => {
     const navigate = useNavigate();
+    const addUpload = useBulkTrackingStore(state => state.addUpload);
 
     const [file, setFile] = useState(null);
     const [parsedShipments, setParsedShipments] = useState(null);
@@ -122,13 +124,9 @@ const AddBulkTracking = ({ open, onClose }) => {
 
                 try {
                     // Fetch 90 days of active sub orders
-                    const allSubOrders = await fetchAllActiveSubOrders(auth_key);
+                    const allSubOrders = await fetchAllActiveSubOrders();
                     let map = {};
                     if (Array.isArray(allSubOrders)) {
-                        console.log(`[AddBulkTracking Sanity Check] Fetched ${allSubOrders.length} total sub-orders from last 90 days api.`);
-                        if (allSubOrders.length > 0) {
-                            console.log(`[AddBulkTracking Sanity Check] Sample sub-order:`, allSubOrders[0]);
-                        }
 
                         allSubOrders.forEach((subOrder) => {
                             const subOrderId = subOrder._id || subOrder.sub_order_id;
@@ -136,7 +134,6 @@ const AddBulkTracking = ({ open, onClose }) => {
                                 map[subOrderId] = subOrder.order_status || 'new';
                             }
                         });
-                        console.log(`[AddBulkTracking Sanity Check] validSubOrdersMap built with ${Object.keys(map).length} unique sub_order_ids.`);
                     }
                     setFetchedSubOrdersMap(map);
                 } catch (err) {
@@ -185,34 +182,6 @@ const AddBulkTracking = ({ open, onClose }) => {
         multiple: false
     });
 
-    // Simulate file upload (replace with actual API call)
-    const simulateUpload = (file) => {
-        setUploadStatus('uploading');
-        setUploadProgress(0);
-
-        const interval = setInterval(() => {
-            setUploadProgress((prev) => {
-                if (prev >= 100) {
-                    clearInterval(interval);
-                    setUploadStatus('success');
-
-                    // Add to upload history
-                    setUploadHistory(prev => [{
-                        id: Date.now(),
-                        fileName: file.name,
-                        fileSize: file.size,
-                        timestamp: new Date().toISOString(),
-                        status: 'success',
-                        records: Math.floor(Math.random() * 100) + 50 // Simulated record count
-                    }, ...prev].slice(0, 5));
-
-                    return 100;
-                }
-                return prev + 10;
-            });
-        }, 300);
-    };
-
     const handleRemoveFile = () => {
         setFile(null);
         setUploadProgress(0);
@@ -225,7 +194,6 @@ const AddBulkTracking = ({ open, onClose }) => {
     // Handle download template
     const handleDownloadTemplate = () => {
         // Implement template download logic
-        console.log('Downloading template...');
         setDownloadTemplate(true);
         setTimeout(() => setDownloadTemplate(false), 2000);
     };
@@ -241,12 +209,10 @@ const AddBulkTracking = ({ open, onClose }) => {
         setError('');
 
         // 1. Process the file via Worker to get parsed shipments
-        console.log(`[AddBulkTracking Sanity Check] Passing file: ${file.name}, validSubOrdersMap size: ${Object.keys(fetchedSubOrdersMap).length}, allowedCouriers size: ${allowedCouriers.length} to Worker.`);
         const worker = new Worker(new URL('./workers/TrackingWorker.js', import.meta.url));
 
         worker.onmessage = async (event) => {
-            const { fatalError, shipments } = event.data;
-            console.log(`[AddBulkTracking Sanity Check] Worker returned shipments length:`, shipments?.length);
+            const { fatalError, shipments, totalRows, validCount, invalidCount, invalidRows, originalRows } = event.data;
             worker.terminate();
 
             if (fatalError) {
@@ -282,29 +248,23 @@ const AddBulkTracking = ({ open, onClose }) => {
                 });
 
                 if (file) {
-                    try {
-                        const db = await new Promise((resolve, reject) => {
-                            const req = indexedDB.open('TrackingUploadDB', 1);
-                            req.onupgradeneeded = (e) => e.target.result.createObjectStore('uploads');
-                            req.onsuccess = (e) => resolve(e.target.result);
-                            req.onerror = (e) => reject(e.target.error);
-                        });
-                        await new Promise((resolve, reject) => {
-                            const tx = db.transaction('uploads', 'readwrite');
-                            tx.objectStore('uploads').put({ file, validSubOrdersMap: fetchedSubOrdersMap, allowedCouriers }, 'currentUpload');
-                            tx.oncomplete = () => resolve();
-                            tx.onerror = (e) => reject(e.target.error);
-                        });
-                    } catch (e) {
-                        console.error("Failed to save to DB", e);
-                    }
+                    const uploadRecord = {
+                        id: Date.now(),
+                        fileName: file.name,
+                        totalRows,
+                        validCount,
+                        invalidCount,
+                        invalidRows,
+                        originalRows,
+                        createdAt: new Date().toISOString()
+                    };
+                    addUpload(uploadRecord);
                 }
 
                 // Close dialog after success
                 setTimeout(() => {
                     onClose();
-                    window.location.reload();
-                    window.open(ROUTE_CONSTANT.orders.trackingUploadStatus, '_blank');
+                    navigate(ROUTE_CONSTANT.orders.trackingUploadStatus);
                 }, 1000);
             } catch (err) {
                 console.error("Failed to complete order API", err);
@@ -436,27 +396,9 @@ const AddBulkTracking = ({ open, onClose }) => {
                                 variant="outlined"
                                 size="medium"
                                 startIcon={<OpenInNewIcon />}
-                                onClick={async () => {
-                                    if (file) {
-                                        try {
-                                            const db = await new Promise((resolve, reject) => {
-                                                const req = indexedDB.open('TrackingUploadDB', 1);
-                                                req.onupgradeneeded = (e) => e.target.result.createObjectStore('uploads');
-                                                req.onsuccess = (e) => resolve(e.target.result);
-                                                req.onerror = (e) => reject(e.target.error);
-                                            });
-                                            await new Promise((resolve, reject) => {
-                                                const tx = db.transaction('uploads', 'readwrite');
-                                                tx.objectStore('uploads').put({ file, validSubOrdersMap: fetchedSubOrdersMap, allowedCouriers }, 'currentUpload');
-                                                tx.oncomplete = () => resolve();
-                                                tx.onerror = (e) => reject(e.target.error);
-                                            });
-                                        } catch (e) {
-                                            console.error("Failed to save to DB", e);
-                                        }
-                                    }
+                                onClick={() => {
                                     onClose();
-                                    window.open(ROUTE_CONSTANT.orders.trackingUploadStatus, '_blank');
+                                    navigate(ROUTE_CONSTANT.orders.trackingUploadStatus);
                                 }}
                                 sx={{
                                     textTransform: 'none',
@@ -528,6 +470,9 @@ const AddBulkTracking = ({ open, onClose }) => {
 
                     {/* Info Banner */}
                     <Alert severity="info" icon={<InfoIcon />}>
+                        <Typography variant="body2" fontWeight={500}>
+                            Note:- Orders older than 90 days will be rejected!
+                        </Typography>
                         <Typography variant="body2">
                             Make sure your file follows the template format. The tracking numbers will be
                             automatically matched with orders using order IDs or receipt numbers.
@@ -553,7 +498,7 @@ const AddBulkTracking = ({ open, onClose }) => {
                     variant="contained"
                     onClick={handleSubmit}
                     disabled={!file || isSubmitting || isLoadingData}
-                    startIcon={isSubmitting || isLoadingData ? <LinearProgress sx={{ width: 20 }} /> : <CloudUploadIcon />}
+                    startIcon={isSubmitting ? <LinearProgress sx={{ width: 20 }} /> : <CloudUploadIcon />}
                     sx={{ minWidth: 150 }}
                 >
                     {isLoadingData ? 'Loading data...' : isSubmitting ? 'Submitting...' : 'Submit products'}

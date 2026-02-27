@@ -23,10 +23,6 @@ const normalize = (val) => String(val || "").trim();
 self.onmessage = async (event) => {
     const { file, validSubOrdersMap, allowedCouriers } = event.data;
 
-    console.log(`[Worker Sanity Check] Started parsing Excel file.`);
-    console.log(`[Worker Sanity Check] Number of validSubOrders allowed: ${validSubOrdersMap ? Object.keys(validSubOrdersMap).length : 'None'}`);
-    console.log(`[Worker Sanity Check] Allowed Couriers:`, allowedCouriers);
-
     try {
         const buffer = await file.arrayBuffer();
 
@@ -38,7 +34,6 @@ self.onmessage = async (event) => {
             defval: ""
         });
 
-        console.log(`[Worker Sanity Check] Parsed ${rows.length} rows from Excel sheet.`);
 
         if (!rows.length) {
             self.postMessage({ fatalError: "Empty Excel file" });
@@ -71,8 +66,7 @@ self.onmessage = async (event) => {
         let ignoredNotInSystemCount = 0;
         const uniqueMap = new Map();
 
-        console.log("[Worker Sanity Check] Checking each row...");
-
+        // check each row of excel
         const validOrdersMap = validSubOrdersMap && typeof validSubOrdersMap === 'object'
             ? validSubOrdersMap
             : null;
@@ -88,12 +82,9 @@ self.onmessage = async (event) => {
             const trackingNumber = normalize(row.trackingNumber);
             const trackingStatus = normalize(row.trackingStatus || row.delivery_status);
 
-            console.log(`[Worker Row Check] Row ${rowNumber}: sub_order_id="${sub_order_id}", courierName="${courierName}", trackingNumber="${trackingNumber}", trackingStatus="${trackingStatus}"`);
 
-            // Verify that this sub_order_id exists in the frontend valid set
             if (validOrdersMap && !(sub_order_id in validOrdersMap)) {
-                // Ignoring if not present in frontend state as requested
-                ignoredNotInSystemCount++;
+                invalid.push({ row: rowNumber, reason: "Not found/90 days old", id: sub_order_id });
                 return;
             }
 
@@ -105,7 +96,7 @@ self.onmessage = async (event) => {
                 return;
             }
 
-            if (!sub_order_id || !courierName || !trackingNumber || !trackingStatus) {
+            if (!sub_order_id || !courierName) {
                 invalid.push({ row: rowNumber, reason: "Missing required field", id: sub_order_id });
                 return;
             }
@@ -147,7 +138,8 @@ self.onmessage = async (event) => {
             validCount: validShipments.length,
             invalidCount: invalid.length,
             invalidRows: invalid,
-            shipments: validShipments
+            shipments: validShipments,
+            originalRows: rows
         });
 
     } catch (error) {

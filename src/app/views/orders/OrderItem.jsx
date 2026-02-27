@@ -21,12 +21,13 @@ import { useState } from 'react';
 
 
 const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2, handleOpen, setOrderIds, anchorEl, setAnchorEl, anchorEl1, setAnchorEl1, anchorEl3, setAnchorEl3, openMenuIndex, setOpenMenuIndex, openMenuIndex1, setOpenMenuIndex1, baseUrl, orderIds, handleCloseOption, handleCloseOption1, updateOrder, onSelectAllForDate, isDateGroupFullySelected, selectedSubOrders, setSelectedSubOrders }) => {
-    console.log({ items }, tab, "rfhrthththt");
+
     const navigate = useNavigate();
     const [open, setOpen] = useState(false);
     const [completeOrder, setCompleteOrder] = useState([]);
     // Handle checkbox change for SUB-ORDER IDs
     const handleCheckboxChange = (subOrderId, subOrder) => {
+        console.log(subOrder, "here is my sub order");
         setOrderIds((prev) =>
             prev.includes(subOrderId) ? prev.filter((id) => id !== subOrderId) : [...prev, subOrderId]
         );
@@ -403,7 +404,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                         navigate(`${ROUTE_CONSTANT.orders.orderHistory}?sales_id=${parentSale?._id}&sub_order_id=${subOrderId}`);
                                                     }}
                                                 >
-                                                    Reciept Id: {subOrderId?.slice(-8) || "N/A"}
+                                                    Reciept Id: {subOrderId || "N/A"}
                                                 </Typography>
 
                                                 <Typography
@@ -463,44 +464,58 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                 </Typography>
                                                 <Typography>Order {formatDate(parentSale?.createdAt)}</Typography>
                                                 {tab === "completed" && (
-                                                    <Box
-                                                        my={2}
-                                                        sx={{
-                                                            background: "#ededed",
-                                                            padding: "12px 12px",
-                                                            border: "2px solid #000",
-                                                            maxWidth: { xs: "100%", md: "250px" }
-                                                        }}
-                                                    >
-                                                        <Typography
-                                                            component="div"
-                                                            display={"flex"}
-                                                            alignItems={"center"}
-                                                        >
-                                                            <img
-                                                                src="https://i.etsystatic.com/11486790/r/il/09528c/2809353368/il_340x270.2809353368_l0rq.jpg"
-                                                                alt=""
-                                                                style={{
-                                                                    height: "20px",
-                                                                    width: "20px",
-                                                                    objectFit: "contain",
-                                                                    aspectRatio: "1/1"
+                                                    subOrder.items[0]?.shipments?.map((shipment) => {
+                                                        return (
+                                                            <Box
+                                                                key={shipment._id}
+                                                                my={1.5}
+                                                                sx={{
+                                                                    background: "#ededed",
+                                                                    padding: "6px 16px",
+                                                                    border: "2px solid #000",
+                                                                    maxWidth: { xs: "100%", md: "250px" }
                                                                 }}
-                                                            />
-                                                            <Typography component="span" ml={1}>
-                                                                <Link
-                                                                    href="#"
-                                                                    style={{
-                                                                        textDecoration: "underline",
-                                                                        color: "#000"
-                                                                    }}
+                                                            >
+                                                                <Typography
+                                                                    component="div"
+                                                                    display={"flex"}
+                                                                    alignItems={"center"}
                                                                 >
-                                                                    4944646465456465465
-                                                                </Link>
-                                                            </Typography>
-                                                        </Typography>
-                                                        <Typography>Shipped on Jul 24</Typography>
-                                                    </Box>
+                                                                    <img
+                                                                        src={`https://api.agukart.com/uploads/delivery/${shipment.service.logo}`}
+                                                                        alt=""
+                                                                        style={{
+                                                                            height: "20px",
+                                                                            width: "20px",
+                                                                            objectFit: "contain",
+                                                                            aspectRatio: "1/1"
+                                                                        }}
+                                                                    />
+                                                                    <Typography component="span" ml={1}
+                                                                        display={"flex"}
+                                                                        alignItems={"center"}>
+                                                                        <Typography mr={1}>
+                                                                            ({shipment.courierName})
+                                                                        </Typography>
+                                                                        <Link
+                                                                            href={
+                                                                                shipment.service.supportDirectTracking
+                                                                                    ? shipment.service.tracking_url.replace('{tracking_id}', shipment.trackingNumber)
+                                                                                    : shipment.service.tracking_url
+                                                                            }
+                                                                            style={{
+                                                                                textDecoration: "underline",
+                                                                                color: "#000"
+                                                                            }}
+                                                                        >
+                                                                            {shipment.trackingNumber}
+                                                                        </Link>
+                                                                    </Typography>
+                                                                </Typography>
+                                                                <Typography>Shipped on {new Date(shipment.shipped_date).toLocaleDateString('en-GB')}</Typography>
+                                                            </Box>
+                                                        );
+                                                    })
                                                 )}
 
                                                 <Typography component="div" textAlign={"start"}>
