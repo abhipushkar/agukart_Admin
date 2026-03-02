@@ -13,6 +13,8 @@ import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Paper from "@mui/material/Paper";
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -24,7 +26,9 @@ import { useEffect } from "react";
 import { useCallback } from "react";
 import StarIcon from "@mui/icons-material/Star";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
 import ConfirmModal from "app/components/ConfirmModal";
+import CompleteOrder from "./CompleteOrder";
 
 const OrderHistory = () => {
   const auth_key = localStorage.getItem(localStorageKey.auth_key);
@@ -36,11 +40,27 @@ const OrderHistory = () => {
   const sub_order_id = query.get("sub_order_id");
   const navigate = useNavigate();
   const [sellerNote, setSellerNote] = useState("");
+  const [subOrder, setSubOrder] = useState({});
+  const [shipments, setShipments] = useState([]);
+  const [openDialog, setOpenDialog] = useState(false)
 
   const [open, setOpen] = useState(false);
   const [type, setType] = useState("");
   const [route, setRoute] = useState(null);
   const [msg, setMsg] = useState(null);
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [openMenuIndex, setOpenMenuIndex] = useState(null);
+  const [editId, setEditId] = useState(null); // save id of Shipment to be edited
+
+  const handleClick = (event, index) => {
+    setAnchorEl(event.currentTarget);
+    setOpenMenuIndex(index);
+  };
+
+  const handleCloseOption = () => {
+    setAnchorEl(null);
+    setOpenMenuIndex(null);
+  };
 
   // Helper function to get display value or "..."
   const getDisplayValue = (value, fallback = "...") => {
@@ -224,6 +244,16 @@ const OrderHistory = () => {
       if (res?.status === 200) {
         // The backend should return only the specific vendor's data
         setOrder(res?.data?.orderHistory || { saleDetaildata: [] });
+        const subOrder = res?.data?.orderHistory?.saleDetaildata[0];
+        setSubOrder(
+          {
+            ...subOrder,
+            parentSale: res?.data?.orderHistory
+          }
+        )
+        if (subOrder.items[0]?.shipments) {
+          setShipments(subOrder.items[0]?.shipments);
+        }
 
         // Get seller note from the specific vendor's items
         const vendorSubOrder = res?.data?.orderHistory?.saleDetaildata?.[0];
@@ -358,8 +388,28 @@ const OrderHistory = () => {
 
   // Get the vendor sub-order
 
+  const handleDialogClose = () => {
+    setOpenDialog(false);
+    setEditId(null);
+  }
+
+  const handleCompleteOrderDialogOpen = () => {
+    setOpenDialog(true);
+  }
+
+  const handleEditTracking = (id) => {
+    setEditId(id);
+    setOpenDialog(true);
+  }
+
   return (
     <>
+      <CompleteOrder
+        open={openDialog}
+        onClose={handleDialogClose}
+        subOrders={[subOrder]}
+        shipmentId={editId}
+      />
       <Box sx={{ padding: "30px", background: "#fff" }}>
         <Box sx={{ display: { lg: "flex", md: "flex", xs: "block" }, alignItems: "center" }}>
           <Typography variant="h4" sx={{
@@ -1385,8 +1435,11 @@ const OrderHistory = () => {
                             borderRadius: "30px",
                             border: "1px solid #000"
                           }}
+                          onClick={() => {
+                            handleCompleteOrderDialogOpen()
+                          }}
                         >
-                          Edit shipment
+                          Add shipment
                         </Button>
                         <Button
                           sx={{
@@ -1406,70 +1459,180 @@ const OrderHistory = () => {
                       </Box>
                     </Box>
                   </Box>
-                  <Box p={2}>
-                    <Grid container width={"100%"} m={0} alignItems={"center"} spacing={2}>
-                      <Grid item lg={6} md={6} xs={12}>
-                        <List>
-                          <ListItem
-                            sx={{
-                              paddingLeft: "0",
-                              width: "auto",
-                              display: "flex",
-                              alignItems: "center"
-                            }}
-                          >
-                            <Typography fontWeight={600} sx={{ width: "50%" }}>
-                              Ship date:
-                            </Typography>
-                            <Typography fontWeight={500} pl={2} sx={{ width: "50%" }}>
-                              {vendorSubOrder?.items?.[0]?.shipped_date ? formatDate(vendorSubOrder.items[0].shipped_date) : "..."}
-                            </Typography>
-                          </ListItem>
-                          <ListItem
-                            sx={{
-                              paddingLeft: "0",
-                              width: "auto",
-                              display: "flex",
-                              alignItems: "center"
-                            }}
-                          >
-                            <Typography fontWeight={600} sx={{ width: "50%" }}>
-                              Carrier:
-                            </Typography>
-                            <Typography fontWeight={500} pl={2} sx={{ width: "50%" }}>
-                              {getDisplayValue(vendorSubOrder?.items?.[0]?.shipping_couriername)}
-                            </Typography>
-                          </ListItem>
-                          <ListItem
-                            sx={{
-                              paddingLeft: "0",
-                              width: "auto",
-                              display: "flex",
-                              alignItems: "center"
-                            }}
-                          >
-                            <Typography fontWeight={600} sx={{ width: "50%" }}>
-                              Shipping services:
-                            </Typography>
-                            <Typography fontWeight={500} pl={2} sx={{ width: "50%" }}>
-                              {shippingName}
-                            </Typography>
-                          </ListItem>
+                  {shipments?.length > 0 ? (
+                    shipments.map((shipment, index) => {
+                      return (
+                        < Box sx={{ borderTop: "1px solid" }}>
+                          <Grid container width={"100%"} m={0} alignItems={"center"} spacing={2}>
+                            <Grid item lg={6} md={6} xs={12}>
+                              <List>
+                                <ListItem
+                                  sx={{
+                                    paddingLeft: "0",
+                                    width: "auto",
+                                    display: "flex",
+                                    alignItems: "center"
+                                  }}
+                                >
+                                  <Typography fontWeight={600} sx={{ width: "50%" }}>
+                                    Ship date :
+                                  </Typography>
+                                  <Typography fontWeight={500} pl={2} sx={{ width: "50%" }}>
+                                    {shipment.shipped_date ? formatDate(shipment.shipped_date) : "..."}
+                                  </Typography>
+                                </ListItem>
+                                <ListItem
+                                  sx={{
+                                    paddingLeft: "0",
+                                    width: "auto",
+                                    display: "flex",
+                                    alignItems: "center"
+                                  }}
+                                >
+                                  <Typography fontWeight={600} sx={{ width: "50%" }}>
+                                    Carrier :
+                                  </Typography>
+                                  <Typography fontWeight={500} pl={2} sx={{ width: "50%" }}>
+                                    {getDisplayValue(shipment.courierName)}
+                                  </Typography>
+                                </ListItem>
+                                <ListItem
+                                  sx={{
+                                    paddingLeft: "0",
+                                    width: "auto",
+                                    display: "flex",
+                                    alignItems: "center"
+                                  }}
+                                >
+                                  <Typography fontWeight={600} sx={{ width: "50%" }}>
+                                    Shipping :
+                                  </Typography>
+                                  <Typography fontWeight={500} pl={2} sx={{ width: "50%" }}>
+                                    {shippingName}
+                                  </Typography>
+                                </ListItem>
 
-                        </List>
+                              </List>
+                            </Grid>
+                            <Grid item lg={6} md={6} xs={12}>
+                              <Box sx={{ position: 'relative', height: '100%' }}>
+                                {/* Icon in top right */}
+                                <Box sx={{ position: 'absolute', top: -30, right: -1 }}>
+                                  <Button
+                                    sx={{ color: "#161616", minWidth: 'auto' }}
+                                    id={`basic-button-${index}`}
+                                    aria-controls={openMenuIndex === (index) ? `basic-menu-${index}` : undefined}
+                                    aria-haspopup="true"
+                                    aria-expanded={openMenuIndex === (index) ? "true" : undefined}
+                                    onClick={(e) => handleClick(e, index)}
+                                  >
+                                    <MoreVertIcon />
+                                  </Button>
+                                  <Menu
+                                    anchorEl={anchorEl}
+                                    open={openMenuIndex === (index)}
+                                    onClose={handleCloseOption}
+                                    MenuListProps={{
+                                      "aria-labelledby": `basic-button-${index}`
+                                    }}
+                                  >
+                                    <MenuItem
+                                      onClick={() => {
+                                        handleCloseOption();
+                                        handleEditTracking(shipment._id);
+                                      }}
+                                    >
+                                      Edit
+                                    </MenuItem>
+                                  </Menu>
+                                </Box>
+
+                                {/* Tracking number centered or positioned as needed */}
+                                <Box sx={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  height: '100%',
+                                  minHeight: '60px'
+                                }}>
+                                  <Typography color={"#0f0f0f"} fontWeight={600}>
+                                    Tracking Number :{" "}
+                                    <Box component="span" pl={1} fontWeight={400}>
+                                      {getDisplayValue(shipment.trackingNumber)}
+                                    </Box>
+                                  </Typography>
+                                </Box>
+                              </Box>
+                            </Grid>
+                          </Grid>
+                        </Box>)
+                    })
+                  ) : (
+                    <Box p={2} sx={{ borderTop: "1px solid" }}>
+                      <Grid container width={"100%"} m={0} alignItems={"center"} spacing={2}>
+                        <Grid item lg={6} md={6} xs={12}>
+                          <List>
+                            <ListItem
+                              sx={{
+                                paddingLeft: "0",
+                                width: "auto",
+                                display: "flex",
+                                alignItems: "center"
+                              }}
+                            >
+                              <Typography fontWeight={600} sx={{ width: "50%" }}>
+                                Ship date:
+                              </Typography>
+                              <Typography fontWeight={500} pl={2} sx={{ width: "50%" }}>
+                                {vendorSubOrder?.items?.[0]?.shipped_date ? formatDate(vendorSubOrder.items[0].shipped_date) : "..."}
+                              </Typography>
+                            </ListItem>
+                            <ListItem
+                              sx={{
+                                paddingLeft: "0",
+                                width: "auto",
+                                display: "flex",
+                                alignItems: "center"
+                              }}
+                            >
+                              <Typography fontWeight={600} sx={{ width: "50%" }}>
+                                Carrier:
+                              </Typography>
+                              <Typography fontWeight={500} pl={2} sx={{ width: "50%" }}>
+                                {getDisplayValue(vendorSubOrder?.items?.[0]?.shipping_couriername)}
+                              </Typography>
+                            </ListItem>
+                            <ListItem
+                              sx={{
+                                paddingLeft: "0",
+                                width: "auto",
+                                display: "flex",
+                                alignItems: "center"
+                              }}
+                            >
+                              <Typography fontWeight={600} sx={{ width: "50%" }}>
+                                Shipping :
+                              </Typography>
+                              <Typography fontWeight={500} pl={2} sx={{ width: "50%" }}>
+                                {shippingName}
+                              </Typography>
+                            </ListItem>
+
+                          </List>
+                        </Grid>
+                        <Grid item lg={6} md={6} xs={12}>
+                          <Box>
+                            <Typography color={"#000"} fontWeight={600}>
+                              Tracking Number :{" "}
+                              <Box component="span" pl={1} fontWeight={400}>
+                                {getDisplayValue("...")}
+                              </Box>
+                            </Typography>
+                          </Box>
+                        </Grid>
                       </Grid>
-                      <Grid item lg={6} md={6} xs={12}>
-                        <Box>
-                          <Typography color={"#000"} fontWeight={600}>
-                            Tracking Id:{" "}
-                            <Box component="span" pl={1} fontWeight={400}>
-                              {getDisplayValue(vendorSubOrder?.items?.[0]?.shipping_couriernumber, "101237862352673")}
-                            </Box>
-                          </Typography>
-                        </Box>
-                      </Grid>
-                    </Grid>
-                  </Box>
+                    </Box>
+                  )}
                 </Box>
               </Box>
 
@@ -1547,7 +1710,7 @@ const OrderHistory = () => {
             </Grid>
           </Grid>
         </Box>
-      </Box>
+      </Box >
 
       <ConfirmModal open={open} handleClose={handleClose} type={type} msg={msg} />
     </>

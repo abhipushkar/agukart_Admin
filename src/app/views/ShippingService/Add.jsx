@@ -104,17 +104,24 @@ const AddShippingService = () => {
 
     const toggleAppendTrackingId = (values, isChecked, setFieldValue) => {
         if (isChecked) {
-            // Toggle ON: Add tracking_id if not already present
-            if (!values.tracking_url.includes("={tracking_id}")) {
-                // Append tracking_id
-                setFieldValue("tracking_url", values.tracking_url + "={tracking_id}");
+            // Add only if not already present
+            if (!values.tracking_url.includes("{tracking_id}")) {
+
+                const url = values.tracking_url;
+                const endsWithSlash = url.endsWith('/');
+                const updatedUrl = endsWithSlash ? url + "{tracking_id}" : url + "={tracking_id}";
+
+                setFieldValue("tracking_url", updatedUrl);
                 setFieldValue("trackingIdAddedByToggle", true);
             }
         } else {
-            // Toggle OFF: Remove tracking_id only if we added it
+            // Remove only if toggle added it
             if (values.trackingIdAddedByToggle) {
-                // Remove the ={tracking_id} that we added
-                setFieldValue("tracking_url", values.tracking_url.replace("={tracking_id}", ""));
+                const updatedUrl = values.tracking_url
+                    .replace("={tracking_id}", "")
+                    .replace("{tracking_id}", "");
+
+                setFieldValue("tracking_url", updatedUrl);
                 setFieldValue("trackingIdAddedByToggle", false);
             }
         }

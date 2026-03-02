@@ -22,7 +22,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import { ApiService } from "app/services/ApiService";
 import { localStorageKey } from 'app/constant/localStorageKey';
 
-const CompleteOrder = ({ open, onClose, subOrders }) => {
+const CompleteOrder = ({ open, onClose, subOrders, shipmentId }) => {
 
     const [deliveryServices, setDeliveryServices] = useState([]);
     const [trackingStatuses] = useState([
@@ -41,20 +41,40 @@ const CompleteOrder = ({ open, onClose, subOrders }) => {
     const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
     const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
     const [missingTrackingInfo, setMissingTrackingInfo] = useState({ count: 0, orders: [] });
+    const [shipmentData, setShipmentData] = useState({});
+    const [isEdit, setIsEdit] = useState(false);
 
     // subOrders is always an array
     const orders = subOrders || [];
 
     useEffect(() => {
         fetchDeliveryServices();
+
+        const editMode = shipmentId !== null && shipmentId !== undefined;
+        setIsEdit(editMode);
+        let existingShipmentData = null;
+        if (editMode && subOrders && subOrders[0]?.items?.[0]?.shipments) {
+            existingShipmentData = subOrders[0].items[0].shipments.find(
+                shipment => shipment._id === shipmentId
+            );
+            if (existingShipmentData) {
+                setShipmentData(existingShipmentData);
+            }
+        }
         // Initialize order data for each subOrder
         const initialData = {};
         orders.forEach(order => {
             const defaultService = deliveryServices.find(service => service.isDefault);
             initialData[order.sub_order_id] = {
-                courierName: defaultService?.name || '',
-                trackingNumber: '',
-                trackingStatus: ''
+                courierName: editMode && existingShipmentData
+                    ? existingShipmentData.courierName || ''
+                    : '',
+                trackingNumber: editMode && existingShipmentData
+                    ? existingShipmentData.trackingNumber || ''
+                    : '',
+                trackingStatus: editMode && existingShipmentData
+                    ? existingShipmentData.delivery_status || ''
+                    : ''
             };
         });
         setOrderData(initialData);
@@ -113,21 +133,36 @@ const CompleteOrder = ({ open, onClose, subOrders }) => {
         try {
             const auth_key = localStorage.getItem(localStorageKey.auth_key);
 
-            // Prepare shipments array payload
-            const shipments = orders.map(order => ({
-                sub_order_id: order.sub_order_id,
-                courierName: orderData[order.sub_order_id]?.courierName || '',
-                trackingNumber: orderData[order.sub_order_id]?.trackingNumber || '',
-                delivery_status: orderData[order.sub_order_id]?.trackingStatus || ''
-            }));
+            if (isEdit && orders.length > 0) {
+                const sub_order_id = orders[0].sub_order_id; // Get from the first order
 
-            const payload = { shipments };
+                const payload = {
+                    courierName: orderData[sub_order_id]?.courierName || '',
+                    trackingNumber: orderData[sub_order_id]?.trackingNumber || '',
+                    delivery_status: orderData[sub_order_id]?.trackingStatus || ''
+                };
 
-            const res = await ApiService.post('complete-order', payload, auth_key);
+                const res = await ApiService.patch(
+                    `edit-shipment/${sub_order_id}/${shipmentId}`,
+                    payload,
+                    auth_key
+                );
+            } else {
+                // Prepare shipments array payload
+                const shipments = orders.map(order => ({
+                    sub_order_id: order.sub_order_id,
+                    courierName: orderData[order.sub_order_id]?.courierName || '',
+                    trackingNumber: orderData[order.sub_order_id]?.trackingNumber || '',
+                    delivery_status: orderData[order.sub_order_id]?.trackingStatus || ''
+                }));
 
+                const payload = { shipments };
+
+                const res = await ApiService.post('complete-order', payload, auth_key);
+            }
             setSnackbar({
                 open: true,
-                message: 'Orders completed successfully',
+                message: isEdit ? 'Tracking Updated successfully' : 'Orders completed successfully',
                 severity: 'success'
             });
 
@@ -199,7 +234,7 @@ const CompleteOrder = ({ open, onClose, subOrders }) => {
                     mb: 3
                 }}>
                     <Typography variant="h5" sx={{ fontWeight: 600 }}>
-                        Complete {orders.length} order{orders.length !== 1 ? 's' : ''}
+                        {!isEdit ? (`Complete ${orders.length} order${orders.length !== 1 ? 's' : ''}`) : ("Update Existing Tracking")}
                     </Typography>
                     <IconButton onClick={onClose} size="small">
                         <CloseIcon />
@@ -232,7 +267,7 @@ const CompleteOrder = ({ open, onClose, subOrders }) => {
                                                     Receipt Id: {order.sub_order_id}
                                                 </Typography>
                                                 <Typography sx={{ color: 'text.secondary', fontWeight: 500, mb: 1 }}>
-                                                    Shop: {parentSale?.saleDetaildata[0].items[0].shop_name}
+                                                    Shop: {parentSale?.saleDetaildata[0].items[0].shop_name || order.shop_name}
                                                 </Typography>
                                                 <Box sx={{ ml: 2 }}>
                                                     <Typography sx={{ fontWeight: 500 }}>{parentSale?.receiver_name}</Typography>
