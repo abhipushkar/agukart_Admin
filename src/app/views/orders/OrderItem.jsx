@@ -13,12 +13,14 @@ import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import { useNavigate } from 'react-router-dom';
+import { IconButton } from '@mui/material';
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import Product from './Product';
 import StarIcon from "@mui/icons-material/Star";
 import CompleteOrder from './CompleteOrder';
 import { useState } from 'react';
-
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import CheckIcon from "@mui/icons-material/Check";
 
 const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2, handleOpen, setOrderIds, anchorEl, setAnchorEl, anchorEl1, setAnchorEl1, anchorEl3, setAnchorEl3, openMenuIndex, setOpenMenuIndex, openMenuIndex1, setOpenMenuIndex1, baseUrl, orderIds, handleCloseOption, handleCloseOption1, updateOrder, onSelectAllForDate, isDateGroupFullySelected, selectedSubOrders, setSelectedSubOrders }) => {
 
@@ -470,7 +472,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                                 key={shipment._id}
                                                                 my={1.5}
                                                                 sx={{
-                                                                    background: "#ededed",
+                                                                    background: "#f8f8f8",
                                                                     padding: "6px 16px",
                                                                     border: "2px solid #000",
                                                                     maxWidth: { xs: "100%", md: "250px" }
@@ -478,38 +480,49 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                             >
                                                                 <Typography
                                                                     component="div"
-                                                                    display={"flex"}
                                                                     alignItems={"center"}
                                                                 >
-                                                                    <img
-                                                                        src={`https://api.agukart.com/uploads/delivery/${shipment.service.logo}`}
-                                                                        alt=""
-                                                                        style={{
-                                                                            height: "20px",
-                                                                            width: "20px",
-                                                                            objectFit: "contain",
-                                                                            aspectRatio: "1/1"
-                                                                        }}
-                                                                    />
-                                                                    <Typography component="span" ml={1}
-                                                                        display={"flex"}
-                                                                        alignItems={"center"}>
-                                                                        <Typography mr={1}>
-                                                                            ({shipment.courierName})
-                                                                        </Typography>
-                                                                        <Link
-                                                                            href={
-                                                                                shipment.service.supportDirectTracking
-                                                                                    ? shipment.service.tracking_url.replace('{tracking_id}', shipment.trackingNumber)
-                                                                                    : shipment.service.tracking_url
-                                                                            }
+                                                                    <Box display={'flex'} gap={1}>
+                                                                        <img
+                                                                            src={`https://api.agukart.com/uploads/delivery/${shipment.service.logo}`}
+                                                                            alt=""
                                                                             style={{
-                                                                                textDecoration: "underline",
-                                                                                color: "#000"
+                                                                                height: "20px",
+                                                                                width: "20px",
+                                                                                objectFit: "contain",
+                                                                                aspectRatio: "1/1"
                                                                             }}
+                                                                        />
+                                                                        <Typography mr={1}>
+                                                                            Track on {shipment.courierName}
+                                                                        </Typography>
+                                                                    </Box>
+                                                                    <Typography component="span"
+                                                                        display={"flex"}
+                                                                        alignItems={"center"}
+                                                                        justifyContent={"space-between"}
+                                                                    >
+                                                                        <span
+                                                                            onClick={() => {
+                                                                                const url = shipment.service.supportDirectTracking
+                                                                                    ? shipment.service.tracking_url.replace('{tracking_id}', shipment.trackingNumber)
+                                                                                    : shipment.service.tracking_url;
+
+                                                                                // Opens in a new tab; '_blank' is the standard for new windows/tabs
+                                                                                window.open(url, '_blank', 'noopener,noreferrer');
+                                                                            }}
+                                                                            style={{ textDecoration: "underline", color: "#000", cursor: "pointer" }}
                                                                         >
                                                                             {shipment.trackingNumber}
-                                                                        </Link>
+                                                                        </span>
+                                                                        <IconButton
+                                                                            sx={{ p: 0.3 }}
+                                                                            onClick={() =>
+                                                                                navigator.clipboard.writeText(shipment.trackingNumber)
+                                                                            }
+                                                                        >
+                                                                            <ContentCopyIcon sx={{ fontSize: 16 }} />
+                                                                        </IconButton>
                                                                     </Typography>
                                                                 </Typography>
                                                                 <Typography>Shipped on {new Date(shipment.shipped_date).toLocaleDateString('en-GB')}</Typography>
@@ -708,6 +721,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                                 <MenuItem
                                                                     onClick={() => {
                                                                         handleCloseOption();
+                                                                        handleCompleteOrderDialogOpen([subOrder]);
                                                                     }}
                                                                 >
                                                                     Update tracking
