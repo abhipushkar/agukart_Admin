@@ -143,8 +143,16 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                 });
             }
         });
-
+        console.log(subOrders[0]);
         return subOrders;
+    };
+
+    const getDeliveryStatus = (shipments) => {
+        const isDelivered = shipments?.some(shipment => shipment.delivery_status === 'Delivered');
+        if (isDelivered) {
+            return 'Delivered';
+        }
+        return;
     };
 
     // Get sub-order count for display
@@ -462,7 +470,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                         <TableCell align="center" colSpan={2}>
                                             <Box textAlign={"start"}>
                                                 <Typography variant="h6" fontWeight={500} fontSize={15}>
-                                                    {tab === "pending" ? "No Tracking" : tab === "unshipped" ? "Unshipped" : tab === "in-progress" ? "In Progress" : tab === "completed" ? "Completed" : "Cancelled"}
+                                                    {tab === "pending" ? "No Tracking" : tab === "unshipped" ? "Unshipped" : tab === "in-progress" ? "In Progress" : tab === "completed" ? `${getDeliveryStatus(subOrder?.items[0]?.shipments) || subOrder.delivery_status}` : "Cancelled"}
                                                 </Typography>
                                                 <Typography>Order {formatDate(parentSale?.createdAt)}</Typography>
                                                 {tab === "completed" && (
@@ -474,7 +482,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                                 sx={{
                                                                     background: "#f8f8f8",
                                                                     padding: "6px 16px",
-                                                                    border: "2px solid #000",
+                                                                    border: `2px solid ${shipment.delivery_status === "Delivered" ? '#000' : '#a4a4a4'} `,
                                                                     maxWidth: { xs: "100%", md: "250px" }
                                                                 }}
                                                             >
@@ -520,11 +528,13 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                                             onClick={() =>
                                                                                 navigator.clipboard.writeText(shipment.trackingNumber)
                                                                             }
+                                                                            disabled={!shipment.trackingNumber}
                                                                         >
-                                                                            <ContentCopyIcon sx={{ fontSize: 16 }} />
+                                                                            <ContentCopyIcon sx={{ fontSize: 16, color: shipment.trackingNumber ? 'text.primary' : 'inherit' }} />
                                                                         </IconButton>
                                                                     </Typography>
                                                                 </Typography>
+                                                                <Typography>Status: {shipment.delivery_status}</Typography>
                                                                 <Typography>Shipped on {new Date(shipment.shipped_date).toLocaleDateString('en-GB')}</Typography>
                                                             </Box>
                                                         );

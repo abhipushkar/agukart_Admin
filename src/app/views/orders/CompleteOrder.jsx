@@ -21,10 +21,12 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import { ApiService } from "app/services/ApiService";
 import { localStorageKey } from 'app/constant/localStorageKey';
+import { useOrderStore } from './useOrderStore';
 
 const CompleteOrder = ({ open, onClose, subOrders, shipmentId }) => {
 
-    const [deliveryServices, setDeliveryServices] = useState([]);
+    const shippingServices = useOrderStore(state => state.shippingServices);
+    const fetchAllShippingServices = useOrderStore(state => state.fetchAllShippingServices);
     const [trackingStatuses] = useState([
         'Pre-Shipped',
         'No tracking',
@@ -48,7 +50,44 @@ const CompleteOrder = ({ open, onClose, subOrders, shipmentId }) => {
     const orders = subOrders || [];
 
     useEffect(() => {
-        fetchDeliveryServices();
+        if (shippingServices.length === 0) {
+            fetchAllShippingServices();
+        }
+    }, [shippingServices.length, fetchAllShippingServices]);
+
+    // General date formatting function for MUI date inputs (YYYY-MM-DD)
+    const formatDateForInput = (dateValue) => {
+        if (!dateValue) return '';
+        try {
+            // If it's already a string in YYYY-MM-DD format
+            if (typeof dateValue === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+                return dateValue;
+            }
+            // Convert to Date object
+            const date = new Date(dateValue);
+            // Check if date is valid
+            if (isNaN(date.getTime())) return '';
+            // Format to YYYY-MM-DD
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        } catch (error) {
+            console.error('Error formatting date:', error);
+            return '';
+        }
+    };
+
+    // Helper for current date
+    const getCurrentDateFormatted = () => {
+        const date = new Date();
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    useEffect(() => {
 
         const editMode = shipmentId !== null && shipmentId !== undefined;
         setIsEdit(editMode);
@@ -64,39 +103,24 @@ const CompleteOrder = ({ open, onClose, subOrders, shipmentId }) => {
         // Initialize order data for each subOrder
         const initialData = {};
         orders.forEach(order => {
-            const defaultService = deliveryServices.find(service => service.isDefault);
+            const defaultService = shippingServices.find(service => service.isDefault);
             initialData[order.sub_order_id] = {
-                courierName: editMode && existingShipmentData
+                courierName: (editMode && existingShipmentData)
                     ? existingShipmentData.courierName || ''
-                    : '',
+                    : defaultService?.name || '',
                 trackingNumber: editMode && existingShipmentData
                     ? existingShipmentData.trackingNumber || ''
                     : '',
                 trackingStatus: editMode && existingShipmentData
                     ? existingShipmentData.delivery_status || ''
-                    : ''
+                    : '',
+                delivered_date: editMode && existingShipmentData
+                    ? formatDateForInput(existingShipmentData.delivered_date)
+                    : getCurrentDateFormatted()
             };
         });
         setOrderData(initialData);
-    }, [orders]);
-
-    const fetchDeliveryServices = async () => {
-        try {
-            const auth_key = localStorage.getItem(localStorageKey.auth_key);
-            const res = await ApiService.get("get-delivery-service", auth_key);
-            if (res.status === 200) {
-                const services = res?.data?.data || [];
-                setDeliveryServices(services);
-            }
-        } catch (error) {
-            console.error("Error fetching delivery services:", error);
-            setSnackbar({
-                open: true,
-                message: 'Failed to fetch delivery services',
-                severity: 'error'
-            });
-        }
-    };
+    }, [orders, shipmentId, shippingServices]);
 
     const handleInputChange = (subOrderId, field, value) => {
         setOrderData(prev => ({
@@ -139,7 +163,8 @@ const CompleteOrder = ({ open, onClose, subOrders, shipmentId }) => {
                 const payload = {
                     courierName: orderData[sub_order_id]?.courierName || '',
                     trackingNumber: orderData[sub_order_id]?.trackingNumber || '',
-                    delivery_status: orderData[sub_order_id]?.trackingStatus || ''
+                    delivery_status: orderData[sub_order_id]?.trackingStatus || '',
+                    delivered_date: orderData[sub_order_id]?.delivered_date || ''
                 };
 
                 const res = await ApiService.patch(
@@ -153,7 +178,8 @@ const CompleteOrder = ({ open, onClose, subOrders, shipmentId }) => {
                     sub_order_id: order.sub_order_id,
                     courierName: orderData[order.sub_order_id]?.courierName || '',
                     trackingNumber: orderData[order.sub_order_id]?.trackingNumber || '',
-                    delivery_status: orderData[order.sub_order_id]?.trackingStatus || ''
+                    delivery_status: orderData[order.sub_order_id]?.trackingStatus || '',
+                    delivered_date: orderData[order.sub_order_id]?.delivered_date || ''
                 }));
 
                 const payload = { shipments };
@@ -301,7 +327,7 @@ const CompleteOrder = ({ open, onClose, subOrders, shipmentId }) => {
                                                     <MenuItem value="" disabled>
                                                         <Typography sx={{ color: 'text.secondary' }}>Select delivery company</Typography>
                                                     </MenuItem>
-                                                    {deliveryServices.map((service) => (
+                                                    {shippingServices.map((service) => (
                                                         <MenuItem
                                                             key={service._id || service.name}
                                                             value={service.name}
@@ -365,6 +391,24 @@ const CompleteOrder = ({ open, onClose, subOrders, shipmentId }) => {
                                                     ))}
                                                 </Select>
                                             </FormControl>
+                                            {/* add date selector here visible if orderData[order.sub_order_id]?.trackingStatus === "Delivered"  */}
+                                            {orderData[order.sub_order_id]?.trackingStatus === "Delivered" && (
+                                                <Box sx={{ mt: 2 }}>
+                                                    <Typography sx={{ color: 'text.secondary', fontWeight: 500, mb: 1 }}>
+                                                        Delivered Date:
+                                                    </Typography>
+                                                    <TextField
+                                                        size="small"
+                                                        type="date"
+                                                        variant="outlined"
+                                                        fullWidth
+                                                        value={orderData[order.sub_order_id]?.delivered_date || ''}
+                                                        onChange={(e) => handleInputChange(order.sub_order_id, 'delivered_date', e.target.value)}
+                                                        error={!orderData[order.sub_order_id]?.delivered_date && orderData[order.sub_order_id]?.delivered_date !== ''}
+                                                        helperText={!orderData[order.sub_order_id]?.delivered_date && orderData[order.sub_order_id]?.delivered_date !== '' ? 'Required' : ''}
+                                                    />
+                                                </Box>
+                                            )}
                                         </Grid>
                                     </Grid>
                                 </Paper>

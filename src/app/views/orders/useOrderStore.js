@@ -2,9 +2,11 @@ import { create } from 'zustand';
 import { ApiService } from "../../services/ApiService";
 import { apiEndpoints } from "../../constant/apiEndpoints";
 import { localStorageKey } from "../../constant/localStorageKey";
+import ShippingService from 'app/services/ShippingService';
 
 export const useOrderStore = create((set) => ({
     subOrders: [],
+    shippingServices: [],
 
     setSubOrders: (subOrders) => set({ subOrders }),
 
@@ -61,6 +63,17 @@ export const useOrderStore = create((set) => ({
         } catch (error) {
             console.error("Failed to fetch all sub orders", error);
             return [];
+        }
+    },
+
+    fetchAllShippingServices: async () => {
+        try {
+            const res = await ShippingService.getList();
+            if (res.status === 200) {
+                set({ shippingServices: res?.data?.data || [] });
+            }
+        } catch (error) {
+            console.error("Failed to fetch delivery services", error);
         }
     }
 }));
