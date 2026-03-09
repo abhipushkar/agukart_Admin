@@ -40,6 +40,7 @@ const Container = styled("div")(({ theme }) => ({
 
 const validationSchema = Yup.object({
     name: Yup.string().required("Service name is required"),
+    title: Yup.string().required("Service title is required"),
     tracking_url: Yup.string().required("Link is required"),
 });
 
@@ -135,12 +136,12 @@ const AddShippingService = () => {
             const formData = new FormData();
 
             formData.append("name", values.name);
+            formData.append("title", values.title);
             formData.append("description", values.description || "");
             formData.append(
                 "supportDirectTracking",
                 values.supportDirectTracking ? "true" : "false"
             );
-            const trackingUrl = values.tracking_url
             formData.append("tracking_url", values.tracking_url);
 
             if (values.logo && values.logo instanceof File && values.logo.size > 0) {
@@ -154,11 +155,7 @@ const AddShippingService = () => {
                 res = await ShippingService.create(formData);
             } else {
                 // UPDATE
-                res = await ApiService.put(
-                    `update-delivery-service/${queryId}`,
-                    formData,
-                    auth_key
-                );
+                res = await ShippingService.update(queryId, formData);
             }
 
             if (res.status === 200 || res.status === 201) {
@@ -176,7 +173,7 @@ const AddShippingService = () => {
     const editServiceHandler = async () => {
         try {
             setInitialLoading(true);
-            const res = await ApiService.get(`delivery-service/${queryId}`, auth_key);
+            const res = await ShippingService.getDetail(queryId);
             if (res?.status === 200) {
                 const serviceData = res?.data?.data;
                 setEditService(serviceData);
@@ -261,6 +258,7 @@ const AddShippingService = () => {
                 <Formik
                     initialValues={{
                         name: queryId ? editService?.name || "" : "",
+                        title: queryId ? editService?.title || "" : "",
                         description: queryId ? editService?.description || "" : "",
                         logo: null, // CRITICAL: Always null initially - NEVER set to URL string
                         logoChanged: false, // Track if logo was changed
@@ -299,7 +297,30 @@ const AddShippingService = () => {
                                         errors.name && <Typography color="error">{errors.name}</Typography>
                                     }
                                 />
-
+                                <TextField
+                                    id="title"
+                                    name="title"
+                                    required
+                                    label={queryId ? "" : "Service Title"}
+                                    placeholder={queryId ? "Service Title" : ""}
+                                    sx={{
+                                        height: '40px',
+                                        "& .MuiInputBase-root": {
+                                            height: "40px",
+                                        },
+                                        "& .MuiFormLabel-root": {
+                                            top: '-7px'
+                                        }
+                                    }}
+                                    type="text"
+                                    value={values.title}
+                                    onChange={handleChange}
+                                    error={touched.title && Boolean(errors.title)}
+                                    helperText={
+                                        touched.title &&
+                                        errors.title && <Typography color="error">{errors.title}</Typography>
+                                    }
+                                />
                                 <TextField
                                     id="description"
                                     name="description"
@@ -337,7 +358,6 @@ const AddShippingService = () => {
                                             <input
                                                 type="file"
                                                 accept="image/*"
-                                                disabled={queryId ? true : false}
                                                 style={{ display: "none" }}
                                                 id="file-input"
                                                 onChange={(event) => {

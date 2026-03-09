@@ -31,6 +31,15 @@ class ShippingService {
         );
     }
 
+    // UPDATE delivery service (multipart)
+    update(id, formData) {
+        return ApiService.putImage(
+            `update-delivery-service/${id}`,
+            formData,
+            this.auth_key
+        );
+    }
+
 
     // DELETE (soft delete)
     delete(id) {

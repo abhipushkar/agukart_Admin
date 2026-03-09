@@ -93,6 +93,28 @@ export const ApiService = {
     }
   },
 
+  putImage: async (url, data, accessToken) => {
+    try {
+      const res = await axios.put(`${BASE_URL}/${url}`, data, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "multipart/form-data"
+        }
+      });
+      return res;
+    } catch (error) {
+      if (!error) {
+        toast.error("Somthing Went Wrong ");
+        return;
+      }
+      if (!error?.response?.data?.message) {
+        toast.error(error?.message);
+      }
+      toast.error(error?.response?.data?.message);
+      throw error;
+    }
+  },
+
   get: async (resource, accessToken) => {
     try {
       const response = await axios.get(`${BASE_URL}/${resource}`, {

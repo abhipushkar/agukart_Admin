@@ -330,10 +330,10 @@ const CompleteOrder = ({ open, onClose, subOrders, shipmentId }) => {
                                                     {shippingServices.map((service) => (
                                                         <MenuItem
                                                             key={service._id || service.name}
-                                                            value={service.name}
+                                                            value={service.title}
                                                             sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
                                                         >
-                                                            <span>{service.name}</span>
+                                                            <span>{service.title}</span>
                                                             {service.isDefault && (
                                                                 <Box component="span" sx={{ display: 'flex', alignItems: 'center', ml: 2 }}>
                                                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
