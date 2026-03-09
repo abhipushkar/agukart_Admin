@@ -394,29 +394,40 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                         </Typography>
                                                     }
                                                     <Box sx={{ ml: 20 }}>
-                                                        <Typography
-                                                            variant="subtitle2"
-                                                            sx={{
-                                                                color: "#0066cc",
-                                                                mb: 1,
-                                                                cursor: "pointer",
-                                                                textDecoration: "underline",
-                                                                '&:hover': {
-                                                                    textDecoration: "none"
+                                                        <a
+                                                            href={`${ROUTE_CONSTANT.orders.orderHistory}?sales_id=${parentSale?._id}&sub_order_id=${subOrderId}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            style={{ textDecoration: 'none' }}
+                                                            onClick={(e) => {
+                                                                // Prevent default only for left-click if you want to keep using navigate
+                                                                if (e.button === 0) { // Left click
+                                                                    e.preventDefault();
+                                                                    window.open(`${ROUTE_CONSTANT.orders.orderHistory}?sales_id=${parentSale?._id}&sub_order_id=${subOrderId}`, '_blank');
                                                                 }
                                                             }}
-                                                            onClick={() => {
-                                                                navigate(`${ROUTE_CONSTANT.orders.orderHistory}?sales_id=${parentSale?._id}&sub_order_id=${subOrderId}`);
-                                                            }}
                                                         >
-                                                            Reciept Id: {subOrderId || "N/A"}
-                                                        </Typography>
+                                                            <Typography
+                                                                variant="subtitle2"
+                                                                sx={{
+                                                                    color: "#0066cc",
+                                                                    mb: 1,
+                                                                    cursor: "pointer",
+                                                                    textDecoration: "underline",
+                                                                    '&:hover': {
+                                                                        textDecoration: "none"
+                                                                    }
+                                                                }}
+                                                            >
+                                                                Receipt Id: {subOrderId || "N/A"}
+                                                            </Typography>
+                                                        </a>
 
                                                         <Typography
                                                             variant="subtitle2"
                                                             sx={{ color: "#666" }}
                                                         >
-                                                            Shop: {shopName}
+                                                            Store: {shopName}
                                                         </Typography>
                                                     </Box>
                                                 </Typography>
@@ -528,7 +539,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                                             }}
                                                                         />
                                                                         <Typography mr={1}>
-                                                                            Track on {shipment.courierName}
+                                                                            Track on {shipment.service.title}
                                                                         </Typography>
                                                                     </Box>
                                                                     <Typography component="span"

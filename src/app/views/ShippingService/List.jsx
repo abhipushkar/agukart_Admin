@@ -358,7 +358,7 @@ const ShippingServiceList = () => {
                     >
                         <TableHead>
                             <TableRow>
-                                <TableCell width="50px">Drag</TableCell>
+                                <TableCell width="100px">Drag</TableCell>
                                 <TableCell sortDirection={orderBy === "name" ? order : false}>
                                     <TableSortLabel
                                         active={orderBy === "name"}
@@ -367,6 +367,9 @@ const ShippingServiceList = () => {
                                     >
                                         Service Name
                                     </TableSortLabel>
+                                </TableCell>
+                                <TableCell width="320px">
+                                    Title
                                 </TableCell>
                                 <TableCell sortDirection={orderBy === "isActive" ? order : false}>
                                     <TableSortLabel
@@ -424,6 +427,7 @@ const ShippingServiceList = () => {
                                                                 </Box>
                                                             </TableCell>
                                                             <TableCell>{row.name}</TableCell>
+                                                            <TableCell>{row.title || ""}</TableCell>
                                                             <TableCell>
                                                                 <Switch
                                                                     onClick={() => {
