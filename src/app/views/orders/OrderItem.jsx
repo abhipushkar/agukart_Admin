@@ -1,4 +1,4 @@
-import { Box, Grid, Table, TableBody, TableCell, TableContainer, TableRow, TextField, Typography } from '@mui/material';
+import { Box, Grid, Table, TableBody, TableCell, TableContainer, TableRow, TextField, Typography, Divider } from '@mui/material';
 import React from 'react'
 import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
@@ -304,7 +304,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                     alignItems={"center"}
                                                     mt={1}
                                                 >
-                                                    {capitalizeFirstWord(parentSale?.userName)}
+                                                    {capitalizeFirstWord(parentSale?.userName ?? parentSale?.receiver_name)}
                                                     <ListItem
                                                         sx={{
                                                             width: "auto",
@@ -393,13 +393,39 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                             <StarIcon sx={{ color: "green" }} />
                                                         </Typography>
                                                     }
+                                                    <Box sx={{ ml: 20 }}>
+                                                        <Typography
+                                                            variant="subtitle2"
+                                                            sx={{
+                                                                color: "#0066cc",
+                                                                mb: 1,
+                                                                cursor: "pointer",
+                                                                textDecoration: "underline",
+                                                                '&:hover': {
+                                                                    textDecoration: "none"
+                                                                }
+                                                            }}
+                                                            onClick={() => {
+                                                                navigate(`${ROUTE_CONSTANT.orders.orderHistory}?sales_id=${parentSale?._id}&sub_order_id=${subOrderId}`);
+                                                            }}
+                                                        >
+                                                            Reciept Id: {subOrderId || "N/A"}
+                                                        </Typography>
+
+                                                        <Typography
+                                                            variant="subtitle2"
+                                                            sx={{ color: "#666" }}
+                                                        >
+                                                            Shop: {shopName}
+                                                        </Typography>
+                                                    </Box>
                                                 </Typography>
                                             </Box>
 
                                             {/* Sub-order details */}
                                             <Box sx={{ my: 1.5, borderLeft: "2px solid #e0e0e0", pl: 2 }}>
                                                 {/* Sub-order ID with navigation link */}
-                                                <Typography
+                                                {/* <Typography
                                                     variant="subtitle2"
                                                     sx={{
                                                         color: "#0066cc",
@@ -425,7 +451,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                     }}
                                                 >
                                                     Shop: {shopName}
-                                                </Typography>
+                                                </Typography> */}
 
                                                 {/* Map through items in this sub-order */}
                                                 {subOrder.items?.map((itemData, itemIndex) => (
@@ -541,10 +567,11 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                     })
                                                 )}
 
-                                                <Typography component="div" textAlign={"start"}>
+                                                <Typography component="div" textAlign={"start"} sx={{ mt: 3 }}>
                                                     Ship to
+                                                    <Divider sx={{ borderBottomWidth: 2, maxWidth: "50px" }} />
                                                 </Typography>
-                                                <Typography>
+                                                <Typography fontWeight={500}>
                                                     {capitalizeFirstWord(parentSale?.receiver_name)}
                                                 </Typography>
                                                 <Typography>
@@ -559,7 +586,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                 <Typography>
                                                     {parentSale?.country}
                                                 </Typography>
-                                                <Typography fontSize={15} fontWeight={500} sx={{ textWrap: "nowrap" }}>
+                                                <Typography fontSize={15} sx={{ textWrap: "nowrap" }}>
                                                     Mob. No.: {`${getDisplayValue(parentSale?.phone_code)} ${getDisplayValue(parentSale?.mobile)}`}
                                                 </Typography>
                                                 <Box mt={1}>
@@ -575,12 +602,17 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                             "&:focus": { fontWeight: "bold" }
                                                         }}
                                                         onClick={() => {
-                                                            const fullAddress = `${parentSale?.userName}
-                                                        ${parentSale?.address_line1}
-                                                        ${parentSale?.address_line2 ? ',' + parentSale.address_line2 + ',' : ''}
-                                                        ${parentSale?.city}, ${parentSale?.state} ${parentSale?.pincode}
-                                                        ${parentSale?.country}
-                                                        ${parentSale?.mobile}`;
+                                                            const fullAddress = [
+                                                                parentSale?.receiver_name,
+                                                                parentSale?.address_line1,
+                                                                parentSale?.address_line2 ? parentSale.address_line2 : null,
+                                                                `${parentSale?.city}, ${parentSale?.state} ${parentSale?.pincode}`,
+                                                                parentSale?.country,
+                                                                `${parentSale?.phone_code}${parentSale?.mobile}`
+                                                            ]
+                                                                .filter(Boolean)
+                                                                .join("\n");
+
                                                             navigator.clipboard.writeText(fullAddress);
                                                         }}
                                                     >

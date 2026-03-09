@@ -311,7 +311,7 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                 </Box>
                 <Box textAlign={"start"}>
 
-                    <Typography
+                    {/* <Typography
                         variant="subtitle2"
                         sx={{
                             color: "secondary.main",
@@ -324,7 +324,7 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                         }}
                     >
                         Transaction Id: {saleData.item_id || "N/A"}
-                    </Typography>
+                    </Typography> */}
                     <a
                         href={`${REACT_APP_WEB_URL}/products/${saleData?.productData?._id}`}
                         target="_blank"
@@ -433,7 +433,7 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                                         <Box key={key}>
                                             {typeof value === 'object' ? (
                                                 <Typography fontSize={14} sx={{ color: "#000" }}>
-                                                    {getDisplayValue(key)}:{` ${getDisplayValue(value?.value)} ($ ${getDisplayValue(value?.price)})`}
+                                                    {getDisplayValue(key)}:{` ${getDisplayValue(value?.value)}`}
                                                 </Typography>
                                             ) : (
                                                 <Typography fontSize={14} sx={{ color: "#000" }}>
