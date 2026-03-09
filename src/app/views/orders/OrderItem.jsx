@@ -1,4 +1,4 @@
-import { Box, Grid, Table, TableBody, TableCell, TableContainer, TableRow, TextField, Typography } from '@mui/material';
+import { Box, Grid, Table, TableBody, TableCell, TableContainer, TableRow, TextField, Typography, Divider } from '@mui/material';
 import React from 'react'
 import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
@@ -143,8 +143,16 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                 });
             }
         });
-
+        console.log(subOrders[0]);
         return subOrders;
+    };
+
+    const getDeliveryStatus = (shipments) => {
+        const isDelivered = shipments?.some(shipment => shipment.delivery_status === 'Delivered');
+        if (isDelivered) {
+            return 'Delivered';
+        }
+        return;
     };
 
     // Get sub-order count for display
@@ -296,7 +304,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                     alignItems={"center"}
                                                     mt={1}
                                                 >
-                                                    {capitalizeFirstWord(parentSale?.userName)}
+                                                    {capitalizeFirstWord(parentSale?.userName ?? parentSale?.receiver_name)}
                                                     <ListItem
                                                         sx={{
                                                             width: "auto",
@@ -385,13 +393,39 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                             <StarIcon sx={{ color: "green" }} />
                                                         </Typography>
                                                     }
+                                                    <Box sx={{ ml: 20 }}>
+                                                        <Typography
+                                                            variant="subtitle2"
+                                                            sx={{
+                                                                color: "#0066cc",
+                                                                mb: 1,
+                                                                cursor: "pointer",
+                                                                textDecoration: "underline",
+                                                                '&:hover': {
+                                                                    textDecoration: "none"
+                                                                }
+                                                            }}
+                                                            onClick={() => {
+                                                                navigate(`${ROUTE_CONSTANT.orders.orderHistory}?sales_id=${parentSale?._id}&sub_order_id=${subOrderId}`);
+                                                            }}
+                                                        >
+                                                            Reciept Id: {subOrderId || "N/A"}
+                                                        </Typography>
+
+                                                        <Typography
+                                                            variant="subtitle2"
+                                                            sx={{ color: "#666" }}
+                                                        >
+                                                            Shop: {shopName}
+                                                        </Typography>
+                                                    </Box>
                                                 </Typography>
                                             </Box>
 
                                             {/* Sub-order details */}
                                             <Box sx={{ my: 1.5, borderLeft: "2px solid #e0e0e0", pl: 2 }}>
                                                 {/* Sub-order ID with navigation link */}
-                                                <Typography
+                                                {/* <Typography
                                                     variant="subtitle2"
                                                     sx={{
                                                         color: "#0066cc",
@@ -417,7 +451,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                     }}
                                                 >
                                                     Shop: {shopName}
-                                                </Typography>
+                                                </Typography> */}
 
                                                 {/* Map through items in this sub-order */}
                                                 {subOrder.items?.map((itemData, itemIndex) => (
@@ -462,7 +496,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                         <TableCell align="center" colSpan={2}>
                                             <Box textAlign={"start"}>
                                                 <Typography variant="h6" fontWeight={500} fontSize={15}>
-                                                    {tab === "pending" ? "No Tracking" : tab === "unshipped" ? "Unshipped" : tab === "in-progress" ? "In Progress" : tab === "completed" ? "Completed" : "Cancelled"}
+                                                    {tab === "pending" ? "No Tracking" : tab === "unshipped" ? "Unshipped" : tab === "in-progress" ? "In Progress" : tab === "completed" ? `${getDeliveryStatus(subOrder?.items[0]?.shipments) || subOrder.delivery_status}` : "Cancelled"}
                                                 </Typography>
                                                 <Typography>Order {formatDate(parentSale?.createdAt)}</Typography>
                                                 {tab === "completed" && (
@@ -474,7 +508,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                                 sx={{
                                                                     background: "#f8f8f8",
                                                                     padding: "6px 16px",
-                                                                    border: "2px solid #000",
+                                                                    border: `2px solid ${shipment.delivery_status === "Delivered" ? '#000' : '#a4a4a4'} `,
                                                                     maxWidth: { xs: "100%", md: "250px" }
                                                                 }}
                                                             >
@@ -520,21 +554,24 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                                             onClick={() =>
                                                                                 navigator.clipboard.writeText(shipment.trackingNumber)
                                                                             }
+                                                                            disabled={!shipment.trackingNumber}
                                                                         >
-                                                                            <ContentCopyIcon sx={{ fontSize: 16 }} />
+                                                                            <ContentCopyIcon sx={{ fontSize: 16, color: shipment.trackingNumber ? 'text.primary' : 'inherit' }} />
                                                                         </IconButton>
                                                                     </Typography>
                                                                 </Typography>
+                                                                <Typography>Status: {shipment.delivery_status}</Typography>
                                                                 <Typography>Shipped on {new Date(shipment.shipped_date).toLocaleDateString('en-GB')}</Typography>
                                                             </Box>
                                                         );
                                                     })
                                                 )}
 
-                                                <Typography component="div" textAlign={"start"}>
+                                                <Typography component="div" textAlign={"start"} sx={{ mt: 3 }}>
                                                     Ship to
+                                                    <Divider sx={{ borderBottomWidth: 2, maxWidth: "50px" }} />
                                                 </Typography>
-                                                <Typography>
+                                                <Typography fontWeight={500}>
                                                     {capitalizeFirstWord(parentSale?.receiver_name)}
                                                 </Typography>
                                                 <Typography>
@@ -549,7 +586,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                 <Typography>
                                                     {parentSale?.country}
                                                 </Typography>
-                                                <Typography fontSize={15} fontWeight={500} sx={{ textWrap: "nowrap" }}>
+                                                <Typography fontSize={15} sx={{ textWrap: "nowrap" }}>
                                                     Mob. No.: {`${getDisplayValue(parentSale?.phone_code)} ${getDisplayValue(parentSale?.mobile)}`}
                                                 </Typography>
                                                 <Box mt={1}>
@@ -565,12 +602,17 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                             "&:focus": { fontWeight: "bold" }
                                                         }}
                                                         onClick={() => {
-                                                            const fullAddress = `${parentSale?.userName}
-                                                        ${parentSale?.address_line1}
-                                                        ${parentSale?.address_line2 ? ',' + parentSale.address_line2 + ',' : ''}
-                                                        ${parentSale?.city}, ${parentSale?.state} ${parentSale?.pincode}
-                                                        ${parentSale?.country}
-                                                        ${parentSale?.mobile}`;
+                                                            const fullAddress = [
+                                                                parentSale?.receiver_name,
+                                                                parentSale?.address_line1,
+                                                                parentSale?.address_line2 ? parentSale.address_line2 : null,
+                                                                `${parentSale?.city}, ${parentSale?.state} ${parentSale?.pincode}`,
+                                                                parentSale?.country,
+                                                                `${parentSale?.phone_code}${parentSale?.mobile}`
+                                                            ]
+                                                                .filter(Boolean)
+                                                                .join("\n");
+
                                                             navigator.clipboard.writeText(fullAddress);
                                                         }}
                                                     >

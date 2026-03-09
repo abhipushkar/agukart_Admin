@@ -40,6 +40,7 @@ import { ApiService } from '../../services/ApiService';
 import { fetchAllActiveSubOrders } from './useOrderStore';
 import { localStorageKey } from 'app/constant/localStorageKey';
 import { useBulkTrackingStore } from "./useBulkTrackingStore";
+import { useOrderStore } from './useOrderStore';
 
 // Styled components
 const DropzoneArea = styled(Paper)(({ theme, isDragActive, hasError }) => ({
@@ -102,7 +103,8 @@ const AddBulkTracking = ({ open, onClose }) => {
     const [uploadHistory, setUploadHistory] = useState([]);
     const [error, setError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [deliveryServices, setDeliveryServices] = useState([]);
+    const shippingServices = useOrderStore(state => state.shippingServices);
+    const fetchAllShippingServices = useOrderStore(state => state.fetchAllShippingServices);
     const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
     const [fetchedSubOrdersMap, setFetchedSubOrdersMap] = useState({});
     const [isLoadingData, setIsLoadingData] = useState(false);
@@ -113,10 +115,9 @@ const AddBulkTracking = ({ open, onClose }) => {
             const loadData = async () => {
                 setIsLoadingData(true);
                 try {
-                    // Fetch delivery services
-                    const res = await ApiService.get("get-delivery-service", auth_key);
-                    if (res.status === 200) {
-                        setDeliveryServices(res?.data?.data || []);
+                    // Fetch delivery services if empty
+                    if (shippingServices.length === 0) {
+                        await fetchAllShippingServices();
                     }
                 } catch (err) {
                     console.error("Failed to fetch delivery services", err);
@@ -147,8 +148,8 @@ const AddBulkTracking = ({ open, onClose }) => {
     }, [open, auth_key]);
 
     const allowedCouriers = React.useMemo(() => {
-        return deliveryServices.map(s => s.name);
-    }, [deliveryServices]);
+        return shippingServices.map(s => s.name);
+    }, [shippingServices]);
 
     // Handle file drop
     const onDrop = useCallback((acceptedFiles, rejectedFiles) => {
