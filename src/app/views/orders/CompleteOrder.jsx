@@ -107,7 +107,7 @@ const CompleteOrder = ({ open, onClose, subOrders, shipmentId }) => {
             initialData[order.sub_order_id] = {
                 courierName: (editMode && existingShipmentData)
                     ? existingShipmentData.courierName || ''
-                    : defaultService?.name || '',
+                    : defaultService?.title || '',
                 trackingNumber: editMode && existingShipmentData
                     ? existingShipmentData.trackingNumber || ''
                     : '',
