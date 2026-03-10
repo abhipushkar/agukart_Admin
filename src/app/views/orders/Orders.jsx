@@ -466,9 +466,12 @@ const Orders = () => {
             </Typography>
           </Grid>
           <Grid lg={6} md={6} xs={6}>
-            <Box sx={{ display: "flex", alignItems: "centre", justifyContent: "end" }}>
+            <Box sx={{ display: "flex", alignItems: "centre", justifyContent: "end", gap: 2 }}>
               <Button variant="contained" onClick={handleBulkTracking}>
                 Add Bulk Tracking
+              </Button>
+              <Button variant="contained" onClick={() => { }}>
+                Update Bulk Status
               </Button>
             </Box>
           </Grid>

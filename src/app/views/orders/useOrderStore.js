@@ -68,7 +68,7 @@ export const useOrderStore = create((set) => ({
 
     fetchAllShippingServices: async () => {
         try {
-            const res = await ShippingService.getList();
+            const res = await ShippingService.getActiveList();
             if (res.status === 200) {
                 set({ shippingServices: res?.data?.data || [] });
             }

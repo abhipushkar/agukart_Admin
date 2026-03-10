@@ -21,15 +21,17 @@ import CompleteOrder from './CompleteOrder';
 import { useState } from 'react';
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import CheckIcon from "@mui/icons-material/Check";
+import UpdateStatus from './UpdateStatus';
 
 const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2, handleOpen, setOrderIds, anchorEl, setAnchorEl, anchorEl1, setAnchorEl1, anchorEl3, setAnchorEl3, openMenuIndex, setOpenMenuIndex, openMenuIndex1, setOpenMenuIndex1, baseUrl, orderIds, handleCloseOption, handleCloseOption1, updateOrder, onSelectAllForDate, isDateGroupFullySelected, selectedSubOrders, setSelectedSubOrders }) => {
 
     const navigate = useNavigate();
     const [open, setOpen] = useState(false);
+    const [updateStatusOpen, setUpdateStatusOpen] = useState(false);
     const [completeOrder, setCompleteOrder] = useState([]);
+    const [updateStatusOrder, setUpdateStatusOrder] = useState(null);
     // Handle checkbox change for SUB-ORDER IDs
     const handleCheckboxChange = (subOrderId, subOrder) => {
-        console.log(subOrder, "here is my sub order");
         setOrderIds((prev) =>
             prev.includes(subOrderId) ? prev.filter((id) => id !== subOrderId) : [...prev, subOrderId]
         );
@@ -117,11 +119,18 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
     const handleDialogClose = () => {
         setOpen(false);
         setCompleteOrder([]);
+        setUpdateStatusOpen(false);
+        setUpdateStatusOrder(null);
     }
 
     const handleCompleteOrderDialogOpen = (subOrders) => {
         setCompleteOrder(subOrders);
         setOpen(true);
+    }
+
+    const handleUpdateStatusOpen = (suborder) => {
+        setUpdateStatusOrder(suborder);
+        setUpdateStatusOpen(true);
     }
 
     // Get all sub-orders from all sales in this date group
@@ -143,7 +152,6 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                 });
             }
         });
-        console.log(subOrders[0]);
         return subOrders;
     };
 
@@ -166,6 +174,11 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                 open={open}
                 onClose={handleDialogClose}
                 subOrders={completeOrder}
+            />
+            <UpdateStatus
+                open={updateStatusOpen}
+                onClose={handleDialogClose}
+                subOrder={updateStatusOrder}
             />
             <Grid
                 container
@@ -778,6 +791,16 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                                     }}
                                                                 >
                                                                     Update tracking
+                                                                </MenuItem>
+                                                            )}
+                                                            {tab === "completed" && (
+                                                                <MenuItem
+                                                                    onClick={() => {
+                                                                        handleCloseOption();
+                                                                        handleUpdateStatusOpen(subOrder);
+                                                                    }}
+                                                                >
+                                                                    Update Status
                                                                 </MenuItem>
                                                             )}
                                                             <MenuItem

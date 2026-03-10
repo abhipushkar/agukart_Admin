@@ -14,8 +14,7 @@ const ALLOWED_STATUS = [
     "Out for delivery",
     "In transit",
     "Delivery attempt",
-    "Delivered",
-    "Cancelled"
+    "Delivered"
 ];
 
 const normalize = (val) => String(val || "").trim();

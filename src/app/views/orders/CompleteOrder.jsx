@@ -35,8 +35,7 @@ const CompleteOrder = ({ open, onClose, subOrders, shipmentId }) => {
         'Out for delivery',
         'In transit',
         'Delivery attempt',
-        'Delivered',
-        'Cancelled'
+        'Delivered'
     ]);
     const [orderData, setOrderData] = useState({});
     const [loading, setLoading] = useState(false);
@@ -256,8 +255,6 @@ const CompleteOrder = ({ open, onClose, subOrders, shipmentId }) => {
                     alignItems: 'center',
                     borderBottom: 1,
                     borderColor: 'divider',
-                    pb: 2,
-                    mb: 3
                 }}>
                     <Typography variant="h5" sx={{ fontWeight: 600 }}>
                         {!isEdit ? (`Complete ${orders.length} order${orders.length !== 1 ? 's' : ''}`) : ("Update Existing Tracking")}
@@ -267,7 +264,7 @@ const CompleteOrder = ({ open, onClose, subOrders, shipmentId }) => {
                     </IconButton>
                 </DialogTitle>
 
-                <DialogContent sx={{ p: 3, overflowY: 'auto', pt: 3 }}>
+                <DialogContent sx={{ p: 3, overflowY: 'auto', paddingTop: '24px !important' }}>
                     {/* Order Cards */}
                     <Stack spacing={3}>
                         {orders.map((order, index) => {
@@ -472,7 +469,7 @@ const CompleteOrder = ({ open, onClose, subOrders, shipmentId }) => {
                         {getConfirmationText()}
                     </Typography>
                 </DialogContent>
-                <DialogActions sx={{ p: 2, gap: 1 }}>
+                <DialogActions sx={{ py: 2, px: 4, display: 'flex', justifyContent: 'space-between' }}>
                     <Button
                         variant="outlined"
                         onClick={() => setConfirmDialogOpen(false)}
