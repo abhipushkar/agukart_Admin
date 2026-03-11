@@ -120,7 +120,6 @@ export default function ConfirmModal({
                 {type === "customerStatus" && "Are you sure you want to change customer account status?"}
                 {type === "voucherStatus" && "Are you sure you want to change voucher status?"}
                 {type === "voucherDelete" && "Are you sure you want to delete?"}
-                {type === "serviceStatus" && "Are you sure you change Delivery Service status?"}
                 {msg && msg}
               </Typography>
             </Typography>

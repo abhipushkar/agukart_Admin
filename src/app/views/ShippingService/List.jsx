@@ -6,14 +6,7 @@ import {
     Box,
     Button,
     IconButton,
-    Paper,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
-    TableSortLabel,
+    Card,
     CircularProgress
 } from "@mui/material";
 import React from "react";
@@ -28,7 +21,7 @@ import debounce from "lodash.debounce";
 import DeleteIcon from "@mui/icons-material/Delete";
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
-import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 
 const Container = styled("div")(({ theme }) => ({
     margin: "30px",
@@ -52,12 +45,15 @@ const LoadingOverlay = styled(Box)({
     zIndex: 10
 });
 
-const StyledTableRow = styled(TableRow)(({ isDragging, theme }) => ({
-    backgroundColor: isDragging ? 'rgba(25, 118, 210, 0.08)' : 'transparent',
+const StyledCard = styled(Card)(({ isDragging, theme }) => ({
+    backgroundColor: isDragging ? 'rgba(25, 118, 210, 0.08)' : theme.palette.background.paper,
     opacity: isDragging ? 0.7 : 1,
     boxShadow: isDragging ? '0 4px 20px rgba(0,0,0,0.15)' : 'none',
+    marginBottom: '8px',
+    border: `1px solid ${theme.palette.divider}`,
+    transition: 'all 0.2s ease',
     '&:hover': {
-        backgroundColor: isDragging ? 'rgba(25, 118, 210, 0.08)' : 'rgba(0, 0, 0, 0.04)',
+        backgroundColor: isDragging ? 'rgba(25, 118, 210, 0.08)' : 'rgba(0, 0, 0, 0.02)',
     },
     '& .drag-handle': {
         cursor: 'grab',
@@ -71,6 +67,9 @@ const StyledTableRow = styled(TableRow)(({ isDragging, theme }) => ({
         opacity: 0.7,
     },
 }));
+
+// Shared grid template for aligning header and rows exactly like a table
+const listGridTemplate = "60px 1.5fr 1.5fr 1fr 1fr 1.5fr";
 
 const ShippingServiceList = () => {
     const label = { inputProps: { "aria-label": "Switch demo" } };
@@ -121,11 +120,12 @@ const ShippingServiceList = () => {
     };
 
     const handleOpen = (type, msg) => {
-        setMsg(msg?.message);
+        setMsg(typeof msg === "string" ? msg : msg?.message);
         setOpen(true);
         setType(type);
+
         if (msg?.response?.status === 401) {
-            logOut()
+            logOut();
         }
     };
 
@@ -212,17 +212,25 @@ const ShippingServiceList = () => {
 
     const handleStatusChange = useCallback(async () => {
         if (statusData) {
+            if (statusData.isDefault) {
+                handleOpen("error", "Cannot make default service inactive");
+                return;
+            }
             try {
                 const payload = statusData;
                 const res = await ApiService.patch(`toggle/${statusData.id}`, payload, auth_key);
                 if (res.status === 200) {
-                    getShippingServiceList();
+                    setAllServices(prev =>
+                        prev.map(item =>
+                            item._id === statusData.id ? { ...item, isActive: statusData.isActive } : item
+                        )
+                    );
                 }
             } catch (error) {
                 handleOpen("error", error);
             }
         }
-    }, [auth_key, getShippingServiceList, statusData]);
+    }, [auth_key, statusData]);
 
     const handleRequestSort = (property) => {
         let newOrder;
@@ -248,7 +256,6 @@ const ShippingServiceList = () => {
     const handleSetDefault = async () => {
         if (selectedService) {
             try {
-                setLoading(true);
                 const res = await ApiService.patch(
                     `set-default/${selectedService._id}`,
                     {},
@@ -257,12 +264,16 @@ const ShippingServiceList = () => {
 
                 if (res.status === 200) {
                     handleOpen("success", { message: `${selectedService.name} set as default successfully` });
-                    getShippingServiceList();
+                    setAllServices(prev =>
+                        prev.map(item => ({
+                            ...item,
+                            isDefault: item._id === selectedService._id
+                        }))
+                    );
                 }
             } catch (error) {
                 handleOpen("error", error?.response?.data || error);
             } finally {
-                setLoading(false);
                 handleMenuClose();
             }
         }
@@ -294,7 +305,6 @@ const ShippingServiceList = () => {
 
         // Call API to update sort order
         try {
-            setLoading(true);
             const payload = {
                 services: updatedServices.map((service) => ({
                     id: service._id,
@@ -312,8 +322,6 @@ const ShippingServiceList = () => {
             console.error('Failed to update sort order:', error);
             // Revert on error
             getShippingServiceList();
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -341,104 +349,109 @@ const ShippingServiceList = () => {
             </Box>
 
             <Box sx={{ position: 'relative' }}>
-                <TableContainer sx={{ paddingLeft: 2, paddingRight: 2 }} component={Paper}>
-                    {loading && (
-                        <LoadingOverlay>
-                            <CircularProgress />
-                        </LoadingOverlay>
-                    )}
-                    <Table
+                <DragDropContext onDragEnd={onDragEnd}>
+                    <Box
                         sx={{
-                            width: "max-content",
-                            minWidth: "100%",
-                            ".MuiTableCell-root": {
-                                padding: "12px 5px"
-                            }
+                            paddingLeft: 2,
+                            paddingRight: 2,
+                            paddingBottom: 2,
+                            minWidth: 800,
                         }}
                     >
-                        <TableHead>
-                            <TableRow>
-                                <TableCell width="100px">Drag</TableCell>
-                                <TableCell sortDirection={orderBy === "name" ? order : false}>
-                                    <TableSortLabel
-                                        active={orderBy === "name"}
-                                        direction={orderBy === "name" ? order : "asc"}
-                                        onClick={() => handleRequestSort("name")}
-                                    >
-                                        Service Name
-                                    </TableSortLabel>
-                                </TableCell>
-                                <TableCell width="320px">
-                                    Title
-                                </TableCell>
-                                <TableCell sortDirection={orderBy === "isActive" ? order : false}>
-                                    <TableSortLabel
-                                        active={orderBy === "isActive"}
-                                        direction={orderBy === "isActive" ? order : "asc"}
-                                        onClick={() => handleRequestSort("isActive")}
-                                    >
-                                        Status
-                                    </TableSortLabel>
-                                </TableCell>
-                                <TableCell align="center" width="100px"></TableCell>
-                                <TableCell width="300px">Action</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <DragDropContext onDragEnd={onDragEnd}>
-                            <Droppable droppableId="shipping-services">
-                                {(provided) => (
-                                    <TableBody
-                                        {...provided.droppableProps}
-                                        ref={provided.innerRef}
-                                    >
-                                        {allServices.length > 0 ? (
-                                            allServices.map((row, index) => (
-                                                <Draggable
-                                                    key={row.id || row._id}
-                                                    draggableId={row.id || row._id}
-                                                    index={index}
-                                                >
-                                                    {(provided, snapshot) => (
-                                                        <StyledTableRow
-                                                            ref={provided.innerRef}
-                                                            {...provided.draggableProps}
-                                                            isDragging={snapshot.isDragging}
+                        {loading && (
+                            <LoadingOverlay>
+                                <CircularProgress />
+                            </LoadingOverlay>
+                        )}
+
+                        {/* Custom Table Header */}
+                        <Box
+                            sx={{
+                                display: 'grid',
+                                gridTemplateColumns: listGridTemplate,
+                                gap: 2,
+                                padding: "12px 16px",
+                                borderBottom: '1px solid',
+                                borderColor: 'divider',
+                                fontWeight: 600,
+                                color: 'text.secondary',
+                                mb: 2
+                            }}
+                        >
+                            <Box>Drag</Box>
+                            <Box>Service Name</Box>
+                            <Box>Title</Box>
+                            <Box>Status</Box>
+                            <Box></Box>
+                            <Box>Action</Box>
+                        </Box>
+
+                        <Droppable droppableId="shipping-services">
+                            {(provided) => (
+                                <Box
+                                    {...provided.droppableProps}
+                                    ref={provided.innerRef}
+                                >
+                                    {allServices.length > 0 ? (
+                                        allServices.map((row, index) => (
+                                            <Draggable
+                                                key={row.id || row._id}
+                                                draggableId={row.id || row._id}
+                                                index={index}
+                                            >
+                                                {(provided, snapshot) => (
+                                                    <StyledCard
+                                                        ref={provided.innerRef}
+                                                        {...provided.draggableProps}
+                                                        isDragging={snapshot.isDragging}
+                                                        elevation={0}
+                                                    >
+                                                        <Box
+                                                            sx={{
+                                                                display: 'grid',
+                                                                gridTemplateColumns: listGridTemplate,
+                                                                gap: 2,
+                                                                alignItems: 'center',
+                                                                padding: "12px 16px",
+                                                            }}
                                                         >
-                                                            <TableCell>
-                                                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                                                    <IconButton
-                                                                        className="drag-handle"
-                                                                        size="small"
-                                                                        {...provided.dragHandleProps}
+                                                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                                                <IconButton
+                                                                    className="drag-handle"
+                                                                    size="small"
+                                                                    {...provided.dragHandleProps}
+                                                                    sx={{
+                                                                        p: 0.5,
+                                                                        '&:active': {
+                                                                            cursor: 'grabbing',
+                                                                        },
+                                                                    }}
+                                                                >
+                                                                    <DragIndicatorIcon
                                                                         sx={{
-                                                                            p: 0.5,
-                                                                            '&:active': {
-                                                                                cursor: 'grabbing',
-                                                                            },
+                                                                            color: 'text.secondary',
+                                                                            fontSize: '1.2rem'
                                                                         }}
-                                                                    >
-                                                                        <DragIndicatorIcon
-                                                                            sx={{
-                                                                                color: 'text.secondary',
-                                                                                fontSize: '1.2rem'
-                                                                            }}
-                                                                        />
-                                                                    </IconButton>
-                                                                </Box>
-                                                            </TableCell>
-                                                            <TableCell>{row.name}</TableCell>
-                                                            <TableCell>{row.title || ""}</TableCell>
-                                                            <TableCell>
+                                                                    />
+                                                                </IconButton>
+                                                            </Box>
+                                                            <Box sx={{ fontWeight: 500 }}>{row.name}</Box>
+                                                            <Box sx={{ color: 'text.secondary' }}>{row.title || ""}</Box>
+                                                            <Box>
                                                                 <Switch
                                                                     onClick={() => {
+                                                                        if (row.isDefault) {
+                                                                            handleOpen("error", "Cannot make default service inactive!");
+                                                                            return;
+                                                                        }
                                                                         handleOpen("serviceStatus", "Are you sure you want to change Delivery Service status?");
                                                                         setStatusData(() => ({ id: row?._id, isActive: !row.isActive }));
                                                                     }}
                                                                     checked={row.isActive}
                                                                     {...label}
                                                                 />
-                                                            </TableCell>
-                                                            <TableCell>
+                                                            </Box>
+                                                            <Box>
                                                                 {row.isDefault && (
                                                                     <Button
                                                                         variant="contained"
@@ -460,8 +473,8 @@ const ShippingServiceList = () => {
                                                                         Default
                                                                     </Button>
                                                                 )}
-                                                            </TableCell>
-                                                            <TableCell>
+                                                            </Box>
+                                                            <Box>
                                                                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                                                                     <Box sx={{ display: 'flex', gap: 2 }}>
                                                                         <IconButton
@@ -491,25 +504,23 @@ const ShippingServiceList = () => {
                                                                     </IconButton>
 
                                                                 </Box>
-                                                            </TableCell>
-                                                        </StyledTableRow>
-                                                    )}
-                                                </Draggable>
-                                            ))
-                                        ) : (
-                                            <TableRow>
-                                                <TableCell colSpan={4} align="center">
-                                                    No shipping services found
-                                                </TableCell>
-                                            </TableRow>
-                                        )}
-                                        {provided.placeholder}
-                                    </TableBody>
-                                )}
-                            </Droppable>
-                        </DragDropContext>
-                    </Table>
-                </TableContainer>
+                                                            </Box>
+                                                        </Box>
+                                                    </StyledCard>
+                                                )}
+                                            </Draggable>
+                                        ))
+                                    ) : (
+                                        <Box sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
+                                            No Delivery Services Available
+                                        </Box>
+                                    )}
+                                    {provided.placeholder}
+                                </Box>
+                            )}
+                        </Droppable>
+                    </Box>
+                </DragDropContext>
 
                 {/* Menu for MoreVertIcon */}
                 <Menu
