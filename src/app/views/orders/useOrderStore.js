@@ -66,6 +66,50 @@ export const useOrderStore = create((set) => ({
         }
     },
 
+    fetchCompletedOrders120Days: async () => {
+        const auth_key = localStorage.getItem(localStorageKey.auth_key);
+        const today = new Date();
+        const fromDate = new Date();
+        fromDate.setDate(today.getDate() - 120);
+
+        const fromStr = fromDate.toISOString().split("T")[0];
+        const toStr = today.toISOString().split("T")[0];
+
+        let completedSubOrders = [];
+
+        try {
+            const res = await ApiService.get(
+                `${apiEndpoints.getOrders}/completed?startDate=${fromStr}&endDate=${toStr}&page=1&limit=5000`,
+                auth_key
+            );
+
+            if (res?.status === 200 && res?.data?.sales) {
+                res.data.sales.forEach((dateGroup) => {
+                    dateGroup?.sales?.forEach((sale) => {
+                        if (sale?.saleDetaildata?.length) {
+                            sale.saleDetaildata.forEach(subOrder => {
+                                const subOrderId = subOrder._id || subOrder.sub_order_id;
+                                if (subOrderId) {
+                                    completedSubOrders.push({
+                                        ...subOrder,
+                                        parentSale: sale,
+                                        order_id: sale.order_id,
+                                        sale_id: sale._id,
+                                    });
+                                }
+                            });
+                        }
+                    });
+                });
+            }
+
+            return completedSubOrders;
+        } catch (error) {
+            console.error("Failed to fetch completed sub orders", error);
+            return [];
+        }
+    },
+
     fetchAllShippingServices: async () => {
         try {
             const res = await ShippingService.getActiveList();
@@ -89,4 +133,8 @@ export const setGlobalSubOrders = (subOrders) => {
 
 export const fetchAllActiveSubOrders = async () => {
     return useOrderStore.getState().fetchAllActiveSubOrders();
+};
+
+export const fetchCompletedOrders120Days = async () => {
+    return useOrderStore.getState().fetchCompletedOrders120Days();
 };

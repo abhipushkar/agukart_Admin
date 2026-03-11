@@ -33,6 +33,9 @@ import OrderItem from "./OrderItem";
 import CompleteOrder from "./CompleteOrder";
 import { REACT_APP_WEB_URL } from "config";
 import AddBulkTracking from "./AddBulkTracking";
+import UpdateBulkStatus from "./UpdateBulkStatus";
+import UpdateStatus from "./UpdateStatus";
+import AddIcon from "@mui/icons-material/Add";
 
 const Search = styled("span")(({ theme }) => ({
   position: "relative",
@@ -84,6 +87,7 @@ const Orders = () => {
   const [selectedSubOrders, setSelectedSubOrders] = useState([]);
   const [openDialog, setOpenDialog] = useState(false);
   const [openBulkTracking, setOpenBulkTracking] = useState(false);
+  const [openBulkStatus, setOpenBulkStatus] = useState(false);
 
   // Use React Router's search params
   const [searchParams, setSearchParams] = useSearchParams();
@@ -447,11 +451,23 @@ const Orders = () => {
     setOpenBulkTracking(false);
   };
 
+  const handleBulkStatus = () => {
+    setOpenBulkStatus(true);
+  };
+
+  const handleBulkStatusClose = () => {
+    setOpenBulkStatus(false);
+  };
+
   return (
     <>
       <AddBulkTracking
         open={openBulkTracking}
         onClose={handleBulkTrackingClose}
+      />
+      <UpdateBulkStatus
+        open={openBulkStatus}
+        onClose={handleBulkStatusClose}
       />
       <CompleteOrder
         open={openDialog}
@@ -470,7 +486,7 @@ const Orders = () => {
               <Button variant="contained" onClick={handleBulkTracking}>
                 Add Bulk Tracking
               </Button>
-              <Button variant="contained" onClick={() => { }}>
+              <Button variant="contained" onClick={handleBulkStatus}>
                 Update Bulk Status
               </Button>
             </Box>

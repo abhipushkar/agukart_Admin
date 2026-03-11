@@ -22,7 +22,9 @@ import {
     Download as DownloadIcon,
     Apps as AppsIcon,
     ErrorOutline as ErrorOutlineIcon,
-    CheckCircleOutline as CheckCircleOutlineIcon
+    CheckCircleOutline as CheckCircleOutlineIcon,
+    WarningAmberRounded as WarningAmberRoundedIcon,
+    WarningAmberRounded
 } from '@mui/icons-material';
 import DeleteIcon from "@mui/icons-material/Delete";
 import { useNavigate } from 'react-router-dom';
@@ -51,9 +53,19 @@ const TrackingUploadStatus = () => {
     const [open, setOpen] = useState(false);
     const [uploadId, setUploadId] = useState(null);
 
-    // Load from IndexedDB on mount
+    // Load from IndexedDB on mount and set up polling for processing statuses
     useEffect(() => {
         loadUploads();
+
+        // Auto-refresh constantly if there are processing records
+        const intervalId = setInterval(() => {
+            const currentUploads = useBulkTrackingStore.getState().uploads;
+            if (currentUploads.some(u => u.status === 'processing')) {
+                loadUploads();
+            }
+        }, 1500);
+
+        return () => clearInterval(intervalId);
     }, [loadUploads]);
 
     // Rest of your component code remains the same...
@@ -151,7 +163,7 @@ const TrackingUploadStatus = () => {
         } else if (validCount > 0 && validCount < totalRows) {
             return (
                 <Chip
-                    icon={<DownloadIcon />}
+                    icon={<WarningAmberRounded />}
                     label="Partial success"
                     size="small"
                     sx={{
@@ -199,7 +211,7 @@ const TrackingUploadStatus = () => {
                     <Divider />
                     <Box sx={{ ml: "16px", mt: "16px" }}>
                         <Button
-                            onClick={() => navigate(ROUTE_CONSTANT.orders.orderPage)}
+                            onClick={() => navigate(-1)}
                             startIcon={<AppsIcon />}
                             variant="contained"
                         >
@@ -288,7 +300,7 @@ const TrackingUploadStatus = () => {
                                                 {upload.fileName}
                                             </Typography>
                                             <Typography variant="caption" color="text.secondary">
-                                                {formatDate(upload.timestamp)}
+                                                {formatDate(upload.timestamp || upload.createdAt || Date.now())}
                                             </Typography>
                                         </Box>
                                     </TableCell>
@@ -319,6 +331,17 @@ const TrackingUploadStatus = () => {
                                         <Box sx={{ display: 'flex', gap: 3, justifyContent: 'flex-end' }}>
                                             {upload.status !== 'processing' && (
                                                 <>
+                                                    {upload.invalidRows?.length > 0 && (
+                                                        <Tooltip title="View Details">
+                                                            <IconButton
+                                                                size="small"
+                                                                onClick={() => toggleRowExpansion(upload.id)}
+                                                                color={expandedRows[upload.id] ? 'primary' : 'default'}
+                                                            >
+                                                                <AppsIcon fontSize="small" />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                    )}
                                                     <Tooltip title="Download Processing Summary">
                                                         <Button
                                                             size="small"
@@ -335,17 +358,6 @@ const TrackingUploadStatus = () => {
 
                                                     </Tooltip>
 
-                                                    {upload.invalidRows?.length > 0 && (
-                                                        <Tooltip title="View Details">
-                                                            <IconButton
-                                                                size="small"
-                                                                onClick={() => toggleRowExpansion(upload.id)}
-                                                                color={expandedRows[upload.id] ? 'primary' : 'default'}
-                                                            >
-                                                                <AppsIcon fontSize="small" />
-                                                            </IconButton>
-                                                        </Tooltip>
-                                                    )}
                                                 </>
                                             )}
 

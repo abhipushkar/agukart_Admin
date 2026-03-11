@@ -152,26 +152,53 @@ const UpdateStatus = ({ open, onClose, subOrder }) => {
                         : null
                 }));
 
+            // When only 1 shipment exists, mirror the root-level status/date into it (no individual UI shown)
+            let shipment_updates;
+            if (shipmentData.length === 1) {
+                const single = shipmentData[0];
+                shipment_updates = [{
+                    sub_order_id: subOrder.sub_order_id,
+                    shipment_id: single._id,
+                    trackingNumber: single.trackingNumber,
+                    delivery_status: originalDeliveryStatus,
+                    delivered_date: originalDeliveryStatus === 'Delivered' ? originalDeliveredDate : null
+                }];
+            } else {
+                shipment_updates = updatedShipments.map(s => ({
+                    sub_order_id: subOrder.sub_order_id,
+                    ...s
+                }));
+            }
+
+            const order_updates = [
+                {
+                    sub_order_id: subOrder.sub_order_id,
+                    delivery_status: originalDeliveryStatus,
+                    delivered_date: originalDeliveryStatus === 'Delivered' ? originalDeliveredDate : null
+                }
+            ];
+
             const payload = {
-                sub_order_id: subOrder.sub_order_id,
-                delivery_status: originalDeliveryStatus,
-                shipments: updatedShipments
+                shipment_updates,
+                order_updates
             };
 
-            // API call would go here
-            // const res = await ApiService.patch('update-shipments', payload, auth_key);
+            const res = await ApiService.post('update-shipment-status', payload, auth_key);
 
-            console.log('Payload to send:', payload);
-
-            setSnackbar({
-                open: true,
-                message: 'Status updated successfully',
-                severity: 'success'
-            });
-            setShowAllShipments(false);
-            setTimeout(() => {
-                onClose();
-            }, 1000);
+            if (res?.status === 200) {
+                setSnackbar({
+                    open: true,
+                    message: 'Status updated successfully',
+                    severity: 'success'
+                });
+                setShowAllShipments(false);
+                setTimeout(() => {
+                    window.location.reload();
+                    onClose();
+                }, 1000);
+            } else {
+                throw new Error(res?.data?.message || 'Failed to update status');
+            }
 
         } catch (error) {
             console.error("Error updating status:", error);
@@ -297,8 +324,8 @@ const UpdateStatus = ({ open, onClose, subOrder }) => {
                             </Grid>
                         </Paper>
 
-                        {/* Shipments Cards - Only visible when showAllShipments is true */}
-                        {showAllShipments && shipmentData.length > 0 && (
+                        {/* Shipments Cards - Only visible when showAllShipments is true AND more than 1 shipment */}
+                        {showAllShipments && shipmentData.length > 1 && (
                             <>
                                 <Typography variant="h6" sx={{ fontWeight: 600, mt: 2 }}>
                                     Update Individual Shipments
