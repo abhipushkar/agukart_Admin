@@ -18,10 +18,10 @@ import {
     InputLabel,
     Alert,
     CircularProgress,
+    Snackbar,
 } from '@mui/material';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useCallback } from 'react';
-import { toast } from 'react-toastify';
 import { ApiService } from 'app/services/ApiService';
 import { localStorageKey } from 'app/constant/localStorageKey';
 
@@ -37,6 +37,20 @@ const RefundPage = () => {
     const [refundData, setRefundData] = useState(null);
     const [isCancelMode, setIsCancelMode] = useState(mode === 'cancel');
     const [isFormValid, setIsFormValid] = useState(true);
+
+    const [snackbar, setSnackbar] = useState({
+        open: false,
+        message: '',
+        severity: 'info'
+    });
+
+    const handleSnackbarClose = () => {
+        setSnackbar(prev => ({ ...prev, open: false }));
+    };
+
+    const showSnackbar = (message, severity = 'info') => {
+        setSnackbar({ open: true, message, severity });
+    };
 
     const currencySymbols = {
         USD: '$',
@@ -149,11 +163,11 @@ const RefundPage = () => {
             const items = updateItemAtIndex(prev.items, index, item => {
                 const validValue = parseNumber(item.entered_refund_amount);
                 const maxAllowed = item.amount - item.refunded_cash_amount;
-                if (validValue > maxAllowed) return item;
+                const clampedValue = Math.min(validValue, maxAllowed);
                 const updatedItem = {
                     ...item,
-                    entered_refund_amount: validValue,
-                    net_refund_amount: validValue
+                    entered_refund_amount: clampedValue,
+                    net_refund_amount: clampedValue
                 };
 
                 return {
@@ -251,19 +265,10 @@ const RefundPage = () => {
             setIsFormValid(false);
             return;
         }
-
         const isValid = refundData.items.every(item => {
-            const maxAllowed = item.amount - item.refunded_cash_amount;
-
-            if (item.entered_refund_amount > maxAllowed) return false;
             if (item.entered_refund_amount > 0 && !item.reason_code) return false;
-
             return true;
         });
-        if (refundData.shipping_refund > (refundData.shipping.paid - refundData.shipping.refunded)) {
-            setIsFormValid(false);
-            return;
-        }
         setIsFormValid(isValid);
     }, [refundData]);
 
@@ -344,24 +349,35 @@ const RefundPage = () => {
     // Handle form submission
     const handleSubmit = async () => {
         if (!isFormValid) {
-            alert('Please fix validation errors before submitting');
+            showSnackbar('Please fix validation errors before submitting', 'warning');
             return;
         }
+
+        const payload = {
+            ...refundData,
+            items: refundData.items.filter(item => parseNumber(item.entered_refund_amount) > 0)
+        };
+
         try {
             if (isCancelMode) {
                 setSubmitting(true);
                 const auth_key = localStorage.getItem(localStorageKey.auth_key);
-                const res = await ApiService.post(`cancel/${suborderId}`, refundData, auth_key);
+                const res = await ApiService.post(`cancel/${suborderId}`, payload, auth_key);
                 console.log(res);
+                showSnackbar('Order cancelled successfully!', 'success');
             }
             else {
                 setSubmitting(true);
                 const auth_key = localStorage.getItem(localStorageKey.auth_key);
-                const res = await ApiService.post(`refund/${suborderId}`, refundData, auth_key);
-                console.log(res)
+                const res = await ApiService.post(`refund/${suborderId}`, payload, auth_key);
+                console.log(res);
+                showSnackbar('Refund submitted successfully!', 'success');
             }
+            initializeData(isCancelMode ? "cancel" : "refund");
         } catch (error) {
-            console.log({ 'error message': error })
+            console.log({ 'error message': error });
+            showSnackbar('Failed to submit refund. Please try again.', 'error');
+            initializeData(isCancelMode ? "cancel" : "refund");
         }
 
         setSubmitting(false);
@@ -769,7 +785,7 @@ const RefundPage = () => {
                             variant="contained"
                             fullWidth
                             onClick={handleSubmit}
-                            disabled={!isFormValid || submitting}
+                            disabled={!isFormValid || submitting || totals.enteredOrderRefund === 0}
                         >
                             {submitting ? 'submitting' : 'Submit refund'}
                         </Button>
@@ -777,15 +793,22 @@ const RefundPage = () => {
 
                     {!isFormValid && (
                         <Alert severity="warning" sx={{ mt: 2 }}>
-                            {shippingValidationError ?
-                                'Shipping refund cannot exceed remaining shipping amount' :
-                                'Please fix all validation errors before submitting'
-                            }
+                            Please add reason for refund before submitting!
                         </Alert>
                     )}
 
                 </Grid>
             </Grid>
+            <Snackbar
+                open={snackbar.open}
+                autoHideDuration={3000}
+                onClose={handleSnackbarClose}
+                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+            >
+                <Alert onClose={handleSnackbarClose} severity={snackbar.severity} sx={{ width: '100%' }}>
+                    {snackbar.message}
+                </Alert>
+            </Snackbar>
         </Box>
     );
 };

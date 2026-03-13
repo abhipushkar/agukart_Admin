@@ -18,7 +18,7 @@ import {
 import React, { useState } from "react";
 import Typography from "@mui/material/Typography";
 import AppsIcon from "@mui/icons-material/Apps";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { ROUTE_CONSTANT } from "app/constant/routeContanst";
 import { ApiService } from "app/services/ApiService";
 import { apiEndpoints } from "app/constant/apiEndpoints";
@@ -30,9 +30,14 @@ import { useProfileData } from "app/contexts/profileContext";
 import { set } from "lodash";
 
 const Add = () => {
+
   const [query, setQuery] = useSearchParams();
   const queryId = query.get("id");
   console.log(queryId, "queryId");
+  const location = useLocation();
+  const [voucher, setVoucher] = useState(location.state?.voucher || null);
+  console.log(voucher, "voucher");
+  const [mode, setMode] = useState(queryId ? "edit" : voucher ? "copy" : "add");
   const { logUserData, setLogUserData } = useProfileData();
   console.log(logUserData, "logUserData");
   const navigate = useNavigate();
@@ -50,23 +55,24 @@ const Add = () => {
 
     return `${year}-${month}-${day}T${h}:${m}`;
   };
+
   const [formValues, setFormValues] = useState({
-    for: "",
-    selectedProducts: "",
-    tags: [],
-    title: "",
-    claim_code: "",
-    discountType: "",
-    discountAmout: "",
-    discountMAxAmount: "",
-    cartAmount:"",
-    noOfTimes: "",
-    voucherLimit: "",
-    valid: "all",
-    autoUserAccount: "yes",
+    for: voucher?.type || "",
+    selectedProducts: voucher?.wiseType || "",
+    tags: voucher?.type == "product" ? (voucher?.product_skus || []) : (voucher?.shop_ids || []),
+    title: voucher?.promotionTitle || "",
+    claim_code: voucher?.claim_code || "",
+    discountType: voucher?.discount_type || "",
+    discountAmout: voucher?.discount_amount || "",
+    discountMAxAmount: voucher?.max_amount || "",
+    cartAmount: voucher?.cart_amount || "",
+    noOfTimes: voucher?.usage_limits || "",
+    voucherLimit: voucher?.voucher_limit || "",
+    valid: voucher?.type_of_users || "all",
+    autoUserAccount: voucher?.auto_voucher || "yes",
     startDate: formatDateToLocalInput(new Date(), 0, 0),
     expiryDate: formatDateToLocalInput(new Date(), 12, 0),
-    description: ""
+    description: voucher?.description || ""
   });
   console.log({ formValues });
   const [errors, setErrors] = useState({
@@ -77,12 +83,12 @@ const Add = () => {
     claim_code: "",
     discountType: "",
     discountAmout: "",
-    cartAmount:"",
+    cartAmount: "",
     discountMAxAmount: "",
     noOfTimes: "",
-    voucherLimit:"",
+    voucherLimit: "",
     valid: "",
-    autoUserAccount:"",
+    autoUserAccount: "",
     startDate: "",
     expiryDate: "",
     description: ""
@@ -129,8 +135,8 @@ const Add = () => {
       setFormValues((prev) => ({ ...prev, [name]: value }));
       setErrors((prv) => ({ ...prv, [name]: "" }));
     }
-    if(name == "discountType"){
-      setFormValues((prev) => ({ ...prev, [name]: value,discountAmout:"",discountMAxAmount:""}));
+    if (name == "discountType") {
+      setFormValues((prev) => ({ ...prev, [name]: value, discountAmout: "", discountMAxAmount: "" }));
       setErrors((prv) => ({ ...prv, [name]: "" }));
     }
     if (name == "selectedProducts" && value == "select wise") {
@@ -195,12 +201,12 @@ const Add = () => {
           startDate: formValues.startDate,
           endDate: formValues.expiryDate
         };
-        if(formValues?.for == "product"){
-            payload.product_skus = formValues?.tags;
-            payload.shop_ids = []
-        }else{
-            payload.shop_ids = formValues?.tags;
-            payload.product_skus = []
+        if (formValues?.for == "product") {
+          payload.product_skus = formValues?.tags;
+          payload.shop_ids = []
+        } else {
+          payload.shop_ids = formValues?.tags;
+          payload.product_skus = []
         }
         const res = await ApiService.post(apiEndpoints.addVoucher, payload, auth_key);
         if (res?.status === 200) {
@@ -510,21 +516,21 @@ const Add = () => {
                     sx={{ width: "100%" }}
                     onChange={handleTagHandler}
                     onBlur={() => {
-                            if (
-                                formValues?.selectedProducts === "all" &&
-                                formValues.tags.length === 0
-                            ) {
-                                setErrors((prv) => ({
-                                    ...prv,
-                                    tags: "Product SKU is required",
-                                }));
-                            } else {
-                                setErrors((prv) => ({
-                                    ...prv,
-                                    tags: "",
-                                }));
-                            }
-                        }}
+                      if (
+                        formValues?.selectedProducts === "all" &&
+                        formValues.tags.length === 0
+                      ) {
+                        setErrors((prv) => ({
+                          ...prv,
+                          tags: "Product SKU is required",
+                        }));
+                      } else {
+                        setErrors((prv) => ({
+                          ...prv,
+                          tags: "",
+                        }));
+                      }
+                    }}
                     value={formValues.tags}
                     isOptionEqualToValue={(option, value) => option === value}
                   />
@@ -853,79 +859,79 @@ const Add = () => {
           </Box>
           {
             formValues.discountType == "percentage" && (
+              <Box
+                sx={{
+                  display: "flex",
+                  marginBottom: "20px",
+                  gap: "20px"
+                }}
+              >
                 <Box
-                    sx={{
+                  sx={{
+                    fontSize: "14px",
+                    fontWeight: 700,
+                    wordBreak: "normal",
+                    width: "15%",
+                    textOverflow: "ellipsis",
                     display: "flex",
-                    marginBottom: "20px",
-                    gap: "20px"
-                    }}
+                    textWrap: "wrap"
+                  }}
                 >
-                    <Box
-                    sx={{
-                        fontSize: "14px",
-                        fontWeight: 700,
-                        wordBreak: "normal",
-                        width: "15%",
-                        textOverflow: "ellipsis",
-                        display: "flex",
-                        textWrap: "wrap"
-                    }}
-                    >
-                    Max Amount
-                    <span
-                        style={{ color: "red", fontSize: "15px", marginRight: "3px", marginLeft: "3px" }}
-                    >
-                        {" "}
-                        *
-                    </span>
-                    :
-                    </Box>
-                    <Box width={"100%"}>
-                    <Box
-                        sx={{
-                        height: "auto",
-                        width: "100%"
-                        }}
-                    >
-                        <TextField
-                        error={errors.discountMAxAmount && true}
-                        helperText={errors.discountMAxAmount}
-                        onBlur={() => {
-                            if (!formValues.discountMAxAmount) {
-                            setErrors((prv) => ({
-                                ...prv,
-                                discountMAxAmount: "Maximum Discount Amount is Required"
-                            }));
-                            }
-                        }}
-                        type="text"
-                        name="discountMAxAmount"
-                        label="Maximum Discount Amount"
-                        onChange={(e) => {
-                            const value = e.target.value;
-                            // Allow only numbers
-                            if (/^\d*$/.test(value)) {
-                            handleChange(e);
-                            }
-                        }}
-                        value={formValues.discountMAxAmount}
-                        inputProps={{
-                            inputMode: "numeric",
-                            pattern: "[0-9]*"
-                        }}
-                        sx={{
-                            width: "100%",
-                            "& .MuiInputBase-root": {
-                            height: "40px"
-                            },
-                            "& .MuiFormLabel-root": {
-                            top: "-7px"
-                            }
-                        }}
-                        />
-                    </Box>
-                    </Box>
+                  Max Amount
+                  <span
+                    style={{ color: "red", fontSize: "15px", marginRight: "3px", marginLeft: "3px" }}
+                  >
+                    {" "}
+                    *
+                  </span>
+                  :
                 </Box>
+                <Box width={"100%"}>
+                  <Box
+                    sx={{
+                      height: "auto",
+                      width: "100%"
+                    }}
+                  >
+                    <TextField
+                      error={errors.discountMAxAmount && true}
+                      helperText={errors.discountMAxAmount}
+                      onBlur={() => {
+                        if (!formValues.discountMAxAmount) {
+                          setErrors((prv) => ({
+                            ...prv,
+                            discountMAxAmount: "Maximum Discount Amount is Required"
+                          }));
+                        }
+                      }}
+                      type="text"
+                      name="discountMAxAmount"
+                      label="Maximum Discount Amount"
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Allow only numbers
+                        if (/^\d*$/.test(value)) {
+                          handleChange(e);
+                        }
+                      }}
+                      value={formValues.discountMAxAmount}
+                      inputProps={{
+                        inputMode: "numeric",
+                        pattern: "[0-9]*"
+                      }}
+                      sx={{
+                        width: "100%",
+                        "& .MuiInputBase-root": {
+                          height: "40px"
+                        },
+                        "& .MuiFormLabel-root": {
+                          top: "-7px"
+                        }
+                      }}
+                    />
+                  </Box>
+                </Box>
+              </Box>
             )
           }
           <Box
@@ -1074,7 +1080,7 @@ const Add = () => {
               </Box>
             </Box>
           </Box>
-           <Box
+          <Box
             sx={{
               display: "flex",
               marginBottom: "20px",

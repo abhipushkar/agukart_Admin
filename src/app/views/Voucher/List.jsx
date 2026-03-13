@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState, useEffect } from "react";
 // import { matchSorter } from "match-sorter";
 import {
   Box,
+  Typography,
   Button,
   IconButton,
   Table,
@@ -18,6 +19,7 @@ import {
   FormControl,
   InputLabel,
   Select,
+  Menu,
   MenuItem
 } from "@mui/material";
 import { Icon } from "@mui/material";
@@ -48,7 +50,7 @@ const MenuProps = {
   }
 };
 
-const names = ["Voucher Title", "Claim Code", "Discount Type","Discount Amount","Start Date", "Expiry Date"];
+const names = ["Voucher Title", "Claim Code", "Discount Type", "Discount Amount", "Start Date", "Expiry Date", "Used/Limit", "Voucher Status"];
 
 const label = { inputProps: { "aria-label": "Switch demo" } };
 
@@ -69,6 +71,9 @@ const List = () => {
     JSON.parse(localStorage.getItem(localStorageKey.voucherTable)) || []
   );
   const [voucher_id, setVoucherId] = useState("");
+  const [actionOpen, setActionOpen] = useState(false);
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [selectedRow, setSelectedRow] = useState(null);
 
 
   const navigate = useNavigate();
@@ -107,11 +112,13 @@ const List = () => {
 
   const handleClose = () => {
     setOpen(false);
+    setActionOpen(false);
     if (route !== null) {
       navigate(route);
     }
     setRoute(null);
     setMsg(null);
+    setSelectedRow(null);
   };
 
   const getvoucherList = useCallback(async () => {
@@ -286,7 +293,7 @@ const List = () => {
         }}
         className="breadcrumb"
       >
-        <Breadcrumb routeSegments={[{ name: "Voucher"}]} />
+        <Breadcrumb routeSegments={[{ name: "Voucher" }]} />
         <Box display={"flex"} gap={"16px"} alignItems={"center"}>
           <Box>
             <FormControl
@@ -438,16 +445,27 @@ const List = () => {
                     </TableSortLabel>
                   </TableCell>
                 )}
-                {!personName?.includes("Voucher Status") && (
-                    <TableCell sortDirection={orderBy === "expiry_status" ? order : false}>
+                {!personName?.includes("Used/Limit") && (
+                  <TableCell sortDirection={orderBy === "voucher_used" ? order : false}>
                     <TableSortLabel
-                        active={orderBy === "expiry_status"}
-                        direction={orderBy === "expiry_status" ? order : "asc"}
-                        onClick={() => handleRequestSort("expiry_status")}
+                      active={orderBy === "voucher_used"}
+                      direction={orderBy === "voucher_used" ? order : "asc"}
+                      onClick={() => handleRequestSort("voucher_used")}
                     >
-                        Voucher Status
+                      Used/Limit
                     </TableSortLabel>
-                    </TableCell>
+                  </TableCell>
+                )}
+                {!personName?.includes("Voucher Status") && (
+                  <TableCell sortDirection={orderBy === "expiry_status" ? order : false}>
+                    <TableSortLabel
+                      active={orderBy === "expiry_status"}
+                      direction={orderBy === "expiry_status" ? order : "asc"}
+                      onClick={() => handleRequestSort("expiry_status")}
+                    >
+                      Voucher Status
+                    </TableSortLabel>
+                  </TableCell>
                 )}
                 <TableCell sortDirection={orderBy === "status" ? order : false}>
                   <TableSortLabel
@@ -469,7 +487,7 @@ const List = () => {
                       <TableRow key={row._id}>
                         <TableCell>{row["S.No"]}</TableCell>
                         {!personName?.includes("Type") && (
-                          <TableCell sx={{ wordBreak: "break-word" }}>{capitalizeFirstLetter(row.type ||"")}</TableCell>
+                          <TableCell sx={{ wordBreak: "break-word" }}>{capitalizeFirstLetter(row.type || "")}</TableCell>
                         )}
                         {!personName?.includes("Voucher Title") && (
                           <TableCell sx={{ wordBreak: "break-word" }}>{capitalizeFirstLetter(row.promotionTitle || "")}</TableCell>
@@ -483,6 +501,7 @@ const List = () => {
                         {!personName?.includes("Discount Amount") && <TableCell>{row.discount_amount}</TableCell>}
                         {!personName?.includes("Start Date") && <TableCell>{row.start_date}</TableCell>}
                         {!personName?.includes("Expiry Date") && <TableCell>{row.end_date}</TableCell>}
+                        {!personName?.includes("Used/Limit") && <TableCell align="center"><Typography fontWeight={row.voucher_used === row.voucher_limit ? 500 : 400} color={row.voucher_used === row.voucher_limit ? "red" : ""}>{row.voucher_used}/{row.voucher_limit}</Typography></TableCell>}
                         {!personName?.includes("Voucher Status") && <TableCell>{capitalizeFirstLetter(row?.expiry_status || "")}</TableCell>}
                         <TableCell>
                           <Switch
@@ -503,11 +522,13 @@ const List = () => {
                             <Icon sx={{ color: "#DC3545" }}>delete</Icon>
                           </IconButton>
                           <IconButton
-                            onClick={() =>
-                              navigate(`${ROUTE_CONSTANT.voucher.add}?id=${row._id}`)
-                            }
+                            onClick={(e) => {
+                              setAnchorEl(e.currentTarget);
+                              setSelectedRow(row);
+                              setActionOpen(true);
+                            }}
                           >
-                            <Icon color="primary">edit</Icon>
+                            <Icon color="black">more_vert</Icon>
                           </IconButton>
                         </TableCell>
                       </TableRow>
@@ -533,6 +554,18 @@ const List = () => {
           onPageChange={handleChangePage}
           onRowsPerPageChange={handleChangeRowsPerPage}
         />
+        <Menu
+          anchorEl={anchorEl}
+          open={actionOpen}
+          onClose={handleClose}
+        >
+          {selectedRow && (
+            <>
+              <MenuItem onClick={() => navigate(`${ROUTE_CONSTANT.voucher.add}?id=${selectedRow._id}`)}>Edit</MenuItem>
+              <MenuItem onClick={() => { navigate(`${ROUTE_CONSTANT.voucher.add}`, { state: { voucher: selectedRow } }); }}>Copy Listing</MenuItem>
+            </>
+          )}
+        </Menu>
       </Box>
       <ConfirmModal
         open={open}
