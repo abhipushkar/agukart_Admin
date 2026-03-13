@@ -284,7 +284,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                         {parentSale?.order_id}
                                                     </Typography>
                                                     <Typography ml={2} sx={{ color: "#000" }}>
-                                                        ${getDisplayValue(parentSale?.subtotal?.toFixed(2))}
+                                                        ${getDisplayValue((parentSale?.subtotal + subOrder?.items?.[0]?.shippingAmount).toFixed(2))}
                                                     </Typography>
                                                     <Box sx={{
                                                         display: "flex",
@@ -519,8 +519,17 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
 
                                         <TableCell align="center" colSpan={2}>
                                             <Box textAlign={"start"}>
+                                                {(subOrder.items[0]?.refund_status && subOrder.items[0]?.refund_status !== "none") && (
+                                                    <Typography fontWeight={600} fontSize={16} color={"red"}>
+                                                        {subOrder.items[0]?.refund_status}ly Refunded
+                                                    </Typography>
+                                                )}
                                                 <Typography variant="h6" fontWeight={500} fontSize={15}>
-                                                    {tab === "pending" ? "No Tracking" : tab === "unshipped" ? "Unshipped" : tab === "in-progress" ? "In Progress" : tab === "completed" ? `${getDeliveryStatus(subOrder?.items[0]?.shipments) || subOrder.delivery_status}` : "Cancelled"}
+                                                    {tab === "pending" ? "No Tracking" : tab === "unshipped" ? "Unshipped" : tab === "in-progress" ? "In Progress" : tab === "completed" ? `${getDeliveryStatus(subOrder?.items[0]?.shipments) || subOrder.delivery_status}` : "Cancelled"} {`${subOrder.delivery_status === 'Delivered'
+                                                        ? subOrder.items[0]?.delivered_date ? "on " + new Date(subOrder.items[0]?.delivered_date).toLocaleDateString('en-GB') : ""
+                                                        : (subOrder.delivery_status === 'Cancelled' || subOrder.order_status === 'cancelled')
+                                                            ? subOrder.items[0]?.cancelled_date ? "on " + new Date(subOrder.items[0]?.cancelled_date).toLocaleDateString('en-GB') : ""
+                                                            : ""}`}
                                                 </Typography>
                                                 <Typography>Order {formatDate(parentSale?.createdAt)}</Typography>
                                                 {tab === "completed" && (

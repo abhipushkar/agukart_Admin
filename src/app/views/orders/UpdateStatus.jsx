@@ -25,7 +25,6 @@ import { localStorageKey } from 'app/constant/localStorageKey';
 import { useOrderStore } from './useOrderStore';
 
 const UpdateStatus = ({ open, onClose, subOrder }) => {
-    console.log(subOrder);
     const shippingServices = useOrderStore(state => state.shippingServices);
     const fetchAllShippingServices = useOrderStore(state => state.fetchAllShippingServices);
 
