@@ -51,23 +51,55 @@ const modalStyle = {
 
 const VariantModal = ({ show, handleCloseVariant }) => {
     const {
-        formData,
-        variationsData,
-        setVariationsData,
-        selectedVariations,
-        setSelectedVariations,
-        combinations,
-        setCombinations,
-        product_variants,
-        setProductVariants,
+        formData: globalFormData,
+        variationsData: globalVariationsData,
+        setVariationsData: setGlobalVariationsData,
+        selectedVariations: globalSelectedVariations,
+        setSelectedVariations: setGlobalSelectedVariations,
+        combinations: globalCombinations,
+        setCombinations: setGlobalCombinations,
+        product_variants: globalProductVariants,
+        setProductVariants: setGlobalProductVariants,
         initializeProductVariants,
-        setFormData,
-        formValues,
-        setFormValues,
+        setFormData: setGlobalFormData,
+        formValues: globalFormValues,
+        setFormValues: setGlobalFormValues,
         clearCombinationErrors,
-        varientName,
+        varientName: globalVarientNameList,
+        setVarientName: setGlobalVarientName,
         parentProductData
     } = useProductFormStore();
+
+    // Local states for transactional editing
+    const [variationsData, setVariationsData] = useState([]);
+    const [selectedVariations, setSelectedVariations] = useState([]);
+    const [combinations, setCombinations] = useState([]);
+    const [product_variants, setProductVariants] = useState([]);
+    const [formData, setFormData] = useState({});
+    const [formValues, setFormValues] = useState({});
+    const [customVariants, setCustomVariants] = useState([]);
+    const [optionInput, setOptionInput] = useState("");
+
+    // Track whether we've initialized for the current session
+    const [isInitialized, setIsInitialized] = useState(false);
+
+    // Initialize local state when modal opens
+    useEffect(() => {
+        if (show && !isInitialized) {
+            setVariationsData(globalVariationsData || []);
+            setSelectedVariations(globalSelectedVariations || []);
+            setCombinations(globalCombinations || []);
+            setProductVariants(globalProductVariants || []);
+            setFormData(globalFormData || {});
+            setFormValues(globalFormValues || {});
+            // Filter custom variants from global varientName
+            const customFromStore = (globalVarientNameList || []).filter(v => v.isCustom);
+            setCustomVariants(customFromStore);
+            setIsInitialized(true);
+        } else if (!show) {
+            setIsInitialized(false);
+        }
+    }, [show, isInitialized, globalVariationsData, globalSelectedVariations, globalCombinations, globalProductVariants, globalFormData, globalFormValues, globalVarientNameList]);
 
     const [selectedVariant, setSelectedVariant] = useState("");
     const [attrValues, setAttrValues] = useState({ name: "", values: [] });
@@ -85,7 +117,6 @@ const VariantModal = ({ show, handleCloseVariant }) => {
     const [customVariantDialogOpen, setCustomVariantDialogOpen] = useState(false);
     const [customVariantName, setCustomVariantName] = useState("");
     const [customVariantOptions, setCustomVariantOptions] = useState([""]);
-    const [customVariants, setCustomVariants] = useState([]);
     const [editingCustomVariant, setEditingCustomVariant] = useState(null);
 
     // Warning dialog state
@@ -97,7 +128,7 @@ const VariantModal = ({ show, handleCloseVariant }) => {
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
 
     // Combine predefined variants with custom variants
-    const allVariants = [...varientName, ...customVariants];
+    const allVariants = [...(globalVarientNameList || []), ...customVariants];
 
     // Check if there are any combined variants
     const hasCombinedVariants = useCallback(() => {
@@ -230,6 +261,13 @@ const VariantModal = ({ show, handleCloseVariant }) => {
             }
         });
 
+        // Add variants that already have values (Requirement 2)
+        variationsData?.forEach(item => {
+            if (item?.values?.length > 0) {
+                disabledVariants.add(item.name);
+            }
+        });
+
         // Add parent product variants that have SKUs assigned
         if (parentProductData?.variant_id) {
             parentProductData.variant_id.forEach(variant => {
@@ -240,7 +278,7 @@ const VariantModal = ({ show, handleCloseVariant }) => {
         }
 
         return disabledVariants;
-    }, [selectedVariations, parentProductData]);
+    }, [selectedVariations, parentProductData, variationsData]);
 
     // Generate name combinations for price/quantity selection
     const generateNameCombinations = useCallback(() => {
@@ -285,9 +323,9 @@ const VariantModal = ({ show, handleCloseVariant }) => {
 
             if (acc.length === 0) {
                 return safeValues?.map((value) => {
-                    const filteredId = varientName
+                    const filteredId = allVariants
                         .find((variant) => variant.variant_name === name)
-                        ?.variant_attribute.find((attr) => attr.attribute_value === value)?._id;
+                        ?.variant_attribute?.find((attr) => attr.attribute_value === value)?._id;
 
                     return {
                         [`value${index + 1}`]: value,
@@ -307,9 +345,9 @@ const VariantModal = ({ show, handleCloseVariant }) => {
 
             return acc.flatMap((combination) =>
                 safeValues?.map((value) => {
-                    const filteredId = varientName
+                    const filteredId = allVariants
                         .find((variant) => variant.variant_name === name)
-                        ?.variant_attribute.find((attr) => attr.attribute_value === value)?._id;
+                        ?.variant_attribute?.find((attr) => attr.attribute_value === value)?._id;
 
                     return {
                         ...combination,
@@ -690,22 +728,20 @@ const VariantModal = ({ show, handleCloseVariant }) => {
         // Remove the originalIndex property before setting state (clean up)
         const cleanedData = data.map(({ originalIndex, ...item }) => item);
 
-        console.log("Generated combinations before marking:", cleanedData);
-
         // Mark price/quantity variations properly
         const finalCombinationsData = markPriceQuantityVariations(cleanedData, formValues);
-        console.log("Final combinations after marking:", finalCombinationsData);
 
         // PRESERVE EXISTING COMBINATION DATA (price/quantity values)
         const preservedCombinations = preserveCombinationData(finalCombinationsData, combinations);
 
+        // Update local and then global store
         setCombinations(preservedCombinations);
 
         // Update form data with selected variations
         const parentMainIds = currentData
             .map(variation => {
                 const variant = allVariants.find((item) => item.variant_name === variation.name);
-                return variant?.id && !variant.isCustom ? variant.id : null;
+                return variant?._id && !variant.isCustom ? variant._id : null;
             })
             .filter(Boolean);
 
@@ -721,10 +757,29 @@ const VariantModal = ({ show, handleCloseVariant }) => {
             })
             .filter(Boolean);
 
-        setFormData({
+        const updatedFormData = {
+            ...formData,
             ParentMainId: Array.from(new Set([...(formData.ParentMainId || []), ...parentMainIds])),
             varientName: Array.from(new Set([...(formData.varientName || []), ...allIds]))
-        });
+        };
+
+        // Update global varientName list to include custom variants from this session
+        const updatedGlobalVarientNameList = [
+            ...(globalVarientNameList || []).filter(v => !v.isCustom),
+            ...customVariants
+        ];
+
+        // COMMIT ALL LOCAL STATE TO GLOBAL STORE
+        setGlobalVarientName(updatedGlobalVarientNameList);
+        setGlobalVariationsData(currentData);
+        setGlobalSelectedVariations(selectedVariations);
+        setGlobalCombinations(preservedCombinations);
+        setGlobalProductVariants(product_variants);
+        setGlobalFormData(updatedFormData);
+        setGlobalFormValues(formValues);
+
+        // Initialize product_variants SECOND - this ensures it sees the updated global product_variants
+        initializeProductVariants(currentData, allVariants);
 
         handleCloseVariant();
     };
@@ -753,6 +808,22 @@ const VariantModal = ({ show, handleCloseVariant }) => {
 
     const handleAddOption = () => {
         setCustomVariantOptions([...customVariantOptions, ""]);
+    };
+    const addOptionsFromInput = (input) => {
+        if (!input) return;
+        const validOptions = (attrOptions || []).map((v) => v.toLowerCase());
+        const values = input
+            .split(",")
+            .map((v) => v.trim())
+            .filter((v) => v !== "")
+            .filter((v) => validOptions.includes(v.toLowerCase())); // reject invalid
+
+        if (!values.length) return;
+
+        setCustomVariantOptions((prev) => {
+            const unique = values.filter((v) => !prev.includes(v));
+            return [...prev, ...unique];
+        });
     };
 
     const handleRemoveOption = (index) => {
@@ -856,25 +927,61 @@ const VariantModal = ({ show, handleCloseVariant }) => {
     };
 
     const handleTagHandler = (event, newValue) => {
-        if (newValue.some(value => value === `Add All Options (${attrOptions?.length})`)) {
+        // Handle "Add All Options"
+        if (newValue.some(value => typeof value === 'string' && value.includes("Add All Options"))) {
             setAttrValues((prev) => ({
                 ...prev,
-                values: [...attrOptions],
+                values: [...(attrOptions || [])],
                 name: selectedVariant,
             }));
-        } else {
-            const uniqueTags = newValue.filter(
-                (newTag) => !attrValues.values.includes(newTag)
-            );
-            setAttrValues((prev) => ({
-                ...prev,
-                values: [...prev.values, ...uniqueTags],
-                name: selectedVariant,
-            }));
+            setOptionInput("");
+            return;
         }
+
+        // 1. Split any comma-separated strings (handles pasting and typing)
+        const splitValues = newValue.flatMap(val =>
+            typeof val === 'string' ? val.split(',').map(v => v.trim()).filter(Boolean) : [val]
+        );
+
+        // 2. Map to valid options only (case-insensitive lookup against attrOptions)
+        const validOptionsLower = (attrOptions || []).map(opt => opt.toLowerCase());
+
+        // 3. Filter and resolve to original case from attrOptions
+        const finalizedValues = splitValues.reduce((acc, val) => {
+            if (typeof val !== 'string') {
+                if (!acc.includes(val)) acc.push(val);
+                return acc;
+            }
+
+            const valLower = val.toLowerCase();
+            const originalOption = attrOptions?.find(opt => opt.toLowerCase() === valLower);
+
+            if (originalOption && !acc.some(existing => existing.toLowerCase() === valLower)) {
+                acc.push(originalOption);
+            }
+            return acc;
+        }, []);
+
+        setAttrValues((prev) => ({
+            ...prev,
+            values: finalizedValues,
+            name: selectedVariant,
+        }));
+
+        setOptionInput("");
     };
 
     const handleCancel = () => {
+        // Requirement 3: If this is a custom variant and it has no values, 
+        // remove it when backing out to avoid "stuck" empty custom variants.
+        if (selectedVariant && customVariants.some(v => v.variant_name === selectedVariant)) {
+            const hasNoValues = !attrValues?.values || attrValues.values.length === 0;
+            if (hasNoValues) {
+                setCustomVariants(prev => prev.filter(v => v.variant_name !== selectedVariant));
+                setSelectedVariations(prev => (Array.isArray(prev) ? prev : []).filter(v => v !== selectedVariant));
+            }
+        }
+
         setShowVariantList(false);
         setSelectedVariant("");
         setAttrValues({ name: "", values: [] });
@@ -914,6 +1021,9 @@ const VariantModal = ({ show, handleCloseVariant }) => {
         } else {
             const newData = [...currentData, normalizedAttrValues];
             setVariationsData(newData);
+            // Update selectedVariations only when Done is clicked (Requirement 1)
+            const safeSelectedVariations = Array.isArray(selectedVariations) ? selectedVariations : [];
+            setSelectedVariations(Array.from(new Set([...safeSelectedVariations, attrValues.name])));
         }
 
         setShowVariantList(false);
@@ -940,10 +1050,11 @@ const VariantModal = ({ show, handleCloseVariant }) => {
         const allAttributeValues = variant?.variant_attribute?.map((attr) => attr.attribute_value) || [];
         const allIds = variant?.variant_attribute?.map((attr) => attr._id) || [];
 
-        setFormData({
-            ParentMainId: formData.ParentMainId.filter((id) => id !== variant?._id),
-            varientName: formData.varientName.filter((id) => !allIds.includes(id)),
-        });
+        setFormData(prev => ({
+            ...prev,
+            ParentMainId: (prev.ParentMainId || []).filter((id) => id !== variant?._id),
+            varientName: (prev.varientName || []).filter((id) => !allIds.includes(id)),
+        }));
 
         // Ensure selectedVariations is always treated as an array
         const safeSelectedVariations = Array.isArray(selectedVariations) ? selectedVariations : [];
@@ -1003,11 +1114,10 @@ const VariantModal = ({ show, handleCloseVariant }) => {
     };
 
     const handleVariantSelect = (variantName) => {
-        // Ensure selectedVariations is always treated as an array
-        const safeSelectedVariations = Array.isArray(selectedVariations) ? selectedVariations : [];
-        setSelectedVariations(Array.from(new Set([...safeSelectedVariations, variantName])));
+        // Selection is now handled in handleDone to satisfy transactional state requirement
         setSelectedVariant(variantName);
         setAttrValues(prev => ({ ...prev, name: variantName, values: [] }));
+        setShowVariantList(true); // Ensure we switch to the values screen
     };
 
     // Get disabled variants
@@ -1355,17 +1465,46 @@ const VariantModal = ({ show, handleCloseVariant }) => {
 
                                     <Autocomplete
                                         multiple
+                                        freeSolo
                                         id="dropdown-with-list"
                                         disableCloseOnSelect
                                         options={[...(attrOptions || []), `Add All Options (${attrOptions?.length || 0})`]}
                                         getOptionLabel={(option) => option}
-                                        value={[]}
+                                        value={attrValues.values}
+                                        inputValue={optionInput}
+                                        onInputChange={(e, newValue) => setOptionInput(newValue)}
                                         onChange={handleTagHandler}
                                         renderInput={(params) => (
                                             <TextField
                                                 {...params}
                                                 label="Enter an option..."
                                                 placeholder="Enter an option..."
+                                                onKeyDown={(event) => {
+                                                    if (event.key === "Enter") {
+                                                        // Prevent default to let handleTagHandler handle it correctly
+                                                        // If there's pending text that wasn't converted to a chip yet
+                                                        if (optionInput.trim()) {
+                                                            event.preventDefault();
+                                                            handleTagHandler(event, [...attrValues.values, optionInput]);
+                                                        }
+                                                    }
+
+                                                    if (event.key === ",") {
+                                                        event.preventDefault();
+                                                        if (optionInput.trim()) {
+                                                            handleTagHandler(event, [...attrValues.values, optionInput]);
+                                                        }
+                                                    }
+                                                }}
+                                                onPaste={(event) => {
+                                                    const pastedData = event.clipboardData.getData('text');
+                                                    if (pastedData.includes(',')) {
+                                                        event.preventDefault();
+                                                        // Split pased data and add to existing chips
+                                                        const newItems = pastedData.split(',').map(v => v.trim()).filter(Boolean);
+                                                        handleTagHandler(event, [...attrValues.values, ...newItems]);
+                                                    }
+                                                }}
                                                 sx={{
                                                     "& .MuiInputBase-root": {
                                                         padding: "0 11px",
@@ -1394,6 +1533,12 @@ const VariantModal = ({ show, handleCloseVariant }) => {
                                         }}
                                         sx={{ mb: 2 }}
                                     />
+
+                                    {customVariants.some(v => v.variant_name === selectedVariant) && attrValues?.values?.length === 0 && (
+                                        <Typography variant="caption" color="error">
+                                            Please add at least one Custom Option
+                                        </Typography>
+                                    )}
 
                                     {/* ========== UPDATED: Drag and Drop List for Options ========== */}
                                     <List>
@@ -1461,6 +1606,7 @@ const VariantModal = ({ show, handleCloseVariant }) => {
                                         <Button
                                             onClick={() => handleCancel()}
                                             color="error"
+                                        // disabled={customVariants.some(v => v.variant_name === selectedVariant) && attrValues?.values?.length === 0}
                                         >
                                             Back
                                         </Button>

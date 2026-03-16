@@ -96,6 +96,7 @@ const ParentProductIdentity = ({ productId, listing }) => {
 
     // State for product variations
     const [productVariations, setProductVariations] = useState([]);
+    const [optionInputs, setOptionInputs] = useState({});
 
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
 
@@ -569,126 +570,144 @@ const ParentProductIdentity = ({ productId, listing }) => {
     }, [varientAttribute, formData?.variantData, normalizedVariantList]);
 
     const InnervariationsHandle = (variantName) => (event, newValue) => {
+        // 1. Get available attributes for this variant for resolution
+        const attrOptions = getAttributesForVariant(variantName);
+
+        // 2. Split any comma-separated strings (handles pasting and typing)
+        const splitStringValues = newValue.flatMap(val =>
+            typeof val === 'string' ? val.split(',').map(v => v.trim()).filter(Boolean) : [val]
+        );
+
+        // 3. Resolve to attribute objects (case-insensitive lookup)
+        const finalizedObjects = splitStringValues.reduce((acc, val) => {
+            if (typeof val !== 'string') {
+                if (!acc.some(existing => existing._id === val._id)) acc.push(val);
+                return acc;
+            }
+
+            const valLower = val.toLowerCase();
+            const originalAttribute = attrOptions?.find(opt => opt.attribute_value.toLowerCase() === valLower);
+
+            if (originalAttribute && !acc.some(existing => existing._id === originalAttribute._id)) {
+                acc.push(originalAttribute);
+            }
+            return acc;
+        }, []);
+
         // Store only IDs in state
-        const attributeIds = newValue.map(attr => attr._id);
+        const attributeIds = finalizedObjects.map(attr => attr._id);
 
         const updatedInnervariations = {
             ...formData.Innervariations,
             [variantName]: attributeIds
         };
 
-        // Expand for combination generation
-        const expandedInnervariations = expandInnervariations(updatedInnervariations, normalizedVariantList);
-        const newCombinations = generateCombinations(expandedInnervariations);
+        // lightweight state updates first (immediate UI feedback)
+        setFormData((prev) => ({
+            ...prev,
+            Innervariations: updatedInnervariations
+        }));
+        setOptionInputs(prev => ({ ...prev, [variantName]: "" }));
 
-        // Get current combinations BEFORE updating state
-        const currentCombinations = getCurrentCombinations();
+        // Wrap heavy calculations and table updates in startTransition
+        // This keeps the input field and chips responsive while the table recalculates
+        React.startTransition(() => {
+            // Expand for combination generation
+            const expandedInnervariations = expandInnervariations(updatedInnervariations, normalizedVariantList);
+            const newCombinations = generateCombinations(expandedInnervariations);
 
-        // Preserve data for unchanged combinations
-        const { preservedVariantData, preservedSellerSky, preservedSkuErrors } = preserveCombinationData(
-            newCombinations,
-            variantArrValues,
-            sellerSky,
-            skuErrors,
-            currentCombinations
-        );
+            // Use memoized expanded current state to avoid redundant recursive calls
+            const currentExpanded = expandInnervariations(formData.Innervariations, normalizedVariantList);
+            const currentCombinations = generateCombinations(currentExpanded);
 
-        // Update combination map with new indices
-        const newMap = new Map();
-        newCombinations.forEach((comb, index) => {
-            const key = generateCombinationKey(comb);
-            newMap.set(key, index);
-        });
-        setCombinationMap(newMap);
+            // Preserve data for unchanged combinations
+            const { preservedVariantData, preservedSellerSky, preservedSkuErrors } = preserveCombinationData(
+                newCombinations,
+                variantArrValues,
+                sellerSky,
+                skuErrors,
+                currentCombinations
+            );
 
-        // FIX: Use batching for all state updates
-        ReactDOM.unstable_batchedUpdates(() => {
-            setFormData((prev) => ({
-                ...prev,
-                Innervariations: updatedInnervariations
-            }));
+            // Update combination map with new indices
+            const newMap = new Map();
+            newCombinations.forEach((comb, index) => {
+                const key = generateCombinationKey(comb);
+                newMap.set(key, index);
+            });
 
+            setCombinationMap(newMap);
             setVariantArrValue(preservedVariantData);
             setSellerSku(preservedSellerSky);
-            setSkuErrors(preservedSkuErrors); // Update SKU errors too
-        });
+            setSkuErrors(preservedSkuErrors);
 
-        // Get previous attribute IDs for product variations sync
-        const previousAttributeIds = formData.Innervariations[variantName] || [];
-        const removedAttributeIds = previousAttributeIds.filter(id => !attributeIds.includes(id));
+            // Move product variations sync here to avoid UI blocking
+            const previousAttributeIds = formData.Innervariations[variantName] || [];
+            const removedAttributeIds = previousAttributeIds.filter(id => !attributeIds.includes(id));
 
-        // Sync product variations
-        const updatedProductVariations = formData.variantData.map(variant => {
-            if (variant.variant_name !== variantName) {
-                // Find existing variant data
-                const existingVariant = productVariations.find(pv => pv.variant_name === variant.variant_name);
-                return existingVariant || {
+            const updatedProductVariations = formData.variantData.map(variant => {
+                if (variant.variant_name !== variantName) {
+                    const existingVariant = productVariations.find(pv => pv.variant_name === variant.variant_name);
+                    return existingVariant || {
+                        _id: variant.id,
+                        variant_name: variant.variant_name,
+                        variant_attributes: [],
+                        guide: []
+                    };
+                }
+
+                const existingVariant = productVariations.find(pv => pv.variant_name === variantName);
+                const variantObj = normalizedVariantList.find(v => v.variant_name === variantName);
+
+                let updatedAttributes = [];
+                if (existingVariant) {
+                    updatedAttributes = existingVariant.variant_attributes.filter(
+                        attr => !removedAttributeIds.includes(attr._id)
+                    );
+
+                    attributeIds.forEach(attributeId => {
+                        if (!updatedAttributes.some(attr => attr._id === attributeId)) {
+                            const attribute = variantObj?.variant_attribute?.find(a => a._id === attributeId);
+                            if (attribute) {
+                                updatedAttributes.push({
+                                    _id: attribute._id,
+                                    attribute: attribute.attribute_value,
+                                    main_images: [null, null, null],
+                                    preview_image: attribute.preview_image || "",
+                                    thumbnail: attribute.thumbnail || "",
+                                    edit_main_image: null,
+                                    edit_preview_image: attribute.edit_preview_image || "",
+                                    edit_main_image_data: attribute.edit_main_image_data || {},
+                                    edit_preview_image_data: attribute.edit_preview_image_data || {},
+                                });
+                            }
+                        }
+                    });
+                } else {
+                    updatedAttributes = attributeIds.map(attributeId => {
+                        const attribute = variantObj?.variant_attribute?.find(a => a._id === attributeId);
+                        return attribute ? {
+                            _id: attribute._id,
+                            attribute: attribute.attribute_value,
+                            main_images: [null, null, null],
+                            preview_image: attribute.preview_image || "",
+                            thumbnail: attribute.thumbnail || "",
+                            edit_main_image: null,
+                            edit_preview_image: attribute.edit_preview_image || "",
+                            edit_main_image_data: attribute.edit_main_image_data || {},
+                            edit_preview_image_data: attribute.edit_preview_image_data || {},
+                        } : null;
+                    }).filter(Boolean);
+                }
+
+                return {
                     _id: variant.id,
                     variant_name: variant.variant_name,
-                    variant_attributes: [],
-                    guide: []
+                    variant_attributes: updatedAttributes,
+                    guide: existingVariant?.guide || []
                 };
-            }
+            });
 
-            // For the changed variant
-            const existingVariant = productVariations.find(pv => pv.variant_name === variantName);
-            const variantObj = normalizedVariantList.find(v => v.variant_name === variantName);
-
-            let updatedAttributes = [];
-
-            if (existingVariant) {
-                // Remove attributes that are no longer selected
-                updatedAttributes = existingVariant.variant_attributes.filter(
-                    attr => !removedAttributeIds.includes(attr._id)
-                );
-
-                // Add new attributes that don't exist yet
-                attributeIds.forEach(attributeId => {
-                    if (!updatedAttributes.some(attr => attr._id === attributeId)) {
-                        const attribute = variantObj?.variant_attribute?.find(a => a._id === attributeId);
-                        if (attribute) {
-                            updatedAttributes.push({
-                                _id: attribute._id,
-                                attribute: attribute.attribute_value,
-                                main_images: [null, null, null],
-                                preview_image: attribute.preview_image || "",
-                                thumbnail: attribute.thumbnail || "",
-                                edit_main_image: null,
-                                edit_preview_image: attribute.edit_preview_image || "",
-                                edit_main_image_data: attribute.edit_main_image_data || {},
-                                edit_preview_image_data: attribute.edit_preview_image_data || {},
-                            });
-                        }
-                    }
-                });
-            } else {
-                // Create new variant with attributes
-                updatedAttributes = attributeIds.map(attributeId => {
-                    const attribute = variantObj?.variant_attribute?.find(a => a._id === attributeId);
-                    return attribute ? {
-                        _id: attribute._id,
-                        attribute: attribute.attribute_value,
-                        main_images: [null, null, null],
-                        preview_image: attribute.preview_image || "",
-                        thumbnail: attribute.thumbnail || "",
-                        edit_main_image: null,
-                        edit_preview_image: attribute.edit_preview_image || "",
-                        edit_main_image_data: attribute.edit_main_image_data || {},
-                        edit_preview_image_data: attribute.edit_preview_image_data || {},
-                    } : null;
-                }).filter(Boolean);
-            }
-
-            return {
-                _id: variant.id,
-                variant_name: variant.variant_name,
-                variant_attributes: updatedAttributes,
-                guide: existingVariant?.guide || []
-            };
-        });
-
-        // FIX: Batch this update too
-        ReactDOM.unstable_batchedUpdates(() => {
             setProductVariations(updatedProductVariations);
             setInputErrors((prev) => ({ ...prev, innervariation: "" }));
         });
@@ -1997,6 +2016,7 @@ const ParentProductIdentity = ({ productId, listing }) => {
                                     <Box width={"100%"} my={2} ml={3}>
                                         <Autocomplete
                                             multiple
+                                            freeSolo
                                             limitTags={4}
                                             onBlur={() => {
                                                 if (Object.keys(formData.Innervariations).length == 0) {
@@ -2006,15 +2026,38 @@ const ParentProductIdentity = ({ productId, listing }) => {
                                                     }));
                                                 }
                                             }}
-                                            id="multiple-limit-tags"
+                                            id={`multiple-limit-tags-${index}`}
                                             options={getAttributesForVariant(inputField?.variant_name)}
-                                            getOptionLabel={(option) => option.attribute_value}
+                                            getOptionLabel={(option) => typeof option === 'string' ? option : (option.attribute_value || "")}
                                             renderInput={(params) => {
+                                                const currentInput = optionInputs[inputField?.variant_name] || "";
                                                 return (
                                                     <TextField
                                                         {...params}
                                                         label={inputField?.variant_name}
                                                         placeholder={`select ${inputField?.variant_name}`}
+                                                        onKeyDown={(event) => {
+                                                            if (event.key === "Enter" || event.key === ",") {
+                                                                if (currentInput.trim()) {
+                                                                    event.preventDefault();
+                                                                    InnervariationsHandle(inputField?.variant_name)(event, [
+                                                                        ...getSelectedAttributesForVariant(inputField?.variant_name),
+                                                                        currentInput
+                                                                    ]);
+                                                                }
+                                                            }
+                                                        }}
+                                                        onPaste={(event) => {
+                                                            const pastedData = event.clipboardData.getData('text');
+                                                            if (pastedData.includes(',')) {
+                                                                event.preventDefault();
+                                                                const newItems = pastedData.split(',').map(v => v.trim()).filter(Boolean);
+                                                                InnervariationsHandle(inputField?.variant_name)(event, [
+                                                                    ...getSelectedAttributesForVariant(inputField?.variant_name),
+                                                                    ...newItems
+                                                                ]);
+                                                            }
+                                                        }}
                                                         sx={{
                                                             "& .MuiInputBase-root": {
                                                                 padding: "0 11px"
@@ -2029,7 +2072,9 @@ const ParentProductIdentity = ({ productId, listing }) => {
                                             sx={{ width: "100%" }}
                                             onChange={InnervariationsHandle(inputField?.variant_name)}
                                             value={getSelectedAttributesForVariant(inputField?.variant_name)}
-                                            isOptionEqualToValue={(option, value) => option._id === value._id}
+                                            inputValue={optionInputs[inputField?.variant_name] || ""}
+                                            onInputChange={(e, newValue) => setOptionInputs(prev => ({ ...prev, [inputField?.variant_name]: newValue }))}
+                                            isOptionEqualToValue={(option, value) => (option?._id || option) === (value?._id || value)}
                                         />
                                         {inputErrors.innervariation && (
                                             <Typography
