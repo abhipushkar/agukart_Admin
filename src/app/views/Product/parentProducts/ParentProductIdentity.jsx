@@ -165,7 +165,16 @@ const ParentProductIdentity = ({ productId, listing }) => {
             setVendorLoading(true);
             const res = await ApiService.get(apiEndpoints.getVendorsList, auth_key);
             if (res.status === 200) {
-                setVendors(res?.data?.data || []);
+                const fetchedVendors = res?.data?.data || [];
+                setVendors(fetchedVendors);
+
+                // Auto-select vendor if only one vendor is returned and it's not designation 2 (Admin)
+                // This handles the case where a vendor is logged in and doesn't see the vendor selection field
+                const designationId = localStorage.getItem(localStorageKey.designation_id);
+                const vendorId = localStorage.getItem(localStorageKey.vendorId);
+                if (designationId !== "2" && fetchedVendors.length > 0) {
+                    setFormData((prev) => ({ ...prev, vendor: fetchedVendors.find((v) => v._id === vendorId) }));
+                }
             }
         } catch (error) {
             handleApiError(error, "Failed to load vendors");
@@ -274,46 +283,147 @@ const ParentProductIdentity = ({ productId, listing }) => {
         setInputErrors((prev) => ({ ...prev, variations: "" }));
     };
 
-    const handleBulkImport = (skuArray) => {
-        // Update sellerSky array
-        const newSellerSky = [...sellerSky];
+    const handleBulkImport = async (skuArray) => {
+        try {
+            setIsconponentLoader(true);
+            const currentCombs = getCurrentCombinations();
+            const totalDesired = currentCombs.length;
 
-        // Fill or update SKUs based on the imported array
-        skuArray.forEach((sku, index) => {
-            if (index < newSellerSky.length) {
-                newSellerSky[index] = sku;
-            } else {
-                newSellerSky[index] = sku;
+            const newSellerSky = [...sellerSky];
+            const newVariantArrValues = [...variantArrValues];
+            const newSkuErrors = { ...skuErrors };
+
+            // Ensure arrays have correct length matching current combinations
+            if (newSellerSky.length !== totalDesired) {
+                newSellerSky.length = totalDesired;
+                for (let i = 0; i < totalDesired; i++) if (newSellerSky[i] === undefined) newSellerSky[i] = "";
             }
-        });
 
-        // Fill remaining slots with empty strings if imported array is shorter
-        for (let i = skuArray.length; i < newSellerSky.length; i++) {
-            newSellerSky[i] = "";
-        }
+            while (newVariantArrValues.length < totalDesired) {
+                newVariantArrValues.push({
+                    _id: "",
+                    product_id: "",
+                    sale_price: "",
+                    price: "",
+                    sale_start_date: "",
+                    sale_end_date: "",
+                    qty: "",
+                    isExistingProduct: false
+                });
+            }
+            if (newVariantArrValues.length > totalDesired) newVariantArrValues.length = totalDesired;
 
-        // Update state
-        setSellerSku(newSellerSky);
+            const fetchPromises = skuArray.slice(0, totalDesired).map(async (sku, index) => {
+                const trimmedSku = sku ? trimValue(sku) : "";
+                newSellerSky[index] = trimmedSku;
+                newSkuErrors[index] = "";
 
-        // Trigger validation for each SKU
-        setTimeout(() => {
-            newSellerSky.forEach((sku, index) => {
-                if (sku && sku.trim()) {
-                    // Trigger debounced validation for each SKU
-                    const timer = setTimeout(() => {
-                        // This will trigger the validation in ProductParentTable
-                        setSellerSku(prev => {
-                            const newSkus = [...prev];
-                            newSkus[index] = sku;
-                            return newSkus;
-                        });
-                    }, 100);
-                    return () => clearTimeout(timer);
+                if (!trimmedSku) {
+                    newVariantArrValues[index] = {
+                        ...newVariantArrValues[index],
+                        _id: "",
+                        product_id: "",
+                        isExistingProduct: false,
+                        qty: "",
+                        sale_price: ""
+                    };
+                    return;
+                }
+
+                try {
+                    let url = apiEndpoints.getProductBySku + `/${trimmedSku}`;
+                    const res = await ApiService.get(url, auth_key);
+
+                    if (res.status === 200) {
+                        let obj = res.data.data;
+
+                        // Validate variants
+                        const variantError = validateChildProductVariants(obj, formData.variantData);
+                        if (variantError) {
+                            newSkuErrors[index] = variantError;
+                        }
+
+                        // Validate vendor match
+                        if (formData.vendor && obj.vendor_id !== formData.vendor._id) {
+                            newSkuErrors[index] = "SKU not found in this shop.";
+                        }
+
+                        // Validate SKU reuse
+                        if (!newSkuErrors[index] && obj.parent_id && obj.vendor_id === formData.vendor?._id) {
+                            newSkuErrors[index] = "SKU already used in another parent product";
+                        }
+                        if (!newSkuErrors[index]) {
+                            let sale_start_date = obj.sale_start_date ? dayjs(obj.sale_start_date) : "";
+                            let sale_end_date = obj.sale_end_date ? dayjs(obj.sale_end_date) : "";
+
+                            newVariantArrValues[index] = {
+                                ...newVariantArrValues[index],
+                                ...obj,
+                                _id: obj.product_id,
+                                product_id: obj.product_id,
+                                sale_end_date,
+                                sale_start_date,
+                                price: obj.price || "",
+                                sale_price: obj.sale_price || "",
+                                qty: obj.qty || "",
+                                isExistingProduct: true
+                            };
+                        } else {
+                            newVariantArrValues[index] = {
+                                ...newVariantArrValues[index],
+                                _id: "",
+                                product_id: "",
+                                isExistingProduct: false,
+                                qty: "",
+                                sale_price: ""
+                            };
+                        }
+                    }
+                } catch (error) {
+                    if (error.response?.status === 404) {
+                        newSkuErrors[index] = "SKU not found";
+                    } else {
+                        newSkuErrors[index] = "Error validating SKU";
+                    }
+                    newVariantArrValues[index] = {
+                        ...newVariantArrValues[index],
+                        _id: "",
+                        product_id: "",
+                        isExistingProduct: false,
+                        qty: "",
+                        sale_price: ""
+                    };
                 }
             });
-        }, 0);
 
-        toast.success(`Imported ${skuArray.length} SKUs successfully`);
+            // Handle indices not in skuArray but in combinations
+            for (let i = skuArray.length; i < totalDesired; i++) {
+                newSellerSky[i] = "";
+                newSkuErrors[i] = "";
+                newVariantArrValues[i] = {
+                    ...newVariantArrValues[i],
+                    _id: "",
+                    product_id: "",
+                    isExistingProduct: false,
+                    qty: "",
+                    sale_price: ""
+                };
+            }
+
+            await Promise.all(fetchPromises);
+
+            ReactDOM.unstable_batchedUpdates(() => {
+                setSellerSku([...newSellerSky]);
+                setVariantArrValue([...newVariantArrValues]);
+                setSkuErrors({ ...newSkuErrors });
+            });
+
+            toast.success(`Imported ${Math.min(skuArray.length, totalDesired)} SKUs successfully`);
+        } catch (error) {
+            handleApiError(error, "Failed to complete bulk import");
+        } finally {
+            setIsconponentLoader(false);
+        }
     };
 
     const deterministicSort = (a, b) => {

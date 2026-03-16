@@ -45,7 +45,8 @@ export default function ProductParentTable({
         if (sellerSky && sellerSky.length > 0) {
             setSellerSkyValues([...sellerSky]);
         }
-    }, [sellerSky]);
+        console.log("skuErrors updated:", skuErrors);
+    }, [sellerSky, skuErrors]);
 
     const trimValue = (value) => {
         if (typeof value === 'string') {
@@ -82,6 +83,16 @@ export default function ProductParentTable({
         return null;
     };
 
+    const validateSkuReuse = (childProductData) => {
+        if (!selectedVendor || !childProductData) return null;
+
+        if (childProductData.parent_id && childProductData.vendor_id === selectedVendor._id) {
+            return "SKU already used in another parent product";
+        }
+
+        return null;
+    };
+
     const combinationKeyToIndex = React.useMemo(() => {
         const map = {};
         combinationKeys?.forEach((key, index) => {
@@ -94,11 +105,11 @@ export default function ProductParentTable({
 
     const validateSkuAndVariants = useCallback(async (sku, index, combinationKey) => {
         const trimmedSku = trimValue(sku);
+        const errorKey = combinationKey || index;
 
         // Check for duplicate SKUs first
         const duplicateError = checkForDuplicateSkus(trimmedSku, index);
         if (duplicateError) {
-            const errorKey = combinationKey || index;
             setSkuErrors(prev => ({ ...prev, [errorKey]: duplicateError }));
 
             // Clear the product data if it's a duplicate SKU
@@ -119,7 +130,7 @@ export default function ProductParentTable({
         }
 
         if (!trimmedSku) {
-            setSkuErrors(prev => ({ ...prev, [index]: "" }));
+            setSkuErrors(prev => ({ ...prev, [errorKey]: "" }));
 
             const newInputsFields = [...variantArrValues];
             newInputsFields[index] = {
@@ -149,18 +160,24 @@ export default function ProductParentTable({
                 // Validate variants
                 const variantError = validateChildProductVariants(obj, parentVariants);
                 if (variantError) {
-                    setSkuErrors(prev => ({ ...prev, [index]: variantError }));
+                    setSkuErrors(prev => ({ ...prev, [errorKey]: variantError }));
                     return;
                 }
 
                 // Validate vendor match
                 const vendorError = validateVendorMatch(obj, selectedVendor);
                 if (vendorError) {
-                    setSkuErrors(prev => ({ ...prev, [index]: vendorError }));
+                    setSkuErrors(prev => ({ ...prev, [errorKey]: vendorError }));
                     return;
                 }
 
-                const errorKey = combinationKey || index;
+                // Validate SKU reuse
+                const skuReuseError = validateSkuReuse(obj);
+                if (skuReuseError) {
+                    setSkuErrors(prev => ({ ...prev, [errorKey]: skuReuseError }));
+                    return;
+                }
+
                 setSkuErrors(prev => ({ ...prev, [errorKey]: "" }));
 
                 let sale_start_date = obj.sale_start_date ? dayjs(obj.sale_start_date) : "";
@@ -183,7 +200,7 @@ export default function ProductParentTable({
             }
         } catch (error) {
             if (error.response?.status === 404) {
-                setSkuErrors(prev => ({ ...prev, [index]: "SKU not found" }));
+                setSkuErrors(prev => ({ ...prev, [errorKey]: "SKU not found" }));
 
                 const newInputsFields = [...variantArrValues];
                 newInputsFields[index] = {
@@ -199,7 +216,7 @@ export default function ProductParentTable({
                 };
                 setVariantArrValue(newInputsFields);
             } else {
-                setSkuErrors(prev => ({ ...prev, [index]: "Error validating SKU" }));
+                setSkuErrors(prev => ({ ...prev, [errorKey]: "Error validating SKU" }));
             }
         } finally {
             setLoadingSkus(prev => ({ ...prev, [index]: false }));
@@ -238,7 +255,8 @@ export default function ProductParentTable({
         setSellerSkyValues(newSellerSkyValues);
         setSellerSku(newSellerSkyValues);
 
-        setSkuErrors(prev => ({ ...prev, [index]: "" }));
+        const errorKey = combinationKeys?.[index] || index;
+        setSkuErrors(prev => ({ ...prev, [errorKey]: "" }));
 
         debouncedValidateSku(value, index);
     };
