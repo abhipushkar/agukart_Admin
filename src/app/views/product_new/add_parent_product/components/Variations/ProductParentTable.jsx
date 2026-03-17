@@ -19,14 +19,14 @@ import { ApiService } from 'app/services/ApiService';
 import { apiEndpoints } from 'app/constant/apiEndpoints';
 import { localStorageKey } from 'app/constant/localStorageKey';
 import dayjs from 'dayjs';
-import {useParentProductStore} from "../../../states/parentProductStore";
+import { useParentProductStore } from "../../../states/parentProductStore";
 
 const auth_key = localStorage.getItem(localStorageKey.auth_key);
 
 const ProductParentTable = ({
-                                combinations,
-                                formdataaaaa
-                            }) => {
+    combinations,
+    formdataaaaa
+}) => {
     const {
         sellerSky,
         variantArrValues,
@@ -253,6 +253,7 @@ const ProductParentTable = ({
             <Typography variant="h6" gutterBottom>
                 Variant Combinations
             </Typography>
+
             <TableContainer component={Paper}>
                 <Table sx={{ minWidth: 650 }} aria-label="simple table">
                     <TableHead>
