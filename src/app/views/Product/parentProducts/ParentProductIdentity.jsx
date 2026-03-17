@@ -501,8 +501,12 @@ const ParentProductIdentity = ({ productId, listing }) => {
 
         if (!variationKeys || variationKeys.length === 0) return [];
 
+        // CRITICAL: Do NOT sort attributes by sort_order
+        // The SKU array is indexed in the original variant_attribute_id order (cartesian product)
+        // Sorting here would cause SKU indices to misalign with combination order
+        // SKU array order must match the natural cartesian product order of attributes
         const variations = variationKeys.map((key) => {
-            return [...(expandedInnervariations[key] || [])].sort(deterministicSort);
+            return [...(expandedInnervariations[key] || [])];
         });
 
         function combine(attributes, index, currentCombination) {
@@ -1257,96 +1261,36 @@ const ParentProductIdentity = ({ productId, listing }) => {
 
     // FIXED: Load SKU data for combinations, mapped by attribute ID not array index
     const loadSkuDataForCombinations = async (resData, generatedCombinations) => {
-        if (!resData?.sku || !generatedCombinations) {
-            console.log('No SKU data or combinations available');
+        console.log('loadSkuDataForCombinations called with:', {
+            resData_sku: resData?.sku ? resData.sku.length : 'undefined',
+            generatedCombinations_length: generatedCombinations?.length,
+            generatedCombinations_type: Array.isArray(generatedCombinations) ? 'array' : typeof generatedCombinations
+        });
+
+        if (!resData?.sku || !Array.isArray(generatedCombinations) || generatedCombinations.length === 0) {
+            console.log('No SKU data or combinations available:', {
+                has_sku: !!resData?.sku,
+                is_array: Array.isArray(generatedCombinations),
+                length: generatedCombinations?.length
+            });
             return;
         }
 
         try {
-            // CRITICAL: For proper SKU mapping regardless of sort_order changes:
-            // 1. Create a mapping from combination signature → SKU index
-            // 2. For single variant: attribute ID → SKU index
-            // 3. For multi-variant: combination key → SKU index
-
-            // Build attribute ID position map (original saved order)
-            const attrIdPositions = new Map();
-            if (resData.variant_attribute_id && Array.isArray(resData.variant_attribute_id)) {
-                resData.variant_attribute_id.forEach((attrId, idx) => {
-                    attrIdPositions.set(attrId, idx);
-                });
-            }
-
-            // Build combination key to SKU index mapping
-            // This handles both single and multi-variant cases
-            const combKeyToSkuIndex = new Map();
-
-            // For single variant: use the attribute ID directly as key
-            // For multi-variant: combinations field might have the mapping
-            if (resData.variant_attribute_id && resData.variant_attribute_id.length > 0) {
-                // Check if single variant (all attributes in same variant)
-                const variantIds = new Set();
-                if (resData.variant_attributes && Array.isArray(resData.variant_attributes)) {
-                    resData.variant_attributes.forEach(attr => {
-                        variantIds.add(attr.variant);
-                    });
-                }
-
-                // Single variant case: direct attribute ID mapping
-                if (variantIds.size === 1) {
-                    resData.variant_attribute_id.forEach((attrId, idx) => {
-                        combKeyToSkuIndex.set(attrId, idx);
-                    });
-                } else {
-                    // Multi-variant case: if we have combinations field with proper structure
-                    // We can try to match combination keys
-                    // For now, use the variant_attribute_id order as a fallback
-                    resData.variant_attribute_id.forEach((attrId, idx) => {
-                        combKeyToSkuIndex.set(attrId, idx);
-                    });
-                }
-            }
-
-            console.log('SKU mapping prepared:', {
-                attrIdPositions: Object.fromEntries(attrIdPositions),
-                combKeyToSkuIndex: Object.fromEntries(combKeyToSkuIndex),
-                skuArray: resData.sku
+            console.log('Loading SKU data for combinations:', {
+                generatedCombinations: generatedCombinations.length,
+                skuArray: resData.sku.length,
+                variantAttributeIds: resData.variant_attribute_id?.length
             });
 
-            // Load all SKUs in parallel
+            // Simple index-based mapping: combinations[i] → sku[i]
+            // This works because combinations are generated in variant_attribute_id order
+            // which is the natural cartesian product order matching the sku array
             const skuLoadPromises = generatedCombinations.map(async (comb, genIndex) => {
-                // Extract attribute ID(s) from this combination
-                const attributeIds = Object.values(comb).map(attr => attr._id).filter(Boolean);
-
-                let matchingSku = null;
-
-                // Try to find SKU using the mapping
-                if (attributeIds.length === 1) {
-                    // Single variant: use attribute ID directly
-                    const attrId = attributeIds[0];
-                    const skuIdx = combKeyToSkuIndex.get(attrId);
-                    if (skuIdx !== undefined && resData.sku[skuIdx]) {
-                        matchingSku = resData.sku[skuIdx];
-                    }
-                } else if (attributeIds.length > 1) {
-                    // Multi-variant: try to match by combination key
-                    // Create a key from sorted attribute IDs
-                    const combKey = attributeIds.sort().join('|');
-
-                    // Try exact match first
-                    if (combKeyToSkuIndex.has(combKey)) {
-                        const skuIdx = combKeyToSkuIndex.get(combKey);
-                        matchingSku = resData.sku[skuIdx];
-                    } else {
-                        // Fallback: try first attribute
-                        const firstAttrId = attributeIds[0];
-                        const skuIdx = combKeyToSkuIndex.get(firstAttrId);
-                        if (skuIdx !== undefined) {
-                            matchingSku = resData.sku[skuIdx];
-                        }
-                    }
-                }
+                const matchingSku = resData.sku[genIndex]; // Direct index mapping
 
                 if (!matchingSku) {
+                    console.warn(`No SKU found at index ${genIndex}`);
                     return {
                         index: genIndex,
                         data: {
@@ -1364,6 +1308,7 @@ const ParentProductIdentity = ({ productId, listing }) => {
                 }
 
                 try {
+                    console.log(`Fetching SKU at index ${genIndex}: ${matchingSku}`);
                     const url = apiEndpoints.getProductBySku + `/${matchingSku}`;
                     const res = await ApiService.get(url, auth_key);
 
@@ -1389,7 +1334,7 @@ const ParentProductIdentity = ({ productId, listing }) => {
                         };
                     }
                 } catch (error) {
-                    console.error("Error fetching SKU:", matchingSku, error);
+                    console.error(`Error fetching SKU at index ${genIndex} (${matchingSku}):`, error);
                 }
 
                 return {
@@ -1409,13 +1354,12 @@ const ParentProductIdentity = ({ productId, listing }) => {
             });
 
             const results = await Promise.all(skuLoadPromises);
-
-            // Sort results by index to maintain combination order
             results.sort((a, b) => a.index - b.index);
 
             const finalVariantData = results.map(r => r.data);
             const finalSkus = results.map(r => r.sku);
 
+            console.log('SKU loading complete:', finalSkus);
             ReactDOM.unstable_batchedUpdates(() => {
                 setVariantArrValue(finalVariantData);
                 setSellerSku(finalSkus);
@@ -1456,6 +1400,14 @@ const ParentProductIdentity = ({ productId, listing }) => {
                         }
                     });
                 }
+
+                console.log('API Response Debug:', {
+                    variants: resData?.variants?.length,
+                    variant_attributes: resData?.variant_attributes?.length,
+                    variant_attribute_id: resData?.variant_attribute_id,
+                    sku: resData?.sku,
+                    innervariations: Object.entries(innervariations).map(([k, v]) => [k, v.length])
+                });
 
                 // FIX: Prepare all updates first, then batch them
                 const formDataUpdates = {
@@ -1543,8 +1495,38 @@ const ParentProductIdentity = ({ productId, listing }) => {
 
                 // CRITICAL FIX: Generate combinations BEFORE loading SKUs
                 // This ensures consistent ordering between combinations and SKU data
-                const expandedInnervariations = expandInnervariations(innervariations, normalizedVariantList);
+
+                // For product loading, build expandedInnervariations directly from API data
+                // instead of relying on normalizedVariantList which might be empty
+                let expandedInnervariations = {};
+
+                if (resData?.variant_attributes && Array.isArray(resData.variant_attributes)) {
+                    // Group attributes by variant for direct usage
+                    Object.entries(innervariations).forEach(([variantName, attrIds]) => {
+                        expandedInnervariations[variantName] = attrIds
+                            .map(attrId => resData.variant_attributes.find(attr => attr._id === attrId))
+                            .filter(Boolean);
+                    });
+                } else {
+                    // Fallback to expandInnervariations if API data not available
+                    expandedInnervariations = expandInnervariations(innervariations, normalizedVariantList);
+                }
+
                 const currentCombs = generateCombinations(expandedInnervariations, formDataUpdates.variant_name);
+
+                console.log('DEBUG - expandedInnervariations built:', {
+                    hasVariantAttributes: !!resData?.variant_attributes,
+                    expandedInnervariations: Object.entries(expandedInnervariations).map(([k, v]) => ({ [k]: v.length }))
+                });
+
+                console.log('CRITICAL DEBUG - Generated combinations:', {
+                    expandedInnervariations_keys: Object.keys(expandedInnervariations),
+                    expandedInnervariations_values: Object.entries(expandedInnervariations).map(([k, v]) => ({ [k]: v.length })),
+                    variant_name: formDataUpdates.variant_name,
+                    currentCombs: currentCombs,
+                    currentCombs_length: currentCombs.length,
+                    innervariations: Object.entries(innervariations).map(([k, v]) => ({ [k]: v.length }))
+                });
 
                 React.startTransition(() => {
                     // Build combination map using generated combinations
@@ -1575,7 +1557,12 @@ const ParentProductIdentity = ({ productId, listing }) => {
 
                 // After combinations are set, load SKUs if they exist
                 if (resData?.sku && resData?.sku.length > 0 && listing !== 'copy') {
-                    console.log('Loading SKU data...');
+                    console.log('Loading SKU data...', {
+                        skus: resData?.sku,
+                        currentCombs: currentCombs.length,
+                        variant_name: formDataUpdates.variant_name,
+                        innervariations: innervariations
+                    });
                     // Delay SKU loading to ensure combinations are ready
                     setTimeout(() => {
                         loadSkuDataForCombinations(resData, currentCombs);
