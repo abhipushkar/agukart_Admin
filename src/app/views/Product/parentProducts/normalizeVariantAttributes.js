@@ -66,10 +66,26 @@ export const getAttributesByIds = (variant, attributeIds) => {
 export const generateCombinationKey = (combination) => {
     if (!combination) return '';
 
-    return Object.keys(combination)
-        .sort()
-        .map(key => combination[key]._id || combination[key])
-        .join('_');
+    // Extract attribute info and sort by variant name for stability
+    const attributes = Object.values(combination).map(val => {
+        if (typeof val === 'object' && val !== null) {
+            return {
+                id: val._id || val,
+                name: val.variant_name || ''
+            };
+        }
+        return { id: val, name: '' };
+    });
+
+    // Sort by name, then by id as fallback
+    attributes.sort((a, b) => {
+        if (a.name !== b.name) {
+            return a.name.localeCompare(b.name);
+        }
+        return String(a.id).localeCompare(String(b.id));
+    });
+
+    return attributes.map(attr => attr.id).join('_');
 };
 
 /**
