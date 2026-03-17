@@ -17,6 +17,7 @@ import dayjs from "dayjs";
 import { toast } from "react-toastify";
 
 export default function ProductParentTable({
+    parentId,
     combinations,
     formdataaaaa,
     setSellerSku,
@@ -30,23 +31,45 @@ export default function ProductParentTable({
     setLoadingSkus,
     parentVariants,
     checkForDuplicateSkus,
-    selectedVendor, // Added selectedVendor prop
-    combinationKeys
+    selectedVendor,
+    combinationKeys,
+    updateCombinationDataByKey,
+    updateSellerSkuByKey
 }) {
-    const [sellerSkyValues, setSellerSkyValues] = React.useState(
-        sellerSky ? sellerSky : Array(combinations.length).fill("")
-    );
+    // Initialize with proper length matching combinations
+    const [sellerSkyValues, setSellerSkyValues] = React.useState(() => {
+        if (sellerSky && sellerSky.length > 0) {
+            return [...sellerSky];
+        }
+        return combinations.length > 0 ? Array(combinations.length).fill("") : [];
+    });
 
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
 
     const debounceTimers = useRef({});
 
+    // Sync sellerSkyValues when sellerSky prop changes
     useEffect(() => {
         if (sellerSky && sellerSky.length > 0) {
             setSellerSkyValues([...sellerSky]);
         }
         console.log("skuErrors updated:", skuErrors);
     }, [sellerSky, skuErrors]);
+
+    // Ensure sellerSkyValues has correct length when combinations change
+    useEffect(() => {
+        if (combinations.length > sellerSkyValues.length) {
+            // Add empty strings for new combinations
+            const newValues = [...sellerSkyValues];
+            while (newValues.length < combinations.length) {
+                newValues.push("");
+            }
+            setSellerSkyValues(newValues);
+        } else if (combinations.length < sellerSkyValues.length) {
+            // Trim array to match combinations length
+            setSellerSkyValues(prev => prev.slice(0, combinations.length));
+        }
+    }, [combinations.length]);
 
     const trimValue = (value) => {
         if (typeof value === 'string') {
@@ -86,7 +109,7 @@ export default function ProductParentTable({
     const validateSkuReuse = (childProductData) => {
         if (!selectedVendor || !childProductData) return null;
 
-        if (childProductData.parent_id && childProductData.vendor_id === selectedVendor._id) {
+        if (childProductData.parent_id && childProductData.vendor_id === selectedVendor._id && childProductData.parent_id !== parentId) {
             return "SKU already used in another parent product";
         }
 
@@ -249,14 +272,17 @@ export default function ProductParentTable({
 
     const handleSellerSkuChange = async (index, event) => {
         const value = trimValue(event.target.value);
+        const combinationKey = combinationKeys?.[index];
 
         const newSellerSkyValues = [...sellerSkyValues];
         newSellerSkyValues[index] = value;
         setSellerSkyValues(newSellerSkyValues);
-        setSellerSku(newSellerSkyValues);
 
-        const errorKey = combinationKeys?.[index] || index;
-        setSkuErrors(prev => ({ ...prev, [errorKey]: "" }));
+        if (combinationKey && updateSellerSkuByKey) {
+            updateSellerSkuByKey(combinationKey, value);
+        } else {
+            setSellerSku(newSellerSkyValues);
+        }
 
         debouncedValidateSku(value, index);
     };
@@ -266,52 +292,35 @@ export default function ProductParentTable({
         const value = fieldName === 'qty' || fieldName === 'price' || fieldName === 'sale_price'
             ? e.target.value
             : trimValue(e.target.value);
+        const combinationKey = combinationKeys?.[index];
 
         if (fieldName === "qty" || fieldName === "price" || fieldName === "sale_price") {
             if (/^\d*\.?\d*$/.test(value) || value === "") {
-                const newInputsFields = [...variantArrValues];
-                newInputsFields[index] = {
-                    ...newInputsFields[index],
-                    [fieldName]: value
-                };
-                setVariantArrValue(newInputsFields);
+                if (combinationKey && updateCombinationDataByKey) {
+                    updateCombinationDataByKey(combinationKey, fieldName, value);
+                } else {
+                    const newInputsFields = [...variantArrValues];
+                    newInputsFields[index] = {
+                        ...newInputsFields[index],
+                        [fieldName]: value
+                    };
+                    setVariantArrValue(newInputsFields);
+                }
             }
             return;
         }
 
-        const newInputsFields = [...variantArrValues];
-        newInputsFields[index] = {
-            ...newInputsFields[index],
-            [fieldName]: value
-        };
-        setVariantArrValue(newInputsFields);
-    };
-
-    useEffect(() => {
-        if (combinations.length > 0 && variantArrValues.length !== combinations.length) {
-            const newVariantArrValues = [...variantArrValues];
-
-            if (combinations.length > variantArrValues.length) {
-                const itemsToAdd = combinations.length - variantArrValues.length;
-                for (let i = 0; i < itemsToAdd; i++) {
-                    newVariantArrValues.push({
-                        _id: "",
-                        product_id: "",
-                        sale_price: "",
-                        price: "",
-                        sale_start_date: "",
-                        sale_end_date: "",
-                        qty: "",
-                        isExistingProduct: false
-                    });
-                }
-            } else if (combinations.length < variantArrValues.length) {
-                newVariantArrValues.splice(combinations.length);
-            }
-
-            setVariantArrValue(newVariantArrValues);
+        if (combinationKey && updateCombinationDataByKey) {
+            updateCombinationDataByKey(combinationKey, fieldName, value);
+        } else {
+            const newInputsFields = [...variantArrValues];
+            newInputsFields[index] = {
+                ...newInputsFields[index],
+                [fieldName]: value
+            };
+            setVariantArrValue(newInputsFields);
         }
-    }, [combinations.length]);
+    };
 
     useEffect(() => {
         return () => {
@@ -322,24 +331,30 @@ export default function ProductParentTable({
     }, []);
 
     const dateHandler = (e, name, index) => {
+        const combinationKey = combinationKeys?.[index];
+        const currentData = variantArrValues[index] || {};
+
         if (name === "sale_end_date") {
-            const newInputsFields = [...variantArrValues];
             if (
-                newInputsFields[index]?.sale_start_date &&
+                currentData.sale_start_date &&
                 e &&
-                dayjs(e).isBefore(newInputsFields[index]?.sale_start_date)
+                dayjs(e).isBefore(currentData.sale_start_date)
             ) {
                 toast.error("End Sale Date should be after Start Sale Date");
-                newInputsFields[index][name] = null;
                 return;
             }
         }
-        const newInputsFields = [...variantArrValues];
-        newInputsFields[index] = {
-            ...newInputsFields[index],
-            [name]: e
-        };
-        setVariantArrValue(newInputsFields);
+
+        if (combinationKey && updateCombinationDataByKey) {
+            updateCombinationDataByKey(combinationKey, name, e);
+        } else {
+            const newInputsFields = [...variantArrValues];
+            newInputsFields[index] = {
+                ...newInputsFields[index],
+                [name]: e
+            };
+            setVariantArrValue(newInputsFields);
+        }
     };
 
     // Helper function to check if fields should be disabled
@@ -412,12 +427,11 @@ export default function ProductParentTable({
                             const currentSkuError = combinationKey ? skuErrors[combinationKey] : skuErrors[index];
 
                             return (
-                                <TableRow sx={{ "&:last-child td, &:last-child th": { border: 0 } }} key={index}>
-                                    {formdataaaaa?.map((iddd, iindexx) => {
-                                        const dynamicKey = `key${iindexx + 1}`;
+                                <TableRow sx={{ "&:last-child td, &:last-child th": { border: 0 } }} key={combinationKey}>
+                                    {formdataaaaa?.map((variantName, iindexx) => {
                                         return (
-                                            <TableCell key={iindexx} align="center" component="th" scope="row">
-                                                {item[dynamicKey]?.value}
+                                            <TableCell key={variantName} align="center" component="th" scope="row">
+                                                {item[variantName]?.value}
                                             </TableCell>
                                         );
                                     })}
