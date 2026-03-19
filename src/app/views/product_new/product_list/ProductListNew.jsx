@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     Box,
     Button,
@@ -134,6 +134,9 @@ const ProductListNew = () => {
         setShowFeaturedOnly,
         allActiveCategories,
         getAllActiveCategories,
+        persistListViewContext,
+        restoreListViewContext,
+        clearListViewContext
     } = useProductStore();
 
     // Local state
@@ -141,6 +144,105 @@ const ProductListNew = () => {
     const [actionAnchorEl, setActionAnchorEl] = useState(null);
     const [confirmModal, setConfirmModal] = useState({ open: false, type: '', message: '' });
     const [shippingDialogOpen, setShippingDialogOpen] = useState(false);
+    const listRootRef = useRef(null);
+    const pendingScrollRestoreRef = useRef(null);
+    const hasAppliedViewContextRef = useRef(false);
+
+    const getScrollableParents = (node) => {
+        if (typeof window === 'undefined') return [];
+        const parents = [];
+        let current = node?.parentElement;
+
+        while (current) {
+            const style = window.getComputedStyle(current);
+            const canScrollY = /(auto|scroll|overlay)/.test(style.overflowY);
+            if (canScrollY && current.scrollHeight > current.clientHeight) {
+                parents.push(current);
+            }
+            current = current.parentElement;
+        }
+
+        return parents;
+    };
+
+    const getCurrentScrollPosition = () => {
+        if (typeof window === 'undefined' || typeof document === 'undefined') return 0;
+
+        let maxScrollTop = Math.max(
+            window.scrollY || 0,
+            document.documentElement?.scrollTop || 0,
+            document.body?.scrollTop || 0,
+            document.scrollingElement?.scrollTop || 0
+        );
+
+        const parentScrollContainers = getScrollableParents(listRootRef.current);
+        parentScrollContainers.forEach((container) => {
+            if (container.scrollTop > maxScrollTop) {
+                maxScrollTop = container.scrollTop;
+            }
+        });
+
+        const knownContainers = document.querySelectorAll(
+            'main, [role="main"], .main-content, .main-content-wrap, .content-wrap, .simplebar-content-wrapper'
+        );
+        knownContainers.forEach((container) => {
+            if (container.scrollHeight > container.clientHeight && container.scrollTop > maxScrollTop) {
+                maxScrollTop = container.scrollTop;
+            }
+        });
+
+        // Fallback for unknown scroll containers in layout wrappers.
+        document.querySelectorAll('*').forEach((el) => {
+            if (el.scrollHeight > el.clientHeight && el.scrollTop > maxScrollTop) {
+                maxScrollTop = el.scrollTop;
+            }
+        });
+
+        return maxScrollTop;
+    };
+
+    const restoreScrollPosition = (scrollY) => {
+        if (typeof window === 'undefined' || typeof document === 'undefined') return;
+
+        window.scrollTo({ top: scrollY, behavior: 'auto' });
+
+        const primaryTargets = [
+            document.scrollingElement,
+            document.documentElement,
+            document.body
+        ].filter(Boolean);
+
+        primaryTargets.forEach((target) => {
+            target.scrollTop = scrollY;
+        });
+
+        const knownContainers = document.querySelectorAll(
+            'main, [role="main"], .main-content, .main-content-wrap, .content-wrap, .simplebar-content-wrapper'
+        );
+        knownContainers.forEach((container) => {
+            if (container.scrollHeight > container.clientHeight) {
+                container.scrollTop = scrollY;
+            }
+        });
+
+        const parentScrollContainers = getScrollableParents(listRootRef.current);
+        parentScrollContainers.forEach((container) => {
+            container.scrollTop = scrollY;
+        });
+
+        // Brute-force fallback: apply to all scrollable elements.
+        // This helps when app layout wraps content in dynamic containers.
+        document.querySelectorAll('*').forEach((el) => {
+            if (!el) return;
+            if (el.scrollHeight > el.clientHeight) {
+                const maxTop = el.scrollHeight - el.clientHeight;
+                const nextTop = Math.min(scrollY, maxTop);
+                if (nextTop > 0) {
+                    el.scrollTop = nextTop;
+                }
+            }
+        });
+    };
     const isVendor = localStorage.getItem(localStorageKey.designation_id) === '3' ? true : false;
 
     // Column options for hide/show
@@ -335,11 +437,84 @@ const ProductListNew = () => {
         getAllActiveCategories();
     }, []);
 
+    useEffect(() => {
+        if (hasAppliedViewContextRef.current) return;
+
+        const context = restoreListViewContext();
+        if (!context?.shouldRestore) return;
+
+        hasAppliedViewContextRef.current = true;
+
+        if (context.status && context.status !== filters.status) {
+            setFilters({ status: context.status });
+            window.location.hash = context.status === 'all' ? 'all' : context.status;
+        }
+
+        if (typeof context.scrollY === 'number') {
+            pendingScrollRestoreRef.current = context.scrollY;
+        }
+    }, [filters.status, restoreListViewContext, setFilters]);
+
     // Fetch initial data
     useEffect(() => {
         fetchProductsFirstTime();
         // getAllActiveCategories();
     }, [fetchProducts, filters.status, filters.category, filters.sorting, showFeaturedOnly, pagination.page, pagination.rowsPerPage]);
+
+    useEffect(() => {
+        if (loading) return;
+        if (pendingScrollRestoreRef.current === null) return;
+
+        const scrollY = pendingScrollRestoreRef.current;
+
+        let attempts = 0;
+        const maxAttempts = 160; // ~12.8s at 80ms interval
+        const intervalId = setInterval(() => {
+            restoreScrollPosition(scrollY);
+            attempts += 1;
+
+            const currentScroll = getCurrentScrollPosition();
+            if (Math.abs(currentScroll - scrollY) <= 2 || attempts >= maxAttempts) {
+                clearInterval(intervalId);
+                if (Math.abs(currentScroll - scrollY) <= 2) {
+                    pendingScrollRestoreRef.current = null;
+                    clearListViewContext();
+                }
+            }
+        }, 80);
+
+        return () => clearInterval(intervalId);
+    }, [clearListViewContext, filteredProducts.length, loading]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        let timeoutId = null;
+        const saveCurrentViewContext = () => {
+            if (timeoutId) clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => {
+                persistListViewContext({
+                    status: filters.status,
+                    scrollY: getCurrentScrollPosition()
+                });
+            }, 120);
+        };
+
+        const parentScrollContainers = getScrollableParents(listRootRef.current);
+
+        window.addEventListener('scroll', saveCurrentViewContext, { passive: true });
+        parentScrollContainers.forEach((container) => {
+            container.addEventListener('scroll', saveCurrentViewContext, { passive: true });
+        });
+
+        return () => {
+            if (timeoutId) clearTimeout(timeoutId);
+            window.removeEventListener('scroll', saveCurrentViewContext);
+            parentScrollContainers.forEach((container) => {
+                container.removeEventListener('scroll', saveCurrentViewContext);
+            });
+        };
+    }, [filters.status, persistListViewContext]);
 
     // Handle status filter change with hash routing
     const handleStatusChange = (event) => {
@@ -498,7 +673,7 @@ const ProductListNew = () => {
     // console.log("Sorting Filters: ", filters.sorting);
 
     return (
-        <Box sx={{ margin: '30px' }}>
+        <Box ref={listRootRef} sx={{ margin: '30px' }}>
             {/* Header */}
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
                 <Breadcrumb routeSegments={[{ name: 'Product', path: '' }, { name: 'Product List' }]} />

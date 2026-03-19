@@ -5,6 +5,7 @@ import { localStorageKey } from 'app/constant/localStorageKey';
 
 // Default hidden columns - Image Badge is hidden by default
 const DEFAULT_HIDDEN_COLUMNS = ['Image Badge'];
+const PRODUCT_LIST_VIEW_CONTEXT_KEY = 'product_list_view_context';
 
 export const useProductStore = create((set, get) => ({
     // State
@@ -36,6 +37,11 @@ export const useProductStore = create((set, get) => ({
         totalVariationCount: 0
     },
     expandedRows: new Set(),
+    listViewContext: {
+        status: 'all',
+        scrollY: 0,
+        shouldRestore: false
+    },
 
     showFeaturedOnly: false,
 
@@ -43,6 +49,54 @@ export const useProductStore = create((set, get) => ({
 
     setShowFeaturedOnly: (value) => {
         set({ showFeaturedOnly: value });
+    },
+
+    persistListViewContext: (context) => {
+        const payload = {
+            status: context?.status || get().filters.status || 'all',
+            scrollY: typeof context?.scrollY === 'number' ? context.scrollY : 0,
+            shouldRestore: true
+        };
+
+        set({ listViewContext: payload });
+        if (typeof window !== 'undefined') {
+            sessionStorage.setItem(PRODUCT_LIST_VIEW_CONTEXT_KEY, JSON.stringify(payload));
+        }
+    },
+
+    restoreListViewContext: () => {
+        const stateContext = get().listViewContext;
+        if (stateContext?.shouldRestore) return stateContext;
+
+        if (typeof window === 'undefined') return null;
+        const raw = sessionStorage.getItem(PRODUCT_LIST_VIEW_CONTEXT_KEY);
+        if (!raw) return null;
+
+        try {
+            const parsed = JSON.parse(raw);
+            const payload = {
+                status: parsed?.status || 'all',
+                scrollY: typeof parsed?.scrollY === 'number' ? parsed.scrollY : 0,
+                shouldRestore: true
+            };
+            set({ listViewContext: payload });
+            return payload;
+        } catch (error) {
+            return null;
+        }
+    },
+
+    clearListViewContext: () => {
+        set({
+            listViewContext: {
+                status: 'all',
+                scrollY: 0,
+                shouldRestore: false
+            }
+        });
+        if (typeof window !== 'undefined') {
+            sessionStorage.removeItem(PRODUCT_LIST_VIEW_CONTEXT_KEY);
+        }
     },
 
     // Actions

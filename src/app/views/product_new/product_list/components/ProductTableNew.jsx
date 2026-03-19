@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Table,
     TableBody,
@@ -30,6 +31,38 @@ import { ROUTE_CONSTANT } from 'app/constant/routeContanst';
 import { toast } from 'react-toastify';
 import { useProductStore } from "../../states/useProductStore";
 import debounce from 'lodash.debounce';
+
+const getCurrentScrollPosition = () => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return 0;
+
+    let maxScrollTop = Math.max(
+        window.scrollY || 0,
+        document.documentElement?.scrollTop || 0,
+        document.body?.scrollTop || 0,
+        document.scrollingElement?.scrollTop || 0
+    );
+
+    const containers = document.querySelectorAll(
+        'main, [role="main"], .main-content, .main-content-wrap, .content-wrap, .simplebar-content-wrapper'
+    );
+
+    containers.forEach((el) => {
+        if (!el) return;
+        if (el.scrollHeight > el.clientHeight && el.scrollTop > maxScrollTop) {
+            maxScrollTop = el.scrollTop;
+        }
+    });
+
+    // Fallback: detect active scroll container even if selector-based lookup misses it.
+    document.querySelectorAll('*').forEach((el) => {
+        if (!el) return;
+        if (el.scrollHeight > el.clientHeight && el.scrollTop > maxScrollTop) {
+            maxScrollTop = el.scrollTop;
+        }
+    });
+
+    return maxScrollTop;
+};
 
 // Stats Sub-table Component
 const StatsSubTable = () => (
@@ -251,7 +284,9 @@ const ProductRow = ({ product, index }) => {
         updateBadge,
         deleteProduct,
         deleteProductByAdmin,
+        persistListViewContext,
     } = useProductStore();
+    const navigate = useNavigate();
 
     const [actionAnchorEl, setActionAnchorEl] = useState(null);
 
@@ -337,6 +372,15 @@ const ProductRow = ({ product, index }) => {
 
     const getProductTitle = () => {
         return product.product_title?.replace(/<\/?[^>]+(>|$)/g, "") || '';
+    };
+
+    const navigateWithListContext = (url) => {
+        persistListViewContext({
+            status: filters.status,
+            scrollY: getCurrentScrollPosition()
+        });
+        setActionAnchorEl(null);
+        navigate(url);
     };
 
     const VIEW_W = 200;
@@ -624,27 +668,26 @@ const ProductRow = ({ product, index }) => {
                             open={Boolean(actionAnchorEl)}
                             onClose={() => setActionAnchorEl(null)}
                         >
-                            <a href={
-                                product.type === 'variations'
-                                    ? `${ROUTE_CONSTANT.catalog.product.parentProducts}?id=${product._id}`
-                                    : `${ROUTE_CONSTANT.catalog.product.add}?id=${product._id}`
-                            }
-                                className="w-full h-full block"
-                                style={{ textDecoration: 'none', color: 'inherit' }}>
-                                <MenuItem sx={{ fontSize: '0.8rem' }}>
-                                    Edit
-                                </MenuItem>
-                            </a>
-                            <a
-                                href={product.type === 'variations'
-                                    ? `${ROUTE_CONSTANT.catalog.product.parentProducts}?id=${product._id}&listing=copy` : `${ROUTE_CONSTANT.catalog.product.add}?_id=${product._id}&listing=copy`}
-                                className="w-full h-full block"
-                                style={{ textDecoration: 'none', color: 'inherit' }}
+                            <MenuItem
+                                sx={{ fontSize: '0.8rem' }}
+                                onClick={() => navigateWithListContext(
+                                    product.type === 'variations'
+                                        ? `${ROUTE_CONSTANT.catalog.product.parentProducts}?id=${product._id}`
+                                        : `${ROUTE_CONSTANT.catalog.product.add}?id=${product._id}`
+                                )}
                             >
-                                <MenuItem sx={{ fontSize: '0.8rem' }}>
-                                    Copy Listing
-                                </MenuItem>
-                            </a>
+                                Edit
+                            </MenuItem>
+                            <MenuItem
+                                sx={{ fontSize: '0.8rem' }}
+                                onClick={() => navigateWithListContext(
+                                    product.type === 'variations'
+                                        ? `${ROUTE_CONSTANT.catalog.product.parentProducts}?id=${product._id}&listing=copy`
+                                        : `${ROUTE_CONSTANT.catalog.product.add}?_id=${product._id}&listing=copy`
+                                )}
+                            >
+                                Copy Listing
+                            </MenuItem>
 
                             {filters.status === "delete" && designation_id === "2" ? <MenuItem onClick={handleDelete}
                                 sx={{ fontSize: '0.8rem' }}>Delete</MenuItem> : filters.status !== "delete" &&
@@ -678,8 +721,10 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
         updateProductField,
         updateSortOrder,
         updateBadge,
-        deleteProduct
+        deleteProduct,
+        persistListViewContext,
     } = useProductStore();
+    const navigate = useNavigate();
 
     const [actionAnchorEl, setActionAnchorEl] = useState(null);
 
@@ -750,6 +795,15 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
 
     const getProductTitle = () => {
         return capitalizeFirstLetter(variation.product_title?.replace(/<\/?[^>]+(>|$)/g, "") || '');
+    };
+
+    const navigateWithListContext = (url) => {
+        persistListViewContext({
+            status: filters.status,
+            scrollY: getCurrentScrollPosition()
+        });
+        setActionAnchorEl(null);
+        navigate(url);
     };
 
     const VIEW_W = 200;
@@ -1018,24 +1072,18 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
                         open={Boolean(actionAnchorEl)}
                         onClose={() => setActionAnchorEl(null)}
                     >
-                        <a
-                            href={`${ROUTE_CONSTANT.catalog.product.add}?id=${variation._id}`}
-                            className="w-full h-full block"
-                            style={{ textDecoration: 'none', color: 'inherit' }}
+                        <MenuItem
+                            sx={{ fontSize: '0.8rem' }}
+                            onClick={() => navigateWithListContext(`${ROUTE_CONSTANT.catalog.product.add}?id=${variation._id}`)}
                         >
-                            <MenuItem sx={{ fontSize: '0.8rem' }}>
-                                Edit
-                            </MenuItem>
-                        </a>
-                        <a
-                            href={`${ROUTE_CONSTANT.catalog.product.add}?_id=${variation._id}&listing=copy`}
-                            className="w-full h-full block"
-                            style={{ textDecoration: 'none', color: 'inherit' }}
+                            Edit
+                        </MenuItem>
+                        <MenuItem
+                            sx={{ fontSize: '0.8rem' }}
+                            onClick={() => navigateWithListContext(`${ROUTE_CONSTANT.catalog.product.add}?_id=${variation._id}&listing=copy`)}
                         >
-                            <MenuItem sx={{ fontSize: '0.8rem' }}>
-                                Copy Listing
-                            </MenuItem>
-                        </a>
+                            Copy Listing
+                        </MenuItem>
                         <MenuItem onClick={handleDelete} sx={{ fontSize: '0.8rem' }}>Delete</MenuItem>
                     </Menu>
                 </Box>
