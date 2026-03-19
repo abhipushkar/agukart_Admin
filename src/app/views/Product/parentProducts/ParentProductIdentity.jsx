@@ -113,6 +113,25 @@ const ParentProductIdentity = ({ productId, listing }) => {
     // FIX: Client-side hydration check
     const [isClient, setIsClient] = useState(false);
 
+    const getVariantIdentity = useCallback((variant) => variant?._id || variant?.id || "", []);
+
+    const variantOptionsById = useMemo(() => {
+        const map = new Map();
+        [...dropdownVariantOptions, ...normalizedVariantList].forEach((variant) => {
+            const variantId = getVariantIdentity(variant);
+            if (variantId && !map.has(variantId)) {
+                map.set(variantId, variant);
+            }
+        });
+        return map;
+    }, [dropdownVariantOptions, normalizedVariantList, getVariantIdentity]);
+
+    const getVariantsByIds = useCallback((ids = []) => {
+        return ids
+            .map((id) => variantOptionsById.get(id))
+            .filter(Boolean);
+    }, [variantOptionsById]);
+
     function handleTabChanges(event, newValue) {
         setCurrentTab(newValue);
     }
@@ -276,14 +295,33 @@ const ParentProductIdentity = ({ productId, listing }) => {
 
     const varintHandler = (event, value) => {
         const previousVariantNames = formData.variant_name;
-        const newVariantNames = value.map((option) => option.variant_name);
+        const nextVariantData = value
+            .map((option) => {
+                const variantId = getVariantIdentity(option);
+                return variantOptionsById.get(variantId) || option;
+            })
+            .filter(Boolean);
+        const newVariantNames = nextVariantData.map((option) => option.variant_name);
+        const nextInnervariations = {};
+        newVariantNames.forEach((variantName) => {
+            nextInnervariations[variantName] = formData.Innervariations?.[variantName] || [];
+        });
 
         setFormData((prev) => ({
             ...prev,
-            variantData: value,
-            variant_id: value.map((option) => option.id),
-            variant_name: newVariantNames
+            variantData: nextVariantData,
+            variant_id: nextVariantData.map((option) => getVariantIdentity(option)),
+            variant_name: newVariantNames,
+            Innervariations: nextInnervariations
         }));
+
+        setOptionInputs((prev) => {
+            const next = {};
+            newVariantNames.forEach((variantName) => {
+                next[variantName] = prev[variantName] || "";
+            });
+            return next;
+        });
 
         // Remove product variations for deselected variants
         const removedVariants = previousVariantNames.filter(name => !newVariantNames.includes(name));
@@ -450,11 +488,17 @@ const ParentProductIdentity = ({ productId, listing }) => {
     const generateCombinations = (expandedInnervariations) => {
         let combinations = [];
         const variationKeys = Object.keys(expandedInnervariations);
+        if (variationKeys.length === 0) {
+            return combinations;
+        }
 
         // Apply deterministic sorting
         const variations = variationKeys.map((key) => {
             return [...expandedInnervariations[key]].sort(deterministicSort);
         });
+        if (variations.some((items) => !items?.length)) {
+            return combinations;
+        }
 
         function combine(attributes, index, currentCombination) {
             if (index === attributes.length) {
@@ -478,6 +522,13 @@ const ParentProductIdentity = ({ productId, listing }) => {
         combine(variations, 0, {});
         return combinations;
     };
+
+    // Keep existing combinations visible while a newly added variant has no selected attributes yet.
+    const getCombinableInnervariations = useCallback((expandedInnervariations = {}) => {
+        return Object.fromEntries(
+            Object.entries(expandedInnervariations).filter(([, attributes]) => Array.isArray(attributes) && attributes.length > 0)
+        );
+    }, []);
 
     // Helper: Convert API combination_id (comma-separated) to our key format
     const combinationIdToKey = (combinationId) => {
@@ -574,11 +625,6 @@ const ParentProductIdentity = ({ productId, listing }) => {
         setCombinationMap(newMap);
     };
 
-    // Get expanded innervariations for UI display
-    const getExpandedInnervariations = useCallback(() => {
-        return expandInnervariations(formData.Innervariations, normalizedVariantList);
-    }, [formData.Innervariations, normalizedVariantList]);
-
     const resolveVariantAttributes = useCallback((variantName) => {
         const normalizedVariant = normalizedVariantList.find(v => v.variant_name === variantName);
         const normalizedAttrs = normalizedVariant?.variant_attribute || [];
@@ -593,6 +639,20 @@ const ParentProductIdentity = ({ productId, listing }) => {
 
         return Array.from(merged.values());
     }, [dropdownAttributeOptions, normalizedVariantList]);
+
+    // Use a single resolver-backed source for expansion so newly added chips
+    // from mapped autocomplete are always reflected in table combinations.
+    const resolverVariants = useMemo(() => {
+        return formData.variantData.map((variant) => ({
+            ...variant,
+            variant_attribute: resolveVariantAttributes(variant.variant_name)
+        }));
+    }, [formData.variantData, resolveVariantAttributes]);
+
+    // Get expanded innervariations for UI display
+    const getExpandedInnervariations = useCallback(() => {
+        return expandInnervariations(formData.Innervariations, resolverVariants);
+    }, [formData.Innervariations, resolverVariants]);
 
     // FIXED: Memoized filtered data using IDs only
     const filteredData = useMemo(() => {
@@ -619,7 +679,7 @@ const ParentProductIdentity = ({ productId, listing }) => {
     const InnervariationsHandle = (variantName) => (event, newValue) => {
         // 1. Get available attributes for this variant for resolution
         const attrOptions = getAttributesForVariant(variantName);
-        const resolverVariants = formData.variantData.map((variant) => ({
+        const nextResolverVariants = formData.variantData.map((variant) => ({
             ...variant,
             variant_attribute: resolveVariantAttributes(variant.variant_name)
         }));
@@ -664,12 +724,14 @@ const ParentProductIdentity = ({ productId, listing }) => {
         // This keeps the input field and chips responsive while the table recalculates
         React.startTransition(() => {
             // Expand for combination generation
-            const expandedInnervariations = expandInnervariations(updatedInnervariations, resolverVariants);
-            const newCombinations = generateCombinations(expandedInnervariations);
+            const expandedInnervariations = expandInnervariations(updatedInnervariations, nextResolverVariants);
+            const combinableExpanded = getCombinableInnervariations(expandedInnervariations);
+            const newCombinations = generateCombinations(combinableExpanded);
 
             // Use memoized expanded current state to avoid redundant recursive calls
-            const currentExpanded = expandInnervariations(formData.Innervariations, resolverVariants);
-            const currentCombinations = generateCombinations(currentExpanded);
+            const currentExpanded = expandInnervariations(formData.Innervariations, nextResolverVariants);
+            const combinableCurrentExpanded = getCombinableInnervariations(currentExpanded);
+            const currentCombinations = generateCombinations(combinableCurrentExpanded);
 
             // Preserve data for unchanged combinations
             const { preservedVariantData, preservedSellerSky, preservedSkuErrors } = preserveCombinationData(
@@ -818,6 +880,9 @@ const ParentProductIdentity = ({ productId, listing }) => {
         if (!trimValue(formData.sellerSku)) errors.sellerSku = "Seller Sku is Required";
         if (formData.variantData.length === 0) errors.variations = "Please Select At least one Variant";
         if (Object.keys(formData.Innervariations).length === 0) errors.innervariation = "Please Select At least one Innervariations Variant";
+        if (formData.variantData.some((variant) => !(formData.Innervariations?.[variant.variant_name] || []).length)) {
+            errors.innervariation = "Please select at least one attribute for each selected variation";
+        }
         if (images.length === 0) errors.parentImage = "Images Is Required";
         if (!formData.vendor) errors.vendor = "Vendor is Required";
 
@@ -833,7 +898,8 @@ const ParentProductIdentity = ({ productId, listing }) => {
 
     const getCurrentCombinations = () => {
         const expandedInnervariations = getExpandedInnervariations();
-        const combos = generateCombinations(expandedInnervariations);
+        const combinableInnervariations = getCombinableInnervariations(expandedInnervariations);
+        const combos = generateCombinations(combinableInnervariations);
 
         // Debug logging
         if (combos.length > 0) {
@@ -1030,7 +1096,7 @@ const ParentProductIdentity = ({ productId, listing }) => {
             for (let [key, value] of variationsFormData.entries()) {
                 formDataObj.append(key, value);
             }
-
+            console.log(Object.fromEntries(formDataObj.entries()));
             // Submit main product data with variations using postImage
             const urlWithParam = `${apiEndpoints.AddParentProduct}`;
             const res = await ApiService.postImage(urlWithParam, formDataObj, auth_key);
@@ -1559,17 +1625,26 @@ const ParentProductIdentity = ({ productId, listing }) => {
     }, [formData?.images, productId]);
 
     useEffect(() => {
-        if (formData?.variant_id && normalizedVariantList.length > 0) {
-            const filteredVariantData = normalizedVariantList.filter((variant) =>
-                formData.variant_id.includes(variant._id || variant.id)
-            );
+        if (!Array.isArray(formData?.variant_id)) return;
 
-            setFormData((prev) => ({
+        const resolvedVariants = getVariantsByIds(formData.variant_id);
+        setFormData((prev) => {
+            const currentIds = (prev.variantData || []).map((variant) => getVariantIdentity(variant));
+            const nextIds = resolvedVariants.map((variant) => getVariantIdentity(variant));
+            const isSame =
+                currentIds.length === nextIds.length &&
+                currentIds.every((id, index) => id === nextIds[index]);
+
+            if (isSame) {
+                return prev;
+            }
+
+            return {
                 ...prev,
-                variantData: filteredVariantData
-            }));
-        }
-    }, [formData?.variant_id, normalizedVariantList]);
+                variantData: resolvedVariants
+            };
+        });
+    }, [formData?.variant_id, getVariantsByIds, getVariantIdentity]);
 
     // FIXED: Initialize innervariations when variant data changes
     useEffect(() => {
@@ -2129,7 +2204,7 @@ const ParentProductIdentity = ({ productId, listing }) => {
                                         formData.variantData.length > 0
                                             ? formData.variantData
                                             : formData.variant_id
-                                                ? normalizedVariantList.filter((variant) => formData.variant_id.includes(variant._id || variant.id))
+                                                ? getVariantsByIds(formData.variant_id)
                                                 : []
                                     }
                                     isOptionEqualToValue={(option, value) => (option?._id || option?.id) === (value?._id || value?.id)}
@@ -2151,7 +2226,7 @@ const ParentProductIdentity = ({ productId, listing }) => {
                         </Box>
                         <Stack gap={"16px"} sx={{ pb: 0 }}>
                             {formData?.variantData?.map((inputField, index) => (
-                                <Stack key={inputField._id} alignItems={"center"} direction={"row"}>
+                                <Stack key={inputField._id || inputField.id || inputField.variant_name || index} alignItems={"center"} direction={"row"}>
                                     <Box
                                         sx={{
                                             fontSize: "14px",
@@ -2183,6 +2258,7 @@ const ParentProductIdentity = ({ productId, listing }) => {
                                             id={`multiple-limit-tags-${index}`}
                                             options={getDisplayAttributesForVariant(inputField?.variant_name)}
                                             getOptionLabel={(option) => typeof option === 'string' ? option : (option.attribute_value || "")}
+                                            getOptionDisabled={(option) => option.status === false}
                                             renderInput={(params) => {
                                                 const currentInput = optionInputs[inputField?.variant_name] || "";
                                                 return (
