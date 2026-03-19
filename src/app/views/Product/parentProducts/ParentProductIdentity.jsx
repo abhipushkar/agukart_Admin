@@ -22,6 +22,7 @@ import { localStorageKey } from "app/constant/localStorageKey";
 import { v4 as uuidv4 } from "uuid";
 import CircularProgress from "@mui/material/CircularProgress";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import CloseIcon from "@mui/icons-material/Close";
 import ProductParentTable from "app/components/ProductListTable/ProductParentTable";
 import { ROUTE_CONSTANT } from "app/constant/routeContanst";
 import { useEffect, useMemo, useState, useCallback } from "react";
@@ -65,6 +66,8 @@ const ParentProductIdentity = ({ productId, listing }) => {
     const [showVariant, setShowVariant] = React.useState(false);
     const [rawVariantList, setRawVariantList] = React.useState([]);
     const [normalizedVariantList, setNormalizedVariantList] = React.useState([]);
+    const [dropdownVariantOptions, setDropdownVariantOptions] = React.useState([]);
+    const [dropdownAttributeOptions, setDropdownAttributeOptions] = React.useState({});
     const [varientAttribute, setVarientAttribute] = React.useState([]);
     const [images, setImages] = React.useState(formData.images);
     const [isCoponentLoader, setIsconponentLoader] = useState(false);
@@ -77,7 +80,7 @@ const ParentProductIdentity = ({ productId, listing }) => {
     const [sellerSky, setSellerSku] = React.useState([]);
 
     const [combinationMap, setCombinationMap] = useState(new Map());
-    const [combinations, setCombinations] = useState([]);
+    const [skuByKey, setSkuByKey] = useState({}); // Maps combination keys to SKUs
     const [usedSkus, setUsedSkus] = useState(new Set());
 
     const [inputErrors, setInputErrors] = React.useState({
@@ -215,14 +218,23 @@ const ParentProductIdentity = ({ productId, listing }) => {
 
     const getVaraintList = useCallback(async () => {
         try {
-            const typeParam = "type=Product";
+            const typeParam = "filter=all";
             const urlWithParam = `${apiEndpoints.getAllActiveVarient}?${typeParam}`;
             const res = await ApiService.get(urlWithParam, auth_key);
             if (res.status === 200) {
-                setRawVariantList(res?.data?.parent || []);
+                const parentVariants = res?.data?.parent || [];
+                setRawVariantList(parentVariants);
                 // Normalize variant list to remove duplicates
-                const normalized = normalizeVariantList(res?.data?.parent);
+                const normalized = normalizeVariantList(parentVariants);
                 setNormalizedVariantList(normalized);
+
+                // Dedicated dropdown states (must not share normalizedVariantList used by combination flow)
+                setDropdownVariantOptions(normalized);
+                const attributeMap = {};
+                normalized.forEach((variant) => {
+                    attributeMap[variant?.variant_name] = variant?.variant_attribute || [];
+                });
+                setDropdownAttributeOptions(attributeMap);
             }
         } catch (error) {
             handleApiError(error, "Failed to load variants");
@@ -266,49 +278,21 @@ const ParentProductIdentity = ({ productId, listing }) => {
         const previousVariantNames = formData.variant_name;
         const newVariantNames = value.map((option) => option.variant_name);
 
-        const updatedFormData = {
-            ...formData,
+        setFormData((prev) => ({
+            ...prev,
             variantData: value,
             variant_id: value.map((option) => option.id),
             variant_name: newVariantNames
-        };
+        }));
 
-        setFormData(updatedFormData);
-
-        // Preserve combinations data
-        React.startTransition(() => {
-            const expandedInnervariations = expandInnervariations(updatedFormData.Innervariations, normalizedVariantList);
-            const newCombinations = generateCombinations(expandedInnervariations);
-            const oldCombinations = combinations;
-
-            const { preservedVariantData, preservedSellerSky, preservedSkuErrors } = preserveCombinationData(
-                newCombinations,
-                variantArrValues,
-                sellerSky,
-                skuErrors,
-                oldCombinations
+        // Remove product variations for deselected variants
+        const removedVariants = previousVariantNames.filter(name => !newVariantNames.includes(name));
+        if (removedVariants.length > 0) {
+            const updatedProductVariations = productVariations.filter(
+                variation => !removedVariants.includes(variation.variant_name)
             );
-
-            const newMap = new Map();
-            newCombinations.forEach((comb, index) => {
-                newMap.set(generateCombinationKey(comb), index);
-            });
-
-            setCombinationMap(newMap);
-            setCombinations(newCombinations);
-            setVariantArrValue(preservedVariantData);
-            setSellerSku(preservedSellerSky);
-            setSkuErrors(preservedSkuErrors);
-
-            // Remove product variations for deselected variants
-            const removedVariants = previousVariantNames.filter(name => !newVariantNames.includes(name));
-            if (removedVariants.length > 0) {
-                const updatedProductVariations = productVariations.filter(
-                    variation => !removedVariants.includes(variation.variant_name)
-                );
-                setProductVariations(updatedProductVariations);
-            }
-        });
+            setProductVariations(updatedProductVariations);
+        }
 
         setInputErrors((prev) => ({ ...prev, variations: "" }));
     };
@@ -316,7 +300,7 @@ const ParentProductIdentity = ({ productId, listing }) => {
     const handleBulkImport = async (skuArray) => {
         try {
             setIsconponentLoader(true);
-            const currentCombs = combinations;
+            const currentCombs = getCurrentCombinations();
             const totalDesired = currentCombs.length;
 
             const newSellerSky = [...sellerSky];
@@ -374,12 +358,12 @@ const ParentProductIdentity = ({ productId, listing }) => {
                         }
 
                         // Validate vendor match
-                        if (formData.vendor && obj.vendor_id?.toString() !== formData.vendor?._id?.toString()) {
+                        if (formData.vendor && obj.vendor_id !== formData.vendor._id) {
                             newSkuErrors[index] = "SKU not found in this shop.";
                         }
 
                         // Validate SKU reuse
-                        if (!newSkuErrors[index] && obj.parent_id && obj.vendor_id?.toString() === formData.vendor?._id?.toString() && obj.parent_id !== productId) {
+                        if (!newSkuErrors[index] && obj.parent_id && obj.vendor_id === formData.vendor?._id && obj.parent_id !== productId) {
                             newSkuErrors[index] = "SKU already used in another parent product";
                         }
                         if (!newSkuErrors[index]) {
@@ -445,14 +429,7 @@ const ParentProductIdentity = ({ productId, listing }) => {
             ReactDOM.unstable_batchedUpdates(() => {
                 setSellerSku([...newSellerSky]);
                 setVariantArrValue([...newVariantArrValues]);
-
-                // Set errors by combination key if available, otherwise by index
-                const keyedErrors = {};
-                newSkuErrors.forEach((err, idx) => {
-                    const key = combinations[idx] ? generateCombinationKey(combinations[idx]) : idx;
-                    keyedErrors[key] = err;
-                });
-                setSkuErrors(keyedErrors);
+                setSkuErrors({ ...newSkuErrors });
             });
 
             toast.success(`Imported ${Math.min(skuArray.length, totalDesired)} SKUs successfully`);
@@ -470,43 +447,13 @@ const ParentProductIdentity = ({ productId, listing }) => {
         return a._id.localeCompare(b._id);
     };
 
-    const updateCombinationDataByKey = useCallback((key, field, value) => {
-        setVariantArrValue(prev => {
-            const index = combinations.findIndex(c => generateCombinationKey(c) === key);
-            if (index === -1) return prev;
-            const newArr = [...prev];
-            newArr[index] = { ...newArr[index], [field]: value };
-            return newArr;
-        });
-    }, [combinations]);
-
-    const updateSellerSkuByKey = useCallback((key, value) => {
-        setSellerSku(prev => {
-            const index = combinations.findIndex(c => generateCombinationKey(c) === key);
-            if (index === -1) return prev;
-            const newArr = [...prev];
-            newArr[index] = value;
-            return newArr;
-        });
-
-        // Also clear SKU error when changed
-        setSkuErrors(prev => ({ ...prev, [key]: "" }));
-    }, [combinations]);
-
-    const generateCombinations = (expandedInnervariations, keys) => {
+    const generateCombinations = (expandedInnervariations) => {
         let combinations = [];
+        const variationKeys = Object.keys(expandedInnervariations);
 
-        // ✅ Use provided keys or fallback to state
-        const variationKeys = keys || formData.variant_name;
-
-        if (!variationKeys || variationKeys.length === 0) return [];
-
-        // CRITICAL: Do NOT sort attributes by sort_order
-        // The SKU array is indexed in the original variant_attribute_id order (cartesian product)
-        // Sorting here would cause SKU indices to misalign with combination order
-        // SKU array order must match the natural cartesian product order of attributes
+        // Apply deterministic sorting
         const variations = variationKeys.map((key) => {
-            return [...(expandedInnervariations[key] || [])];
+            return [...expandedInnervariations[key]].sort(deterministicSort);
         });
 
         function combine(attributes, index, currentCombination) {
@@ -515,19 +462,14 @@ const ParentProductIdentity = ({ productId, listing }) => {
                 return;
             }
 
-            const variantName = variationKeys[index];
-            const currentVariantAttributes = attributes[index];
-
-            if (!currentVariantAttributes || currentVariantAttributes.length === 0) {
-                // If one variant has no selection, we can't form combinations for this path
-                return;
-            }
-
-            currentVariantAttributes.forEach((attribute) => {
-                currentCombination[variantName] = {
+            // Attributes are already sorted deterministically
+            attributes[index].forEach((attribute) => {
+                const key = `key${index + 1}`;
+                currentCombination[key] = {
                     value: attribute.attribute_value,
                     _id: attribute._id,
-                    variant_name: variantName
+                    variant_name: variationKeys[index],
+                    status: attribute.status
                 };
                 combine(attributes, index + 1, currentCombination);
             });
@@ -535,6 +477,26 @@ const ParentProductIdentity = ({ productId, listing }) => {
 
         combine(variations, 0, {});
         return combinations;
+    };
+
+    // Helper: Convert API combination_id (comma-separated) to our key format
+    const combinationIdToKey = (combinationId) => {
+        if (!combinationId) return '';
+        return combinationId.replace(/,/g, '_');
+    };
+
+    // Helper: Build SKU lookup map from API combinations array
+    const buildSkuLookupFromCombinations = (combinations) => {
+        const mapping = {};
+        if (!Array.isArray(combinations)) return mapping;
+
+        combinations.forEach(comb => {
+            if (comb.combination_id && comb.sku_code) {
+                const key = combinationIdToKey(comb.combination_id);
+                mapping[key] = comb.sku_code;
+            }
+        });
+        return mapping;
     };
 
     const preserveCombinationData = (newCombinations, currentVariantData, currentSellerSky, currentSkuErrors, oldCombinations) => {
@@ -617,19 +579,32 @@ const ParentProductIdentity = ({ productId, listing }) => {
         return expandInnervariations(formData.Innervariations, normalizedVariantList);
     }, [formData.Innervariations, normalizedVariantList]);
 
+    const resolveVariantAttributes = useCallback((variantName) => {
+        const normalizedVariant = normalizedVariantList.find(v => v.variant_name === variantName);
+        const normalizedAttrs = normalizedVariant?.variant_attribute || [];
+        const dropdownAttrs = dropdownAttributeOptions[variantName] || [];
+
+        const merged = new Map();
+        [...normalizedAttrs, ...dropdownAttrs].forEach((attr) => {
+            if (attr?._id && !merged.has(attr._id)) {
+                merged.set(attr._id, attr);
+            }
+        });
+
+        return Array.from(merged.values());
+    }, [dropdownAttributeOptions, normalizedVariantList]);
+
     // FIXED: Memoized filtered data using IDs only
     const filteredData = useMemo(() => {
         if (!varientAttribute || !formData?.variantData || formData.variantData.length === 0) {
             return {};
         }
 
-        const variantMap = new Map(normalizedVariantList.map(v => [v.variant_name, v]));
-
         return formData.variantData.reduce((acc, item) => {
-            const variant = variantMap.get(item.variant_name);
-            if (variant?.variant_attribute) {
+            const resolvedAttributes = resolveVariantAttributes(item.variant_name);
+            if (resolvedAttributes.length > 0) {
                 // Get attribute IDs for this variant from varientAttribute
-                const attributeIdsForVariant = variant.variant_attribute
+                const attributeIdsForVariant = resolvedAttributes
                     .filter(attr => varientAttribute.includes(attr._id))
                     .map(attr => attr._id);
 
@@ -639,11 +614,15 @@ const ParentProductIdentity = ({ productId, listing }) => {
             }
             return acc;
         }, {});
-    }, [varientAttribute, formData?.variantData, normalizedVariantList]);
+    }, [varientAttribute, formData?.variantData, resolveVariantAttributes]);
 
     const InnervariationsHandle = (variantName) => (event, newValue) => {
         // 1. Get available attributes for this variant for resolution
         const attrOptions = getAttributesForVariant(variantName);
+        const resolverVariants = formData.variantData.map((variant) => ({
+            ...variant,
+            variant_attribute: resolveVariantAttributes(variant.variant_name)
+        }));
 
         // 2. Split any comma-separated strings (handles pasting and typing)
         const splitStringValues = newValue.flatMap(val =>
@@ -685,36 +664,16 @@ const ParentProductIdentity = ({ productId, listing }) => {
         // This keeps the input field and chips responsive while the table recalculates
         React.startTransition(() => {
             // Expand for combination generation
-            const expandedInnervariations = expandInnervariations(updatedInnervariations, normalizedVariantList);
+            const expandedInnervariations = expandInnervariations(updatedInnervariations, resolverVariants);
             const newCombinations = generateCombinations(expandedInnervariations);
 
-            const oldCombinations = combinations; // ✅ always latest
-            const oldKeys = oldCombinations.map(c => generateCombinationKey(c));
-
-            const finalCombinations = [];
-
-            // 1. Keep old order
-            oldCombinations.forEach(oldComb => {
-                const key = generateCombinationKey(oldComb);
-                const found = newCombinations.find(c => generateCombinationKey(c) === key);
-                if (found) {
-                    finalCombinations.push(found);
-                }
-            });
-
-            // 2. Add new at end
-            newCombinations.forEach(newComb => {
-                const key = generateCombinationKey(newComb);
-                if (!oldKeys.includes(key)) {
-                    finalCombinations.push(newComb);
-                }
-            });
             // Use memoized expanded current state to avoid redundant recursive calls
-            const currentCombinations = combinations;
+            const currentExpanded = expandInnervariations(formData.Innervariations, resolverVariants);
+            const currentCombinations = generateCombinations(currentExpanded);
 
             // Preserve data for unchanged combinations
             const { preservedVariantData, preservedSellerSky, preservedSkuErrors } = preserveCombinationData(
-                finalCombinations,
+                newCombinations,
                 variantArrValues,
                 sellerSky,
                 skuErrors,
@@ -723,15 +682,24 @@ const ParentProductIdentity = ({ productId, listing }) => {
 
             // Update combination map with new indices
             const newMap = new Map();
-            finalCombinations.forEach((comb, index) => {
+            newCombinations.forEach((comb, index) => {
                 const key = generateCombinationKey(comb);
                 newMap.set(key, index);
             });
 
+            // Rebuild skuByKey map based on new combinations and preserved SKUs
+            const updatedSkuByKey = {};
+            newCombinations.forEach((comb, index) => {
+                const combKey = generateCombinationKey(comb);
+                if (preservedSellerSky[index]) {
+                    updatedSkuByKey[combKey] = preservedSellerSky[index];
+                }
+            });
+
             setCombinationMap(newMap);
-            setCombinations(finalCombinations);
             setVariantArrValue(preservedVariantData);
             setSellerSku(preservedSellerSky);
+            setSkuByKey(updatedSkuByKey);
             setSkuErrors(preservedSkuErrors);
 
             // Move product variations sync here to avoid UI blocking
@@ -742,7 +710,7 @@ const ParentProductIdentity = ({ productId, listing }) => {
                 if (variant.variant_name !== variantName) {
                     const existingVariant = productVariations.find(pv => pv.variant_name === variant.variant_name);
                     return existingVariant || {
-                        _id: variant.id,
+                        _id: variant._id || variant.id,
                         variant_name: variant.variant_name,
                         variant_attributes: [],
                         guide: []
@@ -750,7 +718,9 @@ const ParentProductIdentity = ({ productId, listing }) => {
                 }
 
                 const existingVariant = productVariations.find(pv => pv.variant_name === variantName);
-                const variantObj = normalizedVariantList.find(v => v.variant_name === variantName);
+                const variantObj = {
+                    variant_attribute: resolveVariantAttributes(variantName)
+                };
 
                 let updatedAttributes = [];
                 if (existingVariant) {
@@ -794,7 +764,7 @@ const ParentProductIdentity = ({ productId, listing }) => {
                 }
 
                 return {
-                    _id: variant.id,
+                    _id: variant._id || variant.id,
                     variant_name: variant.variant_name,
                     variant_attributes: updatedAttributes,
                     guide: existingVariant?.guide || []
@@ -863,7 +833,16 @@ const ParentProductIdentity = ({ productId, listing }) => {
 
     const getCurrentCombinations = () => {
         const expandedInnervariations = getExpandedInnervariations();
-        return generateCombinations(expandedInnervariations);
+        const combos = generateCombinations(expandedInnervariations);
+
+        // Debug logging
+        if (combos.length > 0) {
+            console.log('getCurrentCombinations - Total combinations:', combos.length);
+            console.log('First combination:', combos[0]);
+            console.log('Last combination:', combos[combos.length - 1]);
+        }
+
+        return combos;
     };
 
     const trimObjectValues = (obj) => {
@@ -989,13 +968,11 @@ const ParentProductIdentity = ({ productId, listing }) => {
             return;
         }
 
-        const currentCombinations = combinations;
+        const currentCombinations = getCurrentCombinations();
 
         const combine = currentCombinations.map((combination, index) => {
-            // Generate stable comb string by sorting by variant name
-            const comb = Object.values(combination)
-                .sort((a, b) => a.variant_name.localeCompare(b.variant_name))
-                .map((val) => val._id)
+            const comb = Object.keys(combination)
+                .map((key) => combination[key]._id)
                 .join(",");
 
             const variantData = variantArrValues[index] || {};
@@ -1243,9 +1220,8 @@ const ParentProductIdentity = ({ productId, listing }) => {
 
     // FIXED: Get attribute objects for a specific variant
     const getAttributesForVariant = (variantName) => {
-        const variant = normalizedVariantList.find(v => v.variant_name === variantName);
-        if (!variant || !variant.variant_attribute) return [];
-        return variant.variant_attribute;
+        if (!variantName) return [];
+        return resolveVariantAttributes(variantName);
     };
 
     // FIXED: Get selected attribute objects for display
@@ -1253,120 +1229,25 @@ const ParentProductIdentity = ({ productId, listing }) => {
         const attributeIds = formData.Innervariations[variantName];
         if (!Array.isArray(attributeIds)) return [];
 
-        const variant = normalizedVariantList.find(v => v.variant_name === variantName);
-        if (!variant || !variant.variant_attribute) return [];
-
-        return getAttributesByIds(variant, attributeIds);
+        const resolvedAttributes = resolveVariantAttributes(variantName);
+        return getAttributesByIds({ variant_attribute: resolvedAttributes }, attributeIds);
     };
 
-    // FIXED: Load SKU data for combinations, mapped by attribute ID not array index
-    const loadSkuDataForCombinations = async (resData, generatedCombinations) => {
-        console.log('loadSkuDataForCombinations called with:', {
-            resData_sku: resData?.sku ? resData.sku.length : 'undefined',
-            generatedCombinations_length: generatedCombinations?.length,
-            generatedCombinations_type: Array.isArray(generatedCombinations) ? 'array' : typeof generatedCombinations
+    // Display-only options for mapped autocomplete:
+    // keep first occurrence per label without touching combination source data.
+    const getDisplayAttributesForVariant = (variantName) => {
+        const resolvedAttributes = resolveVariantAttributes(variantName);
+        const byLabel = new Map();
+
+        resolvedAttributes.forEach((attr) => {
+            const label = (attr?.attribute_value || "").trim().toLowerCase();
+            if (!label) return;
+            if (!byLabel.has(label)) {
+                byLabel.set(label, attr);
+            }
         });
 
-        if (!resData?.sku || !Array.isArray(generatedCombinations) || generatedCombinations.length === 0) {
-            console.log('No SKU data or combinations available:', {
-                has_sku: !!resData?.sku,
-                is_array: Array.isArray(generatedCombinations),
-                length: generatedCombinations?.length
-            });
-            return;
-        }
-
-        try {
-            console.log('Loading SKU data for combinations:', {
-                generatedCombinations: generatedCombinations.length,
-                skuArray: resData.sku.length,
-                variantAttributeIds: resData.variant_attribute_id?.length
-            });
-
-            // Simple index-based mapping: combinations[i] → sku[i]
-            // This works because combinations are generated in variant_attribute_id order
-            // which is the natural cartesian product order matching the sku array
-            const skuLoadPromises = generatedCombinations.map(async (comb, genIndex) => {
-                const matchingSku = resData.sku[genIndex]; // Direct index mapping
-
-                if (!matchingSku) {
-                    console.warn(`No SKU found at index ${genIndex}`);
-                    return {
-                        index: genIndex,
-                        data: {
-                            _id: "",
-                            product_id: "",
-                            sale_price: "",
-                            price: "",
-                            sale_start_date: "",
-                            sale_end_date: "",
-                            qty: "",
-                            isExistingProduct: false
-                        },
-                        sku: ""
-                    };
-                }
-
-                try {
-                    console.log(`Fetching SKU at index ${genIndex}: ${matchingSku}`);
-                    const url = apiEndpoints.getProductBySku + `/${matchingSku}`;
-                    const res = await ApiService.get(url, auth_key);
-
-                    if (res.status === 200) {
-                        const obj = res.data.data;
-                        const sale_start_date = obj.sale_start_date ? dayjs(obj.sale_start_date) : "";
-                        const sale_end_date = obj.sale_end_date ? dayjs(obj.sale_end_date) : "";
-
-                        return {
-                            index: genIndex,
-                            data: {
-                                ...obj,
-                                _id: obj.product_id,
-                                product_id: obj.product_id,
-                                sale_end_date,
-                                sale_start_date,
-                                price: obj.price || "",
-                                sale_price: obj.sale_price || "",
-                                qty: obj.qty || "",
-                                isExistingProduct: true
-                            },
-                            sku: matchingSku
-                        };
-                    }
-                } catch (error) {
-                    console.error(`Error fetching SKU at index ${genIndex} (${matchingSku}):`, error);
-                }
-
-                return {
-                    index: genIndex,
-                    data: {
-                        _id: "",
-                        product_id: "",
-                        sale_price: "",
-                        price: "",
-                        sale_start_date: "",
-                        sale_end_date: "",
-                        qty: "",
-                        isExistingProduct: false
-                    },
-                    sku: matchingSku || ""
-                };
-            });
-
-            const results = await Promise.all(skuLoadPromises);
-            results.sort((a, b) => a.index - b.index);
-
-            const finalVariantData = results.map(r => r.data);
-            const finalSkus = results.map(r => r.sku);
-
-            console.log('SKU loading complete:', finalSkus);
-            ReactDOM.unstable_batchedUpdates(() => {
-                setVariantArrValue(finalVariantData);
-                setSellerSku(finalSkus);
-            });
-        } catch (error) {
-            console.error('Error loading SKU data for combinations:', error);
-        }
+        return Array.from(byLabel.values());
     };
 
     const getParentProductDetail = useCallback(async () => {
@@ -1381,33 +1262,30 @@ const ParentProductIdentity = ({ productId, listing }) => {
 
                 const vendor = resData?.vendor_id ? vendors.find(v => v._id === resData.vendor_id) : null;
 
+                // BUILD SKU LOOKUP MAP FROM API COMBINATIONS - DO THIS FIRST
+                // The combinations array has combination_id and sku_code which is our source of truth
+                const apiSkuLookup = buildSkuLookupFromCombinations(resData?.combinations);
+                console.log('Built API SKU lookup:', apiSkuLookup);
+
                 // FIX: Build innervariations from variant_attribute_id grouped by variant
                 let innervariations = {};
-
                 if (resData?.variant_attributes && Array.isArray(resData.variant_attributes)) {
-                    //group attribute ids by variant
+                    // Group attribute IDs by variant_name from variant_attributes
                     resData.variant_attributes.forEach(attr => {
+                        // Find which variant this attribute belongs to using variants array (not variant_id)
                         const variant = resData.variants?.find(v => v._id === attr.variant);
-                        //find which variant this attribute belongs to
                         if (variant && variant.variant_name) {
                             if (!innervariations[variant.variant_name]) {
                                 innervariations[variant.variant_name] = [];
                             }
-
                             if (!innervariations[variant.variant_name].includes(attr._id)) {
                                 innervariations[variant.variant_name].push(attr._id);
                             }
                         }
                     });
-                }
 
-                console.log('API Response Debug:', {
-                    variants: resData?.variants?.length,
-                    variant_attributes: resData?.variant_attributes?.length,
-                    variant_attribute_id: resData?.variant_attribute_id,
-                    sku: resData?.sku,
-                    innervariations: Object.entries(innervariations).map(([k, v]) => [k, v.length])
-                });
+                    console.log('DEBUG - Built innervariations:', innervariations);
+                }
 
                 // FIX: Prepare all updates first, then batch them
                 const formDataUpdates = {
@@ -1416,22 +1294,43 @@ const ParentProductIdentity = ({ productId, listing }) => {
                     sellerSku: listing === 'copy' ? "" : resData?.seller_sku || "",
                     images: listing === 'copy' ? [] : [{ src: `${res?.data?.base_url}${resData?.image}` }],
                     zoom: resData?.zoom || { scale: 1, x: 0, y: 0 },
-                    variant_id: resData?.variants?.map((option) => option?._id) || [],
-                    variant_name: resData?.variants?.map((option) => option?.variant_name) || [],
+                    variant_id: resData?.variants?.map((v) => v._id) || [],
+                    variant_name: resData?.variants?.map((v) => v.variant_name) || [],
                     subCategory: resData?.sub_category || "",
                     vendor: vendor || null,
                     Innervariations: innervariations
                 };
 
-                // FIX: Build product variations from variant attributes
+                console.log('DEBUG - formDataUpdates variant info:', {
+                    variant_id: formDataUpdates.variant_id,
+                    variant_name: formDataUpdates.variant_name,
+                    variants_count: resData?.variants?.length
+                });
+
+                // FIX: Build normalized variant list from API response AND product variations
                 let productVariations = [];
+                let normalizedVariantsFromAPI = [];
 
                 if (resData?.variants && Array.isArray(resData.variants)) {
+                    // Build normalized variant list with variant_attribute array
+                    normalizedVariantsFromAPI = resData.variants.map(variant => {
+                        // Get all variant attributes for this variant from the API response
+                        const variantAttributes = resData.variant_attributes?.filter(
+                            attr => attr.variant === variant._id
+                        ) || [];
+
+                        return {
+                            ...variant,
+                            variant_attribute: variantAttributes
+                        };
+                    });
+
+                    // Now build product variations using the innervariations
                     productVariations = resData.variants.map(variant => {
                         // Get attribute IDs for this variant
                         const variantAttributeIds = innervariations[variant.variant_name] || [];
 
-                        // Build variant attributes
+                        // Build variant attributes from variant_attributes array
                         const variantAttributes = variantAttributeIds.map(attributeId => {
                             const attribute = resData.variant_attributes?.find(a => a._id === attributeId);
                             return attribute ? {
@@ -1461,6 +1360,35 @@ const ParentProductIdentity = ({ productId, listing }) => {
                     });
                 }
 
+                // BUILD EXPANDED INNERVARIATIONS DIRECTLY FROM API RESPONSE
+                // This avoids dependency on normalizedVariantList which might be empty
+                let expandedInnervariations = {};
+
+                if (resData?.variant_attributes && Array.isArray(resData.variant_attributes)) {
+                    // Build expanded innervariations directly from API data
+                    Object.entries(innervariations).forEach(([variantName, attrIds]) => {
+                        expandedInnervariations[variantName] = attrIds
+                            .map(attrId => resData.variant_attributes.find(attr => attr._id === attrId))
+                            .filter(Boolean);
+                    });
+
+                    console.log('DEBUG - Built expandedInnervariations from API:', {
+                        keys: Object.keys(expandedInnervariations),
+                        values: Object.entries(expandedInnervariations).map(([k, v]) => ({ [k]: v.length }))
+                    });
+                }
+
+                // GENERATE COMBINATIONS IMMEDIATELY from expanded innervariations
+                // This ensures productParentTable gets valid combinations data
+                const generatedCombinations = Object.keys(expandedInnervariations).length > 0
+                    ? generateCombinations(expandedInnervariations, formDataUpdates.variant_name)
+                    : [];
+
+                console.log('DEBUG - Generated combinations:', {
+                    count: generatedCombinations.length,
+                    first: generatedCombinations[0]
+                });
+
                 // FIX: Handle existing product_variants if they exist (from API response)
                 const fixedProductVariants = resData?.product_variants?.map(variant => {
                     if (variant.guide && !Array.isArray(variant.guide)) {
@@ -1477,14 +1405,41 @@ const ParentProductIdentity = ({ productId, listing }) => {
 
                 // FIX: Batch ALL state updates together
                 ReactDOM.unstable_batchedUpdates(() => {
+                    // CRITICAL: Update normalizedVariantList with API data FIRST
+                    // This ensures getCurrentCombinations() generates the correct combinations
+                    if (normalizedVariantsFromAPI.length > 0) {
+                        setNormalizedVariantList(normalizedVariantsFromAPI);
+                    }
+
                     setFormData((prev) => ({
                         ...prev,
                         ...formDataUpdates
                     }));
 
                     setParentId(resData?._id);
-                    setVarientAttribute(resData?.variant_attribute_id || []);
+                    setVarientAttribute(resData?.variant_attribute_id?.map((option) => (typeof option === 'string' ? option : option._id)) || []);
                     setProductVariations(finalProductVariations);
+
+                    // Store the API SKU lookup map to restore SKUs based on combination IDs
+                    setSkuByKey(apiSkuLookup);
+
+                    // Initialize empty variant data arrays for all generated combinations
+                    if (generatedCombinations.length > 0) {
+                        const emptyVariantData = generatedCombinations.map(() => ({
+                            _id: "",
+                            product_id: "",
+                            sale_price: "",
+                            price: "",
+                            sale_start_date: "",
+                            sale_end_date: "",
+                            qty: "",
+                            isExistingProduct: false
+                        }));
+                        const emptySkus = Array(generatedCombinations.length).fill("");
+
+                        setVariantArrValue(emptyVariantData);
+                        setSellerSku(emptySkus);
+                    }
 
                     // Empty SKUs when listing is "copy"
                     if (listing === 'copy') {
@@ -1493,86 +1448,109 @@ const ParentProductIdentity = ({ productId, listing }) => {
                     }
                 });
 
-                // CRITICAL FIX: Generate combinations BEFORE loading SKUs
-                // This ensures consistent ordering between combinations and SKU data
+                // LOAD PRODUCT DATA FOR EACH COMBINATION
+                if (listing !== 'copy' && generatedCombinations.length > 0) {
+                    const hasApiLookup = Object.keys(apiSkuLookup).length > 0;
+                    const fallbackSkus = (resData?.sku && resData.sku.length === generatedCombinations.length) ? resData.sku : [];
 
-                // For product loading, build expandedInnervariations directly from API data
-                // instead of relying on normalizedVariantList which might be empty
-                let expandedInnervariations = {};
+                    if (hasApiLookup || fallbackSkus.length > 0) {
+                        console.log('Loading product data for combinations');
 
-                if (resData?.variant_attributes && Array.isArray(resData.variant_attributes)) {
-                    // Group attributes by variant for direct usage
-                    Object.entries(innervariations).forEach(([variantName, attrIds]) => {
-                        expandedInnervariations[variantName] = attrIds
-                            .map(attrId => resData.variant_attributes.find(attr => attr._id === attrId))
-                            .filter(Boolean);
-                    });
-                } else {
-                    // Fallback to expandInnervariations if API data not available
-                    expandedInnervariations = expandInnervariations(innervariations, normalizedVariantList);
-                }
+                        // Build array of combinations with their SKUs
+                        const combinationsWithSkus = generatedCombinations.map((combination, index) => {
+                            const combinationKey = generateCombinationKey(combination);
+                            const sku = hasApiLookup ? apiSkuLookup[combinationKey] : (fallbackSkus[index] || "");
+                            return { combination, sku, index };
+                        });
 
-                const currentCombs = generateCombinations(expandedInnervariations, formDataUpdates.variant_name);
+                        // Fetch product data for each SKU
+                        const skuCache = new Map();
+                        const arr = combinationsWithSkus.map(async ({ sku, index }) => {
+                            if (!sku) {
+                                return {
+                                    _id: "",
+                                    product_id: "",
+                                    sale_price: "",
+                                    price: "",
+                                    sale_start_date: "",
+                                    sale_end_date: "",
+                                    qty: "",
+                                    isExistingProduct: false
+                                };
+                            }
 
-                console.log('DEBUG - expandedInnervariations built:', {
-                    hasVariantAttributes: !!resData?.variant_attributes,
-                    expandedInnervariations: Object.entries(expandedInnervariations).map(([k, v]) => ({ [k]: v.length }))
-                });
+                            // Check cache first
+                            if (skuCache.has(sku)) {
+                                return skuCache.get(sku);
+                            }
 
-                console.log('CRITICAL DEBUG - Generated combinations:', {
-                    expandedInnervariations_keys: Object.keys(expandedInnervariations),
-                    expandedInnervariations_values: Object.entries(expandedInnervariations).map(([k, v]) => ({ [k]: v.length })),
-                    variant_name: formDataUpdates.variant_name,
-                    currentCombs: currentCombs,
-                    currentCombs_length: currentCombs.length,
-                    innervariations: Object.entries(innervariations).map(([k, v]) => ({ [k]: v.length }))
-                });
+                            try {
+                                let url = apiEndpoints.getProductBySku + `/${sku}`;
+                                const res = await ApiService.get(url, auth_key);
 
-                React.startTransition(() => {
-                    // Build combination map using generated combinations
-                    const newMap = new Map();
-                    currentCombs.forEach((c, idx) => {
-                        newMap.set(generateCombinationKey(c), idx);
-                    });
+                                if (res.status === 200) {
+                                    let obj = res.data.data;
+                                    let sale_start_date = obj.sale_start_date ? dayjs(obj.sale_start_date) : "";
+                                    let sale_end_date = obj.sale_end_date ? dayjs(obj.sale_end_date) : "";
 
-                    setCombinations(currentCombs);
-                    setCombinationMap(newMap);
+                                    const variantError = validateChildProductVariants(obj, resData?.variant_id);
+                                    if (variantError) {
+                                        setSkuErrors(prev => ({
+                                            ...prev,
+                                            [sku]: variantError
+                                        }));
+                                    }
 
-                    // Initialize empty variant arrays for all combinations
-                    const emptyVariantData = currentCombs.map(() => ({
-                        _id: "",
-                        product_id: "",
-                        sale_price: "",
-                        price: "",
-                        sale_start_date: "",
-                        sale_end_date: "",
-                        qty: "",
-                        isExistingProduct: false
-                    }));
-                    const emptySkus = Array(currentCombs.length).fill("");
+                                    const result = {
+                                        ...obj,
+                                        _id: obj.product_id,
+                                        product_id: obj.product_id,
+                                        sale_end_date,
+                                        sale_start_date,
+                                        price: obj.price || "",
+                                        sale_price: obj.sale_price || "",
+                                        qty: obj.qty || "",
+                                        isExistingProduct: true
+                                    };
 
-                    setVariantArrValue(emptyVariantData);
-                    setSellerSku(emptySkus);
-                });
+                                    skuCache.set(sku, result);
+                                    return result;
+                                }
+                            } catch (error) {
+                                console.error(`Error loading SKU ${sku}:`, error);
+                            }
 
-                // After combinations are set, load SKUs if they exist
-                if (resData?.sku && resData?.sku.length > 0 && listing !== 'copy') {
-                    console.log('Loading SKU data...', {
-                        skus: resData?.sku,
-                        currentCombs: currentCombs.length,
-                        variant_name: formDataUpdates.variant_name,
-                        innervariations: innervariations
-                    });
-                    // Delay SKU loading to ensure combinations are ready
-                    setTimeout(() => {
-                        loadSkuDataForCombinations(resData, currentCombs);
-                    }, 0);
+                            return {
+                                _id: "",
+                                product_id: "",
+                                sale_price: "",
+                                price: "",
+                                sale_start_date: "",
+                                sale_end_date: "",
+                                qty: "",
+                                isExistingProduct: false
+                            };
+                        });
+
+                        // Build seller SKU array
+                        const sellerSkuArray = combinationsWithSkus.map(item => item.sku);
+
+                        Promise.all(arr).then((results) => {
+                            ReactDOM.unstable_batchedUpdates(() => {
+                                setVariantArrValue(results);
+                                setSellerSku(sellerSkuArray);
+                            });
+                        }).catch(error => {
+                            console.error('Error loading combination product data:', error);
+                            handleApiError(error, "Failed to load product data");
+                        });
+                    }
                 }
             }
         } catch (error) {
             handleApiError(error, "Failed to load product details");
         }
-    }, [auth_key, handleApiError, productId, vendors, listing]);
+    }, [auth_key, handleApiError, productId, vendors, sellerSky, variantArrValues, listing]);
 
     useEffect(() => {
         if (productId) {
@@ -1583,7 +1561,7 @@ const ParentProductIdentity = ({ productId, listing }) => {
     useEffect(() => {
         if (formData?.variant_id && normalizedVariantList.length > 0) {
             const filteredVariantData = normalizedVariantList.filter((variant) =>
-                formData.variant_id.includes(variant.id)
+                formData.variant_id.includes(variant._id || variant.id)
             );
 
             setFormData((prev) => ({
@@ -1613,7 +1591,7 @@ const ParentProductIdentity = ({ productId, listing }) => {
     useEffect(() => {
         if (formData.variantData.length > 0 && productVariations.length === 0) {
             const initialProductVariations = formData.variantData.map(variant => ({
-                _id: variant.id,
+                _id: variant._id || variant.id,
                 variant_name: variant.variant_name,
                 variant_attributes: [],
                 guide: []
@@ -1641,28 +1619,9 @@ const ParentProductIdentity = ({ productId, listing }) => {
         };
     }, []);
 
-    useEffect(() => {
-        // ✅ Run only once (initial load or edit load)
-        if (combinations.length > 0) return;
 
-        // ✅ No data → skip
-        if (Object.keys(formData.Innervariations).length === 0) return;
 
-        const expanded = expandInnervariations(formData.Innervariations, normalizedVariantList);
-        const initial = generateCombinations(expanded);
-
-        // ✅ Set initial combinations ONLY once
-        setCombinations(initial);
-
-        // ✅ Build initial map
-        const map = new Map();
-        initial.forEach((comb, index) => {
-            map.set(generateCombinationKey(comb), index);
-        });
-
-        setCombinationMap(map);
-
-    }, [formData.Innervariations, normalizedVariantList]);
+    const currentCombinations = getCurrentCombinations();
 
     // FIX: Prevent hydration mismatch
     if (!isClient) {
@@ -1899,7 +1858,8 @@ const ParentProductIdentity = ({ productId, listing }) => {
                             </Box>
                             <Box
                                 sx={{
-                                    width: "100%"
+                                    width: "100%",
+                                    position: "relative"
                                 }}
                             >
                                 <FormControl fullWidth>
@@ -1928,6 +1888,29 @@ const ParentProductIdentity = ({ productId, listing }) => {
                                         })}
                                     </TextField>
                                 </FormControl>
+                                {formData.subCategory && (
+                                    <Button
+                                        size="small"
+                                        onMouseDown={(e) => e.preventDefault()}
+                                        onClick={() => {
+                                            setFormData((prv) => ({ ...prv, subCategory: "" }));
+                                            setInputErrors((prv) => ({ ...prv, subCategory: "" }));
+                                        }}
+                                        sx={{
+                                            minWidth: "unset",
+                                            width: "24px",
+                                            height: "24px",
+                                            p: 0,
+                                            borderRadius: "50%",
+                                            position: "absolute",
+                                            right: "34px",
+                                            top: "8px",
+                                            color: "text.secondary"
+                                        }}
+                                    >
+                                        <CloseIcon fontSize="small" />
+                                    </Button>
+                                )}
                             </Box>
                         </Box>
                         <Box
@@ -2113,7 +2096,6 @@ const ParentProductIdentity = ({ productId, listing }) => {
                             <Box width={"100%"}>
                                 <Autocomplete
                                     multiple
-                                    limitTags={4}
                                     onBlur={() => {
                                         if (formData?.variantData?.length === 0) {
                                             setInputErrors((prev) => ({
@@ -2123,7 +2105,7 @@ const ParentProductIdentity = ({ productId, listing }) => {
                                         }
                                     }}
                                     id="multiple-limit-tags"
-                                    options={normalizedVariantList}
+                                    options={dropdownVariantOptions}
                                     getOptionLabel={(option) => option?.variant_name}
                                     renderInput={(params) => (
                                         <TextField
@@ -2147,10 +2129,10 @@ const ParentProductIdentity = ({ productId, listing }) => {
                                         formData.variantData.length > 0
                                             ? formData.variantData
                                             : formData.variant_id
-                                                ? normalizedVariantList.filter((variant) => formData.variant_id.includes(variant.id))
+                                                ? normalizedVariantList.filter((variant) => formData.variant_id.includes(variant._id || variant.id))
                                                 : []
                                     }
-                                    isOptionEqualToValue={(option, value) => option?.id === value?.id}
+                                    isOptionEqualToValue={(option, value) => (option?._id || option?.id) === (value?._id || value?.id)}
                                 />
                                 {inputErrors.variations && (
                                     <Typography
@@ -2190,7 +2172,6 @@ const ParentProductIdentity = ({ productId, listing }) => {
                                         <Autocomplete
                                             multiple
                                             freeSolo
-                                            limitTags={4}
                                             onBlur={() => {
                                                 if (Object.keys(formData.Innervariations).length == 0) {
                                                     setInputErrors((prv) => ({
@@ -2200,7 +2181,7 @@ const ParentProductIdentity = ({ productId, listing }) => {
                                                 }
                                             }}
                                             id={`multiple-limit-tags-${index}`}
-                                            options={getAttributesForVariant(inputField?.variant_name)}
+                                            options={getDisplayAttributesForVariant(inputField?.variant_name)}
                                             getOptionLabel={(option) => typeof option === 'string' ? option : (option.attribute_value || "")}
                                             renderInput={(params) => {
                                                 const currentInput = optionInputs[inputField?.variant_name] || "";
@@ -2278,7 +2259,7 @@ const ParentProductIdentity = ({ productId, listing }) => {
                                             parentId={productId}
                                             variantArrValues={variantArrValues}
                                             setVariantArrValue={setVariantArrValue}
-                                            combinations={combinations}
+                                            combinations={currentCombinations}
                                             formdataaaaa={formData.variant_name}
                                             sellerSky={sellerSky}
                                             setSellerSku={setSellerSku}
@@ -2290,9 +2271,8 @@ const ParentProductIdentity = ({ productId, listing }) => {
                                             parentVariants={formData.variantData}
                                             checkForDuplicateSkus={checkForDuplicateSkus}
                                             selectedVendor={formData.vendor}
-                                            combinationKeys={combinations.map(comb => generateCombinationKey(comb))}
-                                            updateCombinationDataByKey={updateCombinationDataByKey}
-                                            updateSellerSkuByKey={updateSellerSkuByKey}
+                                            combinationKeys={currentCombinations.map(comb => generateCombinationKey(comb))}
+                                            skuByKeyMap={skuByKey}
                                         />
                                     </>
                                 )}
@@ -2333,7 +2313,7 @@ const ParentProductIdentity = ({ productId, listing }) => {
                                 {currentTab === "combination" && (<Button
                                     variant="outlined"
                                     onClick={() => setBulkImportOpen(true)}
-                                    disabled={!combinations || combinations.length === 0}
+                                    disabled={!currentCombinations || currentCombinations.length === 0}
                                 >
                                     Bulk Import SKUs
                                 </Button>)}
@@ -2352,7 +2332,7 @@ const ParentProductIdentity = ({ productId, listing }) => {
                             open={bulkImportOpen}
                             onClose={() => setBulkImportOpen(false)}
                             onImport={handleBulkImport}
-                            combinations={combinations}
+                            combinations={currentCombinations}
                             existingSkus={sellerSky}
                         />
                     </Box>
