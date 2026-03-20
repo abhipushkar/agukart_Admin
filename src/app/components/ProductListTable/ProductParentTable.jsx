@@ -33,7 +33,8 @@ export default function ProductParentTable({
     checkForDuplicateSkus,
     selectedVendor,
     combinationKeys,
-    skuByKeyMap // Maps combination keys to SKUs from parent
+    skuByKeyMap, // Maps combination keys to SKUs from parent
+    currentCombinationStatus
 }) {
     // Map SKUs by combination key instead of index to handle sequence changes
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
@@ -428,6 +429,14 @@ export default function ProductParentTable({
                             <TableCell
                                 align="center"
                                 sx={{
+                                    width: "150px"
+                                }}
+                            >
+                                status
+                            </TableCell>
+                            <TableCell
+                                align="center"
+                                sx={{
                                     width: "230px"
                                 }}
                             >
@@ -436,7 +445,7 @@ export default function ProductParentTable({
                             <TableCell
                                 align="center"
                                 sx={{
-                                    width: "230px"
+                                    width: "110px"
                                 }}
                             >
                                 Quantity
@@ -444,7 +453,7 @@ export default function ProductParentTable({
                             <TableCell
                                 align="center"
                                 sx={{
-                                    width: "230px"
+                                    width: "110px"
                                 }}
                             >
                                 Sale Price
@@ -493,6 +502,16 @@ export default function ProductParentTable({
                                                 </TableCell>
                                             );
                                         })}
+                                        <TableCell
+                                            align="center"
+                                            sx={{
+                                                width: "150px"
+                                            }}
+                                        >
+                                            <Typography>
+                                                {currentCombinationStatus.find((comb) => { return comb.sku === sellerSky[index] })?.status ?? ""}
+                                            </Typography>
+                                        </TableCell>
 
                                         <TableCell
                                             align="center"
@@ -523,7 +542,7 @@ export default function ProductParentTable({
                                         <TableCell
                                             align="center"
                                             sx={{
-                                                width: "230px"
+                                                width: "110px"
                                             }}
                                         >
                                             <FormControl fullWidth sx={{ m: 1 }} size="small">
@@ -547,7 +566,7 @@ export default function ProductParentTable({
                                         <TableCell
                                             align="center"
                                             sx={{
-                                                width: "230px"
+                                                width: "110px"
                                             }}
                                         >
                                             <FormControl fullWidth sx={{ m: 1 }} size="small">
