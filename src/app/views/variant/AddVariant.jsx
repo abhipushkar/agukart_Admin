@@ -244,10 +244,17 @@ const AddVariant = () => {
     const [type, setType] = useState("");
     const [route, setRoute] = useState(null);
     const [msg, setMsg] = useState("")
+    const [styledText, setStyledText] = useState(null);
     const [removeData, setRemoveData] = useState({
         i: "",
         deleteId: ""
     });
+    const restoredAttributesTextStyle = {
+        container: { mt: 1.2 },
+        title: { fontWeight: 600, color: "#23486d", mb: 0.4 },
+        list: { pl: 2.5, mt: 0.3, mb: 0 },
+        item: { color: "text.primary" }
+    };
 
     // Drag and drop state
     const [draggingIndex, setDraggingIndex] = useState(null);
@@ -261,12 +268,61 @@ const AddVariant = () => {
     };
 
     const handleOpen = (type, msg) => {
-        setMsg(msg?.message);
+        // Extract message from different response formats
+        let displayMessage = "";
+        let modalStyledText = null;
+
+        if (type === "error") {
+            // For error objects from catch blocks
+            if (msg?.response?.data?.message) {
+                displayMessage = msg.response.data.message;
+            } else if (msg?.response?.data) {
+                displayMessage = typeof msg.response.data === 'string'
+                    ? msg.response.data
+                    : msg.response.data?.error || JSON.stringify(msg.response.data);
+            } else if (msg?.message) {
+                displayMessage = msg.message;
+            } else {
+                displayMessage = typeof msg === 'string' ? msg : "An error occurred";
+            }
+
+            // Check for 401 Unauthorized
+            if (msg?.response?.status === 401) {
+                logOut();
+            }
+        } else {
+            // For success and other messages
+            const baseMessage = (typeof msg === 'string') ? msg : (msg?.message || msg?.data?.message || "");
+
+            // Check if there are restoredAttributes to display
+            if (msg?.restoredAttributes && Array.isArray(msg.restoredAttributes) && msg.restoredAttributes.length > 0) {
+                const restoredValues = msg.restoredAttributes
+                    .map((attr) => {
+                        if (typeof attr === "string" || typeof attr === "number") {
+                            return String(attr);
+                        }
+                        if (attr && typeof attr === "object" && attr.value !== undefined) {
+                            return String(attr.value);
+                        }
+                        return JSON.stringify(attr);
+                    })
+                    .filter((attr) => !!attr);
+
+                modalStyledText = {
+                    title: `${restoredValues.length} Attributes Restored :`,
+                    items: restoredValues
+                };
+
+                displayMessage = baseMessage;
+            } else {
+                displayMessage = baseMessage;
+            }
+        }
+
+        setMsg(displayMessage);
+        setStyledText(modalStyledText);
         setOpen(true);
         setType(type);
-        if (msg?.response?.status === 401) {
-            logOut()
-        }
     };
 
     const handleClose = () => {
@@ -276,6 +332,7 @@ const AddVariant = () => {
         }
         setRoute(null)
         setMsg("")
+        setStyledText(null)
     };
 
     const navigate = useNavigate();
@@ -542,6 +599,25 @@ const AddVariant = () => {
 
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
 
+    // Function to check if attributeValue is duplicated (only for newly added rows)
+    const isDuplicateAttribute = (value, currentIndex, fieldId) => {
+        // Only show error if this is a NEW row (not from database)
+        if (fieldId !== "new") {
+            return false;
+        }
+        // Check if this value already exists in other rows
+        return inputFields.some((field, index) =>
+            index !== currentIndex && field.attributeValue.trim().toLowerCase() === value.trim().toLowerCase()
+        );
+    };
+
+    // Function to remove newly added rows (rows with _id === "new")
+    const removeNewRows = () => {
+        setInputFields(prevFields =>
+            prevFields.filter(field => field._id !== "new")
+        );
+    };
+
     const addVariantHandler = async (values) => {
         let variant_attribute = [];
 
@@ -610,7 +686,8 @@ const AddVariant = () => {
         } catch (error) {
             console.log(error);
             setLoading(false);
-            handleOpen("error", error);
+            removeNewRows();
+            handleOpen("error", error?.response?.data || error);
         }
     };
 
@@ -727,7 +804,8 @@ const AddVariant = () => {
         } catch (error) {
             console.log(error);
             setLoading(false);
-            handleOpen("error", error);
+            removeNewRows();
+            handleOpen("error", error?.response?.data || error);
         }
     };
 
@@ -1044,6 +1122,8 @@ const AddVariant = () => {
                                                                     onChange={(event) => handleChangeInput(index, event)}
                                                                     fullWidth
                                                                     size="small"
+                                                                    error={isDuplicateAttribute(inputField.attributeValue, index, inputField._id)}
+                                                                    helperText={isDuplicateAttribute(inputField.attributeValue, index, inputField._id) ? "This attribute name already exists" : ""}
                                                                 />
                                                             </TableCell>
                                                             <TableCell align="center">
@@ -1307,9 +1387,12 @@ const AddVariant = () => {
                 type={type}
                 msg={msg}
                 handleRemoveFields={handleRemoveFields}
+                customTextStyle={restoredAttributesTextStyle}
+                styledText={styledText}
             />
         </Fragment>
     );
 };
 
 export default AddVariant;
+

@@ -29,8 +29,121 @@ export default function ConfirmModal({
   handleFeaturedStatusChange,
   handleDelete,
   handleSpecialCatStatusChange,
-  handleFour
+  handleFour,
+  customTextStyle,
+  styledText,
 }) {
+  const hasNamedStyleSlots =
+    customTextStyle &&
+    typeof customTextStyle === "object" &&
+    ["container", "item", "key", "value", "list", "title"].some((slot) =>
+      Object.prototype.hasOwnProperty.call(customTextStyle, slot)
+    );
+
+  const getSlotStyle = (slot, fallback = {}, inlineStyle = {}) => {
+    const baseStyle =
+      customTextStyle && typeof customTextStyle === "object" ? customTextStyle : {};
+    const sharedStyle = hasNamedStyleSlots ? {} : baseStyle;
+    const slotStyle = hasNamedStyleSlots ? baseStyle[slot] || {} : {};
+
+    return {
+      ...fallback,
+      ...sharedStyle,
+      ...slotStyle,
+      ...(inlineStyle && typeof inlineStyle === "object" ? inlineStyle : {}),
+    };
+  };
+
+  const isPrimitive = (value) =>
+    value === null ||
+    value === undefined ||
+    ["string", "number", "boolean"].includes(typeof value);
+
+  const formatPrimitive = (value) => {
+    if (value === null || value === undefined) return "";
+    return String(value);
+  };
+
+  const renderStyledText = (value, keyPrefix = "styled", inList = false) => {
+    if (value === null || value === undefined) return null;
+
+    if (React.isValidElement(value)) {
+      return <React.Fragment key={keyPrefix}>{value}</React.Fragment>;
+    }
+
+    if (isPrimitive(value)) {
+      return (
+        <Typography
+          key={keyPrefix}
+          component={inList ? "span" : "div"}
+          sx={getSlotStyle("item", { whiteSpace: "pre-line" })}
+        >
+          {formatPrimitive(value)}
+        </Typography>
+      );
+    }
+
+    if (Array.isArray(value)) {
+      return (
+        <Box
+          key={keyPrefix}
+          component="ul"
+          sx={getSlotStyle("list", { mt: 0.5, mb: 0, pl: 2.5 })}
+        >
+          {value.map((item, index) => (
+            <Box key={`${keyPrefix}-${index}`} component="li" sx={{ mb: 0.4 }}>
+              {renderStyledText(item, `${keyPrefix}-${index}-item`, true)}
+            </Box>
+          ))}
+        </Box>
+      );
+    }
+
+    if (typeof value === "object") {
+      const { title, text, items, style, ...rest } = value;
+      const hasSchemaFields = title !== undefined || text !== undefined || items !== undefined || style !== undefined;
+
+      if (hasSchemaFields) {
+        return (
+          <Box
+            key={keyPrefix}
+            sx={getSlotStyle("container", { mt: 1 }, style)}
+          >
+            {title !== undefined && (
+              <Typography sx={getSlotStyle("title", { fontWeight: 600, mb: 0.3 })}>
+                {title}
+              </Typography>
+            )}
+            {text !== undefined && renderStyledText(text, `${keyPrefix}-text`)}
+            {items !== undefined && renderStyledText(items, `${keyPrefix}-items`)}
+          </Box>
+        );
+      }
+
+      return (
+        <Box key={keyPrefix} sx={getSlotStyle("container", { mt: 0.8 })}>
+          {Object.entries(rest).map(([jsonKey, jsonValue]) => (
+            <Box key={`${keyPrefix}-${jsonKey}`} sx={{ mb: 0.5 }}>
+              <Typography component="span" sx={getSlotStyle("key", { fontWeight: 600, mr: 0.5 })}>
+                {jsonKey}:
+              </Typography>
+              {isPrimitive(jsonValue) ? (
+                <Typography component="span" sx={getSlotStyle("value", { whiteSpace: "pre-line" })}>
+                  {formatPrimitive(jsonValue)}
+                </Typography>
+              ) : (
+                <Box sx={{ ml: 1 }}>
+                  {renderStyledText(jsonValue, `${keyPrefix}-${jsonKey}-nested`)}
+                </Box>
+              )}
+            </Box>
+          ))}
+        </Box>
+      );
+    }
+
+    return null;
+  };
 
   const handleConfirm = () => {
     if (onConfirm) {
@@ -121,6 +234,11 @@ export default function ConfirmModal({
                 {type === "voucherStatus" && "Are you sure you want to change voucher status?"}
                 {type === "voucherDelete" && "Are you sure you want to delete?"}
                 {msg && msg}
+                {styledText && (
+                  <Box sx={getSlotStyle("container", { mt: 1 })}>
+                    {renderStyledText(styledText)}
+                  </Box>
+                )}
               </Typography>
             </Typography>
           </Typography>

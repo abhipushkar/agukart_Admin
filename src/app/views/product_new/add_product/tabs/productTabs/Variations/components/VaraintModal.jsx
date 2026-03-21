@@ -132,7 +132,7 @@ const VariantModal = ({ show, handleCloseVariant }) => {
 
     // Check if there are any combined variants
     const hasCombinedVariants = useCallback(() => {
-        return combinations?.some(comb => comb.isCombined) || false;
+        return Array.isArray(combinations) && combinations.some((comb) => comb?.isCombined);
     }, [combinations]);
 
     // ========== DRAG AND DROP FOR AUTOCOMPLETE LIST ==========
@@ -228,21 +228,33 @@ const VariantModal = ({ show, handleCloseVariant }) => {
 
     // Reorder product_variants and combinations when variations are reordered
     const reorderAssociatedData = (fromIndex, toIndex) => {
+        const reorderByIndex = (list) => {
+            if (!Array.isArray(list) || list.length === 0) return list;
+            if (
+                fromIndex < 0 ||
+                toIndex < 0 ||
+                fromIndex >= list.length ||
+                toIndex >= list.length
+            ) {
+                return list;
+            }
+
+            const reordered = [...list];
+            const [draggedItem] = reordered.splice(fromIndex, 1);
+            if (typeof draggedItem === "undefined") return list;
+            reordered.splice(toIndex, 0, draggedItem);
+            return reordered;
+        };
+
         // Reorder product_variants
         if (product_variants && product_variants.length > 0) {
-            const reorderedProductVariants = [...product_variants];
-            const draggedVariant = reorderedProductVariants[fromIndex];
-            reorderedProductVariants.splice(fromIndex, 1);
-            reorderedProductVariants.splice(toIndex, 0, draggedVariant);
+            const reorderedProductVariants = reorderByIndex(product_variants);
             setProductVariants(reorderedProductVariants);
         }
 
         // Reorder combinations
         if (combinations && combinations.length > 0) {
-            const reorderedCombinations = [...combinations];
-            const draggedCombination = reorderedCombinations[fromIndex];
-            reorderedCombinations.splice(fromIndex, 1);
-            reorderedCombinations.splice(toIndex, 0, draggedCombination);
+            const reorderedCombinations = reorderByIndex(combinations);
             setCombinations(reorderedCombinations);
         }
     };
@@ -302,10 +314,11 @@ const VariantModal = ({ show, handleCloseVariant }) => {
 
             // Set initial form values only if they're empty
             if (!formValues?.prices && !formValues?.quantities && newCombinations.length > 0) {
-                setFormValues({
+                setFormValues((prev) => ({
+                    ...prev,
                     prices: newCombinations[0],
                     quantities: newCombinations[0]
-                });
+                }));
             }
         } else {
             setNameCombinations([]);
@@ -1073,7 +1086,7 @@ const VariantModal = ({ show, handleCloseVariant }) => {
         const { name, value, checked } = e.target;
 
         if (name === "isCheckedPrice" || name === "isCheckedQuantity") {
-            setFormValues({ [name]: checked });
+            setFormValues((prev) => ({ ...prev, [name]: checked }));
 
             // 🔥 CLEAR ERRORS WHEN TOGGLED OFF
             if (!checked) {
@@ -1094,7 +1107,7 @@ const VariantModal = ({ show, handleCloseVariant }) => {
             }
         } else {
             // Direct update for prices and quantities - no image source logic
-            setFormValues({ [name]: value });
+            setFormValues((prev) => ({ ...prev, [name]: value }));
         }
     };
 

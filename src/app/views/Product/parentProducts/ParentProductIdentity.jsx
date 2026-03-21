@@ -82,6 +82,7 @@ const ParentProductIdentity = ({ productId, listing }) => {
     const [combinationMap, setCombinationMap] = useState(new Map());
     const [skuByKey, setSkuByKey] = useState({}); // Maps combination keys to SKUs
     const [usedSkus, setUsedSkus] = useState(new Set());
+    const [productStatusArray, setProductStatusArray] = useState([]);
 
     const [inputErrors, setInputErrors] = React.useState({
         productTitle: "",
@@ -938,6 +939,19 @@ const ParentProductIdentity = ({ productId, listing }) => {
         });
     };
 
+    const skuStatusMapBuilder = (combinations) => {
+        const skuStatusMap = [];
+        combinations.forEach((comb) => {
+            if (comb?.product?.productStatus && comb?.product?.sku_code === comb?.sku_code) {
+                skuStatusMap.push({
+                    sku: comb?.sku_code,
+                    status: comb?.product?.productStatus || ""
+                })
+            }
+        })
+        return skuStatusMap ?? [];
+    };
+
     // Function to convert product variations to FormData
     const prepareProductVariationsFormData = () => {
         const formDataObj = new FormData();
@@ -1331,7 +1345,11 @@ const ParentProductIdentity = ({ productId, listing }) => {
                 // BUILD SKU LOOKUP MAP FROM API COMBINATIONS - DO THIS FIRST
                 // The combinations array has combination_id and sku_code which is our source of truth
                 const apiSkuLookup = buildSkuLookupFromCombinations(resData?.combinations);
-                console.log('Built API SKU lookup:', apiSkuLookup);
+
+                // create sku-status map
+                const skuStatus = skuStatusMapBuilder(resData?.combinations);
+                console.log('Built API SKU lookup: & status map', apiSkuLookup, skuStatus);
+                setProductStatusArray(skuStatus);
 
                 // FIX: Build innervariations from variant_attribute_id grouped by variant
                 let innervariations = {};
@@ -2349,6 +2367,7 @@ const ParentProductIdentity = ({ productId, listing }) => {
                                             selectedVendor={formData.vendor}
                                             combinationKeys={currentCombinations.map(comb => generateCombinationKey(comb))}
                                             skuByKeyMap={skuByKey}
+                                            currentCombinationStatus={productStatusArray}
                                         />
                                     </>
                                 )}
