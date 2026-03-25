@@ -22,6 +22,7 @@ import { useState } from 'react';
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import CheckIcon from "@mui/icons-material/Check";
 import UpdateStatus from './UpdateStatus';
+import PushPinIcon from '@mui/icons-material/PushPin';
 
 const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2, handleOpen, setOrderIds, anchorEl, setAnchorEl, anchorEl1, setAnchorEl1, anchorEl3, setAnchorEl3, openMenuIndex, setOpenMenuIndex, openMenuIndex1, setOpenMenuIndex1, baseUrl, orderIds, handleCloseOption, handleCloseOption1, updateOrder, onSelectAllForDate, isDateGroupFullySelected, selectedSubOrders, setSelectedSubOrders }) => {
 
@@ -524,8 +525,8 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                         {subOrder.items[0]?.refund_status}ly Refunded
                                                     </Typography>
                                                 )}
-                                                <Typography variant="h6" fontWeight={500} fontSize={15}>
-                                                    {tab === "pending" ? "No Tracking" : tab === "unshipped" ? "Unshipped" : tab === "in-progress" ? "In Progress" : tab === "completed" ? `${getDeliveryStatus(subOrder?.items[0]?.shipments) || subOrder.delivery_status}` : "Cancelled"} {`${subOrder.delivery_status === 'Delivered'
+                                                <Typography variant="h6" fontWeight={500} fontSize={15} color={tab === "pending" ? "red" : "inherit"}>
+                                                    {tab === "pending" ? "Payment Pending" : tab === "unshipped" ? "Unshipped" : tab === "in-progress" ? "In Progress" : tab === "completed" ? `${getDeliveryStatus(subOrder?.items[0]?.shipments) || subOrder.delivery_status}` : "Cancelled"} {`${subOrder.delivery_status === 'Delivered'
                                                         ? subOrder.items[0]?.delivered_date ? "on " + new Date(subOrder.items[0]?.delivered_date).toLocaleDateString('en-GB') : ""
                                                         : (subOrder.delivery_status === 'Cancelled' || subOrder.order_status === 'cancelled')
                                                             ? subOrder.items[0]?.cancelled_date ? "on " + new Date(subOrder.items[0]?.cancelled_date).toLocaleDateString('en-GB') : ""
@@ -757,7 +758,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                         </ListItem>
                                                     )}
 
-                                                    <ListItem sx={{ width: "auto", display: "block" }}>
+                                                    <ListItem sx={{ width: "auto", display: "block", justifyContent: "space-between" }}>
                                                         <Button
                                                             sx={{ color: "#000" }}
                                                             id={`basic-button-${subOrderId}`}
@@ -774,6 +775,9 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                         >
                                                             <MoreVertIcon />
                                                         </Button>
+                                                        {(<Button sx={{ color: "red" }}>
+                                                            <PushPinIcon />
+                                                        </Button>)}
                                                         <Menu
                                                             id={`basic-menu-${subOrderId}`}
                                                             anchorEl={anchorEl}
@@ -831,6 +835,14 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                                 }}
                                                             >
                                                                 Refund
+                                                            </MenuItem>
+                                                            <MenuItem
+                                                                onClick={() => {
+                                                                    handleCloseOption();
+
+                                                                }}
+                                                            >
+                                                                Pin
                                                             </MenuItem>
                                                         </Menu>
                                                     </ListItem>

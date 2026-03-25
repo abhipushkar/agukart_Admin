@@ -119,11 +119,11 @@ const Info = ({
             <TextField
               error={errors.shopAddress && true}
               helperText={errors.shopAddress}
-              onBlur={() => {
-                if (!formValues.shopAddress) {
-                  setErrors((prv) => ({ ...prv, shopAddress: "Shop addrerss is required" }));
-                }
-              }}
+              // onBlur={() => {
+              //   if (!formValues.shopAddress) {
+              //     setErrors((prv) => ({ ...prv, shopAddress: "Shop addrerss is required" }));
+              //   }
+              // }}
               type="text"
               value={formValues.shopAddress}
               onChange={handleChange}

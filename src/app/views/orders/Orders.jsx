@@ -51,7 +51,7 @@ const Search = styled("span")(({ theme }) => ({
 }));
 
 // Valid tab values for validation
-const VALID_TABS = ["pending", "unshipped", "in-progress", "completed", "cancelled"];
+const VALID_TABS = ["pending", "unshipped", "in-progress", "completed", "hold", "pin"];
 const DEFAULT_TAB = "pending";
 const DEFAULT_PAGE = 1;
 
@@ -84,6 +84,7 @@ const Orders = () => {
   const [stock, setStock] = useState(0);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+  const [isSearched, setIsSearched] = useState(false);
   const [selectedSubOrders, setSelectedSubOrders] = useState([]);
   const [openDialog, setOpenDialog] = useState(false);
   const [openBulkTracking, setOpenBulkTracking] = useState(false);
@@ -275,6 +276,12 @@ const Orders = () => {
   const getOrderList = useCallback(async () => {
     try {
       setLoading(true);
+      if (search.length === 0) {
+        setIsSearched(false);
+      }
+      else {
+        setIsSearched(true);
+      }
       setOrders([]);
 
       // Map UI tab values to API status values
@@ -283,7 +290,8 @@ const Orders = () => {
         "unshipped": "unshipped",
         "in-progress": "in-progress",
         "completed": "completed",
-        "cancelled": "cancelled"
+        "hold": "cancelled",
+        "pin": "new"
       };
 
       const apiStatus = statusMap[tab] || "new";
@@ -396,6 +404,7 @@ const Orders = () => {
       });
       setOrderIds(allSubOrderIds);
       setSelectedSubOrders(allSubOrders);
+      console.log(allSubOrders[0])
     } else {
       setOrderIds([]);
       setSelectedSubOrders([]);
@@ -441,6 +450,37 @@ const Orders = () => {
     } catch (error) {
       handleOpen("error", error);
     }
+  };
+
+  const downloadExcel = (selectedSuborders) => {
+    const worker = new Worker(
+      new URL("./workers/ExportSubOrders.js", import.meta.url)
+    );
+
+    worker.postMessage({ suborders: selectedSuborders });
+
+    worker.onmessage = (e) => {
+      const { success, buffer, error } = e.data;
+
+      if (!success) {
+        console.error("Excel generation failed:", error);
+        return;
+      }
+
+      const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
+      const url = window.URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `suborders_${Date.now()}.xlsx`;
+      a.click();
+
+      window.URL.revokeObjectURL(url);
+      worker.terminate();
+    };
   };
 
   const handleBulkTracking = () => {
@@ -498,30 +538,37 @@ const Orders = () => {
               <TabContext value={tab}>
                 <Box>
                   <Box display={"flex"} justifyContent={"space-between"} alignItems={"center"}>
-                    <TabList
-                      onChange={handleTabChange}
-                      aria-label="lab API tabs example"
-                      variant="scrollable"
-                      scrollButtons="auto"
-                    >
-                      <Tab label={`Pending ${tab === "pending" ? orderLength : ""}`} value="pending" />
-                      <Tab
-                        label={`Unshipped ${tab === "unshipped" ? orderLength : ""}`}
-                        value="unshipped"
-                      />
-                      <Tab
-                        label={`In Progress ${tab === "in-progress" ? orderLength : ""}`}
-                        value="in-progress"
-                      />
-                      <Tab
-                        label={`Completed ${tab === "completed" ? orderLength : ""}`}
-                        value="completed"
-                      />
-                      <Tab
-                        label={`Hold for Cancel ${tab === "cancelled" ? orderLength : ""}`}
-                        value="cancelled"
-                      />
-                    </TabList>
+                    <Box>
+                      {!isSearched && (<TabList
+                        onChange={handleTabChange}
+                        aria-label="lab API tabs example"
+                        variant="scrollable"
+                        scrollButtons="auto"
+                      >
+                        <Tab label={`Pending ${tab === "pending" ? orderLength : ""}`} value="pending" />
+                        <Tab
+                          label={`Unshipped ${tab === "unshipped" ? orderLength : ""}`}
+                          value="unshipped"
+                        />
+                        <Tab
+                          label={`In Progress ${tab === "in-progress" ? orderLength : ""}`}
+                          value="in-progress"
+                        />
+                        <Tab
+                          label={`Completed ${tab === "completed" ? orderLength : ""}`}
+                          value="completed"
+                        />
+                        <Tab
+                          label={`Hold ${tab === "hold" ? orderLength : ""}`}
+                          value="hold"
+                        />
+                        <Tab
+                          label={`Pinned ${tab === "pin" ? orderLength : ""}`}
+                          value="pin"
+                        >
+                        </Tab>
+                      </TabList>)}
+                    </Box>
                     <Box sx={{ display: "flex", alignItems: "centre", justifyContent: "end" }}>
                       <Search>
                         <InputBase
@@ -699,65 +746,73 @@ const Orders = () => {
                                   >
                                     Action <ArrowDropDownIcon />
                                   </Button>
-                                  {(tab === "unshipped" || tab === "in-progress" || tab === "cancelled") && (
-                                    <Menu
-                                      id={`basic-menu`}
-                                      anchorEl={anchorEl2}
-                                      open={openOption2}
-                                      onClose={() => setAnchorEl2(null)}
-                                      MenuListProps={{
-                                        "aria-labelledby": `basic-button`
+
+                                  <Menu
+                                    id={`basic-menu`}
+                                    anchorEl={anchorEl2}
+                                    open={openOption2}
+                                    onClose={() => setAnchorEl2(null)}
+                                    MenuListProps={{
+                                      "aria-labelledby": `basic-button`
+                                    }}
+                                  >
+                                    {(tab === "unshipped" || tab === "hold") && (
+                                      <MenuItem
+                                        onClick={() => {
+                                          updateOrder("action", "in-progress");
+                                          setAnchorEl2(null);
+                                        }}
+                                      >
+                                        <HourglassEmptyIcon
+                                          fontSize="small"
+                                          style={{ marginRight: 8 }}
+                                        />
+                                        In Progress
+                                      </MenuItem>
+                                    )}
+                                    {(tab === "unshipped" || tab === "in-progress") && (
+                                      <MenuItem
+                                        onClick={() => {
+                                          updateOrder("action", "hold");
+                                          setAnchorEl2(null);
+                                        }}
+                                      >
+                                        <CloseIcon fontSize="small" style={{ marginRight: 8 }} />
+                                        Hold
+                                      </MenuItem>
+                                    )}
+                                    {(tab === "hold") && (
+                                      <MenuItem
+                                        onClick={() => {
+                                          updateOrder("action", "unshipped");
+                                          setAnchorEl2(null);
+                                        }}
+                                      >
+                                        Unshipped
+                                      </MenuItem>
+                                    )}
+                                    {(tab === "in-progress" || tab === "unshipped" || tab === "hold") && (
+                                      <MenuItem
+                                        disabled={orderIds.length === 0}
+                                        onClick={() => {
+                                          setAnchorEl2(null);
+                                          // navigate(`${ROUTE_CONSTANT.orders.completeOrder}`, { state: { subOrders: selectedSubOrders } });
+                                          setOpenDialog(true);
+                                        }}
+                                      >
+                                        Complete Order
+                                      </MenuItem>
+                                    )}
+                                    <MenuItem
+                                      disabled={orderIds.length === 0}
+                                      onClick={() => {
+                                        setAnchorEl2(null);
+                                        downloadExcel(selectedSubOrders);
                                       }}
                                     >
-                                      {(tab === "unshipped" || tab === "cancelled") && (
-                                        <MenuItem
-                                          onClick={() => {
-                                            updateOrder("action", "in-progress");
-                                            setAnchorEl2(null);
-                                          }}
-                                        >
-                                          <HourglassEmptyIcon
-                                            fontSize="small"
-                                            style={{ marginRight: 8 }}
-                                          />
-                                          In Progress
-                                        </MenuItem>
-                                      )}
-                                      {(tab === "unshipped" || tab === "in-progress") && (
-                                        <MenuItem
-                                          onClick={() => {
-                                            updateOrder("action", "cancelled");
-                                            setAnchorEl2(null);
-                                          }}
-                                        >
-                                          <CloseIcon fontSize="small" style={{ marginRight: 8 }} />
-                                          Hold
-                                        </MenuItem>
-                                      )}
-                                      {(tab === "cancelled") && (
-                                        <MenuItem
-                                          onClick={() => {
-                                            updateOrder("action", "unshipped");
-                                            setAnchorEl2(null);
-                                          }}
-                                        >
-                                          Unshipped
-                                        </MenuItem>
-                                      )}
-                                      {(tab === "in-progress" || tab === "unshipped" || tab === "cancelled") && (
-                                        <MenuItem
-                                          disabled={orderIds.length === 0}
-                                          onClick={() => {
-                                            setAnchorEl2(null);
-                                            // navigate(`${ROUTE_CONSTANT.orders.completeOrder}`, { state: { subOrders: selectedSubOrders } });
-                                            setOpenDialog(true);
-                                          }}
-                                        >
-                                          Complete Order
-                                        </MenuItem>
-                                      )}
-                                    </Menu>
-                                  )}
+                                      Export Orders
+                                    </MenuItem>
+                                  </Menu>
                                 </Typography>
                               </Box>
                             </ListItem>

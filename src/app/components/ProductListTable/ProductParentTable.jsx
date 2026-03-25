@@ -410,7 +410,7 @@ export default function ProductParentTable({
                 </Typography>
             )}
             <TableContainer component={Paper}>
-                <Table sx={{ minWidth: 650 }} aria-label="simple table">
+                <Table sx={{ tableLayout: "auto" }} aria-label="simple table">
                     <TableHead>
                         <TableRow>
                             {formdataaaaa?.map((item) => {
@@ -419,7 +419,8 @@ export default function ProductParentTable({
                                         key={item}
                                         align="center"
                                         sx={{
-                                            width: "230px"
+                                            whiteSpace: "nowrap",
+                                            mr: 0.5
                                         }}
                                     >
                                         {item}
@@ -429,7 +430,8 @@ export default function ProductParentTable({
                             <TableCell
                                 align="center"
                                 sx={{
-                                    width: "150px"
+                                    whiteSpace: "nowrap",
+                                    mr: 0.5
                                 }}
                             >
                                 status
@@ -505,7 +507,7 @@ export default function ProductParentTable({
                                         <TableCell
                                             align="center"
                                             sx={{
-                                                width: "150px"
+                                                whiteSpace: "nowrap"
                                             }}
                                         >
                                             <Typography>
@@ -519,7 +521,7 @@ export default function ProductParentTable({
                                                 width: "230px"
                                             }}
                                         >
-                                            <FormControl fullWidth sx={{ m: 1 }} size="small">
+                                            <FormControl sx={{ m: 1, width: "auto" }} size="small">
                                                 <TextField
                                                     size="small"
                                                     value={sellerSky[index] || ""}
@@ -545,7 +547,7 @@ export default function ProductParentTable({
                                                 width: "110px"
                                             }}
                                         >
-                                            <FormControl fullWidth sx={{ m: 1 }} size="small">
+                                            <FormControl sx={{ m: 1, width: "auto" }} size="small">
                                                 <TextField
                                                     size="small"
                                                     name="qty"
@@ -569,7 +571,7 @@ export default function ProductParentTable({
                                                 width: "110px"
                                             }}
                                         >
-                                            <FormControl fullWidth sx={{ m: 1 }} size="small">
+                                            <FormControl sx={{ m: 1, width: "auto" }} size="small">
                                                 <TextField
                                                     size="small"
                                                     type="text"
