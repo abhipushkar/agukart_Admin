@@ -305,6 +305,16 @@ export const useProductAPI = () => {
                         return;
                     }
 
+                    // Force empty string for price and qty if their columns are not enabled
+                    if (fieldKey === "price" && (comb.isPriceVariation === false || comb.isPriceVariation === "false")) {
+                        fData.append(`combinationData[${vIndex}][combinations][${cIndex}][${fieldKey}]`, "");
+                        return;
+                    }
+                    if (fieldKey === "qty" && (comb.isQuantityVariation === false || comb.isQuantityVariation === "false")) {
+                        fData.append(`combinationData[${vIndex}][combinations][${cIndex}][${fieldKey}]`, "");
+                        return;
+                    }
+
                     if (Array.isArray(fieldVal)) {
                         fieldVal.forEach((item, idx) => {
                             if (item !== null && item !== undefined && item !== "") {
@@ -559,7 +569,7 @@ export const useProductAPI = () => {
             isCombination: combinations.length > 0,
             dynamicFields: formData.dynamicFields,
         };
-
+        console.log({ payload });
         return payload;
     };
 
