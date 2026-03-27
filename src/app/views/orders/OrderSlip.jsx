@@ -6,6 +6,18 @@ import { ApiService } from "app/services/ApiService";
 import { apiEndpoints } from "app/constant/apiEndpoints";
 import { localStorageKey } from "app/constant/localStorageKey";
 import { useCallback } from "react";
+import {
+  Container,
+  Box,
+  Typography,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Grid,
+} from "@mui/material";
 
 const OrderSlip = () => {
   const contentRef = useRef();
@@ -21,16 +33,6 @@ const OrderSlip = () => {
   console.log({ baseUrl });
 
   useEffect(() => {
-    const bootstrapLink = document.createElement("link");
-    bootstrapLink.rel = "stylesheet";
-    bootstrapLink.href =
-      "https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css";
-    bootstrapLink.integrity =
-      "sha512-jnSuA4Ss2PkkikSOLtYs8BlYIeeIK1h99ty4YfvRPAlzr377vr3CXDb7sb7eEEBYjDtcYj+AjBH3FLv5uSJuXg==";
-    bootstrapLink.crossOrigin = "anonymous";
-
-    document.head.appendChild(bootstrapLink);
-
     const toolbarElement = document.querySelector(".css-1ppcp2l-MuiToolbar-root");
     const secondElement = document.querySelector(".css-149h5x2");
 
@@ -43,8 +45,6 @@ const OrderSlip = () => {
     }
 
     return () => {
-      document.head.removeChild(bootstrapLink);
-
       if (toolbarElement) {
         toolbarElement.style.display = "";
       }
@@ -84,7 +84,6 @@ const OrderSlip = () => {
         sub_order_id: sub_order_id
       };
 
-      // Only send if we have at least one ID
       if (!sales_id && !sub_order_id) {
         console.error("No order IDs provided for order slip");
         return;
@@ -107,11 +106,9 @@ const OrderSlip = () => {
     }
   }, [getOrderDetailForSlip, sales_id, sub_order_id])
 
-  // Helper to get vendor-specific items
   const getVendorItems = (items) => {
     if (!items?.saleDetails) return [];
 
-    // If we have a sub_order_id, filter items by vendor
     if (sub_order_id) {
       return items.saleDetails.filter(item =>
         item.sub_order_id === sub_order_id ||
@@ -123,11 +120,9 @@ const OrderSlip = () => {
     return items.saleDetails;
   };
 
-  // Helper to get vendor data
   const getVendorData = (items) => {
     if (!items?.saleDetails?.length) return {};
-
-    // If we have a sub_order_id, find the specific vendor
+    console.log(items)
     if (sub_order_id) {
       const vendorItem = items.saleDetails.find(item =>
         item.sub_order_id === sub_order_id ||
@@ -141,14 +136,12 @@ const OrderSlip = () => {
         {};
     }
 
-    // For master view, use first vendor or main vendor data
     return items.saleDetails[0]?.saleDetailData?.vendorData ||
       items.saleDetails[0]?.vendorData ||
       items?.vendorData ||
       {};
   };
 
-  // Calculate vendor-specific totals
   const calculateVendorTotals = (items) => {
     const vendorItems = getVendorItems(items);
 
@@ -165,277 +158,362 @@ const OrderSlip = () => {
 
   return (
     <>
-      <div className="container-fluid" id="order-slip" ref={contentRef}>
+      <style>
+        {`
+          @media print {
+            @page {
+              margin: 0.5cm;
+              size: auto;
+            }
+            body {
+              margin: 0;
+              padding: 0;
+            }
+            .print-container {
+              margin: 0 auto;
+              padding: 0 2px;
+            }
+            * {
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+          }
+        `}
+      </style>
+      <Box
+        ref={contentRef}
+        className="print-container"
+        sx={{
+          width: '100%',
+          '@media print': {
+            maxWidth: '100%',
+            margin: '0 auto',
+            padding: '0 5px',
+          }
+        }}
+      >
         {invoice?.map((items, index) => {
           const vendorData = getVendorData(items);
           const vendorItems = getVendorItems(items);
           const vendorTotals = calculateVendorTotals(items);
 
           return (
-            <div className="container mb-3" key={index} style={{ pageBreakAfter: "always" }}>
-              <div className="row" style={{ borderBottom: "2px dashed #000", padding: "8px 0" }}>
-                <div className="col-12">
-                  <h5>{items?.name}</h5>
-                  <h5>{items?.address_line1}</h5>
-                  <h5>
-                    {items?.address_line2}, {items?.city}, {items?.state}, {items?.pincode}
-                  </h5>
-                  <h5>{items?.country}</h5>
-                  <h5>
-                    Phone number{" "}
-                    <span>
-                      {items?.phone_code} {items?.mobile}
-                    </span>{" "}
-                  </h5>
-                </div>
-              </div>
-              <div className="row mt-3 p-3" style={{ border: "1px solid grey" }}>
-                <div className="col-lg-6">
-                  <h6>Shipping Address</h6>
-                  <h6>{items?.name}</h6>
-                  <h6>{items?.address_line1}</h6>
-                  <h6>
-                    {items?.address_line2}, {items?.city}, {items?.state}, {items?.pincode}
-                  </h6>
-                  <h6>{items?.country}</h6>
-                  <h6>
-                    Phone number{" "}
-                    <span>
-                      {items?.phone_code} {items?.mobile}
-                    </span>{" "}
-                  </h6>
-                </div>
-                <div className="col-lg-6 ">
-                  <h5>
-                    Order ID : <span>{items?.order_id}</span>
-                    {sub_order_id && (
-                      <span style={{ fontSize: "14px", marginLeft: "8px", color: "#666" }}>
-                        (Transaction Id: #{sub_order_id?.slice(-8)})
+            <Box
+              key={index}
+              sx={{
+                width: '100%',
+                maxWidth: '1200px',
+                margin: '0 auto',
+                mb: 3,
+                pageBreakAfter: "always",
+                '@media print': {
+                  pageBreakAfter: 'always',
+                  margin: '0 auto',
+                  width: '100%',
+                }
+              }}
+            >
+              <Box sx={{ borderBottom: "2px dashed #000", padding: "8px 0" }}>
+                <Typography component="h6" sx={{ fontSize: '1rem', fontWeight: 500, margin: 0 }}>
+                  {items?.name}
+                </Typography>
+                <Typography component="h6" sx={{ fontSize: '1rem', fontWeight: 500, margin: 0 }}>
+                  {items?.address_line1}
+                </Typography>
+                <Typography component="h6" sx={{ fontSize: '1rem', fontWeight: 500, margin: 0 }}>
+                  {`${items?.address_line2 ? items?.address_line2 + "," : ""}`} {items?.city}, {items?.state}, {items?.pincode}
+                </Typography>
+                <Typography component="h6" sx={{ fontSize: '1rem', fontWeight: 500, margin: 0 }}>
+                  {items?.country}
+                </Typography>
+                <Typography component="h6" sx={{ fontSize: '1rem', fontWeight: 500, margin: 0 }}>
+                  Phone number{" "}
+                  <span>
+                    {items?.phone_code} {items?.mobile}
+                  </span>
+                </Typography>
+              </Box>
+
+              <Box sx={{ mt: 3, py: 1, px: 2, border: "1px solid grey" }}>
+                <Grid container sx={{ flexWrap: 'nowrap' }}>
+                  <Grid item xs={12} md={6}>
+                    <Typography component="h6" sx={{ fontSize: '0.75rem', fontWeight: 500, margin: 0 }}>
+                      Shipping Address
+                    </Typography>
+                    <Typography component="h6" sx={{ fontSize: '0.75rem', fontWeight: 500, margin: 0 }}>
+                      {items?.name}
+                    </Typography>
+                    <Typography component="h6" sx={{ fontSize: '0.75rem', fontWeight: 500, margin: 0 }}>
+                      {items?.address_line1}
+                    </Typography>
+                    <Typography component="h6" sx={{ fontSize: '0.75rem', fontWeight: 500, margin: 0 }}>
+                      {`${items?.address_line2 ? items?.address_line2 + "," : ""}`} {items?.city}, {items?.state}, {items?.pincode}
+                    </Typography>
+                    <Typography component="h6" sx={{ fontSize: '0.75rem', fontWeight: 500, margin: 0 }}>
+                      {items?.country}
+                    </Typography>
+                    <Typography component="h6" sx={{ fontSize: '0.75rem', fontWeight: 500, margin: 0 }}>
+                      Phone number{" "}
+                      <span>
+                        {items?.phone_code} {items?.mobile}
                       </span>
-                    )}
-                  </h5>
-                  <div className="table-responsive mt-4">
-                    <table className="table table-bordered">
-                      <tbody>
-                        <tr>
-                          <td>Order Date :</td>
-                          <td>{formatDate(items?.createdAt)}</td>
-                        </tr>
-                        <tr>
-                          <td>Shipping Service :</td>
-                          <td>Standard</td>
-                        </tr>
-                        <tr>
-                          <td>Buyer Name :</td>
-                          <td>{items?.name}</td>
-                        </tr>
-                        <tr>
-                          <td>Seller Name :</td>
-                          <td>{vendorData?.name || "N/A"}</td>
-                        </tr>
-                        {sub_order_id && (
-                          <tr>
-                            <td>Vendor Shop :</td>
-                            <td>{vendorData?.shop_name || vendorData?.name || "N/A"}</td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-              <h6 className="fs-5 my-4">
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Typography component="h5" sx={{ fontSize: '1.25rem', fontWeight: 500 }}>
+                      {sub_order_id && (
+                        <span style={{ fontSize: "16px", color: "#666" }}>
+                          Reciept Id: #{sub_order_id || "N/A"}
+                        </span>
+                      )}
+                    </Typography>
+                    <Box sx={{ overflowX: 'auto' }}>
+                      <Table sx={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', minWidth: '200px' }}>
+                        <TableBody>
+                          <TableRow>
+                            <TableCell sx={{ border: '1px solid #dee2e6', padding: '4px', width: '40%', whiteSpace: 'nowrap', fontSize: "12px" }}>
+                              Order Date :
+                            </TableCell>
+                            <TableCell sx={{ border: '1px solid #dee2e6', padding: '4px', fontSize: "12px" }}>
+                              {formatDate(items?.createdAt)}
+                            </TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell sx={{ border: '1px solid #dee2e6', padding: '4px', width: '40%', whiteSpace: 'nowrap', fontSize: "12px" }}>
+                              Shipping Service :
+                            </TableCell>
+                            <TableCell sx={{ border: '1px solid #dee2e6', padding: '4px', fontSize: "12px" }}>
+                              {items.saleDetails?.[0]?.shippingName?.charAt(0).toUpperCase() + items.saleDetails?.[0]?.shippingName?.slice(1) || ""}
+                            </TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell sx={{ border: '1px solid #dee2e6', padding: '4px', width: '40%', whiteSpace: 'nowrap', fontSize: "12px" }}>
+                              Buyer Name :
+                            </TableCell>
+                            <TableCell sx={{ border: '1px solid #dee2e6', padding: '4px', fontSize: "12px" }}>{items?.name}</TableCell>
+                          </TableRow>
+                          {sub_order_id && (
+                            <TableRow>
+                              <TableCell sx={{ border: '1px solid #dee2e6', padding: '4px', width: '40%', whiteSpace: 'nowrap', fontSize: "12px" }}>Store :</TableCell>
+                              <TableCell sx={{ border: '1px solid #dee2e6', padding: '4px', fontSize: "12px" }}>{vendorData?.shop_name || vendorData?.name || "N/A"}</TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </Box>
+                  </Grid>
+                </Grid>
+              </Box>
+
+              <Typography component="h6" sx={{ fontSize: '1rem', fontWeight: 500, my: 2 }}>
                 Thank you for buying from{" "}
-                <span className="text-danger">{vendorData?.name || "N/A"}</span> on{" "}
-                <span className="text-danger">Website</span> Marketplace
-              </h6>
-              <div className="row">
-                <div className="col-12">
-                  <div className="table-responsive">
-                    <table className="table table-bordered">
-                      <thead>
-                        <tr>
-                          <td>Qty</td>
-                          <td>Image</td>
-                          <td>Product Details</td>
-                          <td>Unit Price</td>
-                          <td>Order Totals</td>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {vendorItems.length > 0 ? (
-                          vendorItems.map((item, i) => (
-                            <tr key={i}>
-                              <td>{item?.qty}</td>
-                              <td className="text-center">
-                                <img
-                                  src={`${baseUrl}/${item?.productData?.image?.[0]}`}
-                                  alt=""
-                                  className="img-fluid "
-                                  style={{ width: 100, height: 100 }}
-                                  onError={(e) => {
-                                    e.target.style.display = 'none';
-                                    e.target.parentElement.innerHTML = '<span>No image</span>';
-                                  }}
-                                />
-                              </td>
-                              <td>
-                                <p style={{ fontWeight: "bold", marginBottom: "10px" }}>
-                                  {item?.productData?.product_title?.replace(/<\/?[^>]+(>|$)/g, "")}
-                                </p>
-                                <div>
-                                  <table className="w-100">
-                                    <tbody>
-                                      <tr>
-                                        <td style={{ width: "40%", padding: "4px 0" }}>Order Item ID :</td>
-                                        <td style={{ padding: "4px 0" }}>{item?._id?.slice(-8) || "N/A"}</td>
-                                      </tr>
-                                      <tr>
-                                        <td style={{ padding: "4px 0" }}>SKU :</td>
-                                        <td style={{ padding: "4px 0" }}>{item?.productData?.sku_code || "N/A"}</td>
-                                      </tr>
-                                      {/* Show variantData (Amazon-style variants) */}
-                                      {item?.isCombination === true &&
-                                        item?.variantData?.map((variantItem, variantIndex) => (
-                                          <tr key={`variant-${variantIndex}`} style={{ padding: "4px 0" }}>
-                                            <td style={{ padding: "4px 0" }}>{variantItem?.variant_name} :</td>
-                                            <td style={{ padding: "4px 0" }}>
-                                              {
-                                                item?.variantAttributeData?.[variantIndex]
-                                                  ?.attribute_value
-                                              }
-                                            </td>
-                                          </tr>
+                <span style={{ color: "#d32f2f" }}>{vendorData?.name || "N/A"}</span> on{" "}
+                <span style={{ color: "#d32f2f" }}>Agukart</span> Marketplace
+              </Typography>
+
+              <Box>
+                <Box sx={{ overflowX: 'auto' }}>
+                  <Table sx={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell sx={{ border: '1px solid #dee2e6', padding: '4px', width: '5%', fontSize: "12px" }}>Qty</TableCell>
+                        <TableCell sx={{ border: '1px solid #dee2e6', padding: '4px', width: '10%', fontSize: "12px" }}>Image</TableCell>
+                        <TableCell sx={{ border: '1px solid #dee2e6', padding: '4px', width: '50%', fontSize: "12px" }}>Product Details</TableCell>
+                        <TableCell sx={{ border: '1px solid #dee2e6', padding: '4px', width: '10%', fontSize: "12px" }}>Unit Price</TableCell>
+                        <TableCell sx={{ border: '1px solid #dee2e6', padding: '4px', width: '25%', fontSize: "12px" }}>Order Totals</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {vendorItems.length > 0 ? (
+                        vendorItems.map((item, i) => (
+                          <TableRow key={i}>
+                            <TableCell sx={{ border: '1px solid #dee2e6', padding: '4px', fontSize: "12px" }}>{item?.qty}</TableCell>
+                            <TableCell sx={{
+                              textAlign: "center",
+                              border: '1px solid #dee2e6',
+                              padding: '4px',
+                              width: '10%'
+                            }}>
+                              <img
+                                src={`${baseUrl}/${item?.productData?.image?.[0]}`}
+                                alt=""
+                                style={{
+                                  width: '100%',
+                                  maxWidth: '100px',
+                                  height: 'auto',
+                                  objectFit: 'contain'
+                                }}
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                  e.target.parentElement.innerHTML = '<span>No image</span>';
+                                }}
+                              />
+                            </TableCell>
+                            <TableCell sx={{ border: '1px solid #dee2e6', padding: '4px' }}>
+                              <Typography sx={{ fontWeight: "bold", marginBottom: "5px" }}>
+                                {(() => {
+                                  const text = item?.productData?.product_title?.replace(/<\/?[^>]+(>|$)/g, "");
+                                  if (!text) return "";
+
+                                  const maxLength = 80;
+                                  if (text.length <= maxLength) return text;
+
+                                  // Find the last space within the maxLength
+                                  let cutIndex = text.lastIndexOf(' ', maxLength);
+
+                                  // If no space found, cut at maxLength
+                                  if (cutIndex === -1) cutIndex = maxLength;
+
+                                  return text.substring(0, cutIndex) + "...";
+                                })()}
+                              </Typography>
+                              <Box>
+                                <Table sx={{ width: '100%' }}>
+                                  <TableBody>
+                                    <TableRow>
+                                      <TableCell sx={{ width: "30%", padding: "2px 0", border: 'none', fontSize: "12px" }}>Order Item ID :</TableCell>
+                                      <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "12px" }}>{item?._id?.slice(-8) || "N/A"}</TableCell>
+                                    </TableRow>
+                                    <TableRow>
+                                      <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "12px" }}>SKU :</TableCell>
+                                      <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "12px" }}>{item?.productData?.sku_code || "N/A"}</TableCell>
+                                    </TableRow>
+                                    {item?.isCombination === true &&
+                                      item?.variantData?.map((variantItem, variantIndex) => (
+                                        <TableRow key={`variant-${variantIndex}`}>
+                                          <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "12px" }}>{variantItem?.variant_name} :</TableCell>
+                                          <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "12px" }}>
+                                            {item?.variantAttributeData?.[variantIndex]?.attribute_value}
+                                          </TableCell>
+                                        </TableRow>
+                                      ))}
+                                    {item?.variants && item.variants.length > 0 && (
+                                      <>
+                                        {item.variants.map((variant, variantIndex) => (
+                                          <TableRow key={`internal-variant-${variantIndex}`}>
+                                            <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "12px" }}>{variant?.variantName || "Variant"} :</TableCell>
+                                            <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "12px" }}>{variant?.attributeName || "N/A"}</TableCell>
+                                          </TableRow>
                                         ))}
-                                      {/* Show variants array (Etsy-style variants) */}
-                                      {item?.variants && item.variants.length > 0 && (
-                                        <>
-                                          {item.variants.map((variant, variantIndex) => (
-                                            <tr key={`internal-variant-${variantIndex}`} style={{ padding: "4px 0" }}>
-                                              <td style={{ padding: "4px 0" }}>{variant?.variantName || "Variant"} :</td>
-                                              <td style={{ padding: "4px 0" }}>{variant?.attributeName || "N/A"}</td>
-                                            </tr>
-                                          ))}
-                                        </>
-                                      )}
-                                      {/* Show variant IDs if no variant data is available */}
-                                      {item?.variant_id && item.variant_id.length > 0 &&
-                                        !item?.variantData?.length &&
-                                        !item?.variants?.length && (
-                                          <tr style={{ padding: "4px 0" }}>
-                                            <td style={{ padding: "4px 0" }}>Variant IDs :</td>
-                                            <td style={{ padding: "4px 0" }}>
-                                              {item.variant_id.join(", ")}
-                                            </td>
-                                          </tr>
-                                        )}
-                                      {item?.customize === "Yes" && (
-                                        <tr style={{ padding: "4px 0" }}>
-                                          <td style={{ padding: "4px 0" }}>Customization :</td>
-                                          <td style={{ padding: "4px 0" }}>Yes</td>
-                                        </tr>
-                                      )}
-                                    </tbody>
-                                  </table>
-                                </div>
-                              </td>
-                              <td>$ {item?.productData?.sale_price?.toFixed(2) || "0.00"} </td>
-                              <td>
-                                <div>
-                                  <table className="w-100">
-                                    <tbody>
-                                      <tr>
-                                        <td style={{ padding: "4px 0" }}>Item Subtotal </td>
-                                        <td style={{ padding: "4px 0" }}>$ {item?.amount?.toFixed(2) || "0.00"}</td>
-                                      </tr>
-                                      <tr>
-                                        <td style={{ padding: "4px 0" }}>Shipping total </td>
-                                        <td style={{ padding: "4px 0" }}>$ {(item?.shippingAmount || 0).toFixed(2)}</td>
-                                      </tr>
-                                      <tr>
-                                        <td style={{ padding: "4px 0" }}>Tax </td>
-                                        <td style={{ padding: "4px 0" }}>$ 0.00</td>
-                                      </tr>
-                                      {item?.promotional_discount > 0 && (
-                                        <tr>
-                                          <td style={{ padding: "4px 0" }}>Promotion : </td>
-                                          <td style={{ padding: "4px 0" }}>-US$ {(item?.promotional_discount || 0).toFixed(2)}</td>
-                                        </tr>
-                                      )}
-                                      {item?.couponDiscountAmount > 0 && (
-                                        <tr>
-                                          <td style={{ padding: "4px 0" }}>Coupon : </td>
-                                          <td style={{ padding: "4px 0" }}>-US$ {(item?.couponDiscountAmount || 0).toFixed(2)}</td>
-                                        </tr>
-                                      )}
-                                      <tr style={{ borderBlock: "1px solid grey", padding: "4px 0" }}>
-                                        <td style={{ padding: "4px 0", fontWeight: "bold" }}>Item total </td>
-                                        <td style={{ padding: "4px 0", fontWeight: "bold" }}>$ {((item?.amount || 0) + (item?.shippingAmount || 0) - (item?.couponDiscountAmount || 0)).toFixed(2)}</td>
-                                      </tr>
-                                    </tbody>
-                                  </table>
-                                </div>
-                              </td>
-                            </tr>
-                          ))
-                        ) : (
-                          <tr>
-                            <td colSpan={5} className="text-center">
-                              No items found for this order
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-              <div className="row">
-                <div className="col-12 d-flex justify-content-end">
-                  <table>
-                    <tbody>
-                      <tr>
-                        <td style={{ padding: "4px 8px" }}>Subtotal : </td>
-                        <td style={{ padding: "4px 8px" }}>$ {vendorTotals.subtotal.toFixed(2)}</td>
-                      </tr>
-                      <tr>
-                        <td style={{ padding: "4px 8px" }}>Shipping Total : </td>
-                        <td style={{ padding: "4px 8px" }}>$ {vendorTotals.shippingTotal.toFixed(2)}</td>
-                      </tr>
-                      {items?.voucher_dicount > 0 && (
-                        <tr>
-                          <td style={{ padding: "4px 8px" }}>Voucher Discount : </td>
-                          <td style={{ padding: "4px 8px" }}>-US$ {(items?.voucher_dicount || 0).toFixed(2)}</td>
-                        </tr>
+                                      </>
+                                    )}
+                                    {/* {item?.variant_id && item.variant_id.length > 0 &&
+                                      !item?.variantData?.length &&
+                                      !item?.variants?.length && (
+                                        <TableRow>
+                                          <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "12px" }}>Variant IDs :</TableCell>
+                                          <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "12px" }}>
+                                            {item.variant_id.join(", ")}
+                                          </TableCell>
+                                        </TableRow>
+                                      )} */}
+                                    {item?.customize === "Yes" && (
+                                      <TableRow>
+                                        <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "12px" }}>Customization :</TableCell>
+                                        <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "12px" }}>Yes</TableCell>
+                                      </TableRow>
+                                    )}
+                                  </TableBody>
+                                </Table>
+                              </Box>
+                            </TableCell>
+                            <TableCell sx={{ border: '1px solid #dee2e6', padding: '4px', fontSize: "12px" }}>
+                              $ {item?.productData?.sale_price?.toFixed(2) || "0.00"}
+                            </TableCell>
+                            <TableCell sx={{ border: '1px solid #dee2e6', padding: '4px' }}>
+                              <Box>
+                                <Table sx={{ width: '100%', tableLayout: 'fixed' }}>
+                                  <TableBody>
+                                    <TableRow>
+                                      <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "11px", textAlign: "left" }}>Item Subtotal</TableCell>
+                                      <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "11px", textAlign: "right" }}>$ {item?.amount?.toFixed(2) || "0.00"}</TableCell>
+                                    </TableRow>
+                                    <TableRow>
+                                      <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "11px", textAlign: "left" }}>Shipping total</TableCell>
+                                      <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "11px", textAlign: "right" }}>$ {(item?.shippingAmount || 0).toFixed(2)}</TableCell>
+                                    </TableRow>
+                                    <TableRow>
+                                      <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "11px", textAlign: "left" }}>Tax</TableCell>
+                                      <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "11px", textAlign: "right" }}>$ 0.00</TableCell>
+                                    </TableRow>
+                                    {item?.promotional_discount > 0 && (
+                                      <TableRow>
+                                        <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "11px", textAlign: "left" }}>Promotion :</TableCell>
+                                        <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "11px", textAlign: "right" }}>-US$ {(item?.promotional_discount || 0).toFixed(2)}</TableCell>
+                                      </TableRow>
+                                    )}
+                                    {item?.couponDiscountAmount > 0 && (
+                                      <TableRow>
+                                        <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "11px", textAlign: "left" }}>Coupon :</TableCell>
+                                        <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "11px", textAlign: "right" }}>-US$ {(item?.couponDiscountAmount || 0).toFixed(2)}</TableCell>
+                                      </TableRow>
+                                    )}
+                                    <TableRow>
+                                      <TableCell sx={{ padding: "2px 0", fontWeight: "bold", fontSize: "11px", textAlign: "left", borderBottom: "none" }}>Item total</TableCell>
+                                      <TableCell sx={{ padding: "2px 0", fontWeight: "bold", fontSize: "11px", textAlign: "right", borderBottom: "none" }}>$ {((item?.amount || 0) + (item?.shippingAmount || 0) - (item?.couponDiscountAmount || 0)).toFixed(2)}</TableCell>
+                                    </TableRow>
+                                  </TableBody>
+                                </Table>
+                              </Box>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={5} sx={{ textAlign: "center", border: '1px solid #dee2e6', padding: '8px' }}>
+                            No items found for this order
+                          </TableCell>
+                        </TableRow>
                       )}
-                      <tr>
-                        <td style={{ padding: "4px 8px" }}>Tax : </td>
-                        <td style={{ padding: "4px 8px" }}>$ 0.00</td>
-                      </tr>
-                      <tr style={{ borderTop: "2px solid #000", fontWeight: "bold" }}>
-                        <td style={{ padding: "8px" }}>Grand total : </td>
-                        <td style={{ padding: "8px" }}>$ {(vendorTotals.subtotal - (items?.voucher_dicount || 0)).toFixed(2)}</td>
-                      </tr>
-                      {items?.wallet_used > 0 && (
-                        <tr>
-                          <td style={{ padding: "4px 8px" }}>Used Gift Card : </td>
-                          <td style={{ padding: "4px 8px" }}>-US$ {(items?.wallet_used || 0).toFixed(2)}</td>
-                        </tr>
-                      )}
-                      {items?.wallet_used > 0 && (
-                        <tr>
-                          <td style={{ padding: "4px 8px" }}>Pay By PayPal : </td>
-                          <td style={{ padding: "4px 8px" }}>$ {(vendorTotals.subtotal - (items?.voucher_dicount || 0) - (items?.wallet_used || 0)).toFixed(2)}</td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
+                    </TableBody>
+                  </Table>
+                </Box>
+              </Box>
+
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <Box component="table" sx={{ borderCollapse: 'collapse', minWidth: "25%" }}>
+                  <TableBody>
+                    <TableRow>
+                      <TableCell sx={{ padding: "4px 8px" }}>Subtotal :</TableCell>
+                      <TableCell sx={{ padding: "4px 8px", textAlign: "right" }}>$ {vendorTotals.subtotal.toFixed(2)}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell sx={{ padding: "4px 8px" }}>Shipping Total :</TableCell>
+                      <TableCell sx={{ padding: "4px 8px", textAlign: "right" }}>$ {vendorTotals.shippingTotal.toFixed(2)}</TableCell>
+                    </TableRow>
+                    {items?.voucher_dicount > 0 && (
+                      <TableRow>
+                        <TableCell sx={{ padding: "4px 8px" }}>Voucher Discount :</TableCell>
+                        <TableCell sx={{ padding: "4px 8px", textAlign: "right" }}>-US$ {(items?.voucher_dicount || 0).toFixed(2)}</TableCell>
+                      </TableRow>
+                    )}
+                    <TableRow>
+                      <TableCell sx={{ padding: "4px 8px" }}>Tax :</TableCell>
+                      <TableCell sx={{ padding: "4px 8px", textAlign: "right" }}>$ 0.00</TableCell>
+                    </TableRow>
+                    <TableRow sx={{ borderTop: "2px solid #000" }}>
+                      <TableCell sx={{ padding: "8px", fontWeight: "bold" }}>Grand total :</TableCell>
+                      <TableCell sx={{ padding: "8px", fontWeight: "bold", textAlign: "right" }}>$ {(vendorTotals.subtotal - (items?.voucher_dicount || 0)).toFixed(2)}</TableCell>
+                    </TableRow>
+                    {items?.wallet_used > 0 && (
+                      <TableRow>
+                        <TableCell sx={{ padding: "4px 8px" }}>Used Gift Card :</TableCell>
+                        <TableCell sx={{ padding: "4px 8px", textAlign: "right" }}>-US$ {(items?.wallet_used || 0).toFixed(2)}</TableCell>
+                      </TableRow>
+                    )}
+                    {items?.wallet_used > 0 && (
+                      <TableRow>
+                        <TableCell sx={{ padding: "4px 8px" }}>Pay By PayPal :</TableCell>
+                        <TableCell sx={{ padding: "4px 8px", textAlign: "right" }}>$ {(vendorTotals.subtotal - (items?.voucher_dicount || 0) - (items?.wallet_used || 0)).toFixed(2)}</TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Box>
+              </Box>
+            </Box>
           );
         })}
-      </div>
+      </Box>
     </>
   );
 };

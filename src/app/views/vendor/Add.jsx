@@ -23,6 +23,7 @@ import ShopInfo from "./ShopInfo";
 import ConfirmModal from "app/components/ConfirmModal";
 import Description from "./Description";
 import ShopPolicy from "./ShopPolicy";
+import ReviewRequest from "./ReviewRequest";
 
 const Add = () => {
   const navigate = useNavigate();
@@ -40,13 +41,14 @@ const Add = () => {
     mobileCode: "+91",
     mobileNo: "",
     shopTitle: "",
-    shopAddress:"",
+    shopAddress: "",
     shopAnnouncement: "",
     msgToBuyers: "",
     shopIcon: null,
     newShopName: "",
     memberData: [],
-    description:"",
+    description: "",
+    reviewRequest: "",
     headline: "",
     storyDesc: "",
     shopVideo: "",
@@ -70,15 +72,16 @@ const Add = () => {
     mobileNo: "",
     images: "",
     shopTitle: "",
-    shopAddress:"",
+    shopAddress: "",
     shopAnnouncement: "",
     msgToBuyers: "",
     shopIcon: "",
     newShopName: "",
     memberData: "",
     headline: "",
-    description:"",
-    shopPolicy:"",
+    reviewRequest: "",
+    description: "",
+    shopPolicy: "",
     storyDesc: "",
     shopVideo: "",
     shopPhotos: ""
@@ -89,21 +92,23 @@ const Add = () => {
   const [infoTab, setInfoTab] = useState(false);
   const [shopTab, setShopTab] = useState(false);
   const [memberTab, setMemberTab] = useState(false);
-  const [descriptionTab,setDescriptionTab] = useState(false);
-  const [shopPolicyTab,setShopPolicyTab] = useState(false);
+  const [descriptionTab, setDescriptionTab] = useState(false);
+  const [shopPolicyTab, setShopPolicyTab] = useState(false);
   const [storyTab, setStoryTab] = useState(false);
+  const [reviewRequestTab, setReviewRequestTab] = useState(false);
   const [checkShopInfo, setCheckShopInfo] = useState(false);
   const [checkInfo, setCheckInfo] = useState(false);
   const [checkShop, setCheckShop] = useState(false);
-  const [checkDescription,setCheckDescription] = useState(false);
-  const [checkShopPolicy,setCheckShopPolicy] = useState(false);
+  const [checkDescription, setCheckDescription] = useState(false);
+  const [checkShopPolicy, setCheckShopPolicy] = useState(false);
   const [checkMember, setCheckMember] = useState(false);
+  const [checkStory, setCheckStory] = useState(false);
   const [imgUrls, setImgUrls] = useState({
     shopIconUrl: null
   });
   const [showVideo, setShowVideo] = useState(null);
-  const [isDeleteVideo,setIsDeleteVideo] = useState(false);
-  console.log({isDeleteVideo})
+  const [isDeleteVideo, setIsDeleteVideo] = useState(false);
+  console.log({ isDeleteVideo })
 
   const [open, setOpen] = React.useState(false);
   const [type, setType] = useState("");
@@ -170,14 +175,15 @@ const Add = () => {
           newShopName: resData?.vendorData?.shop_name,
           shopAddress: resData?.vendorData?.shop_address,
           memberData: membersWithImgSrc,
-          description : resData?.vendorData?.description,
-          shopPolicy : resData?.vendorData?.shop_policy,
+          description: resData?.vendorData?.description,
+          shopPolicy: resData?.vendorData?.shop_policy,
           headline: resData?.vendorData?.story_headline,
           storyDesc: resData?.vendorData?.story,
-          shopPhotos: resData?.vendorData?.shop_photos
+          shopPhotos: resData?.vendorData?.shop_photos,
+          reviewRequest: resData?.vendorData?.reviewRequest,
         }));
-        setImgUrls({shopIconUrl: `${res?.data?.shopIconBaseUrl}${resData?.vendorData?.shop_icon}`})
-        setShowVideo(resData?.vendorData?.shop_video ?`${res?.data?.shopVideoBaseUrl}${resData?.vendorData?.shop_video}`:"");
+        setImgUrls({ shopIconUrl: `${res?.data?.shopIconBaseUrl}${resData?.vendorData?.shop_icon}` })
+        setShowVideo(resData?.vendorData?.shop_video ? `${res?.data?.shopVideoBaseUrl}${resData?.vendorData?.shop_video}` : "");
         setImageSrc(resData?.image);
         const modifiedPhotos = resData?.vendorData?.shop_photos?.map((photo) => ({
           ...photo,
@@ -199,10 +205,12 @@ const Add = () => {
       setDescriptionTab(true)
       setShopPolicyTab(true)
       setStoryTab(true)
+      setReviewRequestTab(true);
       setCheckShopInfo(true)
       setCheckInfo(true)
       setCheckMember(true)
       setCheckDescription(true)
+      setCheckStory(true)
       setCheckShopPolicy(true)
       setCheckShop(true)
     } else {
@@ -223,8 +231,9 @@ const Add = () => {
         msgToBuyers: "",
         shopIcon: null,
         newShopName: "",
-        description:"",
-        shopPolicy:"",
+        description: "",
+        reviewRequest: "",
+        shopPolicy: "",
         memberData: [],
         headline: "",
         storyDesc: "",
@@ -271,10 +280,9 @@ const Add = () => {
 
       case "info":
         if (!formValues.shopTitle) newErrors.shopTitle = "Shop title is required";
-        if(!formValues.shopAddress) newErrors.shopAddress = "Shop address is required";
         if (!imgUrls.shopIconUrl) newErrors.shopIcon = "Shop Icon is required";
         // if (!formValues.shopAnnouncement)
-          // newErrors.shopAnnouncement = "Shop Announcement is required";
+        // newErrors.shopAnnouncement = "Shop Announcement is required";
         // if (!formValues.msgToBuyers) newErrors.msgToBuyers = "Message To Buyers is required";
         setErrors(newErrors);
         if (Object.keys(newErrors).length === 0) {
@@ -324,6 +332,12 @@ const Add = () => {
         //   !shopData[0]?.imgSrc || !shopData[0]?.title
         // )
         //   newErrors.shopPhotos = "Shop Photos is required";
+        setErrors(newErrors);
+        if (Object.keys(newErrors).length === 0) {
+          return true;
+        }
+        break;
+      case "reviewRequest":
         setErrors(newErrors);
         if (Object.keys(newErrors).length === 0) {
           return true;
@@ -387,15 +401,22 @@ const Add = () => {
         }
         break;
 
-        case "description":
-          if (checkDescription === true) {
-            if (handleValidate(value)) {
-              setValue(newValue);
-            } else setValue(value);
-          } else {
+      case "description":
+        if (checkDescription === true) {
+          if (handleValidate(value)) {
             setValue(newValue);
-          }
-          break;
+          } else setValue(value);
+        } else {
+          setValue(newValue);
+        }
+        break;
+
+      case "story":
+        if (checkStory === true) {
+          handleValidate(value); // run validation but don't block
+        }
+        setValue(newValue);
+        break;
 
       default:
         setValue(newValue);
@@ -403,7 +424,7 @@ const Add = () => {
     }
   };
 
-  
+
   const handleUploadImg = async (id) => {
     try {
       const formData = new FormData();
@@ -475,11 +496,12 @@ const Add = () => {
           shop_policy: formValues.shopPolicy,
           story_headline: formValues.headline,
           story: formValues.storyDesc,
-          shop_photos: filterShopData
+          shop_photos: filterShopData,
+          reviewRequest: formValues.reviewRequest
         };
-        if(formValues?.shopVideo && !isDeleteVideo){
+        if (formValues?.shopVideo && !isDeleteVideo) {
           payload.isDeleteVideo = false;
-        }else{
+        } else {
           payload.isDeleteVideo = true;
         }
         const res = await ApiService.post(apiEndpoints.addVendor, payload, auth_key);
@@ -498,7 +520,7 @@ const Add = () => {
           }
           // navigate(ROUTE_CONSTANT.vendor.list);
           // if(!queryId) {
-            setRoute(ROUTE_CONSTANT.vendor.list);
+          setRoute(ROUTE_CONSTANT.vendor.list);
           // }
           handleOpen("success", res?.data);
         }
@@ -515,7 +537,7 @@ const Add = () => {
     <Box sx={{ margin: "30px" }}>
       <Box sx={{ p: { lg: "24px", md: "24px", xs: "12px" } }} component={Paper}>
         <TabContext value={value}>
-          <Box sx={{ maxWidth: { xs: 320, sm: 900 } }}>
+          <Box sx={{ maxWidth: { xs: 320, sm: 1020 } }}>
             <TabList
               onChange={handleTabChange}
               variant="scrollable"
@@ -533,6 +555,7 @@ const Add = () => {
               <Tab label="Members" value="members" disabled={memberTab === false ? true : false} />
               <Tab label="Description" value="description" disabled={descriptionTab === false ? true : false} />
               <Tab label="story" value="story" disabled={storyTab === false ? true : false} />
+              <Tab label="Review Request" value="reviewRequest" disabled={reviewRequestTab === false ? true : false} />
             </TabList>
           </Box>
           <Box>
@@ -592,7 +615,7 @@ const Add = () => {
                 />
               </TabPanel>
             )}
-             {value === "shopPolicy" && (
+            {value === "shopPolicy" && (
               <TabPanel value="shopPolicy">
                 <ShopPolicy
                   formValues={formValues}
@@ -662,6 +685,23 @@ const Add = () => {
                   loading={loading}
                   handleVendorSave={handleSave}
                   setIsDeleteVideo={setIsDeleteVideo}
+                  setValue={setValue}
+                  setCheckStory={setCheckStory}
+                  setReviewRequestTab={setReviewRequestTab}
+                />
+              </TabPanel>
+            )}
+            {value === "reviewRequest" && (
+              <TabPanel value="reviewRequest">
+                <ReviewRequest
+                  formValues={formValues}
+                  errors={errors}
+                  setFormValues={setFormValues}
+                  setErrors={setErrors}
+                  handleValidate={handleValidate}
+                  queryId={queryId}
+                  loading={loading}
+                  handleVendorSave={handleSave}
                 />
               </TabPanel>
             )}

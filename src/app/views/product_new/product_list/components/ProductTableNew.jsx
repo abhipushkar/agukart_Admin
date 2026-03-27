@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import {
     Table,
     TableBody,
@@ -298,6 +298,35 @@ const ProductRow = ({ product, index }) => {
     const activeChild = product.productData?.find(
         child => child.productStatus === 'active'
     );
+    const getEditUrl =
+        product.type === "variations"
+            ? `${ROUTE_CONSTANT.catalog.product.parentProducts}?id=${product._id}`
+            : `${ROUTE_CONSTANT.catalog.product.add}?id=${product._id}`;
+
+    const getCopyUrl =
+        product.type === "variations"
+            ? `${ROUTE_CONSTANT.catalog.product.parentProducts}?id=${product._id}&listing=copy`
+            : `${ROUTE_CONSTANT.catalog.product.add}?_id=${product._id}&listing=copy`;
+
+    const handleLinkClick = (e) => {
+        // Only run for normal left click (not ctrl/cmd/middle click)
+        if (
+            e.button !== 0 ||     // not left click
+            e.ctrlKey ||          // ctrl click
+            e.metaKey ||          // cmd click (mac)
+            e.shiftKey ||
+            e.altKey
+        ) {
+            return; // let browser handle it (new tab etc.)
+        }
+
+        persistListViewContext({
+            status: filters.status,
+            scrollY: getCurrentScrollPosition()
+        });
+
+        setActionAnchorEl(null);
+    };
 
     // Check if all Product Information sub-columns are hidden
     const showProductInfoColumn = !filters.hiddenColumns.includes('Product Id') ||
@@ -669,29 +698,29 @@ const ProductRow = ({ product, index }) => {
                             onClose={() => setActionAnchorEl(null)}
                         >
                             <MenuItem
-                                sx={{ fontSize: '0.8rem' }}
-                                onClick={() => navigateWithListContext(
-                                    product.type === 'variations'
-                                        ? `${ROUTE_CONSTANT.catalog.product.parentProducts}?id=${product._id}`
-                                        : `${ROUTE_CONSTANT.catalog.product.add}?id=${product._id}`
-                                )}
+                                component={Link}
+                                to={getEditUrl}
+                                onClick={handleLinkClick}
+                                sx={{ fontSize: "0.8rem" }}
                             >
                                 Edit
                             </MenuItem>
+
                             <MenuItem
-                                sx={{ fontSize: '0.8rem' }}
-                                onClick={() => navigateWithListContext(
-                                    product.type === 'variations'
-                                        ? `${ROUTE_CONSTANT.catalog.product.parentProducts}?id=${product._id}&listing=copy`
-                                        : `${ROUTE_CONSTANT.catalog.product.add}?_id=${product._id}&listing=copy`
-                                )}
+                                component={Link}
+                                to={getCopyUrl}
+                                onClick={handleLinkClick}
+                                sx={{ fontSize: "0.8rem" }}
                             >
                                 Copy Listing
                             </MenuItem>
 
-                            {filters.status === "delete" && designation_id === "2" ? <MenuItem onClick={handleDelete}
-                                sx={{ fontSize: '0.8rem' }}>Delete</MenuItem> : filters.status !== "delete" &&
-                            <MenuItem onClick={handleDelete} sx={{ fontSize: '0.8rem' }}>Delete</MenuItem>}
+                            {(filters.status === "delete" && designation_id === "2") ||
+                                filters.status !== "delete" ? (
+                                <MenuItem onClick={handleDelete} sx={{ fontSize: "0.8rem" }}>
+                                    Delete
+                                </MenuItem>
+                            ) : null}
                         </Menu>
                     </Box>
                 </TableCell>
@@ -739,6 +768,29 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
     // Check if all Common Settings sub-columns are hidden
     const showCommonSettingsColumn = !filters.hiddenColumns.includes('Sale Price') ||
         !filters.hiddenColumns.includes('Sort Order');
+
+    const editUrl = `${ROUTE_CONSTANT.catalog.product.add}?id=${variation._id}`;
+    const copyUrl = `${ROUTE_CONSTANT.catalog.product.add}?_id=${variation._id}&listing=copy`;
+
+    const handleLinkClick = (e) => {
+        // Only run for normal left click (not ctrl/cmd/middle click)
+        if (
+            e.button !== 0 ||     // not left click
+            e.ctrlKey ||          // ctrl click
+            e.metaKey ||          // cmd click (mac)
+            e.shiftKey ||
+            e.altKey
+        ) {
+            return; // let browser handle it (new tab etc.)
+        }
+
+        persistListViewContext({
+            status: filters.status,
+            scrollY: getCurrentScrollPosition()
+        });
+
+        setActionAnchorEl(null);
+    };
 
     // Fixed debounce function for API calls
     const debouncedApiCall = useRef(
@@ -1073,18 +1125,26 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
                         onClose={() => setActionAnchorEl(null)}
                     >
                         <MenuItem
-                            sx={{ fontSize: '0.8rem' }}
-                            onClick={() => navigateWithListContext(`${ROUTE_CONSTANT.catalog.product.add}?id=${variation._id}`)}
+                            component={Link}
+                            to={editUrl}
+                            onClick={handleLinkClick}
+                            sx={{ fontSize: "0.8rem" }}
                         >
                             Edit
                         </MenuItem>
+
                         <MenuItem
-                            sx={{ fontSize: '0.8rem' }}
-                            onClick={() => navigateWithListContext(`${ROUTE_CONSTANT.catalog.product.add}?_id=${variation._id}&listing=copy`)}
+                            component={Link}
+                            to={copyUrl}
+                            onClick={handleLinkClick}
+                            sx={{ fontSize: "0.8rem" }}
                         >
                             Copy Listing
                         </MenuItem>
-                        <MenuItem onClick={handleDelete} sx={{ fontSize: '0.8rem' }}>Delete</MenuItem>
+
+                        <MenuItem onClick={handleDelete} sx={{ fontSize: "0.8rem" }}>
+                            Delete
+                        </MenuItem>
                     </Menu>
                 </Box>
             </TableCell>

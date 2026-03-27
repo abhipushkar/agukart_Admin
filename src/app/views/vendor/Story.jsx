@@ -36,8 +36,18 @@ const Story = ({
   queryId,
   loading,
   handleVendorSave,
-  setIsDeleteVideo
+  setIsDeleteVideo,
+  setValue,
+  setCheckStory,
+  setReviewRequestTab,
 }) => {
+  const handleNext = () => {
+    if (handleValidate("story")) {
+      setValue("reviewRequest");
+      setCheckStory(true);
+      setReviewRequestTab(true);
+    }
+  };
   console.log({ shopData, showVideo })
   const navigate = useNavigate();
   const videoRef = useRef();
@@ -668,6 +678,24 @@ const Story = ({
           >
             Cancel
           </Button> */}
+          <Button
+            onClick={handleNext}
+            sx={{
+              backgroundColor: "#43a047",          // Green button
+              color: "#fff",
+              border: "none",
+              borderRadius: "5px",
+              ml: 2,
+              padding: "6px 18px",
+              fontWeight: 500,
+              textTransform: "capitalize",
+              "&:hover": {
+                backgroundColor: "#388e3c",        // Darker green on hover
+              }
+            }}
+          >
+            Next
+          </Button>
         </Typography>
       </Box>
       <ConfirmModal open={open} handleClose={handleClose} type={type} msg={msg} handleDelete={handleDelete} />
