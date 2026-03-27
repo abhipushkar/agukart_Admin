@@ -20,7 +20,8 @@ import {
     DialogContent,
     DialogActions,
     TextField,
-    Tooltip
+    Tooltip,
+    Switch
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import ViewColumnIcon from "@mui/icons-material/ViewColumn";
@@ -158,6 +159,7 @@ const VariationsTable = ({ setShowVariantModal, isSynced }) => {
         guide_type: "",
         guide_file_url: ""
     });
+    const [viewAllOn, setViewAllOn] = useState(false);
 
     // Initialize visible columns based on product_variants
     useEffect(() => {
@@ -752,7 +754,18 @@ const VariationsTable = ({ setShowVariantModal, isSynced }) => {
                                     </Typography>
                                 </Box>
                             </Box>
-                            <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Box sx={{ display: 'flex', gap: 3 }}>
+                                <Box sx={{ display: 'flex', gap: 1, height: "full", alignItems: "center" }}>
+                                    <Typography fontWeight={500}>
+                                        View All visiblity :
+                                    </Typography>
+                                    <Switch
+                                        checked={viewAllOn}
+                                        onChange={() => setViewAllOn(prev => !prev)}
+                                        inputProps={{ 'aria-label': 'controlled' }}
+                                        size="small"
+                                    />
+                                </Box>
                                 <Button
                                     startIcon={<ViewColumnIcon />}
                                     onClick={(e) => handleColumnMenuOpen(e, tableKey)}
