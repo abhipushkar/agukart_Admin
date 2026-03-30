@@ -101,7 +101,7 @@ const VariantModal = ({ show, handleCloseVariant }) => {
 
     // Check if there are any combined variants
     const hasCombinedVariants = useCallback(() => {
-        return combinations?.some(comb => comb.isCombined) || false;
+        return (combinations || []).some((comb) => comb?.isCombined) || false;
     }, [combinations]);
 
     // ========== DRAG AND DROP FOR AUTOCOMPLETE LIST ==========
@@ -175,9 +175,18 @@ const VariantModal = ({ show, handleCloseVariant }) => {
     const handleDrop = (e, targetIndex) => {
         e.preventDefault();
         if (hasCombinedVariants() || draggedIndex === null) return; // Disable drag if combined variants exist
+        const isValidIndex = (idx, len) => Number.isInteger(idx) && idx >= 0 && idx < len;
+        if (!isValidIndex(draggedIndex, (variationsData || []).length) || !isValidIndex(targetIndex, (variationsData || []).length)) {
+            setDraggedIndex(null);
+            return;
+        }
 
         const currentData = [...variationsData];
         const draggedItem = currentData[draggedIndex];
+        if (!draggedItem) {
+            setDraggedIndex(null);
+            return;
+        }
 
         // Remove dragged item
         currentData.splice(draggedIndex, 1);
@@ -197,10 +206,16 @@ const VariantModal = ({ show, handleCloseVariant }) => {
 
     // Reorder product_variants and combinations when variations are reordered
     const reorderAssociatedData = (fromIndex, toIndex) => {
+        const isValidIndex = (idx, len) => Number.isInteger(idx) && idx >= 0 && idx < len;
+
         // Reorder product_variants
         if (product_variants && product_variants.length > 0) {
+            if (!isValidIndex(fromIndex, product_variants.length) || !isValidIndex(toIndex, product_variants.length)) {
+                return;
+            }
             const reorderedProductVariants = [...product_variants];
             const draggedVariant = reorderedProductVariants[fromIndex];
+            if (!draggedVariant) return;
             reorderedProductVariants.splice(fromIndex, 1);
             reorderedProductVariants.splice(toIndex, 0, draggedVariant);
             setProductVariants(reorderedProductVariants);
@@ -208,8 +223,12 @@ const VariantModal = ({ show, handleCloseVariant }) => {
 
         // Reorder combinations
         if (combinations && combinations.length > 0) {
+            if (!isValidIndex(fromIndex, combinations.length) || !isValidIndex(toIndex, combinations.length)) {
+                return;
+            }
             const reorderedCombinations = [...combinations];
             const draggedCombination = reorderedCombinations[fromIndex];
+            if (!draggedCombination) return;
             reorderedCombinations.splice(fromIndex, 1);
             reorderedCombinations.splice(toIndex, 0, draggedCombination);
             setCombinations(reorderedCombinations);

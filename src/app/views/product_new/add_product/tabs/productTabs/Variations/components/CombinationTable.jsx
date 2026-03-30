@@ -166,7 +166,8 @@ const CombinationsTable = ({ isSynced }) => {
 
     return (
         <Box>
-            {combinations.map((comb, combindex) => {
+            {(combinations || []).map((comb, combindex) => {
+                if (!comb?.combinations) return null;
                 const itemsToShow = showAll ? comb.combinations : comb.combinations.slice(0, 5);
                 const showsPrice =
                     (variationsData.length >= 2 ? formValues?.prices === comb.variant_name : true) &&

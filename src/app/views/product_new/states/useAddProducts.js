@@ -954,18 +954,18 @@ export const useProductFormStore = create(
                             if (!isVisible) return;
 
                             // ✅ PRICE VALIDATION (ONLY if toggle ON AND controller)
-                            const rowPriceToggle =
-                                combo.isCheckedPrice === true || combo.isCheckedPrice === "true";
-                            const rowQtyToggle =
-                                combo.isCheckedQuantity === true || combo.isCheckedQuantity === "true";
                             const rowPriceVariation =
                                 combo.isPriceVariation === true || combo.isPriceVariation === "true";
                             const rowQtyVariation =
                                 combo.isQuantityVariation === true || combo.isQuantityVariation === "true";
+                            const rowPriceInputMatch =
+                                isSameVariant(combo.priceInput, group.variant_name);
+                            const rowQtyInputMatch =
+                                isSameVariant(combo.quantityInput, group.variant_name);
                             const shouldValidatePrice =
-                                priceToggle && (showsPriceByController || rowPriceToggle || rowPriceVariation);
+                                priceToggle && (showsPriceByController || rowPriceVariation || rowPriceInputMatch);
                             const shouldValidateQty =
-                                qtyToggle && (showsQtyByController || rowQtyToggle || rowQtyVariation);
+                                qtyToggle && (showsQtyByController || rowQtyVariation || rowQtyInputMatch);
                             if (shouldValidatePrice) {
                                 if (isEmpty(combo.price)) {
                                     errors[`Price-${group.variant_name}-${index}`] =
