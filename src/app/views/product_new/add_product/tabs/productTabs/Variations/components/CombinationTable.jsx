@@ -96,6 +96,7 @@ const CombinationsTable = ({ isSynced }) => {
         variationsData,
         combinationError,
         inputErrors,
+        setInputErrors,
         showAll,
         setShowAll,
         handleToggle,
@@ -139,6 +140,24 @@ const CombinationsTable = ({ isSynced }) => {
 
     const handleSeeMore = () => {
         setShowAll(!showAll);
+    };
+
+    const handleFieldChange = (e, comb, combindex, index) => {
+        const { name, value } = e.target;
+        handleCombChange(e, combindex, index);
+
+        if (name === "price") {
+            setInputErrors({
+                [`Price-${comb.variant_name}-${index}`]: value === "" ? "Price is required" : ""
+            });
+        }
+
+        if (name === "qty") {
+            setInputErrors({
+                [`Quantity-${comb.variant_name}-${index}`]: value === "" ? "Quantity is required" : ""
+            });
+        }
+        console.log(inputErrors);
     };
 
     if (!combinations || combinations.length === 0) {
@@ -211,13 +230,13 @@ const CombinationsTable = ({ isSynced }) => {
                             </Box>
                         </Box>
 
-                        {hasVariantError && (
+                        {/* {hasVariantError && (
                             <Box sx={{ px: 2, py: 1, background: "#fff4f4", borderBottom: "1px solid #f44336" }}>
                                 <Typography color="error" fontSize={13}>
                                     Please fix price / quantity errors for {comb.variant_name}
                                 </Typography>
                             </Box>
-                        )}
+                        )} */}
 
                         <TableContainer component={Paper} sx={{ border: 'none', borderRadius: 0 }}>
                             <Table>
@@ -266,7 +285,7 @@ const CombinationsTable = ({ isSynced }) => {
                                                             type="text"
                                                             name="price"
                                                             value={item.price || ""}
-                                                            onChange={(e) => handleCombChange(e, combindex, index)}
+                                                            onChange={(e) => handleFieldChange(e, comb, combindex, index)}
                                                             size="small"
                                                             error={!!inputErrors[`Price-${comb.variant_name}-${index}`]}
                                                             helperText={inputErrors[`Price-${comb.variant_name}-${index}`]}
@@ -280,7 +299,7 @@ const CombinationsTable = ({ isSynced }) => {
                                                             type="text"
                                                             name="qty"
                                                             value={item.qty || ""}
-                                                            onChange={(e) => handleCombChange(e, combindex, index)}
+                                                            onChange={(e) => handleFieldChange(e, comb, combindex, index)}
                                                             size="small"
                                                             error={!!inputErrors[`Quantity-${comb.variant_name}-${index}`]}
                                                             helperText={inputErrors[`Quantity-${comb.variant_name}-${index}`]}

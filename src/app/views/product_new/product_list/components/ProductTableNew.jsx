@@ -198,7 +198,7 @@ const CommonSettingsColumn = ({ product, isProduct, onFieldChange, actionLoading
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'center', justifyContent: 'center' }}>
             {/* Sale Price */}
-            {!filters.hiddenColumns.includes('Sale Price') && (
+            {!filters.hiddenColumns.includes('Sale Price') && product.sale_price > 0 && (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
                     <Typography variant="body2"
                         sx={{ fontWeight: 'bold', textWrap: "noWrap", minWidth: '50px', fontSize: '0.7rem' }}>
@@ -630,7 +630,7 @@ const ProductRow = ({ product, index }) => {
                 {!filters.hiddenColumns.includes('Available') && (
                     <TableCell sx={{ padding: '4px', minWidth: '80px' }}>
                         <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
-                            {isProduct ? product.qty : '-'}
+                            {isProduct ? product.status !== "sold-out" && product.qty === "0" ? "Combinations" : product.qty : '-'}
                         </Typography>
                     </TableCell>
                 )}
@@ -1058,7 +1058,7 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
 
             {!filters.hiddenColumns.includes('Available') && (
                 <TableCell sx={{ padding: '4px', minWidth: '80px' }}>
-                    <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>{variation.qty}</Typography>
+                    <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>{variation.productStatus !== "sold-out" && variation.qty === "0" ? "Combinations" : variation.qty}</Typography>
                 </TableCell>
             )}
 

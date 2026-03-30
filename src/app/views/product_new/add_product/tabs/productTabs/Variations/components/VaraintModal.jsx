@@ -529,8 +529,8 @@ const VariantModal = ({ show, handleCloseVariant }) => {
                         // Preserve existing price, quantity, and visibility data
                         return {
                             ...newComb,
-                            price: newComb.isPriceVariation ? (existingComb.price !== undefined && existingComb.price !== null ? existingComb.price : newComb.price) : "",
-                            qty: newComb.isQuantityVariation ? (existingComb.qty !== undefined && existingComb.qty !== null ? existingComb.qty : newComb.qty) : "",
+                            price: existingComb.price || newComb.price,
+                            qty: existingComb.qty || newComb.qty,
                             isVisible: existingComb.hasOwnProperty('isVisible') ? existingComb.isVisible : newComb.isVisible,
                         };
                     }
@@ -978,7 +978,7 @@ const VariantModal = ({ show, handleCloseVariant }) => {
             // Clear the corresponding form data when toggled on
             if (checked) {
                 if (name === "isCheckedPrice") {
-                    setFormData(prev => ({ ...prev, salePrice: "0" }));
+                    setFormData(prev => ({ ...prev, salePrice: "" }));
                 } else if (name === "isCheckedQuantity") {
                     setFormData(prev => ({ ...prev, quantity: "" }));
                 }
