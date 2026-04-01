@@ -530,6 +530,12 @@ export default function ProductParentTable({
                                                     helperText={currentSkuError}
                                                     id="outlined-adornment-quantity"
                                                     placeholder="Seller SKU"
+                                                    FormHelperTextProps={{
+                                                        sx: {
+                                                            wordBreak: "keep-all",     // prevents breaking words
+                                                            overflowWrap: "normal"     // ensures wrapping only at spaces
+                                                        }
+                                                    }}
                                                     InputProps={{
                                                         endAdornment: loadingSkus[index] ? (
                                                             <InputAdornment position="end">

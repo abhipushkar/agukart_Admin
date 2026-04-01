@@ -34,8 +34,8 @@ const ProductVariations = () => {
         }
 
         // Check if any combined variants exist
-        const hasCombinedVariants = combinations.some(comb =>
-            comb.variant_name.includes(" and ")
+        const hasCombinedVariants = (combinations || []).some(
+            (comb) => comb?.variant_name?.includes(" and ")
         );
 
         return !hasCombinedVariants;

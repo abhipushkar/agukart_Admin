@@ -39,6 +39,7 @@ self.onmessage = function (e) {
                 "Address 2nd line": parent.address_line2,
                 "Zip code": parent.pincode,
                 City: parent.city,
+                "State": parent.state,
                 "Country name": parent.country,
                 "Phone no.": `${parent.phone_code}${parent.mobile}`,
                 "Buyer Email id": parent.userEmail,
@@ -66,15 +67,15 @@ self.onmessage = function (e) {
 
         // force column width (optional but recommended)
         worksheet["!cols"] = [
-            { wch: 15 }, { wch: 25 }, { wch: 15 }, { wch: 15 },
-            { wch: 25 }, { wch: 25 }, { wch: 10 }, { wch: 15 },
-            { wch: 20 }, { wch: 20 }, { wch: 40 }
+            { wch: 20 }, { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 25 },
+            { wch: 25 }, { wch: 25 }, { wch: 10 }, { wch: 15 }, { wch: 25 },
+            { wch: 20 }, { wch: 20 }, { wch: 25 }, { wch: 25 }, { wch: 40 }
         ];
         // apply wrap to all cells in "Complete Address" column
         const range = XLSX.utils.decode_range(worksheet['!ref']);
 
         for (let R = range.s.r + 1; R <= range.e.r; ++R) {
-            const cellRef = XLSX.utils.encode_cell({ r: R, c: 10 }); // column index 10 (Complete Address)
+            const cellRef = XLSX.utils.encode_cell({ r: R, c: 14 }); // column index 11 (Complete Address)
             if (worksheet[cellRef]) {
                 worksheet[cellRef].s = {
                     alignment: { wrapText: true },

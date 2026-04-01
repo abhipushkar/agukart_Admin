@@ -306,14 +306,16 @@ export const useProductAPI = () => {
                     }
 
                     // Force empty string for price and qty if their columns are not enabled
-                    if (fieldKey === "price" && (comb.isPriceVariation === false || comb.isPriceVariation === "false")) {
+                    if (fieldKey === "price" && (comb.isCheckedPrice === "false" || comb.isCheckedPrice === false)) {
                         fData.append(`combinationData[${vIndex}][combinations][${cIndex}][${fieldKey}]`, "");
                         return;
                     }
-                    if (fieldKey === "qty" && (comb.isQuantityVariation === false || comb.isQuantityVariation === "false")) {
+                    if (fieldKey === "qty" && (comb.isCheckedQuantity === false || comb.isCheckedQuantity === "false")) {
                         fData.append(`combinationData[${vIndex}][combinations][${cIndex}][${fieldKey}]`, "");
                         return;
                     }
+
+
 
                     if (Array.isArray(fieldVal)) {
                         fieldVal.forEach((item, idx) => {
@@ -524,7 +526,7 @@ export const useProductAPI = () => {
             tax_code: formData.ProductTaxCode,
             shipping_templates: formData.shipingTemplates,
             price: +formData.yourPrice,
-            sale_price: +formData.salePrice,
+            sale_price: formValues.isCheckedPrice ? 0 : +formData.salePrice,
             sale_start_date: formData.saleStartDate,
             sale_end_date: formData.saleEndDate,
             qty: formData.quantity,
@@ -569,7 +571,7 @@ export const useProductAPI = () => {
             isCombination: combinations.length > 0,
             dynamicFields: formData.dynamicFields,
         };
-        console.log({ payload });
+
         return payload;
     };
 

@@ -77,6 +77,7 @@ export default function VendorBannerImage() {
     const [zoom, setZoom] = useState(1);
     const [rotation, setRotation] = useState(0);
     const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+    const [aspectRatio, setAspectRatio] = useState(4); // for 1200/160 
 
     // API endpoints (placeholders)
     const GET_BANNERS_URL = "/get-shop-banner";
@@ -138,6 +139,7 @@ export default function VendorBannerImage() {
 
             setEditedImage(editedFile);
             setCropDialogOpen(false);
+            setAspectRatio(4);
             setOpenDialog(true);
         } catch (error) {
             console.error("Error cropping image:", error);
@@ -234,6 +236,7 @@ export default function VendorBannerImage() {
         }
         return "";
     };
+
 
     return (
         <Container>
@@ -380,13 +383,41 @@ export default function VendorBannerImage() {
             <Dialog open={cropDialogOpen} onClose={() => setCropDialogOpen(false)} maxWidth="lg" fullWidth>
                 <DialogTitle>Crop Banner Image</DialogTitle>
                 <DialogContent>
+                    <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+                        <Tooltip arrow placement="bottom-end" title="4:1 Aspect Ratio">
+                            <Button
+                                variant={aspectRatio === 1200 / 300 ? "contained" : "outlined"}
+                                onClick={() => setAspectRatio(1200 / 300)}
+                            >
+                                Short Banner (1200×300)
+                            </Button>
+                        </Tooltip>
+
+                        <Tooltip arrow placement="bottom-end" title="5:1 Aspect Ratio">
+                            <Button
+                                variant={aspectRatio === 5 ? "contained" : "outlined"}
+                                onClick={() => setAspectRatio(5)}
+                            >
+                                Mid Banner (1200×240)
+                            </Button>
+                        </Tooltip>
+
+                        <Tooltip arrow placement="bottom-end" title="15:2 Aspect Ratio">
+                            <Button
+                                variant={aspectRatio === 1200 / 160 ? "contained" : "outlined"}
+                                onClick={() => setAspectRatio(1200 / 160)}
+                            >
+                                Tall Banner (1200×160)
+                            </Button>
+                        </Tooltip>
+                    </Box>
                     <Box sx={{ position: 'relative', height: 400, width: '100%', mt: 2, bgcolor: '#333' }}>
                         <Cropper
                             image={originalImage}
                             crop={crop}
                             zoom={zoom}
                             rotation={rotation}
-                            aspect={16 / 9}
+                            aspect={aspectRatio}
                             onCropChange={setCrop}
                             onZoomChange={setZoom}
                             onRotationChange={setRotation}
@@ -431,7 +462,7 @@ export default function VendorBannerImage() {
                     </Box>
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={() => setCropDialogOpen(false)} color="error" startIcon={<CloseIcon />}>Cancel</Button>
+                    <Button onClick={() => { setCropDialogOpen(false); setAspectRatio(4); }} color="error" startIcon={<CloseIcon />}>Cancel</Button>
                     <Button onClick={handleCropApply} color="success" variant="contained" startIcon={<CheckIcon />}>Apply Crop</Button>
                 </DialogActions>
             </Dialog>

@@ -219,7 +219,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                 }
                             }}
                         >
-                            Select all
+                            {isDateGroupFullySelected(items.date) ? "Unselect all" : "Select All"}
                         </Button>
                     </Typography>
                 </Box>

@@ -911,16 +911,18 @@ export const useProductFormStore = create(
                 if (!state.formData.productTitle) errors.productTitle = "Product Title is Required";
                 if (!state.formData.productDescription) errors.productDescription = "Product description is Required";
                 if (!state.formData.images || state.formData.images.length === 0) errors.images = "Product image is Required";
-                if (!state.formValues?.isCheckedPrice && !state.formData.salePrice) errors.salePrice = "Sale Price is Required";
+                if (!state.formValues?.isCheckedPrice && (!state.formData.salePrice || state.formData.salePrice === "0")) errors.salePrice = "Sale Price is Required";
                 if (!state.formValues?.isCheckedQuantity && !state.formData.quantity) errors.quantity = "Quantity is Required";
                 if (!state.formData.exchangePolicy) errors.exchangePolicy = "Return and exchange policy is required";
 
                 const isTrue = (val) => val === true || val === "true";
                 const isEmpty = (val) =>
                     val === "" || val === null || val === undefined;
+                const isSameVariant = (a, b) =>
+                    (a || "").toString().trim() === (b || "").toString().trim();
 
                 // ========== COMBINATION PRICE / QUANTITY VALIDATION ==========
-                if (state.formData.isCombination === "true") {
+                if (isTrue(state.formData.isCombination) || (state.combinations || []).length > 0) {
                     const {
                         isCheckedPrice,
                         isCheckedQuantity,
@@ -934,11 +936,17 @@ export const useProductFormStore = create(
                     const combinations = state.combinations || [];
 
                     combinations.forEach((group) => {
-                        const isPriceController =
-                            priceToggle && group.variant_name === priceControllerVariant;
+                        const showsPriceByController =
+                            priceToggle &&
+                            ((state.variationsData || []).length >= 2
+                                ? isSameVariant(group.variant_name, priceControllerVariant)
+                                : true);
 
-                        const isQtyController =
-                            qtyToggle && group.variant_name === qtyControllerVariant;
+                        const showsQtyByController =
+                            qtyToggle &&
+                            ((state.variationsData || []).length >= 2
+                                ? isSameVariant(group.variant_name, qtyControllerVariant)
+                                : true);
 
                         group.combinations?.forEach((combo, index) => {
                             const isVisible =
@@ -946,7 +954,19 @@ export const useProductFormStore = create(
                             if (!isVisible) return;
 
                             // ✅ PRICE VALIDATION (ONLY if toggle ON AND controller)
-                            if (priceToggle && isPriceController) {
+                            const rowPriceVariation =
+                                combo.isPriceVariation === true || combo.isPriceVariation === "true";
+                            const rowQtyVariation =
+                                combo.isQuantityVariation === true || combo.isQuantityVariation === "true";
+                            const rowPriceInputMatch =
+                                isSameVariant(combo.priceInput, group.variant_name);
+                            const rowQtyInputMatch =
+                                isSameVariant(combo.quantityInput, group.variant_name);
+                            const shouldValidatePrice =
+                                priceToggle && (showsPriceByController || rowPriceVariation || rowPriceInputMatch);
+                            const shouldValidateQty =
+                                qtyToggle && (showsQtyByController || rowQtyVariation || rowQtyInputMatch);
+                            if (shouldValidatePrice) {
                                 if (isEmpty(combo.price)) {
                                     errors[`Price-${group.variant_name}-${index}`] =
                                         "Price is required";
@@ -954,7 +974,7 @@ export const useProductFormStore = create(
                             }
 
                             // ✅ QUANTITY VALIDATION (ONLY if toggle ON AND controller)
-                            if (qtyToggle && isQtyController) {
+                            if (shouldValidateQty) {
                                 if (isEmpty(combo.qty)) {
                                     errors[`Quantity-${group.variant_name}-${index}`] =
                                         "Quantity is required";
@@ -964,6 +984,17 @@ export const useProductFormStore = create(
                     });
                 }
 
+                console.log("[validateForm] summary", {
+                    isCombination: state.formData.isCombination,
+                    combinationsCount: (state.combinations || []).length,
+                    combination: state.combinations || [],
+                    isCheckedPrice: state.formValues?.isCheckedPrice,
+                    pricesController: state.formValues?.prices,
+                    isCheckedQuantity: state.formValues?.isCheckedQuantity,
+                    quantitiesController: state.formValues?.quantities,
+                    errorCount: Object.keys(errors).length,
+                    errors
+                });
                 return errors;
             }
         }),

@@ -476,7 +476,7 @@ const AddBulkTracking = ({ open, onClose }) => {
                         </Typography>
                         <Typography variant="body2">
                             Make sure your file follows the template format. The tracking numbers will be
-                            automatically matched with orders using order IDs or receipt numbers.
+                            automatically matched with orders using SubOrder IDs or receipt numbers.
                         </Typography>
                     </Alert>
                 </Stack>
