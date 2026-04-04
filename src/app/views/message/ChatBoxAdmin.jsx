@@ -17,15 +17,15 @@ import { useProfileData } from "app/contexts/profileContext";
 import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 import useChat from "app/hooks/useChat";
 
-const ChatBox = ({ slug,role }) => {
+const ChatBox = ({ slug, role }) => {
   const [messages, setMessages] = useState([]);
-  console.log({messages},"Fghrhjtjtyj")
+  console.log({ messages }, "Fghrhjtjtyj")
   const [input, setInput] = useState("");
   const [imagePreviews, setImagePreviews] = useState([]);
   console.log({ imagePreviews });
   const [files, setFiles] = useState([]);
   const { logUserData, setLogUserData } = useProfileData();
-  const [userData,setUserData] = useState({});
+  const [userData, setUserData] = useState({});
   const fileInputRef = useRef(null);
   // const receiverId = "66f4e9e2c0b4b8af3e4555e4";
   const senderId = logUserData?._id;
@@ -33,8 +33,8 @@ const ChatBox = ({ slug,role }) => {
   const { getUserDetails } = useChat();
 
   function removeHTMLTags(str) {
-    if(!str) return;
-    return str?.replace(/<\/?[^>]+(>|$)/g, ""); 
+    if (!str) return;
+    return str?.replace(/<\/?[^>]+(>|$)/g, "");
   }
 
   const handleFileChange = (e) => {
@@ -58,11 +58,11 @@ const ChatBox = ({ slug,role }) => {
   const designationId = localStorage.getItem("designation_id");
   useEffect(() => {
     const q = query(
-      collection(db,role == "admin" ? "composeChat" :"chatRooms"),
+      collection(db, role == "admin" ? "composeChat" : "chatRooms"),
       orderBy("createdAt", "asc")
     );
 
-    const unsubscribe = onSnapshot(q, async(snapshot) => {
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
       const newMessages = snapshot?.docs?.map((doc) => ({
         id: doc.id,
         ...doc.data()
@@ -82,7 +82,7 @@ const ChatBox = ({ slug,role }) => {
       });
     });
     return () => unsubscribe();
-  }, [slug,role]);
+  }, [slug, role]);
 
   //   console.log({usercredentials})
 
@@ -126,7 +126,7 @@ const ChatBox = ({ slug,role }) => {
       console.log("matchingDocumentmatchingDocumenttt", matchingDocument);
 
       if (matchingDocument) {
-       // Upload image if there is a file selected
+        // Upload image if there is a file selected
         if (files.length > 0) {
           imageUrls = await uploadImagesToFirebase();
           handleClearPreview(); // Clear preview and file after upload
@@ -139,14 +139,14 @@ const ChatBox = ({ slug,role }) => {
         const updatedText = [
           ...existingText,
           {
-            senderType:"vendor",
-            text: input,
+            senderType: "vendor",
+            text: input.trim(),
             imageUrls: imageUrls,
-            createdAt: new Date(),
+            createdAt: {
+              seconds: Math.floor(Date.now() / 1000),
+            },
             isNotification: false,
             messageSenderId: matchingDocument.data.receiverId,
-            isNotification: false,
-            productId: lastText?.productId,
           }
         ];
         const updateRese = await updateDoc(
@@ -218,7 +218,7 @@ const ChatBox = ({ slug,role }) => {
 
     // Update the document with the modified `text` field
     await updateDoc(
-      doc(db,role === "admin" ? "composeChat" : "chatRooms", matchingDocument.id),
+      doc(db, role === "admin" ? "composeChat" : "chatRooms", matchingDocument.id),
       {
         text: updatedText
       }
@@ -243,7 +243,7 @@ const ChatBox = ({ slug,role }) => {
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     return text.split(urlRegex).map((part, index) =>
       urlRegex.test(part) ? (
-        <a key={index} href={part} target="_blank" rel="noopener noreferrer" style={{ color: "blue",textDecoration: "underline" }}>
+        <a key={index} href={part} target="_blank" rel="noopener noreferrer" style={{ color: "blue", textDecoration: "underline" }}>
           {part}
         </a>
       ) : (
@@ -301,7 +301,7 @@ const ChatBox = ({ slug,role }) => {
                 <Box
                   sx={{
                     display: "flex",
-                    justifyContent: msg.senderType === "user" ? "flex-start" : role ? "flex-start" :"flex-end"
+                    justifyContent: msg.senderType === "user" ? "flex-start" : role ? "flex-start" : "flex-end"
                   }}
                 >
                   {(msg.senderType === "user" || role) && (
@@ -333,12 +333,12 @@ const ChatBox = ({ slug,role }) => {
                             sx={{
                               background: msg.senderType === "user" ? "#fff" : "#e9e9e9",
                               boxShadow: "0 0 3px #000",
-                              border: "2px solid black", 
+                              border: "2px solid black",
                               borderRadius: "6px",
                               maxWidth: "340px",
                               minWidth: "75px",
                               textAlign: "center",
-                              mb: 1, 
+                              mb: 1,
                             }}
                           >
                             <img
@@ -357,57 +357,60 @@ const ChatBox = ({ slug,role }) => {
                       }
                       {
                         msg.text && (
-                        <Typography
-                          p={2}
-                          component="div"
-                          sx={{
-                            background: msg.senderType === "user" ? "#fff" : "#e9e9e9",
-                            boxShadow: "0 0 3px #000",
-                            border: "1px solid #ccc",
-                            borderRadius: "6px",
-                            maxWidth: "100%",
-                            minWidth: "75px",
-                            textAlign: "initial",
-                            mt: 1,
-                          }}
-                        >
                           <Typography
+                            p={2}
+                            component="div"
                             sx={{
-                              wordWrap: "break-word",
-                              whiteSpace: "pre-line", 
+                              background: msg.senderType === "user" ? "#fff" : "#e9e9e9",
+                              boxShadow: "0 0 3px #000",
+                              border: "1px solid #ccc",
+                              borderRadius: "6px",
+                              maxWidth: "90%",
+                              minWidth: "75px",
+                              textAlign: "initial",
+                              mt: 1,
+                              ml: msg.senderType === "user" ? undefined : "auto"
                             }}
                           >
-                            {detectLink(msg.text || "")}
+                            <Typography
+                              sx={{
+                                whiteSpace: "pre-line",
+                                overflowWrap: "break-word",   // modern standard
+                                wordBreak: "break-word",      // fallback
+                                wordWrap: "break-word",       // legacy support
+                              }}
+                            >
+                              {detectLink(msg.text || "")}
+                            </Typography>
+                            {msg.productLink && (
+                              <Typography
+                                sx={{ wordWrap: "break-word", marginTop: "15px" }}
+                              >
+                                <a
+                                  href={msg.productLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{ color: "blue", textDecoration: "underline", whiteSpace: "nowrap" }}
+                                >
+                                  {msg.productLink}
+                                </a>
+                              </Typography>
+                            )}
+                            {msg.shopLink && (
+                              <Typography
+                                sx={{ wordWrap: "break-word", marginTop: "15px" }}
+                              >
+                                <a
+                                  href={msg.shopLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{ color: "blue", textDecoration: "underline", whiteSpace: "nowrap" }}
+                                >
+                                  {msg.shopLink}
+                                </a>
+                              </Typography>
+                            )}
                           </Typography>
-                          {msg.productLink && (
-                            <Typography
-                              sx={{ wordWrap: "break-word", marginTop: "15px" }}
-                            >
-                              <a
-                                href={msg.productLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{ color: "blue", textDecoration: "underline",whiteSpace: "nowrap" }}
-                              >
-                                {msg.productLink}
-                              </a>
-                            </Typography>
-                          )}
-                          {msg.shopLink && (
-                            <Typography
-                              sx={{ wordWrap: "break-word", marginTop: "15px" }}
-                            >
-                              <a
-                                href={msg.shopLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{ color: "blue", textDecoration: "underline",whiteSpace: "nowrap" }}
-                              >
-                                {msg.shopLink}
-                              </a>
-                            </Typography>
-                          )}
-                        </Typography>
                         )
                       }
                     </div>
@@ -441,9 +444,9 @@ const ChatBox = ({ slug,role }) => {
                           height={100}
                           style={{ borderRadius: 8, objectFit: "cover" }}
                         />
-                        <Box sx={{display:"flex",flexDirection:"column",textAlign:"left",width:"100%"}}>
-                          <Box sx={{ display: "flex", flexDirection: "column",flexGrow: 1 }}>
-                            <Typography sx={{ fontSize: 14, fontWeight: 600, color: "#333",lineClamp:2 }}>
+                        <Box sx={{ display: "flex", flexDirection: "column", textAlign: "left", width: "100%" }}>
+                          <Box sx={{ display: "flex", flexDirection: "column", flexGrow: 1 }}>
+                            <Typography sx={{ fontSize: 14, fontWeight: 600, color: "#333", lineClamp: 2 }}>
                               {removeHTMLTags(msg?.productData?.productTitle || "")}
                             </Typography>
                             <Typography sx={{ fontSize: 13, color: "gray" }}>
@@ -460,12 +463,12 @@ const ChatBox = ({ slug,role }) => {
                                 textTransform: "none",
                                 fontSize: 12,
                                 fontWeight: "bold",
-                                "&:hover": { background:"black"},
+                                "&:hover": { background: "black" },
                               }}
-                              onClick={()=>{
-                                  const url = `${msg.productLink}`
-                                  window.open(url, "_blank");
-                                }
+                              onClick={() => {
+                                const url = `${msg.productLink}`
+                                window.open(url, "_blank");
+                              }
                               }
                             >
                               Buy It Now
@@ -499,8 +502,8 @@ const ChatBox = ({ slug,role }) => {
                             display: "flex",
                             flexDirection: "column",
                             textAlign: "left",
-                            marginBottom:"53px",
-                            gap:"7px"
+                            marginBottom: "53px",
+                            gap: "7px"
                           }}
                         >
                           <Box
@@ -533,10 +536,10 @@ const ChatBox = ({ slug,role }) => {
                                 fontWeight: "bold",
                                 "&:hover": { background: "black" },
                               }}
-                              onClick={()=>{
-                                  const url = `${msg.shopLink}`
-                                  window.open(url, "_blank");
-                                }
+                              onClick={() => {
+                                const url = `${msg.shopLink}`
+                                window.open(url, "_blank");
+                              }
                               }
                             >
                               Visit Now
@@ -546,7 +549,7 @@ const ChatBox = ({ slug,role }) => {
                       </Box>
                     )}
                   </div>
-                  {(msg.senderType !== "user" && msg?.productId ) && (
+                  {(msg.senderType !== "user" && msg?.productId) && (
                     <Typography component="span" ml={2}>
                       <img
                         src="https://i.etsystatic.com/icm/0ff82a/701770387/icm_150x150.701770387_gvl90sgooigcowk8wcw0.png?version=0"
@@ -664,19 +667,19 @@ const ChatBox = ({ slug,role }) => {
                 ))}
               </Box>
             )}
-            
+
           </Box>
           <Box sx={{
-            display:"flex",
-            alignItems:"center",
-            gap:"8px"	
+            display: "flex",
+            alignItems: "center",
+            gap: "8px"
           }}>
-            <Typography component="div" sx={{ position: "relative" , width:"100%"  }}>
+            <Typography component="div" sx={{ position: "relative", width: "100%" }}>
               <TextareaAutosize
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Type your reply"
-                minRows={4} 
+                minRows={4}
                 maxRows={10}
                 style={{
                   width: "100%",
@@ -689,7 +692,7 @@ const ChatBox = ({ slug,role }) => {
                   resize: "vertical",
                 }}
               />
-                <input
+              <input
                 type="file"
                 style={{ display: "none" }}
                 ref={fileInputRef}

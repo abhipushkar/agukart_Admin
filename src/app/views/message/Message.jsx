@@ -26,7 +26,7 @@ import { Span } from "app/components/Typography";
 import AddIcon from "@mui/icons-material/Add";
 import ArrowOutwardIcon from "@mui/icons-material/ArrowOutward";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { Small } from "app/components/Typography"; 
+import { Small } from "app/components/Typography";
 import { db, storage } from "../../../../src/firebase/Firebase";
 import {
   collection,
@@ -42,7 +42,7 @@ import {
 import { useEffect } from "react";
 import { ApiService } from "app/services/ApiService";
 import { apiEndpoints } from "app/constant/apiEndpoints";
-import { AccordionDetails, Stack,AccordionSummary,Accordion, IconButton, ListItemAvatar, ListItemText, Avatar, Rating, Card, CardContent } from "@mui/material";
+import { AccordionDetails, Stack, AccordionSummary, Accordion, IconButton, ListItemAvatar, ListItemText, Avatar, Rating, Card, CardContent } from "@mui/material";
 import { set } from "lodash";
 import { localStorageKey } from "app/constant/localStorageKey";
 
@@ -81,17 +81,18 @@ const Message = () => {
   const open = Boolean(anchorEl);
   const open2 = Boolean(anchorEl2);
   const navigate = useNavigate();
-  const [userId,setUserId] = useState("");
-  const [vendorId,setVendorId] = useState("");
-  const [productData,setProductData] = useState({});
-  const [userData,setUserData] = useState({});
-  const [messageHistory,setMessageHistory] = useState([]);
-  const [orderHistory,setOrderHistory] = useState([]);
-  const [reviewHistory,setReviewHistory] = useState([]);
-  const [favoriteHistory,setFavoriteHistory] = useState([]);
-  console.log(userId,vendorId,userData,productData,reviewHistory,favoriteHistory,messageHistory,"Drtuytyutyuyu")
+  const [userId, setUserId] = useState("");
+  const [vendorId, setVendorId] = useState("");
+  const [productData, setProductData] = useState({});
+  const [products, setProducts] = useState([]);
+  const [userData, setUserData] = useState({});
+  const [messageHistory, setMessageHistory] = useState([]);
+  const [orderHistory, setOrderHistory] = useState([]);
+  const [reviewHistory, setReviewHistory] = useState([]);
+  const [favoriteHistory, setFavoriteHistory] = useState([]);
+  console.log(userId, vendorId, userData, productData, reviewHistory, favoriteHistory, messageHistory, "Drtuytyutyuyu")
   const [expanded, setExpanded] = useState(null);
-  console.log({productData,userData})
+  console.log({ productData, userData })
 
   const formatDate = (timestamp) => {
     const date = new Date(timestamp?.seconds * 1000);
@@ -105,15 +106,16 @@ const Message = () => {
   const [openPrivateNote, setOpenPrivateNote] = useState(false);
   const [note, setNote] = useState("");
   const [privateNoteExists, setPrivateNoteExists] = useState("");
-  const [isEditing, setIsEditing] = useState(false); 
+  const [isEditing, setIsEditing] = useState(false);
+  const [suborderid, setSuborderid] = useState("");
 
   const handleEdit = () => {
     setIsEditing(true);
-    setNote(privateNoteExists); 
+    setNote(privateNoteExists);
   };
 
-  const handleSave = async() => {
-    console.log("Saved Note:", note); 
+  const handleSave = async () => {
+    console.log("Saved Note:", note);
     if (note.trim()) {
       const querySnapshot = await getDocs(
         collection(db, role === "admin" ? "composeChat" : "chatRooms")
@@ -151,10 +153,10 @@ const Message = () => {
         setIsEditing(false);
         const updatedDocRef = doc(db, role === "admin" ? "composeChat" : "chatRooms", matchingDocument.id);
         const updatedDocSnap = await getDoc(updatedDocRef);
-      
+
         if (updatedDocSnap.exists()) {
           const data = updatedDocSnap.data();
-          if(data?.privateNote){
+          if (data?.privateNote) {
             setPrivateNoteExists(data?.privateNote);
           }
         } else {
@@ -204,7 +206,7 @@ const Message = () => {
 
 
   const removeHtmlTags = (htmlString) => {
-    if(!htmlString) return ;
+    if (!htmlString) return;
     return htmlString.replace(/<[^>]*>/g, "");
   };
 
@@ -212,10 +214,10 @@ const Message = () => {
     if (slug) {
       setProductData({});
       const q = query(
-        collection(db,"chatRooms"),
+        collection(db, "chatRooms"),
         orderBy("createdAt", "asc")
       );
-      const unsubscribe = onSnapshot(q,async(snapshot) => {
+      const unsubscribe = onSnapshot(q, async (snapshot) => {
         const newMessages = snapshot?.docs?.map((doc) => ({
           id: doc.id,
           ...doc.data()
@@ -233,49 +235,51 @@ const Message = () => {
         const userData = await getUserDetails(matchingDocument[0]?.user);
         setUserData(userData);
         setProductData(matchingDocument[0]?.productData)
+        setProducts(matchingDocument[0]?.products || [])
+        setSuborderid(matchingDocument[0]?.subOrderId || "")
       });
 
       return () => unsubscribe();
     }
   }, [slug,]);
-  
+
   const handleChange = (panel) => (event, isExpanded) => {
     setExpanded(isExpanded ? panel : null);
   };
 
-  const getOrderHistory = async(userId,vendorId)=>{
+  const getOrderHistory = async (userId, vendorId) => {
     try {
       const payload = {
-        user_id:userId,
-        vendor_id:vendorId
+        user_id: userId,
+        vendor_id: vendorId
       };
-      const res = await ApiService.post(`${apiEndpoints.getUserOrderHistoryForMessages}`, payload,auth_key);
+      const res = await ApiService.post(`${apiEndpoints.getUserOrderHistoryForMessages}`, payload, auth_key);
       if (res.status === 200) {
         const baseUrl = res?.data?.base_url;
         const salesWithBaseUrl = res?.data?.sales?.map(sale => ({
-            ...sale,
-            base_url: baseUrl
+          ...sale,
+          base_url: baseUrl
         })) || [];
         setOrderHistory(salesWithBaseUrl);
-        
+
       }
     } catch (error) {
       console.log("error", error?.response?.data || error);
     }
   }
 
-  const getReviewHistory = async(userId,vendorId)=>{
+  const getReviewHistory = async (userId, vendorId) => {
     try {
       const payload = {
-        user_id:userId,
-        vendor_id:vendorId
+        user_id: userId,
+        vendor_id: vendorId
       };
-      const res = await ApiService.post(`${apiEndpoints.getReviews}`, payload,auth_key);
+      const res = await ApiService.post(`${apiEndpoints.getReviews}`, payload, auth_key);
       if (res.status === 200) {
         const baseUrl = res?.data?.base_url;
         const reviewsWithBaseUrl = res?.data?.data?.map(item => ({
-            ...item,
-            base_url: baseUrl
+          ...item,
+          base_url: baseUrl
         })) || [];
         setReviewHistory(reviewsWithBaseUrl);
       }
@@ -284,18 +288,18 @@ const Message = () => {
     }
   }
 
-  const getFavoriteHistory = async(userId,vendorId)=>{
+  const getFavoriteHistory = async (userId, vendorId) => {
     try {
       const payload = {
-        user_id:userId,
-        vendor_id:vendorId
+        user_id: userId,
+        vendor_id: vendorId
       };
-      const res = await ApiService.post(`${apiEndpoints.getFavoriteProducts}`, payload,auth_key);
+      const res = await ApiService.post(`${apiEndpoints.getFavoriteProducts}`, payload, auth_key);
       if (res.status === 200) {
         const baseUrl = res?.data?.base_url;
         const favoritesWithBaseUrl = res?.data?.data?.map(item => ({
-            ...item,
-            base_url: baseUrl
+          ...item,
+          base_url: baseUrl
         })) || [];
         setFavoriteHistory(favoritesWithBaseUrl);
       }
@@ -304,13 +308,13 @@ const Message = () => {
     }
   }
 
-  useEffect(()=>{
-    if(userId && vendorId){
-      getOrderHistory(userId,vendorId);
-      getReviewHistory(userId,vendorId);
-      getFavoriteHistory(userId,vendorId);
+  useEffect(() => {
+    if (userId && vendorId) {
+      getOrderHistory(userId, vendorId);
+      getReviewHistory(userId, vendorId);
+      getFavoriteHistory(userId, vendorId);
     }
-  },[userId,vendorId])
+  }, [userId, vendorId])
 
   return (
     <>
@@ -364,13 +368,13 @@ const Message = () => {
           </Box>
         </Box>
         <Grid container border={"1px solid #b6b6b6"} width={"100%"} m={0} mb={4} spacing={2}>
-          <Grid lg={2} md={3} xs={12} borderRight={"1px solid #b6b6b6"}>
+          <Grid lg={2} md={3} xs={12} borderRight={"1px solid #b6b6b6"} sx={{ position: "sticky", top: 0, alignSelf: "flex-start", height: "100vh" }}>
             <Box
               p={2}
               sx={{
                 height: "100%",
                 background: "#f6f9fc",
-                display: { lg: "block", md: "block", xs: "none" }
+                overflowY: "auto",
               }}
             >
               <List>
@@ -580,129 +584,62 @@ const Message = () => {
           </Grid>
           <Grid lg={!slug || pathname === "/pages/message/compose/message" || role ? 10 : 7} md={!slug || pathname === "/pages/message/compose/message" || role ? 10 : 6} xs={12}>
             <Box>
-            {
-              pathname !== "/pages/message/compose" && pathname !== "/pages/message/compose/message" &&  pathname !== "/pages/message/etsy" && !slug && (
-                <Box p={2} sx={{ background: "#f6f9fc" }} borderBottom={"1px solid #b6b6b6"}>
-                  <Box sx={{ display: "flex", alignItems: "center" }}>
-                    {chats.length === 0 ? (
-                      <>
+              {
+                pathname !== "/pages/message/compose" && pathname !== "/pages/message/compose/message" && pathname !== "/pages/message/etsy" && (
+                  <Box p={2} borderBottom={"1px solid #b6b6b6"}
+                    sx={{
+                      background: "#f6f9fc",
+                      position: "sticky",
+                      top: 0,
+                      zIndex: 10,
+                    }}
+                  >
+                    <Box sx={{ display: "flex", alignItems: "center" }}>
+                      {chats.length === 0 ? (
+                        <>
+                          <Typography component="span">
+                            <Checkbox />
+                          </Typography>
+                        </>
+                      ) : (
                         <Typography component="span">
-                          <Checkbox />
-                        </Typography>
-                      </>
-                    ) : (
-                      <Typography component="span">
-                        <Checkbox
-                          checked={checkMessage.length === chats.length}
-                          onChange={() => {
-                            if (checkMessage.length !== chats.length) {
-                              const allCheckIds = chats.map((doc) => {
-                                return doc.id;
-                              });
-                              setCheckMessage(allCheckIds);
-                            } else {
-                              setCheckMessage([]);
+                          <Checkbox
+                            checked={
+                              slug
+                                ? checkMessage.includes(slug)
+                                : checkMessage.length === chats.length
                             }
-                          }}
-                        />
-                      </Typography>
-                    )}
-                    <List
-                      sx={{ display: "flex", alignItems: "center", marginLeft: "30px", padding: "0" }}
-                    >
-                      <ListItem sx={{ width: "auto", paddingLeft: "0" }}>
-                        <Tooltip
-                          title={checkMessage.length === 0 ? "Please select a message" : ""}
-                          arrow
-                        >
-                          <Button
-                            onClick={moveToTrashHandler}
-                            sx={{
-                              transition: "all 500ms",
-                              fontWeight: "500",
-                              background: "none",
-                              border:
-                                checkMessage.length === 0 ? "1px solid #e1e1e1" : "1px solid black",
-                              opacity: checkMessage.length === 0 ? "0.4" : "1",
-                              borderRadius: "30px",
-                              padding: "5px 16px",
-                              color: "#000",
-                              "&:hover": { background: "#dedede" }
+                            onChange={() => {
+                              if (slug) {
+                                if (checkMessage.includes(slug)) {
+                                  setCheckMessage([]);
+                                } else {
+                                  setCheckMessage([slug]);
+                                }
+                              } else {
+                                if (checkMessage.length !== chats.length) {
+                                  const allCheckIds = chats.map((doc) => {
+                                    return doc.id;
+                                  });
+                                  setCheckMessage(allCheckIds);
+                                } else {
+                                  setCheckMessage([]);
+                                }
+                              }
                             }}
-                          >
-                            {pathname === "/pages/message/trash" ? "Delete" : "Recycle bin"}
-                          </Button>
-                        </Tooltip>
-                      </ListItem>
-                      <ListItem sx={{ width: "auto", paddingLeft: "0" }}>
-                        <Tooltip
-                          title={checkMessage.length === 0 ? "Please select a message" : ""}
-                          arrow
-                        >
-                          <Button
-                            onClick={markAsUnreadHandler}
-                            sx={{
-                              transition: "all 500ms",
-                              fontWeight: "500",
-                              background: "none",
-                              border:
-                                checkMessage.length === 0 ? "1px solid #e1e1e1" : "1px solid black",
-                              opacity: checkMessage.length === 0 ? "0.4" : "1",
-                              borderRadius: "30px",
-                              padding: "5px 16px",
-                              color: "#000",
-                              "&:hover": { background: "#dedede" }
-                            }}
-                          >
-                            Mark Unread
-                          </Button>
-                        </Tooltip>
-                      </ListItem>
-                      <ListItem
-                        sx={{
-                          width: "auto",
-                          paddingLeft: "0",
-                          display: { lg: "block", md: "block", xs: "none" }
-                        }}
+                          />
+                        </Typography>
+                      )}
+                      <List
+                        sx={{ display: "flex", alignItems: "center", marginLeft: "30px", padding: "0" }}
                       >
-                        <Tooltip
-                          title={checkMessage.length === 0 ? "Please select a message" : ""}
-                          arrow
-                        >
-                          <Button
-                            onClick={markAsReadHandler}
-                            sx={{
-                              transition: "all 500ms",
-                              fontWeight: "500",
-                              background: "none",
-                              border:
-                                checkMessage.length === 0 ? "1px solid #e1e1e1" : "1px solid black",
-                              opacity: checkMessage.length === 0 ? "0.4" : "1",
-                              borderRadius: "30px",
-                              padding: "5px 16px",
-                              color: "#000",
-                              "&:hover": { background: "#dedede" }
-                            }}
-                          >
-                            Mark Read
-                          </Button>
-                        </Tooltip>
-                      </ListItem>
-
-                      {pathname === "/pages/message/trash" ? (
-                        <ListItem
-                          sx={{
-                            width: "auto",
-                            paddingLeft: "0",
-                            display: { lg: "block", md: "block", xs: "none" }
-                          }}
-                        >
+                        <ListItem sx={{ width: "auto", paddingLeft: "0" }}>
                           <Tooltip
                             title={checkMessage.length === 0 ? "Please select a message" : ""}
                             arrow
                           >
                             <Button
-                              onClick={moveToChatHandler}
+                              onClick={moveToTrashHandler}
                               sx={{
                                 transition: "all 500ms",
                                 fontWeight: "500",
@@ -716,122 +653,208 @@ const Message = () => {
                                 "&:hover": { background: "#dedede" }
                               }}
                             >
-                              Move to inbox
+                              {pathname === "/pages/message/trash" ? "Delete" : "Recycle bin"}
                             </Button>
                           </Tooltip>
                         </ListItem>
-                      ) : (
-                        ""
-                      )}
-                      <ListItem
-                        sx={{
-                          width: "auto",
-                          paddingLeft: "0",
-                          display: { lg: "none", md: "none", xs: "block" }
-                        }}
-                      >
-                        <Button
-                          aria-label="more"
-                          id="basic-button"
-                          aria-controls={open2 ? "basic-menu" : undefined}
-                          aria-haspopup="true"
-                          aria-expanded={open2 ? "true" : undefined}
-                          onClick={handleClick2}
+                        <ListItem sx={{ width: "auto", paddingLeft: "0" }}>
+                          <Tooltip
+                            title={checkMessage.length === 0 ? "Please select a message" : ""}
+                            arrow
+                          >
+                            <Button
+                              onClick={markAsUnreadHandler}
+                              sx={{
+                                transition: "all 500ms",
+                                fontWeight: "500",
+                                background: "none",
+                                border:
+                                  checkMessage.length === 0 ? "1px solid #e1e1e1" : "1px solid black",
+                                opacity: checkMessage.length === 0 ? "0.4" : "1",
+                                borderRadius: "30px",
+                                padding: "5px 16px",
+                                color: "#000",
+                                "&:hover": { background: "#dedede" }
+                              }}
+                            >
+                              Mark Unread
+                            </Button>
+                          </Tooltip>
+                        </ListItem>
+                        <ListItem
                           sx={{
-                            transition: "all 500ms",
-                            fontWeight: "500",
-                            background: "none",
-                            border: "none",
-                            opacity: "0.4",
-                            borderRadius: "30px",
-                            padding: "5px 16px",
-                            color: "#000",
-                            "&:hover": { background: "#dedede" }
+                            width: "auto",
+                            paddingLeft: "0",
+                            display: { lg: "block", md: "block", xs: "none" }
                           }}
                         >
-                          <MoreVertIcon />
-                        </Button>
-                        <Menu
-                          anchorEl={anchorEl2}
-                          open={open2}
-                          onClose={handleClose2}
-                          MenuListProps={{
-                            "aria-labelledby": "basic-button"
+                          <Tooltip
+                            title={checkMessage.length === 0 ? "Please select a message" : ""}
+                            arrow
+                          >
+                            <Button
+                              onClick={markAsReadHandler}
+                              sx={{
+                                transition: "all 500ms",
+                                fontWeight: "500",
+                                background: "none",
+                                border:
+                                  checkMessage.length === 0 ? "1px solid #e1e1e1" : "1px solid black",
+                                opacity: checkMessage.length === 0 ? "0.4" : "1",
+                                borderRadius: "30px",
+                                padding: "5px 16px",
+                                color: "#000",
+                                "&:hover": { background: "#dedede" }
+                              }}
+                            >
+                              Mark Read
+                            </Button>
+                          </Tooltip>
+                        </ListItem>
+
+                        {pathname === "/pages/message/trash" ? (
+                          <ListItem
+                            sx={{
+                              width: "auto",
+                              paddingLeft: "0",
+                              display: { lg: "block", md: "block", xs: "none" }
+                            }}
+                          >
+                            <Tooltip
+                              title={checkMessage.length === 0 ? "Please select a message" : ""}
+                              arrow
+                            >
+                              <Button
+                                onClick={moveToChatHandler}
+                                sx={{
+                                  transition: "all 500ms",
+                                  fontWeight: "500",
+                                  background: "none",
+                                  border:
+                                    checkMessage.length === 0 ? "1px solid #e1e1e1" : "1px solid black",
+                                  opacity: checkMessage.length === 0 ? "0.4" : "1",
+                                  borderRadius: "30px",
+                                  padding: "5px 16px",
+                                  color: "#000",
+                                  "&:hover": { background: "#dedede" }
+                                }}
+                              >
+                                Move to inbox
+                              </Button>
+                            </Tooltip>
+                          </ListItem>
+                        ) : (
+                          ""
+                        )}
+                        <ListItem
+                          sx={{
+                            width: "auto",
+                            paddingLeft: "0",
+                            display: { lg: "none", md: "none", xs: "block" }
                           }}
                         >
-                          <MenuItem>
-                            <Box>
-                              <List>
-                                <ListItem
-                                  sx={{ paddingBottom: "0", width: "auto", paddingLeft: "0" }}
-                                >
-                                  <Button
-                                    sx={{
-                                      transition: "all 500ms",
-                                      fontWeight: "500",
-                                      background: "#fff",
-                                      border: "none",
-                                      borderRadius: "30px",
-                                      padding: "5px 16px",
-                                      color: "#000",
-                                      "&:hover": { background: "#dedede" }
-                                    }}
+                          <Button
+                            aria-label="more"
+                            id="basic-button"
+                            aria-controls={open2 ? "basic-menu" : undefined}
+                            aria-haspopup="true"
+                            aria-expanded={open2 ? "true" : undefined}
+                            onClick={handleClick2}
+                            sx={{
+                              transition: "all 500ms",
+                              fontWeight: "500",
+                              background: "none",
+                              border: "none",
+                              opacity: "0.4",
+                              borderRadius: "30px",
+                              padding: "5px 16px",
+                              color: "#000",
+                              "&:hover": { background: "#dedede" }
+                            }}
+                          >
+                            <MoreVertIcon />
+                          </Button>
+                          <Menu
+                            anchorEl={anchorEl2}
+                            open={open2}
+                            onClose={handleClose2}
+                            MenuListProps={{
+                              "aria-labelledby": "basic-button"
+                            }}
+                          >
+                            <MenuItem>
+                              <Box>
+                                <List>
+                                  <ListItem
+                                    sx={{ paddingBottom: "0", width: "auto", paddingLeft: "0" }}
                                   >
-                                    Mark Read
-                                  </Button>
-                                </ListItem>
-                                <ListItem
-                                  sx={{ paddingBottom: "0", width: "auto", paddingLeft: "0" }}
-                                >
-                                  <Button
-                                    sx={{
-                                      transition: "all 500ms",
-                                      fontWeight: "500",
-                                      background: "#fff",
-                                      border: "none",
-                                      borderRadius: "30px",
-                                      padding: "5px 16px",
-                                      color: "#000",
-                                      "&:hover": { background: "#dedede" }
-                                    }}
+                                    <Button
+                                      sx={{
+                                        transition: "all 500ms",
+                                        fontWeight: "500",
+                                        background: "#fff",
+                                        border: "none",
+                                        borderRadius: "30px",
+                                        padding: "5px 16px",
+                                        color: "#000",
+                                        "&:hover": { background: "#dedede" }
+                                      }}
+                                    >
+                                      Mark Read
+                                    </Button>
+                                  </ListItem>
+                                  <ListItem
+                                    sx={{ paddingBottom: "0", width: "auto", paddingLeft: "0" }}
                                   >
-                                    Report Spam
-                                  </Button>
-                                </ListItem>
-                                <ListItem
-                                  sx={{ paddingBottom: "0", width: "auto", paddingLeft: "0" }}
-                                >
-                                  <Button
-                                    sx={{
-                                      transition: "all 500ms",
-                                      fontWeight: "500",
-                                      background: "#fff",
-                                      border: "none",
-                                      borderRadius: "30px",
-                                      padding: "5px 16px",
-                                      color: "#000",
-                                      "&:hover": { background: "#dedede" }
-                                    }}
+                                    <Button
+                                      sx={{
+                                        transition: "all 500ms",
+                                        fontWeight: "500",
+                                        background: "#fff",
+                                        border: "none",
+                                        borderRadius: "30px",
+                                        padding: "5px 16px",
+                                        color: "#000",
+                                        "&:hover": { background: "#dedede" }
+                                      }}
+                                    >
+                                      Report Spam
+                                    </Button>
+                                  </ListItem>
+                                  <ListItem
+                                    sx={{ paddingBottom: "0", width: "auto", paddingLeft: "0" }}
                                   >
-                                    Archive
-                                  </Button>
-                                </ListItem>
-                              </List>
-                            </Box>
-                          </MenuItem>
-                        </Menu>
-                      </ListItem>
-                    </List>
+                                    <Button
+                                      sx={{
+                                        transition: "all 500ms",
+                                        fontWeight: "500",
+                                        background: "#fff",
+                                        border: "none",
+                                        borderRadius: "30px",
+                                        padding: "5px 16px",
+                                        color: "#000",
+                                        "&:hover": { background: "#dedede" }
+                                      }}
+                                    >
+                                      Archive
+                                    </Button>
+                                  </ListItem>
+                                </List>
+                              </Box>
+                            </MenuItem>
+                          </Menu>
+                        </ListItem>
+                      </List>
+                    </Box>
                   </Box>
-                </Box>
-              )
-            }
+                )
+              }
               <Box>
                 <Outlet />
               </Box>
             </Box>
           </Grid>
-          {slug && pathname !== "/pages/message/compose/message" && !role &&(
+          {slug && pathname !== "/pages/message/compose/message" && !role && (
             <Grid lg={3} md={3} xs={12}>
               <Box p={3} sx={{ border: "1px solid #b6b6b6", height: "100%" }}>
                 <Typography
@@ -874,141 +897,161 @@ const Message = () => {
                     />
                   </Typography>
                 </Typography>
-                {
-                  Object.keys(productData || {}).length > 0 && <Box mt={2}>
-                    <Typography fontSize={16} fontWeight={600} pb={1}>
-                      Item
-                    </Typography>
-                    <Typography
-                      component="div"
-                      pb={2}
-                      sx={{
-                        display: "flex",
-                        flexDirection: { lg: "row", md: "row", xs: "column" },
-                        justifyContent: { lg: "start", md: "space-between", xs: "star" }
-                      }}
-                    >
-                      <Typography component="div">
-                        <img
-                          src={productData?.product_image || "https://i.etsystatic.com/iusa/5d5a40/98780171/iusa_75x75.98780171_9ox6.jpg?version=0"}
-                          alt=""
-                          style={{ width: "50px", height: "50px", borderRadius: "4px" }}
-                        />
+                {(() => {
+                  const productsToRender = Array.isArray(products) && products.length > 0
+                    ? products
+                    : (Object.keys(productData || {}).length > 0 ? [productData] : []);
+
+                  return productsToRender.length > 0 && (
+                    <Box mt={2}>
+                      <Typography
+                        component="div"
+                        sx={{
+                          fontSize: "14px",
+                          fontWeight: "500",
+                          color: "#000",
+                          display: "flex",
+                          alignItems: "center",
+                        }}
+                      >
+                        SubOrder Id : {`#${suborderid || "-"}`}
                       </Typography>
-                      <Typography component="div" sx={{ paddingLeft: { lg: 2, md: 2, xs: 0 } }}>
-                        <Typography component="div"
-                            sx={{
-                              fontSize: "14px",
-                              fontWeight: "500",
-                              color: "#000",
-                              display: "flex",
-                              alignItems: "center",
-                          }}>
-                            Order Id : {`#${productData?.orderId}`}
-                        </Typography>
+                      <Typography fontSize={16} fontWeight={600} pb={1}>
+                        Items:
+                      </Typography>
+
+                      {productsToRender.map((item, itemIndex) => (
                         <Typography
-                          fontSize={14}
-                          fontWeight={500}
-                          color={"#000"}
+                          key={`product-item-${itemIndex}`}
+                          component="div"
+                          pb={2}
                           sx={{
-                            display: "-webkit-box",
-                            WebkitLineClamp: 3,
-                            WebkitBoxOrient: "vertical",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis"
+                            display: "flex",
+                            flexDirection: { lg: "row", md: "row", xs: "column" },
+                            justifyContent: { lg: "start", md: "space-between", xs: "star" }
                           }}
                         >
-                          <Link
-                            to=""
-                            sx={{
-                              color: "#000",
-                              textDecoration: "none",
-                              "&:hover": { textDecoration: "underline" }
-                            }}
-                          >
-                            {removeHtmlTags(productData?.name || "") || "925 Sterling Silver Spinner Ring for Woman Girls"}
-                          </Link>
-                        </Typography>
-                        <Typography component="div"
-                          sx={{
-                            fontSize: "15px",
-                            fontWeight: "500",
-                            color: "#000",
-                            display: "flex",
-                            alignItems: "center",
-                        }}>
-                          ${productData?.sale_price}
-                        </Typography>
-                        {productData?.isCombination && (
-                          <>
-                            {productData?.variantData?.map((variant, index) => (
-                              <Typography
-                                fontSize={14} fontWeight={500} color={"#000"}
-                                key={`variant-${index}`}
+                          <Typography component="div">
+                            <img
+                              src={item?.product_image || "https://i.etsystatic.com/iusa/5d5a40/98780171/iusa_75x75.98780171_9ox6.jpg?version=0"}
+                              alt=""
+                              style={{ width: "50px", height: "50px", borderRadius: "4px" }}
+                            />
+                          </Typography>
+
+                          <Typography component="div" sx={{ paddingLeft: { lg: 2, md: 2, xs: 0 } }}>
+
+                            <Typography
+                              fontSize={14}
+                              fontWeight={500}
+                              color={"#000"}
+                              sx={{
+                                display: "-webkit-box",
+                                WebkitLineClamp: 3,
+                                WebkitBoxOrient: "vertical",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis"
+                              }}
+                            >
+                              <Link
+                                to=""
+                                sx={{
+                                  color: "#000",
+                                  textDecoration: "none",
+                                  "&:hover": { textDecoration: "underline" }
+                                }}
                               >
-                                {variant?.variant_name}:{" "}
-                                <Typography component="span" fontWeight={400}>
-                                  {productData?.variantAttributeData?.[index]
-                                    ?.attribute_value || "N/A"}
-                                </Typography>
-                              </Typography>
-                            ))}
-                          </>
-                        )}
-                        {productData?.customize == "Yes" && (
-                          <>
-                            {productData?.customizationData?.map((item, index) => (
-                              <div key={index}>
-                                {Object.entries(item).map(([key, value]) => (
-                                  <div key={key}>
-                                    {typeof value === "object" ? (
-                                      <div>
-                                        {key}:
-                                        {`${value?.value} (${value?.price})`}
+                                {removeHtmlTags(item?.name || "") || "925 Sterling Silver Spinner Ring for Woman Girls"}
+                              </Link>
+                            </Typography>
+
+                            <Typography
+                              component="div"
+                              sx={{
+                                fontSize: "15px",
+                                fontWeight: "500",
+                                color: "#000",
+                                display: "flex",
+                                alignItems: "center",
+                              }}
+                            >
+                              ${item?.sale_price}
+                            </Typography>
+
+                            {item?.isCombination && (
+                              <>
+                                {item?.variantData?.map((variant, index) => (
+                                  <Typography
+                                    fontSize={14}
+                                    fontWeight={500}
+                                    color={"#000"}
+                                    key={`variant-${itemIndex}-${index}`}
+                                  >
+                                    {variant?.variant_name}:{" "}
+                                    <Typography component="span" fontWeight={400}>
+                                      {item?.variantAttributeData?.[index]?.attribute_value || "N/A"}
+                                    </Typography>
+                                  </Typography>
+                                ))}
+                              </>
+                            )}
+
+                            {item?.customize == "Yes" && (
+                              <>
+                                {item?.customizationData?.map((customItem, index) => (
+                                  <div key={index}>
+                                    {Object.entries(customItem).map(([key, value]) => (
+                                      <div key={key}>
+                                        {typeof value === "object" ? (
+                                          <div>
+                                            {key}:
+                                            {`${value?.value} (${value?.price})`}
+                                          </div>
+                                        ) : (
+                                          <div>
+                                            {key}: {value}
+                                          </div>
+                                        )}
                                       </div>
-                                    ) : (
-                                      <div>
-                                        {key}: {value}
-                                      </div>
-                                    )}
+                                    ))}
                                   </div>
                                 ))}
-                              </div>
-                            ))}
-                          </>
-                        )}
-                      </Typography>
-                    </Typography>
-                  </Box>
-                }
+                              </>
+                            )}
+                          </Typography>
+                        </Typography>
+                      ))}
+                    </Box>
+                  );
+                })()}
                 <Accordion expanded={expanded === "messageHistory"} onChange={handleChange("messageHistory")} sx={{ boxShadow: "none", border: "1px solid #ddd", borderRadius: "6px", mb: 1 }}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ backgroundColor: "#f9f9f9" }}>
                     <Typography fontWeight={500}>Message History</Typography>
                   </AccordionSummary>
                   <AccordionDetails>
-                  {messageHistory?.length > 0 ? (
-                    <Stack spacing={1}>
-                      {messageHistory?.map((message) => {
-                        const currentMessageDate = formatDate(message?.createdAt);
-                        const firstMessage = message?.text?.[0];
-                        return <Card key={message.id} onClick={()=>{
-                          const url = `/pages/message?slug=${message?.id}`
-                          window.open(url, "_blank", "noopener,noreferrer");
-                        }} sx={{ borderRadius: 2, boxShadow: "none", border: "1px solid #ddd",cursor:"pointer" }}>
-                          <CardContent>
-                            <Typography fontWeight={600}>{message?.orderId ? `Help with order #${message?.orderId}` : `${removeHtmlTags(firstMessage?.productData?.productTitle || "")}`}</Typography>
-                            <Typography fontSize="small" color="gray">{currentMessageDate}</Typography>
-                            <Typography>{firstMessage?.text || "No message available"}</Typography>
-                          </CardContent>
-                        </Card>
+                    {messageHistory?.length > 0 ? (
+                      <Stack spacing={1}>
+                        {messageHistory?.map((message) => {
+                          const currentMessageDate = formatDate(message?.createdAt);
+                          const firstMessage = message?.text?.[0];
+                          return <Card key={message.id} onClick={() => {
+                            const url = `/pages/message?slug=${message?.id}`
+                            window.open(url, "_blank", "noopener,noreferrer");
+                          }} sx={{ borderRadius: 2, boxShadow: "none", border: "1px solid #ddd", cursor: "pointer" }}>
+                            <CardContent>
+                              <Typography fontWeight={600}>{message?.orderId ? `Help with order #${message?.orderId}` : `${removeHtmlTags(firstMessage?.productData?.productTitle || "")}`}</Typography>
+                              <Typography fontSize="small" color="gray">{currentMessageDate}</Typography>
+                              <Typography>{firstMessage?.text || "No message available"}</Typography>
+                            </CardContent>
+                          </Card>
                         })}
-                      {/* <Typography color="primary" sx={{ cursor: "pointer", fontWeight: 500 }}>
+                        {/* <Typography color="primary" sx={{ cursor: "pointer", fontWeight: 500 }}>
                         Full history
                       </Typography> */}
-                    </Stack>
-                  ) : (
-                    <Typography>No data available</Typography>
-                  )}
+                      </Stack>
+                    ) : (
+                      <Typography>No data available</Typography>
+                    )}
                   </AccordionDetails>
                 </Accordion>
                 <Accordion expanded={expanded === "orderHistory"} onChange={handleChange("orderHistory")} sx={{ boxShadow: "none", border: "1px solid #ddd", borderRadius: "6px", mb: 1 }}>
@@ -1101,7 +1144,7 @@ const Message = () => {
                     )}
                   </AccordionDetails>
                 </Accordion>
-                <Box sx={{p: 1 }}>
+                <Box sx={{ p: 1 }}>
                   <Box
                     sx={{
                       display: "flex",
@@ -1119,42 +1162,42 @@ const Message = () => {
 
                   {openPrivateNote && (
                     <>
-                    {
-                      !privateNoteExists || isEditing? 
-                      (
-                        <Box sx={{ mt: 1 }}>
-                          <TextField
-                            fullWidth
-                            multiline
-                            rows={3}
-                            variant="outlined"
-                            value={note}
-                            onChange={(e) => setNote(e.target.value)}
-                            placeholder="Write your private note..."
-                          />
-                          <Button 
-                            variant="contained" 
-                            color="primary" 
-                            onClick={handleSave} 
-                            sx={{ mt: 1 }}
-                          >
-                            Save
-                          </Button>
-                        </Box>
-                      ):(
-                        <Box sx={{ mt: 1, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                          <Typography>{privateNoteExists}</Typography>
-                          <Button 
-                            variant="outlined" 
-                            color="secondary" 
-                            onClick={handleEdit} 
-                          >
-                            Edit
-                          </Button>
-                        </Box>
-                      )
-                    }
-                    </> 
+                      {
+                        !privateNoteExists || isEditing ?
+                          (
+                            <Box sx={{ mt: 1 }}>
+                              <TextField
+                                fullWidth
+                                multiline
+                                rows={3}
+                                variant="outlined"
+                                value={note}
+                                onChange={(e) => setNote(e.target.value)}
+                                placeholder="Write your private note..."
+                              />
+                              <Button
+                                variant="contained"
+                                color="primary"
+                                onClick={handleSave}
+                                sx={{ mt: 1 }}
+                              >
+                                Save
+                              </Button>
+                            </Box>
+                          ) : (
+                            <Box sx={{ mt: 1, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                              <Typography>{privateNoteExists}</Typography>
+                              <Button
+                                variant="outlined"
+                                color="secondary"
+                                onClick={handleEdit}
+                              >
+                                Edit
+                              </Button>
+                            </Box>
+                          )
+                      }
+                    </>
                   )}
                 </Box>
               </Box>
