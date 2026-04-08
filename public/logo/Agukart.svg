@@ -1,0 +1,12 @@
+<svg width="500" height="150" viewBox="0 0 500 150" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    text {
+      font-family: Constantia, "Times New Roman", serif;
+      font-size: 64px;
+      fill: black;
+    }
+  </style>
+  <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle">
+    Agukart
+  </text>
+</svg>

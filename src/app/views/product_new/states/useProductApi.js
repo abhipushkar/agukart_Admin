@@ -119,6 +119,12 @@ export const useProductAPI = () => {
                 if (variant.variant_name) {
                     fData.append(`product_variants[${vIndex}][variant_name]`, variant.variant_name);
                 }
+                if (variant.viewAll !== undefined) {
+                    fData.append(
+                        `product_variants[${vIndex}][viewAll]`,
+                        variant.viewAll ? "true" : "false"
+                    );
+                }
 
                 // Handle guide data for variant
                 if (variant.guide && Array.isArray(variant.guide) && variant.guide.length > 0) {
@@ -500,11 +506,36 @@ export const useProductAPI = () => {
             formValues,
             variationsData,
             combinations,
+            varientName
         } = state;
 
         const occassion = formData.productdetailsOccassion?.map((o) => o._id) || [];
         const genderdata = formData.gender?.map((g) => g.label) || [];
         const materialdata = formData.combinedMaterials?.map((m) => m.label) || [];
+
+        const variantMap = new Map(
+            varientName.map(variant => [variant.variant_name, variant.id])
+        );
+
+        const sanitizedVariationsData = variationsData.map(v => {
+            const variantId = variantMap.get(v.name);
+
+            if (variantId) {
+                const { customId, ...rest } = v; // remove customId
+
+                return {
+                    ...rest,
+                    type: "global",
+                    variantId: variantId
+                };
+            }
+
+            return {
+                ...v,
+                type: "custom"
+            };
+        });
+        console.log({ san: sanitizedVariationsData, map: variantMap })
 
         let payload = {
             category: formData.subCategory,
@@ -564,7 +595,7 @@ export const useProductAPI = () => {
             popular_gifts: formData.popularGifts,
             vendor_id: formData.vendor || null,
             form_values: formValues,
-            variations_data: variationsData,
+            variations_data: sanitizedVariationsData,
             tabs: formData.tabs,
             exchangePolicy: formData.exchangePolicy,
             zoom: formData.transformData,

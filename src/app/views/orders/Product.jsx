@@ -94,60 +94,78 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
 
     // 4️⃣ Matching combination rule - Only match Etsy-style internal variants
     const findMatchedCombination = useCallback((combinationsData) => {
-        if (!combinationsData || combinationsData.length === 0) {
-            return null;
-        }
+        if (!combinationsData || combinationsData.length === 0) return null;
 
-        // Get Etsy-style variants (internal variants like Ring Size)
         const internalVariants = saleData?.variants || [];
+        if (internalVariants.length === 0) return null;
 
-        if (internalVariants.length === 0) {
-            return null;
+        const allCombinations = combinationsData.flatMap(
+            item => item?.combinations || []
+        );
+
+        if (allCombinations.length === 0) return null;
+
+        // 🔥 STEP 1: Detect structure
+        const isCombined = allCombinations.some(
+            comb => (comb?.combValues || []).length > 1
+        );
+
+        // ===============================
+        // ✅ CASE 1: COMBINED STRUCTURE
+        // ===============================
+        if (isCombined) {
+            const matched = allCombinations.find(combination => {
+                const combValues = combination.combValues || [];
+
+                // 🔥 STEP 1: get quantity controlling variants
+                const quantityController = saleData?.productMain?.form_values?.quantities || "";
+
+                // "Ring Size and pattern" → ["Ring Size", "pattern"]
+                const controllingVariants = quantityController
+                    .split(" and ")
+                    .map(v => v.trim());
+
+                // 🔥 STEP 2: filter only controlling selections
+                const controllingSelections = internalVariants.filter(variant =>
+                    controllingVariants.includes(variant.variantName)
+                );
+
+                // 🔥 STEP 3: match ONLY controlling variants
+                return controllingSelections.every(variant =>
+                    combValues.includes(variant.attributeName)
+                );
+            });
+
+            console.log("Combined match:", matched);
+            return matched || null;
         }
 
-        // Extract all combinations from combinationData
-        const allCombinations = combinationsData.flatMap(item => item?.combinations || []);
+        // ===============================
+        // ⚠️ CASE 2: SEPARATE STRUCTURE
+        // ===============================
+        let matchedResults = [];
 
-        // Find combination that matches ALL internal variants
-        const matchedCombination = allCombinations.find(combination => {
-            const combValues = combination.combValues || [];
+        internalVariants.forEach((variant) => {
+            const group = combinationsData.find(
+                item => item.variant_name === variant.variantName
+            );
 
-            // Every internal variant must be found in combValues
-            return internalVariants.every(internalVariant => {
-                if (!internalVariant.variantName || !internalVariant.attributeName) {
-                    return false;
-                }
+            if (!group) return;
 
-                // Create search pattern: "variantName: attributeName"
-                const searchPattern = `${internalVariant.variantName}: ${internalVariant.attributeName}`;
+            const match = group.combinations.find(comb =>
+                comb.combValues?.includes(variant.attributeName)
+            );
 
-                // Also check for variant name and attribute separately
-                return combValues.some(combValue => {
-                    if (!combValue) return false;
-
-                    // Exact match with pattern
-                    if (combValue === searchPattern) {
-                        return true;
-                    }
-
-                    // Contains both variant name and attribute name
-                    if (combValue.includes(internalVariant.variantName) &&
-                        combValue.includes(internalVariant.attributeName)) {
-                        return true;
-                    }
-
-                    // For simple combValues that are just the attribute value
-                    if (combValue === internalVariant.attributeName) {
-                        return true;
-                    }
-
-                    return false;
-                });
-            });
+            if (match) matchedResults.push(match);
         });
 
-        return matchedCombination;
-    }, [saleData?.variants]);
+        console.log("Separate matches:", matchedResults);
+
+        // ❗ You cannot return single combination here
+        // So return first valid OR handle differently
+        return matchedResults.length ? matchedResults[0] : null;
+
+    }, [saleData?.variants, saleData?.productMain]);
 
     useEffect(() => {
         // Determine quantity owner once
@@ -187,7 +205,7 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
             setCombinationStockId([]);
             console.log('No quantity owner (none)');
         }
-    }, [combinationStockId, determineQuantityOwner, findMatchedCombination, saleData]);
+    }, []);
 
     const updateQty = async () => {
         try {
