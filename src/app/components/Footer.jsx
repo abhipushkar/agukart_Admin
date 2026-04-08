@@ -1,4 +1,4 @@
-import { AppBar, Button, ThemeProvider, Toolbar, styled, useTheme } from "@mui/material";
+import { AppBar, Button, ThemeProvider, Toolbar, styled, useTheme, Box } from "@mui/material";
 
 import { Paragraph, Span } from "./Typography";
 import useSettings from "app/hooks/useSettings";
@@ -43,12 +43,22 @@ export default function Footer() {
           <FooterContent sx={{ justifyContent: "center" }}>
             <Paragraph m={0} display={"flex"} alignItems={"center"} justifyContent={"center"}>
               Design and Developed by{" "}
-              <img style={{ height: "34px" }} src="assets/images/img-logo.webp" alt="" />
+              {/*<img style={{ height: "34px" }} src="assets/images/img-logo.webp" alt="" />
             </Paragraph>
             <Paragraph m={0} display={"flex"} alignItems={"center"} justifyContent={"center"}>
               and
               Maintained by{" "}
-              <img style={{ height: "54px", color: "white" }} src="assets/images/iskylar.png" alt="" />
+              <img style={{ height: "54px", color: "white" }} src="assets/images/iskylar.png" alt="" /> */}
+              <Box
+                component="img"
+                src="/logo/agukart_white.svg"
+                alt="Agukart Logo"
+                sx={{
+                  height: 40,        // control size
+                  width: "auto",
+                  display: "block",
+                }}
+              />
             </Paragraph>
           </FooterContent>
         </AppFooter>

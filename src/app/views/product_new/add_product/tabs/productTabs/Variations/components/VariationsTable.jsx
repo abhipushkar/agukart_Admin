@@ -139,6 +139,8 @@ const VariationsTable = ({ setShowVariantModal, isSynced }) => {
         showAll,
     } = useProductFormStore();
 
+    console.log(product_variants);
+
     // State for column visibility per table
     const [visibleColumns, setVisibleColumns] = useState({});
     const [anchorEl, setAnchorEl] = useState(null);
@@ -159,7 +161,6 @@ const VariationsTable = ({ setShowVariantModal, isSynced }) => {
         guide_type: "",
         guide_file_url: ""
     });
-    const [viewAllOn, setViewAllOn] = useState(false);
 
     // Initialize visible columns based on product_variants
     useEffect(() => {
@@ -760,9 +761,11 @@ const VariationsTable = ({ setShowVariantModal, isSynced }) => {
                                         View All visiblity :
                                     </Typography>
                                     <Switch
-                                        checked={viewAllOn}
-                                        onChange={() => setViewAllOn(prev => !prev)}
-                                        inputProps={{ 'aria-label': 'controlled' }}
+                                        checked={variant.viewAll || false}
+                                        onChange={() => {
+                                            const { setVariantViewAll } = useProductFormStore.getState();
+                                            setVariantViewAll(variantIndex, !variant.viewAll);
+                                        }}
                                         size="small"
                                     />
                                 </Box>

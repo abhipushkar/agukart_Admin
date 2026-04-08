@@ -575,6 +575,10 @@ const VariantModal = ({ show, handleCloseVariant }) => {
         const processedVariants = new Set();
 
         // Initialize product_variants FIRST - this creates SEPARATE variants only
+        const storeState = useProductFormStore.getState();
+
+        console.log("Before init:", storeState.product_variants);
+
         initializeProductVariants(currentData, allVariants);
 
         // Separate arrays for single variants and combined variants
@@ -746,7 +750,7 @@ const VariantModal = ({ show, handleCloseVariant }) => {
             ParentMainId: Array.from(new Set([...(formData.ParentMainId || []), ...parentMainIds])),
             varientName: Array.from(new Set([...(formData.varientName || []), ...allIds]))
         });
-
+        console.log("After init:", product_variants);
         handleCloseVariant();
     };
 

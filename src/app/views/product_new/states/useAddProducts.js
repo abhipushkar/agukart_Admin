@@ -235,6 +235,18 @@ export const useProductFormStore = create(
 
             setCustomizationData: (customizationData) => set({ customizationData }),
 
+            setVariantViewAll: (variantIndex, value) => {
+                const variants = get().product_variants || [];
+                const updated = [...variants];
+                if (updated[variantIndex]) {
+                    updated[variantIndex] = {
+                        ...updated[variantIndex],
+                        viewAll: value
+                    };
+                }
+                set({ product_variants: updated });
+            },
+
             // ========== NEW: PRODUCT VARIANTS ACTIONS ==========
             setProductVariants: (product_variants) => set({ product_variants }),
 
@@ -245,13 +257,24 @@ export const useProductFormStore = create(
 
                 // Create a map of existing product_variants for quick lookup
                 get().product_variants.forEach(variant => {
-                    existingVariantsMap.set(variant.variant_name, variant);
+                    const normalize = (str) => (str || "").trim().toLowerCase();
+
+                    existingVariantsMap.set(normalize(variant.variant_name), variant);
                 });
 
                 variationsData.forEach((variation) => {
-                    const variantData = allVariants.find(v => v.variant_name === variation.name);
+                    const normalize = (str) => (str || "").trim().toLowerCase();
+
+                    const variantData = allVariants.find(
+                        v => normalize(v.variant_name) === normalize(variation.name)
+                    );
+
+                    if (!variantData) {
+                        console.warn("Variant not found:", variation.name);
+                        return; // skip instead of breaking
+                    }
                     if (variantData) {
-                        const existingVariant = existingVariantsMap.get(variation.name);
+                        const existingVariant = existingVariantsMap.get(normalize(variation.name));
 
                         // ========== ADDED: Extract guide data from API response ==========
                         // Check if variantData has guide properties from API
@@ -266,8 +289,8 @@ export const useProductFormStore = create(
                         if (existingVariant) {
                             // Preserve existing variant, but update attributes if needed
                             const updatedAttributes = variation.values.map(value => {
-                                const existingAttribute = existingVariant.variant_attributes.find(attr =>
-                                    attr.attribute === value
+                                const existingAttribute = existingVariant.variant_attributes.find(
+                                    attr => normalize(attr.attribute) === normalize(value)
                                 );
 
                                 if (existingAttribute) {
@@ -298,7 +321,8 @@ export const useProductFormStore = create(
                                 // ========== ADDED: Preserve existing guide or use API guide ==========
                                 guide: existingVariant.guide && existingVariant.guide.length > 0
                                     ? existingVariant.guide
-                                    : (apiGuide ? [apiGuide] : [])
+                                    : (apiGuide ? [apiGuide] : []),
+                                viewAll: existingVariant?.viewAll ?? false
                             });
                         } else {
                             // Create new variant with default images
@@ -323,13 +347,41 @@ export const useProductFormStore = create(
                                 variant_name: variation.name,
                                 variant_attributes: variantAttributes,
                                 // ========== ADDED: Set guide data from API if available ==========
-                                guide: apiGuide ? [apiGuide] : []
+                                guide: apiGuide ? [apiGuide] : [],
+                                viewAll: existingVariant?.viewAll ?? false
                             });
                         }
                     }
                 });
 
-                set({ product_variants: newProductVariants });
+                const existingVariants = get().product_variants || [];
+
+                const normalize = (str) => (str || "").trim().toLowerCase();
+
+                // 👉 STEP 0: valid variant names (current truth)
+                const validVariantNames = new Set(
+                    variationsData.map(v => normalize(v.name))
+                );
+
+                const mergedMap = new Map();
+
+                // 👉 STEP 1: keep ONLY valid old variants
+                existingVariants.forEach(v => {
+                    const key = normalize(v.variant_name);
+
+                    if (validVariantNames.has(key)) {
+                        mergedMap.set(key, v);
+                    }
+                });
+
+                // 👉 STEP 2: override/add new variants
+                newProductVariants.forEach(v => {
+                    const key = normalize(v.variant_name);
+                    mergedMap.set(key, v);
+                });
+
+                // 👉 STEP 3: set final
+                set({ product_variants: Array.from(mergedMap.values()) });
             },
 
             // ========== KEEP: COMBINATIONS ACTIONS (price/quantity only) ==========

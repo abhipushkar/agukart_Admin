@@ -21,8 +21,11 @@ import CompleteOrder from './CompleteOrder';
 import { useState } from 'react';
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import CheckIcon from "@mui/icons-material/Check";
+import { MailOutline as MailOutlineIcon } from '@mui/icons-material';
 import UpdateStatus from './UpdateStatus';
 import PushPinIcon from '@mui/icons-material/PushPin';
+import { ApiService } from 'app/services/ApiService';
+import { localStorageKey } from 'app/constant/localStorageKey';
 
 const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2, handleOpen, setOrderIds, anchorEl, setAnchorEl, anchorEl1, setAnchorEl1, anchorEl3, setAnchorEl3, openMenuIndex, setOpenMenuIndex, openMenuIndex1, setOpenMenuIndex1, baseUrl, orderIds, handleCloseOption, handleCloseOption1, updateOrder, onSelectAllForDate, isDateGroupFullySelected, selectedSubOrders, setSelectedSubOrders }) => {
 
@@ -31,6 +34,8 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
     const [updateStatusOpen, setUpdateStatusOpen] = useState(false);
     const [completeOrder, setCompleteOrder] = useState([]);
     const [updateStatusOrder, setUpdateStatusOrder] = useState(null);
+    const [openMsgPopup, setOpenMsgpopup] = useState(false);
+    const auth_key = localStorage.getItem(localStorageKey.auth_key);
     // Handle checkbox change for SUB-ORDER IDs
     const handleCheckboxChange = (subOrderId, subOrder) => {
         setOrderIds((prev) =>
@@ -149,10 +154,12 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                         parentSale: sale,
                         order_id: sale.order_id,
                         sale_id: sale._id,
+                        isPinned: subOrder.items[0]?.isPinned || false
                     });
                 });
             }
         });
+        console.log(subOrders);
         return subOrders;
     };
 
@@ -167,6 +174,26 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
     // Get sub-order count for display
     const getSubOrderCount = () => {
         return getAllSubOrders().length;
+    };
+
+    const handlePin = async ({ id, pin }) => {
+        try {
+            const payload = { sub_order_id: id, isPinned: !pin };
+            const res = await ApiService.post("/pinUnpin-suborder", payload, auth_key);
+            if (res.status === 200) {
+                window.location.reload();
+            }
+        } catch (error) {
+            console.error({ message: error });
+        }
+    };
+
+    const handleClickPopup = () => {
+        setOpenMsgpopup(true);
+    };
+
+    const handleClosePopup = () => {
+        setOpenMsgpopup(false);
     };
 
     return (
@@ -681,6 +708,9 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                         >
                                                             <LocalShippingIcon />
                                                         </Button>
+                                                        <Button sx={{ color: "#000" }} onClick={handleClickPopup}>
+                                                            <MailOutlineIcon />
+                                                        </Button>
                                                     </ListItem>
 
                                                     {tab !== "pending" && tab !== "completed" && (
@@ -775,7 +805,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                         >
                                                             <MoreVertIcon />
                                                         </Button>
-                                                        {(<Button sx={{ color: "red" }}>
+                                                        {subOrder.isPinned && (<Button sx={{ color: "red" }} disableRipple>
                                                             <PushPinIcon />
                                                         </Button>)}
                                                         <Menu
@@ -839,10 +869,10 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                             <MenuItem
                                                                 onClick={() => {
                                                                     handleCloseOption();
-
+                                                                    handlePin({ id: subOrder.sub_order_id, pin: subOrder.isPinned })
                                                                 }}
                                                             >
-                                                                Pin
+                                                                {subOrder.isPinned ? "UnPin" : "Pin"}
                                                             </MenuItem>
                                                         </Menu>
                                                     </ListItem>
@@ -856,6 +886,23 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                     </Table>
                 </TableContainer>
             </Grid>
+            {/* {
+                openMsgPopup && <MessagePopup
+                    openMsgPopup={openMsgPopup}
+                    vendorID={vendorData?.vendor_id || saleData?.vendor_id}
+                    orderId={item?.order_id}
+                    product_image={saleData?.productData?.image?.[0]
+                        ? `${baseUrl}/${saleData.productData.image[0]}`
+                        : `${baseUrl}/${saleData?.productMain?.image[0]}`
+                    }
+                    productData={saleData}
+                    userName={item?.userName}
+                    vendorName={vendorData?.vendor_name || saleData?.vendor_name}
+                    userId={item?.user_idnumer}
+                    userImage={item?.user_image}
+                    handleClosePopup={handleClosePopup}
+                />
+            } */}
         </>
     )
 }

@@ -299,7 +299,7 @@ const Orders = () => {
       const res = await ApiService.get(
         `${apiEndpoints.getOrders}/${apiStatus}?startDate=${date?.from === undefined ? "" : date?.from
         }&endDate=${date?.to === undefined ? "" : date?.to}&search=${search}&sort=${sortBy}${tab === "completed" ? `&delivery=${completeStatus}` : ""
-        }&page=${page}&limit=${pageSize}`,
+        }&page=${page}&limit=${pageSize}${tab === 'pin' ? "&isPinned=true" : ""}`,
         auth_key
       );
       console.log("Order Data: ", res.data);
