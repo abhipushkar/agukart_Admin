@@ -761,7 +761,7 @@ const VariationsTable = ({ setShowVariantModal, isSynced }) => {
                                         View All visiblity :
                                     </Typography>
                                     <Switch
-                                        checked={variant.viewAll || false}
+                                        checked={variant.viewAll === 'true' || variant.viewAll === true}
                                         onChange={() => {
                                             const { setVariantViewAll } = useProductFormStore.getState();
                                             setVariantViewAll(variantIndex, !variant.viewAll);

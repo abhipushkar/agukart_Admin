@@ -581,6 +581,20 @@ const VariantModal = ({ show, handleCloseVariant }) => {
 
         initializeProductVariants(currentData, allVariants);
 
+        const store = useProductFormStore.getState();
+        const existingMap = store.isGuideRemovedMap || {};
+        const currentVariantNames = currentData.map(v => v.name.trim());
+        const newGuideMap = {};
+
+        currentVariantNames.forEach(name => {
+            newGuideMap[name] =
+                existingMap.hasOwnProperty(name)
+                    ? existingMap[name] // preserve existing
+                    : false; // new variant → reset
+        });
+
+        store.setGuideRemovedMap(newGuideMap);
+
         // Separate arrays for single variants and combined variants
         let singleVariantsData = [];
         let combinedVariantsData = [];

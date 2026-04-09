@@ -43,7 +43,7 @@ const ImageCell = ({
         }
     }
 
-    const isImageRemoved = imageValue === "" || imageValue === null;
+    const isImageRemoved = imageValue === "__DELETE__" || imageValue === null;
     const isEditedImageRemoved = editedImageValue === "" || editedImageValue === null;
 
     const createSafeObjectURL = (fileOrUrl) => {
