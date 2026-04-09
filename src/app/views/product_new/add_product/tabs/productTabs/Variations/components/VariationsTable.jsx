@@ -764,7 +764,7 @@ const VariationsTable = ({ setShowVariantModal, isSynced }) => {
                                         checked={variant.viewAll === 'true' || variant.viewAll === true}
                                         onChange={() => {
                                             const { setVariantViewAll } = useProductFormStore.getState();
-                                            setVariantViewAll(variantIndex, !variant.viewAll);
+                                            setVariantViewAll(variantIndex, !(variant.viewAll === 'true' || variant.viewAll === true));
                                         }}
                                         size="small"
                                     />

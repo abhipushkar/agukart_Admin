@@ -1328,15 +1328,31 @@ const VariantCustomizationTable = ({ index }) => {
                         Options List
                     </Typography>
 
-                    <Button
-                        variant="outlined"
-                        startIcon={<AddIcon />}
-                        onClick={handleOpenOptionsModal}
-                        sx={{ mb: 2 }}
-                    >
-                        Add/Edit Options
-                    </Button>
-
+                    <Box fullWidth display={"flex"} justifyContent={"space-between"}>
+                        <Button
+                            variant="outlined"
+                            startIcon={<AddIcon />}
+                            onClick={handleOpenOptionsModal}
+                            sx={{ mb: 2 }}
+                        >
+                            Add/Edit Options
+                        </Button>
+                        <Box sx={{ display: 'flex', gap: 1, alignItems: "center" }}>
+                            <Typography fontWeight={500} fontSize={15}>
+                                View All visiblity :
+                            </Typography>
+                            <Switch
+                                checked={customization.viewAll === 'true' || customization.viewAll === true}
+                                onChange={() => {
+                                    const { setCustomizationViewAll } = useProductFormStore.getState();
+                                    setCustomizationViewAll(
+                                        index,
+                                        !(customization.viewAll === 'true' || customization.viewAll === true)
+                                    );
+                                }}
+                            />
+                        </Box>
+                    </Box>
                     <TableContainer
                         component={Paper}
                         variant="outlined"

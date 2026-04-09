@@ -124,6 +124,7 @@ const VariantModal = ({ show, handleCloseVariant }) => {
 
     const handleOptionDrop = (e, targetIndex) => {
         e.preventDefault();
+
         if (draggedOptionIndex === null || draggedOptionIndex === targetIndex) {
             setIsDraggingOption(false);
             setDraggedOptionIndex(null);
@@ -133,23 +134,48 @@ const VariantModal = ({ show, handleCloseVariant }) => {
         const currentValues = [...attrValues.values];
         const draggedItem = currentValues[draggedOptionIndex];
 
-        // Remove dragged item
         currentValues.splice(draggedOptionIndex, 1);
-        // Insert at target position
         currentValues.splice(targetIndex, 0, draggedItem);
 
+        // ✅ 1. update local UI
         setAttrValues(prev => ({
             ...prev,
             values: currentValues
         }));
 
+        // ✅ 2. update variationsData (CRITICAL)
+        const { variationsData, setVariationsData, product_variants, setProductVariants } = useProductFormStore.getState();
+
+        const updatedVariations = variationsData.map(v =>
+            v.name === selectedVariant
+                ? { ...v, values: currentValues }
+                : v
+        );
+
+        setVariationsData(updatedVariations);
+
+        // ✅ 3. update product_variants (REAL FIX)
+        const variantIndex = product_variants.findIndex(
+            v => v.variant_name === selectedVariant
+        );
+
+        if (variantIndex !== -1) {
+            const updatedProductVariants = [...product_variants];
+
+            const variant = { ...updatedProductVariants[variantIndex] };
+            const attrs = [...variant.variant_attributes];
+
+            const movedAttr = attrs.splice(draggedOptionIndex, 1)[0];
+            attrs.splice(targetIndex, 0, movedAttr);
+
+            variant.variant_attributes = attrs;
+            updatedProductVariants[variantIndex] = variant;
+
+            setProductVariants(updatedProductVariants);
+        }
+
         setDraggedOptionIndex(null);
         setIsDraggingOption(false);
-
-        // Reset opacity
-        if (e.target) {
-            e.target.style.opacity = '1';
-        }
     };
 
     const handleOptionDragEnd = (e) => {
