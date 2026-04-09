@@ -186,6 +186,7 @@ const OptionDropdown = ({ index }) => {
     // Drag and drop state
     const [draggingIndex, setDraggingIndex] = useState(null);
     const [dragOverIndex, setDragOverIndex] = useState(null);
+    const [hoveredHeader, setHoveredHeader] = useState(null);
 
     const handleOptionDropDownFormChange = (e) => {
         const { name, value } = e.target;
@@ -308,6 +309,20 @@ const OptionDropdown = ({ index }) => {
         }
 
         window.open(fileUrl, '_blank');
+    };
+
+    const handleDeleteGuide = () => {
+        const updatedCustomizations = [...customizationData.customizations];
+
+        updatedCustomizations[index] = {
+            ...updatedCustomizations[index],
+            guide: null // 🔥 IMPORTANT: completely remove guide
+        };
+
+        setCustomizationData({
+            ...customizationData,
+            customizations: updatedCustomizations
+        });
     };
 
     const handleCheckboxChange = (checked) => {
@@ -470,7 +485,7 @@ const OptionDropdown = ({ index }) => {
                 return;
             }
             const newMainImages = [...updatedOption.main_images];
-            newMainImages[imgIndex] = "";
+            newMainImages[imgIndex] = "__DELETE__";
             updatedOption = {
                 ...updatedOption,
                 main_images: newMainImages
@@ -481,7 +496,7 @@ const OptionDropdown = ({ index }) => {
         } else {
             updatedOption = {
                 ...updatedOption,
-                [imageType]: ""
+                [imageType]: "__DELETE__"
             };
         }
 
@@ -495,6 +510,130 @@ const OptionDropdown = ({ index }) => {
             ...customizationData,
             customizations: updatedCustomizations
         });
+    };
+
+    const hasRealImageValue = (value) => {
+        if (value === null || value === undefined) return false;
+        if (typeof value === "string") {
+            const normalized = value.trim().toLowerCase();
+            return normalized !== "" && normalized !== "__delete__" && normalized !== "null" && normalized !== "undefined";
+        }
+        return true;
+    };
+
+    const handleRemoveAllImages = (columnType) => {
+        const customization = customizationData?.customizations?.[index];
+        if (!customization?.optionList?.length) return;
+
+        const imageKeyMap = {
+            mainImage1: "main_images[0]",
+            mainImage2: "main_images[1]",
+            mainImage3: "main_images[2]",
+            preview: "preview_image",
+            thumbnail: "thumbnail",
+        };
+
+        const imageKey = imageKeyMap[columnType];
+        if (!imageKey) return;
+
+        const updatedCustomizations = [...customizationData.customizations];
+        const updatedOptionList = [...updatedCustomizations[index].optionList];
+
+        updatedOptionList.forEach((option, optionIndex) => {
+            if (imageKey.startsWith("main_images")) {
+                const imgIndex = parseInt(imageKey.match(/\[(\d+)\]/)[1], 10);
+                if (!option.main_images || option.main_images.length <= imgIndex) return;
+                const hasImage = hasRealImageValue(option.main_images[imgIndex]);
+                if (!hasImage) return;
+
+                const newMainImages = [...option.main_images];
+                newMainImages[imgIndex] = "__DELETE__";
+                updatedOptionList[optionIndex] = {
+                    ...option,
+                    main_images: newMainImages
+                };
+                trackCustomizationImageDelete(index, optionIndex, imgIndex);
+            } else {
+                const hasImage = hasRealImageValue(option[imageKey]);
+                if (!hasImage) return;
+
+                updatedOptionList[optionIndex] = {
+                    ...option,
+                    [imageKey]: "__DELETE__"
+                };
+            }
+        });
+
+        updatedCustomizations[index] = {
+            ...updatedCustomizations[index],
+            optionList: updatedOptionList
+        };
+
+        setCustomizationData({
+            ...customizationData,
+            customizations: updatedCustomizations
+        });
+    };
+
+    const hasColumnImages = (columnType) => {
+        const customization = customizationData?.customizations?.[index];
+        if (!customization?.optionList?.length) return false;
+
+        return customization.optionList.some((option) => {
+            switch (columnType) {
+                case "mainImage1":
+                    return option.main_images && hasRealImageValue(option.main_images[0]);
+                case "mainImage2":
+                    return option.main_images && hasRealImageValue(option.main_images[1]);
+                case "mainImage3":
+                    return option.main_images && hasRealImageValue(option.main_images[2]);
+                case "preview":
+                    return hasRealImageValue(option.preview_image);
+                case "thumbnail":
+                    return hasRealImageValue(option.thumbnail);
+                default:
+                    return false;
+            }
+        });
+    };
+
+    const ImageHeaderCell = ({ columnKey, displayName }) => {
+        const hasImages = hasColumnImages(columnKey);
+
+        return (
+            <TableCell
+                align="center"
+                width="150px"
+                sx={{ position: "relative" }}
+                onMouseEnter={() => setHoveredHeader(columnKey)}
+                onMouseLeave={() => setHoveredHeader(null)}
+            >
+                {displayName}
+                {hasImages && hoveredHeader === columnKey && (
+                    <Button
+                        size="small"
+                        variant="contained"
+                        color="error"
+                        onClick={() => handleRemoveAllImages(columnKey)}
+                        sx={{
+                            position: "absolute",
+                            top: "50%",
+                            right: 4,
+                            transform: "translateY(-50%)",
+                            minWidth: "auto",
+                            width: 24,
+                            height: 24,
+                            fontSize: "12px",
+                            padding: 0,
+                            borderRadius: "50%",
+                        }}
+                        title={`Remove all ${displayName}`}
+                    >
+                        ×
+                    </Button>
+                )}
+            </TableCell>
+        );
     };
 
     const handleEditImage = (optionIndex, imageType, editedImage, editData, imageIndex = null) => {
@@ -791,7 +930,7 @@ const OptionDropdown = ({ index }) => {
             }
         }
 
-        const isImageRemoved = imageValue === "" || imageValue === null;
+        const isImageRemoved = !hasRealImageValue(imageValue);
         const isEditedImageRemoved = editedImageValue === "" || editedImageValue === null;
 
         const createSafeObjectURL = (fileOrUrl) => {
@@ -1184,14 +1323,29 @@ const OptionDropdown = ({ index }) => {
                         <Typography variant="subtitle2" fontWeight={600}>
                             Guide
                         </Typography>
-                        <Button
-                            size="small"
-                            variant="outlined"
-                            startIcon={<EditIcon />}
-                            onClick={handleOpenGuideDialog}
-                        >
-                            {customization?.guide?.guide_name ? 'Edit Guide' : 'Add Guide'}
-                        </Button>
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Button
+                                variant="outlined"
+                                startIcon={<EditIcon />}
+                                onClick={handleOpenGuideDialog}
+                                size="small"
+                            >
+                                {customization?.guide ? 'Edit Guide' : 'Add Guide'}
+                            </Button>
+                            {/* DELETE BUTTON */}
+                            {customization?.guide && (
+                                <Tooltip title="Delete Guide">
+                                    <IconButton
+                                        color="error"
+                                        onClick={handleDeleteGuide}
+                                        size="small"
+                                    >
+                                        <DeleteIcon />
+                                    </IconButton>
+                                </Tooltip>
+                            )}
+
+                        </Box>
                     </Box>
 
                     {customization?.guide ? (
@@ -1237,11 +1391,11 @@ const OptionDropdown = ({ index }) => {
                                         <TableCell align="center" width="40px"></TableCell>
                                         <TableCell align="center" width="auto" sx={{ minWidth: '150px', maxWidth: '300px' }}>Option Name</TableCell>
                                         <TableCell align="center" width="120px">Bulk Upload</TableCell>
-                                        <TableCell align="center" width="150px">Main Image 1</TableCell>
-                                        <TableCell align="center" width="150px">Main Image 2</TableCell>
-                                        <TableCell align="center" width="150px">Main Image 3</TableCell>
-                                        <TableCell align="center" width="150px">Preview Image</TableCell>
-                                        <TableCell align="center" width="150px">Thumbnail</TableCell>
+                                        <ImageHeaderCell columnKey="mainImage1" displayName="Main Image 1" />
+                                        <ImageHeaderCell columnKey="mainImage2" displayName="Main Image 2" />
+                                        <ImageHeaderCell columnKey="mainImage3" displayName="Main Image 3" />
+                                        <ImageHeaderCell columnKey="preview" displayName="Preview Image" />
+                                        <ImageHeaderCell columnKey="thumbnail" displayName="Thumbnail" />
                                         <TableCell align="center" width="100px">Price Difference</TableCell>
                                         <TableCell align="center" width="70px">Visible</TableCell>
                                         <TableCell align="center" width="70px">Actions</TableCell>

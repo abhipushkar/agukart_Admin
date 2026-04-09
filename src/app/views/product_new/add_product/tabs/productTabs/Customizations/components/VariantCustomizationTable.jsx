@@ -191,6 +191,7 @@ const VariantCustomizationTable = ({ index }) => {
     // Drag and drop state
     const [draggingIndex, setDraggingIndex] = useState(null);
     const [dragOverIndex, setDragOverIndex] = useState(null);
+    const [hoveredHeader, setHoveredHeader] = useState(null);
 
     // Check if file is an image
     const isImageFile = (file) => {
@@ -561,7 +562,7 @@ const VariantCustomizationTable = ({ index }) => {
                 return;
             }
             const newMainImages = [...updatedOption.main_images];
-            newMainImages[imgIndex] = "";
+            newMainImages[imgIndex] = "__DELETE__";
             updatedOption = {
                 ...updatedOption,
                 main_images: newMainImages
@@ -572,7 +573,7 @@ const VariantCustomizationTable = ({ index }) => {
         } else {
             updatedOption = {
                 ...updatedOption,
-                [imageType]: ""
+                [imageType]: "__DELETE__"
             };
         }
 
@@ -586,6 +587,119 @@ const VariantCustomizationTable = ({ index }) => {
             ...customizationData,
             customizations: updatedCustomizations
         });
+    };
+
+    const handleRemoveAllImages = (columnType) => {
+        if (!customization?.optionList?.length) return;
+
+        const imageKeyMap = {
+            mainImage1: "main_images[0]",
+            mainImage2: "main_images[1]",
+            mainImage3: "main_images[2]",
+            preview: "preview_image",
+            thumbnail: "thumbnail",
+        };
+
+        const imageKey = imageKeyMap[columnType];
+        if (!imageKey) return;
+
+        const updatedCustomizations = [...customizationData.customizations];
+        const updatedOptionList = [...updatedCustomizations[index].optionList];
+
+        updatedOptionList.forEach((option, optionIndex) => {
+            if (imageKey.startsWith("main_images")) {
+                const imgIndex = parseInt(imageKey.match(/\[(\d+)\]/)[1], 10);
+                if (!option.main_images || option.main_images.length <= imgIndex) return;
+                const hasImage = option.main_images[imgIndex] && option.main_images[imgIndex] !== "__DELETE__";
+                if (!hasImage) return;
+
+                const newMainImages = [...option.main_images];
+                newMainImages[imgIndex] = "__DELETE__";
+                updatedOptionList[optionIndex] = {
+                    ...option,
+                    main_images: newMainImages
+                };
+                trackCustomizationImageDelete(index, optionIndex, imgIndex);
+            } else {
+                const hasImage = option[imageKey] && option[imageKey] !== "__DELETE__";
+                if (!hasImage) return;
+
+                updatedOptionList[optionIndex] = {
+                    ...option,
+                    [imageKey]: "__DELETE__"
+                };
+            }
+        });
+
+        updatedCustomizations[index] = {
+            ...updatedCustomizations[index],
+            optionList: updatedOptionList
+        };
+
+        setCustomizationData({
+            ...customizationData,
+            customizations: updatedCustomizations
+        });
+    };
+
+    const hasColumnImages = (columnType) => {
+        if (!customization?.optionList?.length) return false;
+
+        return customization.optionList.some((option) => {
+            switch (columnType) {
+                case "mainImage1":
+                    return option.main_images && option.main_images[0] && option.main_images[0] !== "__DELETE__";
+                case "mainImage2":
+                    return option.main_images && option.main_images[1] && option.main_images[1] !== "__DELETE__";
+                case "mainImage3":
+                    return option.main_images && option.main_images[2] && option.main_images[2] !== "__DELETE__";
+                case "preview":
+                    return option.preview_image && option.preview_image !== "__DELETE__";
+                case "thumbnail":
+                    return option.thumbnail && option.thumbnail !== "__DELETE__";
+                default:
+                    return false;
+            }
+        });
+    };
+
+    const ImageHeaderCell = ({ columnKey, displayName }) => {
+        const hasImages = hasColumnImages(columnKey);
+
+        return (
+            <TableCell
+                align="center"
+                width="150px"
+                sx={{ position: "relative" }}
+                onMouseEnter={() => setHoveredHeader(columnKey)}
+                onMouseLeave={() => setHoveredHeader(null)}
+            >
+                {displayName}
+                {hasImages && hoveredHeader === columnKey && (
+                    <Button
+                        size="small"
+                        variant="contained"
+                        color="error"
+                        onClick={() => handleRemoveAllImages(columnKey)}
+                        sx={{
+                            position: "absolute",
+                            top: "50%",
+                            right: 4,
+                            transform: "translateY(-50%)",
+                            minWidth: "auto",
+                            width: 24,
+                            height: 24,
+                            fontSize: "12px",
+                            padding: 0,
+                            borderRadius: "50%",
+                        }}
+                        title={`Remove all ${displayName}`}
+                    >
+                        ×
+                    </Button>
+                )}
+            </TableCell>
+        );
     };
 
     const handleEditImage = (optionIndex, imageType, editedImage, editData, imageIndex = null) => {
@@ -782,7 +896,7 @@ const VariantCustomizationTable = ({ index }) => {
             }
         }
 
-        const isImageRemoved = imageValue === "" || imageValue === null;
+        const isImageRemoved = imageValue === "__DELETE__" || imageValue === null;
         const isEditedImageRemoved = editedImageValue === "" || editedImageValue === null;
 
         const createSafeObjectURL = (fileOrUrl) => {
@@ -1026,6 +1140,20 @@ const VariantCustomizationTable = ({ index }) => {
         return summary.length > 0 ? summary.join(', ') : 'Custom crop applied';
     };
 
+    const handleDeleteGuide = () => {
+        const updatedCustomizations = [...customizationData.customizations];
+
+        updatedCustomizations[index] = {
+            ...updatedCustomizations[index],
+            guide: null // 🔥 IMPORTANT: completely remove guide
+        };
+
+        setCustomizationData({
+            ...customizationData,
+            customizations: updatedCustomizations
+        });
+    };
+
     return (
         <Box sx={{ mt: 2 }}>
             {/* ADDED CONFIGURATION SECTION TO MATCH OPTION DROPDOWN */}
@@ -1086,14 +1214,29 @@ const VariantCustomizationTable = ({ index }) => {
                     <Typography variant="h6">
                         Guide Information
                     </Typography>
-                    <Button
-                        variant="outlined"
-                        startIcon={<EditIcon />}
-                        onClick={handleOpenGuideDialog}
-                        size="small"
-                    >
-                        {customization?.guide ? 'Edit Guide' : 'Add Guide'}
-                    </Button>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Button
+                            variant="outlined"
+                            startIcon={<EditIcon />}
+                            onClick={handleOpenGuideDialog}
+                            size="small"
+                        >
+                            {customization?.guide ? 'Edit Guide' : 'Add Guide'}
+                        </Button>
+                        {/* DELETE BUTTON */}
+                        {customization?.guide && (
+                            <Tooltip title="Delete Guide">
+                                <IconButton
+                                    color="error"
+                                    onClick={handleDeleteGuide}
+                                    size="small"
+                                >
+                                    <DeleteIcon />
+                                </IconButton>
+                            </Tooltip>
+                        )}
+
+                    </Box>
                 </Box>
 
                 {customization?.guide ? (
@@ -1221,11 +1364,11 @@ const VariantCustomizationTable = ({ index }) => {
                                     <TableCell align="center" width="40px"></TableCell>
                                     <TableCell align="center" width="auto" sx={{ minWidth: '150px', maxWidth: '300px' }}>Option Name</TableCell>
                                     <TableCell align="center" width="120px">Bulk Upload</TableCell>
-                                    <TableCell align="center" width="150px">Main Image 1</TableCell>
-                                    <TableCell align="center" width="150px">Main Image 2</TableCell>
-                                    <TableCell align="center" width="150px">Main Image 3</TableCell>
-                                    <TableCell align="center" width="150px">Preview Image</TableCell>
-                                    <TableCell align="center" width="150px">Thumbnail</TableCell>
+                                    <ImageHeaderCell columnKey="mainImage1" displayName="Main Image 1" />
+                                    <ImageHeaderCell columnKey="mainImage2" displayName="Main Image 2" />
+                                    <ImageHeaderCell columnKey="mainImage3" displayName="Main Image 3" />
+                                    <ImageHeaderCell columnKey="preview" displayName="Preview Image" />
+                                    <ImageHeaderCell columnKey="thumbnail" displayName="Thumbnail" />
                                     <TableCell align="center" width="100px">Price Difference</TableCell>
                                     <TableCell align="center" width="70px">Visible</TableCell>
                                     <TableCell align="center" width="70px">Actions</TableCell>

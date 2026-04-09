@@ -9,9 +9,12 @@ export const useProductFormStore = create(
             draftLoading: false,
             loadingProductData: false,
 
+            cancelDisabled: false,
+
             setLoading: (loading) => set({ loading }),
             setDraftLoading: (draftLoading) => set({ draftLoading }),
             setLoadingProductData: (loadingProductData) => set({ loadingProductData }),
+            setCancelDisabled: (value) => set({ cancelDisabled: value }),
 
             brandList: [],
             setBrandList: (brandList => set((state) => ({ brandList }))),
@@ -254,6 +257,7 @@ export const useProductFormStore = create(
             initializeProductVariants: (variationsData, allVariants) => {
                 const newProductVariants = [];
                 const existingVariantsMap = new Map();
+                const removedGuideMap = get().isGuideRemovedMap || {};
 
                 // Create a map of existing product_variants for quick lookup
                 get().product_variants.forEach(variant => {
@@ -314,14 +318,18 @@ export const useProductFormStore = create(
                                     };
                                 }
                             });
+                            const isRemoved = removedGuideMap[variation.name] === true;
 
                             newProductVariants.push({
                                 variant_name: variation.name,
                                 variant_attributes: updatedAttributes,
                                 // ========== ADDED: Preserve existing guide or use API guide ==========
-                                guide: existingVariant.guide && existingVariant.guide.length > 0
-                                    ? existingVariant.guide
-                                    : (apiGuide ? [apiGuide] : []),
+                                guide: isRemoved
+                                    ? [] : (
+                                        existingVariant?.guide?.length > 0
+                                            ? existingVariant.guide
+                                            : (apiGuide ? [apiGuide] : [])
+                                    ),
                                 viewAll: existingVariant?.viewAll ?? false
                             });
                         } else {
@@ -342,12 +350,14 @@ export const useProductFormStore = create(
                                     edit_preview_image_data: attributeData?.edit_preview_image_data || {},
                                 };
                             });
-
+                            const isRemoved = removedGuideMap[variation.name] === true;
                             newProductVariants.push({
                                 variant_name: variation.name,
                                 variant_attributes: variantAttributes,
                                 // ========== ADDED: Set guide data from API if available ==========
-                                guide: apiGuide ? [apiGuide] : [],
+                                guide: isRemoved
+                                    ? []
+                                    : (apiGuide ? [apiGuide] : []),
                                 viewAll: existingVariant?.viewAll ?? false
                             });
                         }
@@ -437,21 +447,33 @@ export const useProductFormStore = create(
                 set({ product_variants: newProductVariants });
             },
 
+            isGuideRemovedMap: {},
+
+            setIsGuideRemoved: (variantName, value) =>
+                set((state) => ({
+                    isGuideRemovedMap: {
+                        ...state.isGuideRemovedMap,
+                        [variantName]: value
+                    }
+                })),
+
+            setGuideRemovedMap: (map) => set({ isGuideRemovedMap: map }),
+
             handleGuideRemove: (variantIndex) => {
                 const state = get();
-                const updatedProductVariants = [...state.product_variants];
+                const variant = state.product_variants[variantIndex];
 
-                const newProductVariants = updatedProductVariants.map((variant, vIndex) => {
-                    if (vIndex === variantIndex) {
-                        return {
-                            ...variant,
-                            guide: [] // Clear guide array
-                        };
-                    }
-                    return variant;
-                });
+                if (!variant) return;
 
-                set({ product_variants: newProductVariants });
+                const variantName = variant.variant_name;
+
+                state.setIsGuideRemoved(variantName, true);
+
+                const updated = state.product_variants.map((v, i) =>
+                    i === variantIndex ? { ...v, guide: [] } : v
+                );
+
+                set({ product_variants: updated });
             },
 
             // ========== IMAGE HANDLERS (now work with product_variants) ==========
@@ -529,11 +551,11 @@ export const useProductFormStore = create(
                                 }
 
                                 // Clear the image
-                                mainImages[imgIndex] = "";
+                                mainImages[imgIndex] = "__DELETE__";
                                 updatedAttribute.main_images = mainImages;
                             }
                         } else {
-                            updatedAttribute[imageKey] = "";
+                            updatedAttribute[imageKey] = "__DELETE__";
                         }
 
                         // Also remove any edit data for this image
@@ -842,6 +864,15 @@ export const useProductFormStore = create(
                     product_variants: product_variants, // NEW: Initialize product_variants
                     keys: cleanedEditData?.search_terms || [],
                     altText: cleanedEditData?.altText || []
+                });
+
+                const guideRemovedMap = {};
+                product_variants.forEach(v => {
+                    const hasGuide = Array.isArray(v.guide) && v.guide.length > 0;
+                    guideRemovedMap[v.variant_name] = !hasGuide;
+                });
+                set({
+                    isGuideRemovedMap: guideRemovedMap
                 });
             },
 

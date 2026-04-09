@@ -122,7 +122,7 @@ export const useProductAPI = () => {
                 if (variant.viewAll !== undefined) {
                     fData.append(
                         `product_variants[${vIndex}][viewAll]`,
-                        variant.viewAll ? "true" : "false"
+                        variant.viewAll === true || variant.viewAll === "true" ? "true" : "false"
                     );
                 }
 
