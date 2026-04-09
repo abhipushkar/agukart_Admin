@@ -66,7 +66,8 @@ const VariantModal = ({ show, handleCloseVariant }) => {
         setFormValues,
         clearCombinationErrors,
         varientName,
-        parentProductData
+        parentProductData,
+        cancelDisabled
     } = useProductFormStore();
 
     const [selectedVariant, setSelectedVariant] = useState("");
@@ -569,6 +570,8 @@ const VariantModal = ({ show, handleCloseVariant }) => {
 
     // ========== FIXED: handleGenerate with proper combined variant handling ==========
     const handleGenerate = async () => {
+        const { setCancelDisabled } = useProductFormStore.getState();
+        setCancelDisabled(false);
         const currentData = variationsData || [];
 
         let data = [];
@@ -933,6 +936,10 @@ const VariantModal = ({ show, handleCloseVariant }) => {
     };
 
     const handleDone = () => {
+
+        const { setCancelDisabled } = useProductFormStore.getState();
+        setCancelDisabled(true);
+
         if (!attrValues.name || attrValues.values.length === 0) {
             return;
         }
@@ -1241,9 +1248,13 @@ const VariantModal = ({ show, handleCloseVariant }) => {
                                         )}
                                     </Box>
                                 )}
-
-                                <Box display="flex" justifyContent="space-between" mt={4}>
-                                    <Button onClick={handleApplyCancel} variant="outlined">
+                                {cancelDisabled && (
+                                    <Typography variant="caption" color="text.secondary" mt={4}>
+                                        Cannot cancel after changes are made!
+                                    </Typography>
+                                )}
+                                <Box display="flex" justifyContent="space-between" mt={cancelDisabled ? 0 : 4}>
+                                    <Button onClick={handleApplyCancel} variant="outlined" disabled={cancelDisabled}>
                                         Cancel
                                     </Button>
                                     <Button

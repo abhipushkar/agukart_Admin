@@ -9,9 +9,12 @@ export const useProductFormStore = create(
             draftLoading: false,
             loadingProductData: false,
 
+            cancelDisabled: false,
+
             setLoading: (loading) => set({ loading }),
             setDraftLoading: (draftLoading) => set({ draftLoading }),
             setLoadingProductData: (loadingProductData) => set({ loadingProductData }),
+            setCancelDisabled: (value) => set({ cancelDisabled: value }),
 
             brandList: [],
             setBrandList: (brandList => set((state) => ({ brandList }))),
