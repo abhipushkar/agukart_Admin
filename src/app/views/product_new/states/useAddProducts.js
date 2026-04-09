@@ -250,6 +250,27 @@ export const useProductFormStore = create(
                 set({ product_variants: updated });
             },
 
+            setCustomizationViewAll: (customizationIndex, value) => {
+                const customizationData = get().customizationData || {};
+                const customizations = customizationData.customizations || [];
+
+                const updatedCustomizations = [...customizations];
+
+                if (updatedCustomizations[customizationIndex]) {
+                    updatedCustomizations[customizationIndex] = {
+                        ...updatedCustomizations[customizationIndex],
+                        viewAll: value
+                    };
+                }
+
+                set({
+                    customizationData: {
+                        ...customizationData,
+                        customizations: updatedCustomizations
+                    }
+                });
+            },
+
             // ========== NEW: PRODUCT VARIANTS ACTIONS ==========
             setProductVariants: (product_variants) => set({ product_variants }),
 

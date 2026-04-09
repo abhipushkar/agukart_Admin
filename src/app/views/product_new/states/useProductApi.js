@@ -361,6 +361,7 @@ export const useProductAPI = () => {
                 fData.append(`customizationData[customizations][${cIndex}][instructions]`, customization.instructions || '');
                 fData.append(`customizationData[customizations][${cIndex}][isCompulsory]`, customization.isCompulsory === true || customization.isCompulsory === "true" ? 'true' : 'false');
                 fData.append(`customizationData[customizations][${cIndex}][isVariant]`, customization.isVariant === true || customization.isVariant === "true" ? 'true' : 'false');
+                fData.append(`customizationData[customizations][${cIndex}][viewAll]`, customization.viewAll === true || customization.viewAll === "true" ? "true" : "false");
 
                 // ADDED: Append guide data for customization
                 if (customization.guide) {
