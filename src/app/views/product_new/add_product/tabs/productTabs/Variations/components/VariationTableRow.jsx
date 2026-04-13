@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import TableRow from "@mui/material/TableRow";
 import TableCell from "@mui/material/TableCell";
-import { Box, Button, IconButton } from "@mui/material";
+import { Box, Button, IconButton, Typography } from "@mui/material";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import { useProductFormStore } from "../../../../../states/useAddProducts";
 import ImageCell, { BulkUploadCell } from "./imageComponents/ImageCell";
@@ -69,7 +69,8 @@ const DraggableTableRow = ({
                 '&:hover .drag-handle': {
                     opacity: 0.7,
                 },
-                borderBottom: isDragOver ? '2px dashed #1976d2' : '1px solid rgba(224, 224, 224, 1)'
+                borderBottom: isDragOver ? '2px dashed #1976d2' : '1px solid rgba(224, 224, 224, 1)',
+                backgroundColor: props.backgroundColor
             }}
         >
             {children}
@@ -90,6 +91,8 @@ const VariationTableRow = ({
         handleEditImage,
         showAll,
         setShowAll,
+        variationsData,
+        varientName
     } = useProductFormStore();
 
     const [draggingIndex, setDraggingIndex] = useState(null);
@@ -194,6 +197,48 @@ const VariationTableRow = ({
         return count;
     };
 
+    const getAttributeStatus = (attr) => {
+        const variation = variationsData.find(
+            v => v.name === variant.variant_name
+        );
+        if (variation) {
+            const status = variation.values.some(
+                v => String(v).trim() === String(attr).trim()
+            );
+            return status;
+        }
+        return true;
+    };
+
+    const getRowBackgroundColor = (attr) => {
+        const variation = variationsData.find(
+            v => v.name === variant.variant_name
+        );
+        const catalogVariant = varientName.find(
+            v => variant.variant_name === v.variant_name
+        )
+        let isAttrInProduct = true;
+        let isAttrInVariant = true;
+        if (variation) {
+            isAttrInProduct = variation.values.some(
+                v => String(v).trim() === String(attr).trim()
+            );
+        }
+        if (catalogVariant) {
+            isAttrInVariant = catalogVariant.variant_attribute.some(
+                a => String(a.attribute_value).trim() === String(attr).trim()
+            )
+        }
+        if (isAttrInProduct && !isAttrInVariant) {
+            return "#fef3c8b0"
+        }
+        if (!isAttrInProduct && !isAttrInVariant) {
+            return "#ffb7b7a0"
+        }
+        return "inherit"
+    };
+
+
     return (
         <>
             {itemsToShow?.map((attribute, attributeIndex) => (
@@ -206,6 +251,7 @@ const VariationTableRow = ({
                     onDragEnd={handleDragEnd}
                     isDragging={draggingIndex === attributeIndex}
                     isDragOver={dragOverIndex === attributeIndex}
+                    backgroundColor={getRowBackgroundColor(attribute.attribute)}
                 >
                     {/* Drag Handle Column */}
                     {visibleColumns.drag && (
@@ -235,7 +281,7 @@ const VariationTableRow = ({
 
                     {/* Attribute Column */}
                     {visibleColumns.attribute && (
-                        <TableCell align="center">{attribute.attribute}</TableCell>
+                        <TableCell align="center" > <Typography color={getAttributeStatus(attribute.attribute) ? "inherit" : "error"}> {attribute.attribute}</Typography></TableCell>
                     )}
 
                     {/* Bulk Upload Column */}

@@ -151,6 +151,8 @@ export const useProductFormStore = create(
                 tabs: [],
                 exchangePolicy: "",
                 dynamicFields: {},
+                deletedVariantIds: [],
+                inActiveReason: "",
             },
 
             dynamicFields: [],
@@ -876,6 +878,8 @@ export const useProductFormStore = create(
                         tabs: cleanedEditData?.tabs || [],
                         exchangePolicy: cleanedEditData?.exchangePolicy || "",
                         dynamicFields: cleanedEditData?.dynamicFields || {},
+                        deletedVariantIds: cleanedEditData?.deletedVariantIds || [],
+                        inActiveReason: cleanedEditData?.inActiveReason || ""
                     },
                     formValues,
                     variationsData,

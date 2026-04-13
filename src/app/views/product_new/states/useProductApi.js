@@ -401,7 +401,7 @@ export const useProductAPI = () => {
                         // Append basic option fields
                         fData.append(`customizationData[customizations][${cIndex}][optionList][${oIndex}][optionName]`, option.optionName || '');
                         fData.append(`customizationData[customizations][${cIndex}][optionList][${oIndex}][priceDifference]`, option.priceDifference || '0');
-                        fData.append(`customizationData[customizations][${cIndex}][optionList][${oIndex}][isVisible]`, option.isVisible !== false ? 'true' : 'false');
+                        fData.append(`customizationData[customizations][${cIndex}][optionList][${oIndex}][isVisible]`, option.isVisible !== false || option.isVisible !== "false" ? 'true' : 'false');
 
                         // Handle edit data for images
                         if (option.edit_main_image_data) {
@@ -637,6 +637,13 @@ export const useProductAPI = () => {
         return errors;
     };
 
+    const getRemovedDeletedVariants = () => {
+        const { formData, variationsData } = useProductFormStore.getState();
+        const existingIds = new Set(variationsData.map(v => v.variantId));
+
+        return formData.deletedVariantIds.filter(id => !existingIds.has(id));
+    };
+
     // Submit product (add or edit)
     const submitProduct = async (isEdit = false, queryId = null) => {
         try {
@@ -656,8 +663,16 @@ export const useProductAPI = () => {
             if (res?.status === 200) {
                 if (!isEdit) {
                     await handleUploadImage(queryId || res?.data.product._id);
+                    const removedDeletedVariants = getRemovedDeletedVariants();
+                    if (state.formData.deletedVariantIds.length && removedDeletedVariants.length > 0) {
+                        await ApiService.patch(`restore-product-after-deletedVariants/${queryId}`, { variantIds: removedDeletedVariants }, auth_key);
+                    }
                 } else {
                     await handleUploadImage2(queryId || res?.data.product._id);
+                    const removedDeletedVariants = getRemovedDeletedVariants();
+                    if (state.formData.deletedVariantIds.length && removedDeletedVariants.length > 0) {
+                        await ApiService.patch(`restore-product-after-deletedVariants/${queryId}`, { variantIds: removedDeletedVariants }, auth_key);
+                    }
                 }
 
                 return res;
