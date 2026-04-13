@@ -137,6 +137,7 @@ const VariationsTable = ({ setShowVariantModal, isSynced }) => {
         handleEditImage,
         handleVariantGroupReorder, // For reordering entire variant groups
         showAll,
+        formData
     } = useProductFormStore();
 
     console.log(product_variants);
@@ -706,10 +707,23 @@ const VariationsTable = ({ setShowVariantModal, isSynced }) => {
         setShowAll(!showAll);
     };
 
+    const getVariantStatus = (variantName) => {
+        const { variationsData } = useProductFormStore.getState();
+        if (formData.deletedVariantIds.length === 0) {
+            return true;
+        }
+        const variantId = variationsData.find(v => v.name === variantName)?.variantId;
+        if (variantId && formData.deletedVariantIds.includes(variantId)) {
+            return false;
+        }
+        return true;
+    };
+
     return (
         <Box>
             {product_variants?.map((variant, variantIndex) => {
                 const tableKey = variant.variant_name;
+                const status = getVariantStatus(tableKey);
                 const tableVisibleColumns = getTableVisibleColumns(tableKey);
                 const availableColumns = getAvailableColumns(variant);
 
@@ -747,8 +761,10 @@ const VariationsTable = ({ setShowVariantModal, isSynced }) => {
                                     <DragIndicatorIcon />
                                 </IconButton>
                                 <Box>
-                                    <Typography variant="h6" fontWeight={600} color="primary">
-                                        {tableKey}
+                                    <Typography component="div" variant="h6" fontWeight={600} color={status ? "primary" : "error"} sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                                        {tableKey} {!status && (<Box component="span" sx={{ fontSize: 14, color: "#f00" }}>
+                                            {formData.inActiveReason}
+                                        </Box>)}
                                     </Typography>
                                     <Typography variant="body2" color="textSecondary">
                                         {variant.variant_attributes?.length || 0} attribute(s)

@@ -466,9 +466,14 @@ const ProductRow = ({ product, index }) => {
                                         <KeyboardArrowRight fontSize="small" />}
                                 </IconButton>
                             )}
-                            <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
-                                {isProduct ? product.status : `${product.type} \n${product.totalChildCount}(${product.productData?.length || 0})`}
-                            </Typography>
+                            <Box>
+                                <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
+                                    {isProduct ? product.status : `${product.type} \n${product.totalChildCount}(${product.productData?.length || 0})`}
+                                </Typography>
+                                <Typography color={"error"} variant="body2" sx={{ fontSize: '0.75rem' }}>
+                                    {product.inactiveReason}
+                                </Typography>
+                            </Box>
                         </Box>
                     </TableCell>
                 )}

@@ -401,7 +401,7 @@ export const useProductAPI = () => {
                         // Append basic option fields
                         fData.append(`customizationData[customizations][${cIndex}][optionList][${oIndex}][optionName]`, option.optionName || '');
                         fData.append(`customizationData[customizations][${cIndex}][optionList][${oIndex}][priceDifference]`, option.priceDifference || '0');
-                        fData.append(`customizationData[customizations][${cIndex}][optionList][${oIndex}][isVisible]`, option.isVisible !== false ? 'true' : 'false');
+                        fData.append(`customizationData[customizations][${cIndex}][optionList][${oIndex}][isVisible]`, option.isVisible !== false || option.isVisible !== "false" ? 'true' : 'false');
 
                         // Handle edit data for images
                         if (option.edit_main_image_data) {

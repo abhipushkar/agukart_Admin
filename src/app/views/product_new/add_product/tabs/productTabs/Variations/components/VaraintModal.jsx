@@ -345,8 +345,8 @@ const VariantModal = ({ show, handleCloseVariant }) => {
                         price: "",
                         qty: "",
                         isVisible: true,
-                        priceInput: formValues?.prices,
-                        quantityInput: formValues?.quantities,
+                        priceInput: formValues?.isCheckedPrice ? formValues?.prices : "",
+                        quantityInput: formValues?.isCheckedQuantity ? formValues?.quantities : "",
                         isCheckedPrice: formValues?.isCheckedPrice,
                         isCheckedQuantity: formValues?.isCheckedQuantity,
                     };
@@ -368,8 +368,8 @@ const VariantModal = ({ show, handleCloseVariant }) => {
                         price: "",
                         qty: "",
                         isVisible: true,
-                        priceInput: formValues?.prices,
-                        quantityInput: formValues?.quantities,
+                        priceInput: formValues?.isCheckedPrice ? formValues?.prices : "",
+                        quantityInput: formValues?.isCheckedQuantity ? formValues?.quantities : "",
                         isCheckedPrice: formValues?.isCheckedPrice,
                         isCheckedQuantity: formValues?.isCheckedQuantity,
                     };
@@ -500,6 +500,35 @@ const VariantModal = ({ show, handleCloseVariant }) => {
             }
 
             setFormValues(updatedFormValues);
+            const { combinations, setCombinations } = useProductFormStore.getState();
+
+            // 🔥 CLEAN INVALID COMBINATIONS
+            const cleanedCombinations = combinations.map(group => {
+                const cleaned = group.combinations.map(comb => {
+                    return {
+                        ...comb,
+
+                        // ❌ REMOVE secondary variant data
+                        name2: undefined,
+                        value2: undefined,
+
+                        // ❌ REMOVE stale control fields
+                        priceInput: "",
+                        quantityInput: "",
+
+                        // ❌ RESET variation flags
+                        isPriceVariation: false,
+                        isQuantityVariation: false,
+                    };
+                });
+
+                return {
+                    ...group,
+                    combinations: cleaned
+                };
+            });
+
+            setCombinations(cleanedCombinations);
 
             // Now delete the variant
             handleDeleteVariation(variantToDelete);
@@ -599,6 +628,14 @@ const VariantModal = ({ show, handleCloseVariant }) => {
         const { setCancelDisabled } = useProductFormStore.getState();
         setCancelDisabled(false);
         const currentData = variationsData || [];
+        const noControllers =
+            !formValues?.isCheckedPrice &&
+            !formValues?.isCheckedQuantity;
+
+        if (noControllers) {
+            // Force clean generation (no preserve)
+            setCombinations([]);
+        }
 
         let data = [];
         const processedVariants = new Set();

@@ -159,6 +159,7 @@ export const useProductStore = create((set, get) => ({
             const res = await ApiService.get(url, auth_key);
 
             if (res.status === 200) {
+                console.log(res.data.data.slice(0, 5));
                 set({
                     products: res.data.data,
                     filteredProducts: res.data.data,
