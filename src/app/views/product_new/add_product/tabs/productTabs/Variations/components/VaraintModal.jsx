@@ -1342,7 +1342,7 @@ const VariantModal = ({ show, handleCloseVariant }) => {
                                         discoverability.
                                     </Typography>
                                     <Box my={2}>
-                                        {allVariants?.map((item, index) => {
+                                        {allVariants?.filter(v => v.deletedAt === null).map((item, index) => {
                                             const isDisabled = disabledVariants.has(item?.variant_name);
                                             // Ensure selectedVariations is always treated as an array
                                             const safeSelectedVariations = Array.isArray(selectedVariations) ? selectedVariations : [];

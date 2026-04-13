@@ -470,9 +470,9 @@ const ProductRow = ({ product, index }) => {
                                 <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
                                     {isProduct ? product.status : `${product.type} \n${product.totalChildCount}(${product.productData?.length || 0})`}
                                 </Typography>
-                                <Typography color={"error"} variant="body2" sx={{ fontSize: '0.75rem' }}>
+                                {isProduct && product.status === "inactive" && (<Typography color={"error"} variant="body2" sx={{ fontSize: '0.75rem' }}>
                                     {product.inactiveReason}
-                                </Typography>
+                                </Typography>)}
                             </Box>
                         </Box>
                     </TableCell>
@@ -916,6 +916,9 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
             {!filters.hiddenColumns.includes('Status') && (
                 <TableCell sx={{ padding: '4px' }}>
                     <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>{variation.productStatus}</Typography>
+                    {variation.productStatus === "inactive" && (<Typography color={"error"} variant="body2" sx={{ fontSize: '0.75rem' }}>
+                        {variation.inactiveReason}
+                    </Typography>)}
                 </TableCell>
             )}
 

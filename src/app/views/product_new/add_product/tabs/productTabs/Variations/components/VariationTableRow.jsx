@@ -91,7 +91,8 @@ const VariationTableRow = ({
         handleEditImage,
         showAll,
         setShowAll,
-        variationsData
+        variationsData,
+        varientName
     } = useProductFormStore();
 
     const [draggingIndex, setDraggingIndex] = useState(null);
@@ -204,11 +205,39 @@ const VariationTableRow = ({
             const status = variation.values.some(
                 v => String(v).trim() === String(attr).trim()
             );
-            console.log(variation, attr, status);
             return status;
         }
         return true;
     };
+
+    const getRowBackgroundColor = (attr) => {
+        const variation = variationsData.find(
+            v => v.name === variant.variant_name
+        );
+        const catalogVariant = varientName.find(
+            v => variant.variant_name === v.variant_name
+        )
+        let isAttrInProduct = true;
+        let isAttrInVariant = true;
+        if (variation) {
+            isAttrInProduct = variation.values.some(
+                v => String(v).trim() === String(attr).trim()
+            );
+        }
+        if (catalogVariant) {
+            isAttrInVariant = catalogVariant.variant_attribute.some(
+                a => String(a.attribute_value).trim() === String(attr).trim()
+            )
+        }
+        if (isAttrInProduct && !isAttrInVariant) {
+            return "#fef3c8b0"
+        }
+        if (!isAttrInProduct && !isAttrInVariant) {
+            return "#ffb7b7a0"
+        }
+        return "inherit"
+    };
+
 
     return (
         <>
@@ -222,7 +251,7 @@ const VariationTableRow = ({
                     onDragEnd={handleDragEnd}
                     isDragging={draggingIndex === attributeIndex}
                     isDragOver={dragOverIndex === attributeIndex}
-                    backgroundColor={getAttributeStatus(attribute.attribute) ? "inherit" : "#eee"}
+                    backgroundColor={getRowBackgroundColor(attribute.attribute)}
                 >
                     {/* Drag Handle Column */}
                     {visibleColumns.drag && (

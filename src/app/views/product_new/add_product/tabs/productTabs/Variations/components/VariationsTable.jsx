@@ -140,8 +140,6 @@ const VariationsTable = ({ setShowVariantModal, isSynced }) => {
         formData
     } = useProductFormStore();
 
-    console.log(product_variants);
-
     // State for column visibility per table
     const [visibleColumns, setVisibleColumns] = useState({});
     const [anchorEl, setAnchorEl] = useState(null);
