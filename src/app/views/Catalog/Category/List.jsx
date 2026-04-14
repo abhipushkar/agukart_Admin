@@ -81,6 +81,7 @@ const List = () => {
     const [order, setOrder] = useState("none");
     const [orderBy, setOrderBy] = useState(null);
     const [serverSorting, setServerSorting] = useState({ sortBy: "parent", order: 1 });
+    const [visible, setVisible] = useState(false);
 
     const navigate = useNavigate();
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
@@ -491,6 +492,12 @@ const List = () => {
                                         Top Rated
                                     </TableSortLabel>
                                 </TableCell>
+                                <TableCell>
+                                    Category
+                                </TableCell>
+                                <TableCell>
+                                    Listing
+                                </TableCell>
                                 <TableCell>Action</TableCell>
                             </TableRow>
                         </TableHead>
@@ -543,6 +550,32 @@ const List = () => {
                                                                         }));
                                                                     }}
                                                                     checked={row.topRated}
+                                                                />
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <Switch
+                                                                    onClick={() => {
+                                                                        // handleOpen("catTopRatedStatus");
+                                                                        // setStatusData(() => ({
+                                                                        //     id: row._id,
+                                                                        //     topRated: !row.topRated
+                                                                        // }));
+                                                                        setVisible(prev => !prev);
+                                                                    }}
+                                                                    checked={visible}
+                                                                />
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <Switch
+                                                                    onClick={() => {
+                                                                        // handleOpen("catTopRatedStatus");
+                                                                        // setStatusData(() => ({
+                                                                        //     id: row._id,
+                                                                        //     topRated: !row.topRated
+                                                                        // }));
+                                                                        setVisible(prev => !prev);
+                                                                    }}
+                                                                    checked={visible}
                                                                 />
                                                             </TableCell>
                                                             <TableCell>
