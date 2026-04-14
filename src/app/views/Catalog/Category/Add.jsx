@@ -322,6 +322,8 @@ const Add = () => {
             const res = await ApiService.get(`${apiEndpoints.editCategory}/${parentId}`, auth_key);
             if (res.status === 200) {
                 console.log("Parent category data:", res?.data?.data);
+                setSelectedEditVariant(res?.data?.data?.variant_data || []);
+                setSelectedEditAttribute(res?.data?.data?.attributeList_data || []);
             }
         } catch (error) {
             console.error("Error fetching parent category data:", error);
@@ -535,35 +537,35 @@ const Add = () => {
                     let currentAttributes = res?.data?.data?.attributeList_data || [];
 
                     // Fetch and merge parent category data if parent_id exists
-                    if (res?.data?.data?.parent_id) {
-                        try {
-                            catData(res?.data?.data?.parent_id);
-                            const parentRes = await ApiService.get(`${apiEndpoints.editCategory}/${res?.data?.data?.parent_id}`, auth_key);
+                    // if (res?.data?.data?.parent_id) {
+                    //     try {
+                    //         catData(res?.data?.data?.parent_id);
+                    //         const parentRes = await ApiService.get(`${apiEndpoints.editCategory}/${res?.data?.data?.parent_id}`, auth_key);
 
-                            if (parentRes.status === 200) {
-                                const parentVariants = parentRes?.data?.data?.variant_data || [];
-                                const parentAttributes = parentRes?.data?.data?.attributeList_data || [];
+                    //         if (parentRes.status === 200) {
+                    //             const parentVariants = parentRes?.data?.data?.variant_data || [];
+                    //             const parentAttributes = parentRes?.data?.data?.attributeList_data || [];
 
-                                // Merge parent variants without duplicates
-                                if (parentVariants.length > 0) {
-                                    const currentVariantIds = new Set(currentVariants.map(v => v._id));
-                                    const newParentVariants = parentVariants.filter(pv => !currentVariantIds.has(pv._id));
-                                    currentVariants = [...currentVariants, ...newParentVariants];
-                                }
+                    //             // Merge parent variants without duplicates
+                    //             if (parentVariants.length > 0) {
+                    //                 const currentVariantIds = new Set(currentVariants.map(v => v._id));
+                    //                 const newParentVariants = parentVariants.filter(pv => !currentVariantIds.has(pv._id));
+                    //                 currentVariants = [...currentVariants, ...newParentVariants];
+                    //             }
 
-                                // Merge parent attributes without duplicates
-                                if (parentAttributes.length > 0) {
-                                    const currentAttributeIds = new Set(currentAttributes.map(a => a._id));
-                                    const newParentAttributes = parentAttributes.filter(pa => !currentAttributeIds.has(pa._id));
-                                    currentAttributes = [...currentAttributes, ...newParentAttributes];
-                                }
-                            }
-                        } catch (error) {
-                            console.error("Error fetching parent category data:", error);
-                        }
-                    } else {
-                        setSelectedCatLable("Select Category");
-                    }
+                    //             // Merge parent attributes without duplicates
+                    //             if (parentAttributes.length > 0) {
+                    //                 const currentAttributeIds = new Set(currentAttributes.map(a => a._id));
+                    //                 const newParentAttributes = parentAttributes.filter(pa => !currentAttributeIds.has(pa._id));
+                    //                 currentAttributes = [...currentAttributes, ...newParentAttributes];
+                    //             }
+                    //         }
+                    //     } catch (error) {
+                    //         console.error("Error fetching parent category data:", error);
+                    //     }
+                    // } else {
+                    //     setSelectedCatLable("Select Category");
+                    // }
 
                     // Set the merged data
                     setSelectedEditVariant(currentVariants);
@@ -731,7 +733,7 @@ const Add = () => {
 
     // Effect to get parent category data when selectedCatId changes
     useEffect(() => {
-        if (selectedCatId) {
+        if (selectedCatId && !queryId) {
             getParentCategoryData(selectedCatId);
         }
     }, [getParentCategoryData, selectedCatId]);
@@ -1392,20 +1394,26 @@ const Add = () => {
                                                         return (
                                                             <Dropdown
                                                                 trigger={
-                                                                    <Stack sx={{ position: "relative" }}>
+                                                                    <Stack sx={{ position: "relative", pr: 0 }}>
                                                                         <TextField
                                                                             sx={{
                                                                                 bgcolor: "#F0F0F0",
                                                                                 cursor: "pointer",
                                                                                 height: "40px",
                                                                                 outline: "none",
-                                                                                "& .MuiInputBase-root": { height: "40px" }
+                                                                                "& .MuiInputBase-root": { height: "40px" },
+
                                                                             }}
                                                                             readOnly
                                                                             value={selectedCatLable}
+                                                                            InputProps={{
+                                                                                endAdornment: (
+                                                                                    <ArrowDropDownIcon />
+                                                                                )
+                                                                            }}
                                                                         />
 
-                                                                        <ArrowDropDownIcon
+                                                                        {/* <ArrowDropDownIcon
                                                                             sx={{
                                                                                 position: "absolute",
                                                                                 right: "10px",
@@ -1413,7 +1421,7 @@ const Add = () => {
                                                                                 width: "20px",
                                                                                 height: "20px"
                                                                             }}
-                                                                        />
+                                                                        /> */}
                                                                     </Stack>
                                                                 }
                                                                 menu={returnJSX(item?.subs || []) || []}
@@ -1429,7 +1437,7 @@ const Add = () => {
                                     </Grid>
                                     <Grid item xs={12} sm={6}>
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                            <Typography sx={{ minWidth: '120px', fontWeight: 'bold' }}>
+                                            <Typography sx={{ minWidth: '120px', fontWeight: 'bold', textAlign: 'right' }}>
                                                 Title:
                                             </Typography>
                                             <Box sx={{ flex: 1 }}>
@@ -1494,7 +1502,7 @@ const Add = () => {
                                 <Grid container spacing={2} sx={{ mb: 3 }}>
                                     <Grid item xs={12} sm={6}>
                                         <Box sx={{ display: 'flex', alignItems: 'start', gap: 2 }}>
-                                            <Typography sx={{ minWidth: '120px', fontWeight: 'bold' }}>
+                                            <Typography sx={{ minWidth: '120px', fontWeight: 'bold', textAlign: 'center' }}>
                                                 Category Image:
                                             </Typography>
                                             <Box sx={{ flex: 1 }}>
@@ -1711,7 +1719,7 @@ const Add = () => {
                                             </Box>
                                         </Box>
                                     </Grid>
-                                    <Grid item xs={12} sm={6}>
+                                    <Grid item xs={12}>
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                                             <Typography sx={{ minWidth: '120px', fontWeight: 'bold' }}>
                                                 Meta Title:
@@ -1739,29 +1747,7 @@ const Add = () => {
                                             </Box>
                                         </Box>
                                     </Grid>
-                                    <Grid item xs={12} sm={6}>
-                                        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-                                            <Typography sx={{ minWidth: '120px', fontWeight: 'bold', pt: 1 }}>
-                                                Meta Keywords:
-                                            </Typography>
-                                            <Box sx={{ flex: 1 }}>
-                                                <Field
-                                                    as={TextField}
-                                                    multiline
-                                                    rows={2}
-                                                    variant="outlined"
-                                                    fullWidth
-                                                    placeholder={queryId ? "Meta KeyWords" : ""}
-                                                    name="metaKeywords"
-                                                    helperText={
-                                                        <span style={{ color: "red" }}>
-                                                            <ErrorMessage name="metaKeywords" />
-                                                        </span>
-                                                    }
-                                                />
-                                            </Box>
-                                        </Box>
-                                    </Grid>
+
                                     <Grid item xs={12}>
                                         <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
                                             <Typography sx={{ minWidth: '120px', fontWeight: 'bold', pt: 1 }}>
@@ -1779,6 +1765,29 @@ const Add = () => {
                                                     helperText={
                                                         <span style={{ color: "red" }}>
                                                             <ErrorMessage name="metaDescription" />
+                                                        </span>
+                                                    }
+                                                />
+                                            </Box>
+                                        </Box>
+                                    </Grid>
+                                    <Grid item xs={12}>
+                                        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                                            <Typography sx={{ minWidth: '120px', fontWeight: 'bold', pt: 1 }}>
+                                                Meta Keywords:
+                                            </Typography>
+                                            <Box sx={{ flex: 1 }}>
+                                                <Field
+                                                    as={TextField}
+                                                    multiline
+                                                    rows={2}
+                                                    variant="outlined"
+                                                    fullWidth
+                                                    placeholder={queryId ? "Meta KeyWords" : ""}
+                                                    name="metaKeywords"
+                                                    helperText={
+                                                        <span style={{ color: "red" }}>
+                                                            <ErrorMessage name="metaKeywords" />
                                                         </span>
                                                     }
                                                 />
