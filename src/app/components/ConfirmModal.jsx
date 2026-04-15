@@ -157,7 +157,7 @@ export default function ConfirmModal({
       handleStatusChange();
     } else if (type === "popularGiftStatus") {
       handlePopularGiftStatusChange()
-    } else if (type === "blogFeaturedStatus" || type === "brandFeaturedStatus" || type === "adminCatPopularStatus" || type === "catTopRatedStatus") {
+    } else if (type === "blogFeaturedStatus" || type === "brandFeaturedStatus" || type === "adminCatPopularStatus" || type === "catTopRatedStatus" || type === "catMainUIstatus" || type === "catProductListingStatus") {
       handleFeaturedStatusChange()
     } else if (type === "blogDelete" || type === "sliderDelete" || type === "deleteMember" || type === "deleteShopPhoto" || type === "variantDelete" || type === "couponDelete" || type === "promotionalOfferDelete" || type === "giftCardCategoryDelete" || type === "giftCardDelete" || type === "bannerDelete" || type === "policyDelete" || type === "storeDelete" || type === "voucherDelete" || type === "urlDelete" || type === "serviceDelete") {
       handleDelete()
@@ -206,6 +206,8 @@ export default function ConfirmModal({
                 {type === "adminSpecialCatStatus" && "Are you sure you want to change admin special category?"}
                 {type === "adminMenuItemStatus" && "Are you sure you want to change admin menu item?"}
                 {type === "catTopRatedStatus" && "Are you sure you want to change top rated category?"}
+                {type === "catMainUIstatus" && "Are you sure you want to change visibility on Agukart?"}
+                {type === "catProductListingStatus" && "Are you sure you want to change Product Listing Visibility?"}
                 {type === "catStatus" && "Are you sure you want to change category status?"}
                 {type === "vendorStatus" && "Are you sure you want to change vendor status?"}
                 {type === "order" && "This is pending from client side"}

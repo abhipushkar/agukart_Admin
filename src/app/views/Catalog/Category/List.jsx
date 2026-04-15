@@ -81,7 +81,6 @@ const List = () => {
     const [order, setOrder] = useState("none");
     const [orderBy, setOrderBy] = useState(null);
     const [serverSorting, setServerSorting] = useState({ sortBy: "parent", order: 1 });
-    const [visible, setVisible] = useState(false);
 
     const navigate = useNavigate();
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
@@ -231,13 +230,25 @@ const List = () => {
         }
     }, [auth_key, getCategoryList, statusData]);
 
-    const handleTopRatedChange = useCallback(async () => {
+    const handleStatusFieldsToggle = useCallback(async () => {
         if (statusData) {
             try {
                 const payload = statusData;
-                const res = await ApiService.post(apiEndpoints.changeTopRatedCategory, payload, auth_key);
+                const res = await ApiService.post(apiEndpoints.changeCategoryStatusFields, payload, auth_key);
                 if (res.status === 200) {
-                    getCategoryList();
+                    setCategoryList(prev =>
+                        prev.map(item => {
+                            if (item._id === statusData.id) {
+                                return {
+                                    ...item,
+                                    ...(statusData.field
+                                        ? { [statusData.field]: statusData.value }
+                                        : { status: statusData.status })
+                                };
+                            }
+                            return item;
+                        })
+                    );
                 }
             } catch (error) {
                 handleOpen("error", error);
@@ -277,16 +288,20 @@ const List = () => {
         return 0;
     };
 
+
     // Apply client-side sorting only for non-category columns
-    const sortedRows = orderBy
-        ? [...categoryList].sort((a, b) =>
-            order === "asc"
-                ? sortComparator(a, b, orderBy)
-                : order === "desc"
-                    ? sortComparator(b, a, orderBy)
-                    : 0
-        )
-        : categoryList;
+    const sortedRows = useMemo(() => {
+        return orderBy
+            ? [...categoryList].sort((a, b) =>
+                order === "asc"
+                    ? sortComparator(a, b, orderBy)
+                    : order === "desc"
+                        ? sortComparator(b, a, orderBy)
+                        : 0
+            )
+            : categoryList;
+    }, [categoryList, order, orderBy]);
+
 
     const Container = styled("div")(({ theme }) => ({
         margin: "30px",
@@ -514,6 +529,9 @@ const List = () => {
                                         {
                                             sortedRows?.length > 0 ? (
                                                 sortedRows.map((row, i) => {
+                                                    console.log(i, row);
+                                                    const visibleInListing = row.showInProductListing ?? true;
+                                                    const visibleInUI = row.showInMainUI ?? true;
                                                     return (
                                                         <TableRow key={row._id}>
                                                             <TableCell>{row["S.No"]}</TableCell>
@@ -546,7 +564,8 @@ const List = () => {
                                                                         handleOpen("catTopRatedStatus");
                                                                         setStatusData(() => ({
                                                                             id: row._id,
-                                                                            topRated: !row.topRated
+                                                                            field: "topRated",
+                                                                            value: !row.topRated
                                                                         }));
                                                                     }}
                                                                     checked={row.topRated}
@@ -555,27 +574,27 @@ const List = () => {
                                                             <TableCell>
                                                                 <Switch
                                                                     onClick={() => {
-                                                                        // handleOpen("catTopRatedStatus");
-                                                                        // setStatusData(() => ({
-                                                                        //     id: row._id,
-                                                                        //     topRated: !row.topRated
-                                                                        // }));
-                                                                        setVisible(prev => !prev);
+                                                                        handleOpen("catMainUIstatus");
+                                                                        setStatusData(() => ({
+                                                                            id: row._id,
+                                                                            field: "showInMainUI",
+                                                                            value: !(visibleInUI)
+                                                                        }));
                                                                     }}
-                                                                    checked={visible}
+                                                                    checked={visibleInUI}
                                                                 />
                                                             </TableCell>
                                                             <TableCell>
                                                                 <Switch
                                                                     onClick={() => {
-                                                                        // handleOpen("catTopRatedStatus");
-                                                                        // setStatusData(() => ({
-                                                                        //     id: row._id,
-                                                                        //     topRated: !row.topRated
-                                                                        // }));
-                                                                        setVisible(prev => !prev);
+                                                                        handleOpen("catProductListingStatus");
+                                                                        setStatusData(() => ({
+                                                                            id: row._id,
+                                                                            field: "showInProductListing",
+                                                                            value: !(visibleInListing)
+                                                                        }));
                                                                     }}
-                                                                    checked={visible}
+                                                                    checked={visibleInListing}
                                                                 />
                                                             </TableCell>
                                                             <TableCell>
@@ -619,7 +638,7 @@ const List = () => {
                 type={type}
                 msg={msg}
                 handleStatusChange={handleStatusChange}
-                handleFeaturedStatusChange={handleTopRatedChange}
+                handleFeaturedStatusChange={handleStatusFieldsToggle}
             />
         </Box>
     );
