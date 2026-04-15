@@ -52,6 +52,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import Autocomplete from "@mui/material/Autocomplete";
 // import { TextRotateVerticalRounded } from "@mui/icons-material";
 import ConfirmModal from "app/components/ConfirmModal";
+import SmartAutocomplete from "app/components/SmartAutocomplete";
 import { useCallback } from "react";
 import { useRef } from "react";
 
@@ -432,7 +433,8 @@ const Add = () => {
             restricted_keywords: values.tags,
             isAutomatic: isAutomatic,
             categoryScope: categoryScope,
-            selectedCategories: selectedCategories.map(cat => cat._id)
+            selectedCategories: selectedCategories.map(cat => cat._id),
+            search_terms: values.searchTerms,
         };
 
         if (isAutomatic) {
@@ -1339,7 +1341,8 @@ const Add = () => {
                             conditionType: queryId ? getCatData?.conditionType || "all" : "all",
                             conditions: queryId && getCatData?.conditions?.length > 0
                                 ? processInitialConditions(getCatData.conditions)
-                                : [{ field: "", operator: "", value: "" }]
+                                : [{ field: "", operator: "", value: "" }],
+                            searchTerms: queryId ? getCatData?.search_terms || [] : [],
                         }}
                         enableReinitialize={true}
                         validationSchema={validationSchema}
@@ -1795,6 +1798,42 @@ const Add = () => {
                                         </Box>
                                     </Grid>
                                 </Grid>
+
+                                <Box sx={{ mb: 3 }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                                        <Typography sx={{ minWidth: '120px', fontWeight: 'bold', pt: 1 }}>
+                                            Search Terms:
+                                        </Typography>
+
+                                        <Box sx={{ flex: 1 }}>
+                                            <SmartAutocomplete
+                                                value={values.searchTerms}
+                                                onChange={(val) => setFieldValue("searchTerms", val)}
+
+                                                label="Search Terms"
+                                                placeholder="Paste/Type and press Enter or comma"
+
+                                                // 🔥 key configs for your use-case
+                                                options={[]}           // no dropdown
+                                                freeSolo={true}        // allow typing
+                                                multiple={true}        // multiple terms
+                                                allowComma={true}
+                                                allowEnter={true}
+                                                showChips={true}       // show tags
+                                                splitOnConfirmOnly={true}
+
+                                                // optional UI tweaks
+                                                textFieldProps={{
+                                                    sx: {
+                                                        "& .MuiInputBase-root": {
+                                                            minHeight: "40px"
+                                                        }
+                                                    }
+                                                }}
+                                            />
+                                        </Box>
+                                    </Box>
+                                </Box>
 
                                 {/* AUTOMATION SECTION - Keep original layout */}
                                 <Box sx={{

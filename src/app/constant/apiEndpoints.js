@@ -12,7 +12,7 @@ export const apiEndpoints = {
   getCategory: "get-category",
   addCategory: "add-category",
   changeStatusCategory: "change-status-category",
-  changeTopRatedCategory: "change-toprated-status-category",
+  changeCategoryStatusFields: "change-status-category-Fields",
   addCategoryImage: "add-category-image",
   editCategory: "edit-category",
   getAllActiveCategory: "get-all-active-category",
