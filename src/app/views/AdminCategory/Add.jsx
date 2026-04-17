@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { ROUTE_CONSTANT } from "app/constant/routeContanst";
-import { Formik, Form, Field, ErrorMessage, FieldArray } from "formik";
 import * as Yup from "yup";
 import {
     TextField,
@@ -22,7 +21,8 @@ import {
     Radio,
     FormLabel,
     Grid,
-    Card
+    Card,
+    Tooltip
 } from "@mui/material";
 import Typography from "@mui/material/Typography";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
@@ -39,6 +39,7 @@ import ArrowRight from "@mui/icons-material/ArrowRight";
 
 import PropTypes from "prop-types";
 import CloseIcon from "@mui/icons-material/Close";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 
 import { autocompleteClasses } from "@mui/material/Autocomplete";
 import { TextRotateVerticalRounded } from "@mui/icons-material";
@@ -48,6 +49,9 @@ import ConfirmModal from "app/components/ConfirmModal";
 import AppsIcon from "@mui/icons-material/Apps";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
+import CommonQuill from "app/components/ReactQuillTextEditor/ReusableReactQuill/CommonQuill";
+import SmartAutocomplete from "app/components/SmartAutocomplete";
+import { imageAlt } from "@syncfusion/ej2-react-richtexteditor";
 
 function Tag(props) {
     const { label, onDelete, ...other } = props;
@@ -115,7 +119,13 @@ const Add = () => {
         categoryScope: "all",
         selectedCategories: [],
         conditionType: "all",
-        conditions: [{ field: "", operator: "", value: "" }]
+        conditions: [{ field: "", operator: "", value: "" }],
+        description: "",
+        metaTitle: "",
+        metaDescription: "",
+        metaKeywords: "",
+        searchTerms: [],
+        imageAlt: ""
     });
 
     console.log({ formValues }, "fghntntntjnt");
@@ -129,7 +139,11 @@ const Add = () => {
         productsMatch: "",
         equalTo: "",
         value: "",
-        parent_id: ""
+        parent_id: "",
+        description: "",
+        metaTitle: "",
+        metaDescription: "",
+        metaKeywords: "",
     });
 
     const navigate = useNavigate();
@@ -155,7 +169,7 @@ const Add = () => {
     const [route, setRoute] = useState(null);
     const [msg, setMsg] = useState(null);
     const [existingData, setExistingData] = useState(null);
-    const [selectedCatLable, setSelectedCatLable] = useState("Select Category");
+    const [selectedCatLable, setSelectedCatLable] = useState("");
     console.log({ selectedCatLable });
     const [parentId, setParentId] = useState(null);
     console.log({ parentId });
@@ -559,6 +573,17 @@ const Add = () => {
         if (!formValues.title) newErrors.title = "Title is required";
         if (!imgUrl) newErrors.images = "Image is required";
         // if (formValues.tags?.length <= 0) newErrors.tags = "Tags is required";
+        if (!formValues.metaTitle) {
+            newErrors.metaTitle = "Meta Title is required";
+        }
+
+        if (!formValues.metaDescription) {
+            newErrors.metaDescription = "Meta Description is required";
+        }
+
+        if (!formValues.metaKeywords) {
+            newErrors.metaKeywords = "Meta Keywords are required";
+        }
 
         setErrors(newErrors);
         if (Object.keys(newErrors).length === 0) {
@@ -579,7 +604,13 @@ const Add = () => {
                     categoryScope: formValues.categoryScope,
                     selectedCategories: formValues.selectedCategories.map(cat => cat._id),
                     conditionType: formValues.conditionType,
-                    conditions: processedConditions
+                    conditions: processedConditions,
+                    description: formValues.description,
+                    meta_title: formValues.metaTitle,
+                    meta_description: formValues.metaDescription,
+                    meta_keyword: formValues.metaKeywords,
+                    search_terms: formValues.searchTerms,
+                    image_alt: formValues.imageAlt.length ? formValues.imageAlt : formValues.metaTitle
                 };
 
                 const res = await ApiService.post(apiEndpoints.addAdminCategory, payload, auth_key);
@@ -683,7 +714,13 @@ const Add = () => {
                     isAutomatic: resData?.isAutomatic || false,
                     categoryScope: resData?.categoryScope || "all",
                     conditionType: resData?.conditionType || "all",
-                    conditions: conditions
+                    conditions: conditions,
+                    description: resData?.description,
+                    metaTitle: resData?.meta_title,
+                    metaDescription: resData?.meta_description,
+                    metaKeywords: resData?.meta_keyword,
+                    searchTerms: resData?.search_terms,
+                    imageAlt: resData?.image_alt
                 }));
 
                 // Selected categories will be set after parent categories load
@@ -772,17 +809,17 @@ const Add = () => {
                     if (find?.title) {
                         setSelectedCatLable(find.title);
                     } else {
-                        setSelectedCatLable("Select Category");
+                        setSelectedCatLable("");
                     }
                 } else {
-                    setSelectedCatLable("Select Category");
+                    setSelectedCatLable("");
                 }
             } else {
-                setSelectedCatLable("Select Category");
+                setSelectedCatLable("");
             }
         } catch (error) {
             handleOpen("error", error);
-            setSelectedCatLable("Select Category");
+            setSelectedCatLable("");
         }
     };
 
@@ -1356,6 +1393,7 @@ const Add = () => {
                                                     }}
                                                     readOnly
                                                     value={selectedCatLable}
+                                                    placeholder="Select Category"
                                                 />
                                                 <ArrowDropDownIcon
                                                     sx={{
@@ -1383,6 +1421,7 @@ const Add = () => {
                                                                     }}
                                                                     readOnly
                                                                     value={selectedCatLable}
+                                                                    placeholder="Select Category"
                                                                 />
 
                                                                 <ArrowDropDownIcon
@@ -1472,57 +1511,299 @@ const Add = () => {
 
                         {/* Image Upload */}
                         <Box sx={{ my: 3 }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                <Typography sx={{ minWidth: '120px', fontWeight: 'bold' }}>
-                                    Category Image:
-                                </Typography>
-                                <Box sx={{ flex: 1 }}>
-                                    <TextField
-                                        sx={{
-                                            "& .MuiInputBase-root": {
-                                                height: "40px"
-                                            }
-                                        }}
-                                        fullWidth
-                                        value={image?.name}
-                                        InputProps={{
-                                            startAdornment: (
-                                                <InputAdornment position="start">
-                                                    <AttachFileIcon />
-                                                </InputAdornment>
-                                            ),
-                                            endAdornment: (
-                                                <input
-                                                    type="file"
-                                                    accept="image/*"
-                                                    style={{ display: "none" }}
-                                                    id="file-input"
-                                                    onChange={(event) => {
-                                                        handleImageChange(event);
+                            <Grid container spacing={2} alignItems="center">
+
+                                {/* Category Image */}
+                                <Grid item xs={12} md={6}>
+                                    <Grid container alignItems="center" spacing={2}>
+
+                                        <Grid item xs={12} sm={4}>
+                                            <Typography sx={{ fontWeight: "bold" }}>
+                                                Category Image:
+                                            </Typography>
+                                        </Grid>
+
+                                        <Grid item xs={12} sm={8}>
+                                            <TextField
+                                                fullWidth
+                                                value={image?.name || ""}
+                                                sx={{
+                                                    "& .MuiInputBase-root": {
+                                                        height: "40px"
+                                                    }
+                                                }}
+                                                InputProps={{
+                                                    startAdornment: (
+                                                        <InputAdornment position="start">
+                                                            <AttachFileIcon />
+                                                        </InputAdornment>
+                                                    ),
+                                                    endAdornment: (
+                                                        <input
+                                                            type="file"
+                                                            accept="image/*"
+                                                            style={{ display: "none" }}
+                                                            id="file-input"
+                                                            onChange={handleImageChange}
+                                                        />
+                                                    ),
+                                                    readOnly: true
+                                                }}
+                                                placeholder="Select file"
+                                                onClick={() => document.getElementById("file-input").click()}
+                                            />
+
+                                            {errors.images && (
+                                                <Typography
+                                                    sx={{
+                                                        fontSize: "12px",
+                                                        color: "#FF3D57",
+                                                        mt: 0.5
                                                     }}
-                                                />
-                                            ),
-                                            readOnly: true
-                                        }}
-                                        placeholder="Select file"
-                                        onClick={() => document.getElementById("file-input").click()}
+                                                >
+                                                    {errors.images}
+                                                </Typography>
+                                            )}
+                                        </Grid>
+
+                                    </Grid>
+                                </Grid>
+
+                                {/* Image Alt */}
+                                <Grid item xs={12} md={6}>
+                                    <Grid container alignItems="center" spacing={2}>
+
+                                        <Grid item xs={12} sm={4}>
+                                            <Typography
+                                                sx={{
+                                                    fontWeight: "bold",
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    gap: 0.5,
+                                                    textAlign: 'right'
+                                                }}
+                                            >
+                                                Image Alt
+                                                <Tooltip
+                                                    title={
+                                                        <Box component={Paper} sx={{ p: 1 }}>
+                                                            Shown when no image is available!
+                                                        </Box>
+                                                    }
+                                                    placement="top"
+                                                    arrow
+                                                    componentsProps={{
+                                                        tooltip: {
+                                                            sx: {
+                                                                bgcolor: "transparent",
+                                                                p: 0
+                                                            }
+                                                        },
+                                                        arrow: { sx: { color: "white" } }
+                                                    }}
+                                                >
+                                                    <HelpOutlineIcon fontSize="small" />
+                                                </Tooltip>
+                                                :
+                                            </Typography>
+                                        </Grid>
+
+                                        <Grid item xs={12} sm={8}>
+                                            <TextField
+                                                fullWidth
+                                                value={formValues.imageAlt || ""}
+                                                onChange={(e) =>
+                                                    setFormValues((prev) => ({
+                                                        ...prev,
+                                                        imageAlt: e.target.value
+                                                    }))
+                                                }
+                                                placeholder="Image Alt"
+                                                sx={{
+                                                    "& .MuiInputBase-root": {
+                                                        height: "40px"
+                                                    }
+                                                }}
+                                            />
+                                        </Grid>
+
+                                    </Grid>
+                                </Grid>
+
+                            </Grid>
+                            {imgUrl && <img style={{ margin: "16px 0" }} src={imgUrl} width={200} alt="" />}
+                        </Box>
+
+                        <Box sx={{ my: 3 }}>
+                            <Box sx={{ display: 'flex', gap: 2 }}>
+                                <Typography sx={{ minWidth: '120px', fontWeight: 'bold' }}>
+                                    Description:
+                                </Typography>
+
+                                <Box sx={{ flex: 1 }}>
+                                    <CommonQuill
+                                        value={formValues.description}
+                                        onChange={(html) =>
+                                            setFormValues((prev) => ({ ...prev, description: html }))
+                                        }
+                                        // error={errors.description}
+                                        // onError={(msg) =>
+                                        //     setErrors((prev) => ({ ...prev, description: msg }))
+                                        // }
+                                        placeholder="Enter category description..."
+                                        height={50}
+                                        required={true}
+
+                                        // optional flags
+                                        showVideo={true}
+                                        showAlign={true}
+                                        showCodeBlock={true}
                                     />
-                                    {errors.images && (
-                                        <Typography
-                                            sx={{
-                                                fontSize: "12px",
-                                                color: "#FF3D57",
-                                                marginLeft: "14px",
-                                                marginRight: "14px",
-                                                marginTop: "3px"
-                                            }}
-                                        >
-                                            {errors.images}
-                                        </Typography>
-                                    )}
                                 </Box>
                             </Box>
-                            {imgUrl && <img style={{ margin: "16px 0" }} src={imgUrl} width={200} alt="" />}
+                        </Box>
+                        <Grid container spacing={2} sx={{ mb: 3 }}>
+                            <Grid item xs={12}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                    <Typography sx={{ minWidth: '120px', fontWeight: 'bold' }}>
+                                        Meta Title:
+                                    </Typography>
+                                    <Box sx={{ flex: 1 }}>
+                                        <TextField
+                                            fullWidth
+                                            value={formValues.metaTitle || ""}
+                                            onChange={(e) =>
+                                                setFormValues((prev) => ({
+                                                    ...prev,
+                                                    metaTitle: e.target.value
+                                                }))
+                                            }
+                                            onBlur={() => {
+                                                if (!formValues.metaTitle) {
+                                                    setErrors((prev) => ({
+                                                        ...prev,
+                                                        metaTitle: "Meta Title is required"
+                                                    }));
+                                                }
+                                            }}
+                                            error={!!errors.metaTitle}
+                                            helperText={errors.metaTitle}
+                                            placeholder="Meta Title"
+                                            sx={{
+                                                "& .MuiInputBase-root": {
+                                                    height: "40px"
+                                                }
+                                            }}
+                                        />
+                                    </Box>
+                                </Box>
+                            </Grid>
+
+                            <Grid item xs={12}>
+                                <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                                    <Typography sx={{ minWidth: '120px', fontWeight: 'bold', pt: 1 }}>
+                                        Meta Description:
+                                    </Typography>
+                                    <Box sx={{ flex: 1 }}>
+                                        <TextField
+                                            multiline
+                                            rows={2}
+                                            fullWidth
+                                            value={formValues.metaDescription || ""}
+                                            onChange={(e) =>
+                                                setFormValues((prev) => ({
+                                                    ...prev,
+                                                    metaDescription: e.target.value
+                                                }))
+                                            }
+                                            onBlur={() => {
+                                                if (!formValues.metaDescription) {
+                                                    setErrors((prev) => ({
+                                                        ...prev,
+                                                        metaDescription: "Meta Description is required"
+                                                    }));
+                                                }
+                                            }}
+                                            error={!!errors.metaDescription}
+                                            helperText={errors.metaDescription}
+                                            placeholder="Meta Description"
+                                        />
+                                    </Box>
+                                </Box>
+                            </Grid>
+                            <Grid item xs={12}>
+                                <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                                    <Typography sx={{ minWidth: '120px', fontWeight: 'bold', pt: 1 }}>
+                                        Meta Keywords:
+                                    </Typography>
+                                    <Box sx={{ flex: 1 }}>
+                                        <TextField
+                                            multiline
+                                            rows={2}
+                                            fullWidth
+                                            value={formValues.metaKeywords || ""}
+                                            onChange={(e) =>
+                                                setFormValues((prev) => ({
+                                                    ...prev,
+                                                    metaKeywords: e.target.value
+                                                }))
+                                            }
+                                            onBlur={() => {
+                                                if (!formValues.metaKeywords) {
+                                                    setErrors((prev) => ({
+                                                        ...prev,
+                                                        metaKeywords: "Meta Keywords are required"
+                                                    }));
+                                                }
+                                            }}
+                                            error={!!errors.metaKeywords}
+                                            helperText={errors.metaKeywords}
+                                            placeholder="Meta Keywords"
+                                        />
+                                    </Box>
+                                </Box>
+                            </Grid>
+                        </Grid>
+
+                        <Box sx={{ mb: 3 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                                <Typography sx={{ minWidth: '120px', fontWeight: 'bold', pt: 1 }}>
+                                    Search Terms:
+                                </Typography>
+
+                                <Box sx={{ flex: 1 }}>
+                                    <SmartAutocomplete
+                                        value={formValues.searchTerms || []}
+                                        onChange={(val) =>
+                                            setFormValues((prev) => ({
+                                                ...prev,
+                                                searchTerms: val
+                                            }))
+                                        }
+
+                                        label="Search Terms"
+                                        placeholder="Paste/Type and press Enter or comma"
+
+                                        // 🔥 key configs for your use-case
+                                        options={[]}           // no dropdown
+                                        freeSolo={true}        // allow typing
+                                        multiple={true}        // multiple terms
+                                        allowComma={true}
+                                        allowEnter={true}
+                                        showChips={true}       // show tags
+                                        splitOnConfirmOnly={true}
+
+                                        // optional UI tweaks
+                                        textFieldProps={{
+                                            sx: {
+                                                "& .MuiInputBase-root": {
+                                                    minHeight: "40px"
+                                                }
+                                            }
+                                        }}
+                                    />
+                                </Box>
+                            </Box>
                         </Box>
 
                         {/* AUTOMATION SECTION - Updated with Label: Input layout */}

@@ -47,7 +47,7 @@ const MenuProps = {
     }
 };
 
-const names = ["Tags", "Status", "Popular", "Special", "Menu Item", "Action"];
+const names = ["Status", "Popular", "Special", "Menu Item", "Action"];
 
 // Sorting options for admin category column
 const SORTING_OPTIONS = [
@@ -493,7 +493,7 @@ const List = () => {
                                 <TableCell>
                                     Admin Category
                                 </TableCell>
-                                {!personName?.includes("Tags") && (
+                                {/* {!personName?.includes("Tags") && (
                                     <TableCell sortDirection={orderBy === "tag" ? order : false}>
                                         <TableSortLabel
                                             active={orderBy === "tag"}
@@ -503,7 +503,7 @@ const List = () => {
                                             Tags
                                         </TableSortLabel>
                                     </TableCell>
-                                )}
+                                )} */}
                                 {!personName?.includes("Status") && (
                                     <TableCell sortDirection={orderBy === "status" ? order : false}>
                                         <TableSortLabel
@@ -570,7 +570,7 @@ const List = () => {
                                                                 <TableRow key={row._id}>
                                                                     <TableCell>{row["S.No"]}</TableCell>
                                                                     <TableCell sx={{ wordBreak: "break-word" }}>{row?.parent}</TableCell>
-                                                                    {!personName?.includes("Tags") && (
+                                                                    {/* {!personName?.includes("Tags") && (
                                                                         <TableCell>
                                                                             {row?.tag?.map((tag, index) => (
                                                                                 <span key={index}>
@@ -579,7 +579,7 @@ const List = () => {
                                                                                 </span>
                                                                             ))}
                                                                         </TableCell>
-                                                                    )}
+                                                                    )} */}
                                                                     {!personName?.includes("Status") && (
                                                                         <TableCell>
                                                                             <Switch
