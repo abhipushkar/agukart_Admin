@@ -561,7 +561,7 @@ export const useProductAPI = () => {
             sale_price: formValues.isCheckedPrice ? 0 : +formData.salePrice,
             sale_start_date: formData.saleStartDate,
             sale_end_date: formData.saleEndDate,
-            qty: formData.quantity,
+            qty: formValues.isCheckedQuantity ? 0 : +formData.quantity,
             max_order_qty: formData.maxOrderQuantity,
             color: formData.color,
             can_offer: formData.offeringCanBe,

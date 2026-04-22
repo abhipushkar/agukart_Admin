@@ -266,19 +266,14 @@ const VariantModal = ({ show, handleCloseVariant }) => {
     const getDisabledVariants = useCallback(() => {
         const disabledVariants = new Set();
 
-        // Ensure selectedVariations is always an array
-        const safeSelectedVariations = Array.isArray(selectedVariations) ? selectedVariations : [];
         const safeVariationsData = Array.isArray(variationsData) ? variationsData : [];
 
-        // Add already selected variations that have atleast one attribute selected
-        safeSelectedVariations.forEach(variant => {
-            const variation = safeVariationsData.find(v => v.name === variant);
-            if (variation && Array.isArray(variation.values) && variation.values.length > 0) {
-                disabledVariants.add(variant);
+        safeVariationsData.forEach(variation => {
+            if (variation?.values?.length > 0) {
+                disabledVariants.add(variation.name);
             }
         });
 
-        // Add parent product variants that have SKUs assigned
         if (parentProductData?.variant_id) {
             parentProductData.variant_id.forEach(variant => {
                 if (variant?.variant_name) {
@@ -288,7 +283,7 @@ const VariantModal = ({ show, handleCloseVariant }) => {
         }
 
         return disabledVariants;
-    }, [selectedVariations, parentProductData]);
+    }, [variationsData, parentProductData]);
 
     // Generate name combinations for price/quantity selection
     const generateNameCombinations = useCallback(() => {
@@ -1348,6 +1343,7 @@ const VariantModal = ({ show, handleCloseVariant }) => {
                                             const safeSelectedVariations = Array.isArray(selectedVariations) ? selectedVariations : [];
                                             const isSelected = safeSelectedVariations.includes(item?.variant_name);
                                             const isCustom = item.isCustom;
+                                            console.log({ disabledVariants, variationsData });
                                             return (
                                                 <Box key={index} sx={{ display: 'inline-block', m: 0.5, position: 'relative' }}>
                                                     <Button

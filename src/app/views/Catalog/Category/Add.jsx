@@ -22,6 +22,7 @@ import {
     Paper,
     Divider,
     Typography,
+    Tooltip,
     // Card,
     // CardContent
 } from "@mui/material";
@@ -43,9 +44,10 @@ import { Dropdown, DropdownMenuItem, DropdownNestedMenuItem } from "./DropDown";
 
 import PropTypes from "prop-types";
 import CloseIcon from "@mui/icons-material/Close";
-// import ClearIcon from "@mui/icons-material/Clear";
+import ClearIcon from "@mui/icons-material/Clear";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 
 // import { autocompleteClasses } from "@mui/material/Autocomplete";
 
@@ -100,11 +102,12 @@ const Add = () => {
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
     const [fileName, setFileName] = useState("");
     const [image, setImage] = useState(null);
+    const [imageAlt, setImageAlt] = useState("");
     const [getCatData, setCatData] = useState({});
     console.log(getCatData, "f");
     const [query] = useSearchParams();
     const [allActiveCategory, setAllActiveCategory] = useState([]);
-    const [selectedCatLable, setSelectedCatLable] = useState("Select Category");
+    const [selectedCatLable, setSelectedCatLable] = useState("");
     const [selectedCatId, setSelectedCatId] = useState("");
     console.log({ selectedCatId })
     const [loading, setLoading] = useState(false);
@@ -116,6 +119,7 @@ const Add = () => {
     // const [selectdVariantLable, setSelectedVarintLabel] = useState([]);
     // const [endCatName, setEndCatName] = useState("");
     const [topRatedImg, setTopRatedImg] = useState(null);
+    const [topImgAlt, setTopImgAlt] = useState("");
     const [topRatedUrl, setTopRatedUrl] = useState(null);
     console.log("selectedCatLable------", selectedCatLable);
 
@@ -315,6 +319,8 @@ const Add = () => {
         });
     };
 
+    const uniqueById = (arr) => [...new Map(arr.map(item => [item._id, item])).values()];
+
     // Get parent category data when selectedCatId changes (optional, kept for potential future use)
     const getParentCategoryData = useCallback(async (parentId) => {
         if (!parentId) return;
@@ -323,8 +329,19 @@ const Add = () => {
             const res = await ApiService.get(`${apiEndpoints.editCategory}/${parentId}`, auth_key);
             if (res.status === 200) {
                 console.log("Parent category data:", res?.data?.data);
-                setSelectedEditVariant(res?.data?.data?.variant_data || []);
-                setSelectedEditAttribute(res?.data?.data?.attributeList_data || []);
+                if (!queryId) {
+                    setSelectedEditVariant(res?.data?.data?.variant_data || []);
+                    setSelectedEditAttribute(res?.data?.data?.attributeList_data || []);
+                } else {
+                    setSelectedEditVariant(prev =>
+                        uniqueById([...prev, ...(res?.data?.data?.variant_data || [])])
+                    );
+
+                    setSelectedEditAttribute(prev =>
+                        uniqueById([...prev, ...(res?.data?.data?.attributeList_data || [])])
+                    );
+                }
+
             }
         } catch (error) {
             console.error("Error fetching parent category data:", error);
@@ -451,16 +468,13 @@ const Add = () => {
             const res = await ApiService.post(apiEndpoints.addCategory, payload, auth_key);
             console.log(res);
             if (res.status === 200) {
-                if (image || topRatedImg) {
-                    if (queryId) {
-                        await handleUploadImage(getCatData._id, res?.data);
-                    } else {
-                        await handleUploadImage(res?.data?.data?._id, res?.data);
-                    }
+                if (queryId) {
+                    await handleUploadImage(getCatData._id, res?.data, values.metaTitle);
                 } else {
-                    setRoute(ROUTE_CONSTANT.catalog.category.list);
-                    handleOpen("success", res?.data);
+                    await handleUploadImage(res?.data?.data?._id, res?.data, values.metaTitle);
                 }
+                setRoute(ROUTE_CONSTANT.catalog.category.list);
+                handleOpen("success", res?.data);
             }
         } catch (error) {
             setLoading(false);
@@ -470,11 +484,14 @@ const Add = () => {
         }
     };
 
-    const handleUploadImage = async (id, msg) => {
+    const handleUploadImage = async (id, msg, metaTitle) => {
         try {
+            console.log("in formdata");
             const formData = new FormData();
             image && formData.append("file", image);
             topRatedImg && formData.append("image", topRatedImg);
+            formData.append("image_alt", imageAlt.length ? imageAlt : metaTitle);
+            formData.append("topRatedImage_alt", topImgAlt.length ? topImgAlt : metaTitle);
             formData.append("_id", id);
             const res = await ApiService.postImage(apiEndpoints.addCategoryImage, formData, auth_key);
             if (res?.status === 200) {
@@ -530,10 +547,11 @@ const Add = () => {
                 console.log("Getting category data for:", queryId);
                 const res = await ApiService.get(`${apiEndpoints.editCategory}/${queryId}`, auth_key);
                 if (res.status === 200) {
-                    console.log("Category data received:", res?.data?.data);
-                    setTopRatedUrl(res?.data?.data?.topRatedImage);
+                    setTopRatedUrl(res?.data?.data?.topRatedImage.url);
                     setCatData(res?.data?.data);
                     setSelectedCatId(res?.data?.data?.parent_id);
+                    setImageAlt(res?.data?.data?.image.alt ?? "");
+                    setTopImgAlt(res?.data?.data?.topRatedImage.alt ?? "")
 
                     let currentVariants = res?.data?.data?.variant_data || [];
                     let currentAttributes = res?.data?.data?.attributeList_data || [];
@@ -566,7 +584,7 @@ const Add = () => {
                     //         console.error("Error fetching parent category data:", error);
                     //     }
                     // } else {
-                    //     setSelectedCatLable("Select Category");
+                    //     setSelectedCatLable("");
                     // }
 
                     // Set the merged data
@@ -602,14 +620,14 @@ const Add = () => {
                     const find = res?.data?.data.find((item) => item._id === getCatData?.parent_id);
                     setSelectedCatLable(find.title);
                 } else {
-                    setSelectedCatLable("Select Category");
+                    setSelectedCatLable("");
                 }
             } else {
-                setSelectedCatLable("Select Category");
+                setSelectedCatLable("");
             }
         } catch (error) {
             handleOpen("error", error?.response?.data || error);
-            setSelectedCatLable("Select Category");
+            setSelectedCatLable("");
         }
     }, [auth_key, getCatData?.parent_id, handleOpen]);
 
@@ -735,7 +753,7 @@ const Add = () => {
 
     // Effect to get parent category data when selectedCatId changes
     useEffect(() => {
-        if (selectedCatId && !queryId) {
+        if (selectedCatId) {
             getParentCategoryData(selectedCatId);
         }
     }, [getParentCategoryData, selectedCatId]);
@@ -780,7 +798,7 @@ const Add = () => {
 
     const handleReset = () => {
         setFileName("");
-        setSelectedCatLable("Select Category");
+        setSelectedCatLable("");
         setImage(null);
         setSelectedCatId("");
         setImagePreview(null);
@@ -1381,6 +1399,7 @@ const Add = () => {
                                                             }}
                                                             readOnly
                                                             value={selectedCatLable}
+                                                            placeholder="Select Category"
                                                         />
                                                         <ArrowDropDownIcon
                                                             sx={{
@@ -1388,7 +1407,8 @@ const Add = () => {
                                                                 right: "10px",
                                                                 top: "28%",
                                                                 width: "20px",
-                                                                height: "20px"
+                                                                height: "20px",
+                                                                color: 'gray'
                                                             }}
                                                         />
                                                     </Stack>
@@ -1405,14 +1425,30 @@ const Add = () => {
                                                                                 height: "40px",
                                                                                 outline: "none",
                                                                                 "& .MuiInputBase-root": { height: "40px" },
-
                                                                             }}
                                                                             readOnly
                                                                             value={selectedCatLable}
+                                                                            placeholder="Select Category"
                                                                             InputProps={{
                                                                                 endAdornment: (
-                                                                                    <ArrowDropDownIcon />
-                                                                                )
+                                                                                    <>
+                                                                                        {/* Clear button */}
+                                                                                        {selectedCatLable ? (
+                                                                                            <IconButton
+                                                                                                size="small"
+                                                                                                onClick={(e) => { e.stopPropagation(); setSelectedCatLable(""); setSelectedCatId(""); }}
+                                                                                            >
+                                                                                                <ClearIcon fontSize="small" />
+                                                                                            </IconButton>
+                                                                                        ) :
+                                                                                            <ArrowDropDownIcon />
+                                                                                        }
+
+
+                                                                                        {/* Dropdown icon */}
+
+                                                                                    </>
+                                                                                ),
                                                                             }}
                                                                         />
 
@@ -1544,9 +1580,9 @@ const Add = () => {
                                                 {(imagePreview || getCatData.image) && (
                                                     <img
                                                         style={{ margin: "16px 0" }}
-                                                        src={imagePreview ? imagePreview : getCatData.image}
+                                                        src={imagePreview ? imagePreview : getCatData.image.url}
                                                         width={200}
-                                                        alt="Category"
+                                                        alt={`${imageAlt}`}
                                                     />
                                                 )}
                                             </Box>
@@ -1589,11 +1625,114 @@ const Add = () => {
                                                     onClick={() => document.getElementById("file-input1").click()}
                                                 />
                                                 {topRatedUrl && (
-                                                    <img style={{ margin: "16px 0" }} src={topRatedUrl} width={200} alt="" />
+                                                    <img style={{ margin: "16px 0" }} src={topRatedUrl} width={200} alt={`${topImgAlt}`} />
                                                 )}
                                             </Box>
                                         </Box>
                                     </Grid>
+                                    {(imagePreview || getCatData.image) && (<Grid item xs={12} sm={6}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                            <Typography
+                                                sx={{
+                                                    minWidth: "120px",
+                                                    fontWeight: "bold",
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    gap: 0.5
+                                                }}
+                                            >
+                                                Image Alt
+                                                <Tooltip
+                                                    title={
+                                                        <Box component={Paper} sx={{ p: 1 }} elevation={3}>
+                                                            Shown when no image is available!
+                                                        </Box>
+                                                    }
+                                                    placement="top"
+                                                    arrow
+                                                    componentsProps={{
+                                                        tooltip: {
+                                                            sx: {
+                                                                bgcolor: "transparent",
+                                                                p: 0,
+                                                            }
+                                                        },
+                                                        arrow: { sx: { color: "white" } }
+                                                    }}
+                                                >
+                                                    <HelpOutlineIcon fontSize="small" />
+                                                </Tooltip>
+                                                :
+                                            </Typography>
+                                            <Box sx={{ flex: 1 }}>
+                                                <TextField
+                                                    variant="outlined"
+                                                    color="primary"
+                                                    fullWidth
+                                                    value={imageAlt}
+                                                    onChange={(e) => setImageAlt(e.target.value)}
+                                                    placeholder={"Image Alt"}
+                                                    sx={{
+                                                        "& .MuiInputBase-root": {
+                                                            height: "40px"
+                                                        },
+                                                        "& .MuiFormLabel-root": {
+                                                            top: "-7px"
+                                                        }
+                                                    }}
+                                                />
+                                            </Box>
+                                        </Box>
+                                    </Grid>)}
+                                    {topRatedUrl && (<Grid item xs={12} sm={6}><Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                        <Typography sx={{
+                                            minWidth: "120px",
+                                            fontWeight: "bold",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: 0.5
+                                        }}>
+                                            Top-Rated Image Alt {" "}<Tooltip
+                                                title={
+                                                    <Box component={Paper} sx={{ p: 1 }} elevation={3}>
+                                                        Shown when no image is available!
+                                                    </Box>
+                                                }
+                                                placement="top"
+                                                arrow
+                                                componentsProps={{
+                                                    tooltip: {
+                                                        sx: {
+                                                            bgcolor: "transparent",
+                                                            p: 0,
+                                                        }
+                                                    },
+                                                    arrow: { sx: { color: "white" } }
+                                                }}
+                                            >
+                                                <HelpOutlineIcon fontSize="small" />
+                                            </Tooltip>:
+                                        </Typography>
+                                        <Box sx={{ flex: 1 }}>
+                                            <TextField
+                                                variant="outlined"
+                                                color="primary"
+                                                fullWidth
+                                                value={topImgAlt}
+                                                onChange={(e) => setTopImgAlt(e.target.value)}
+                                                placeholder={"Top-Rated Alt"}
+                                                sx={{
+                                                    "& .MuiInputBase-root": {
+                                                        height: "40px"
+                                                    },
+                                                    "& .MuiFormLabel-root": {
+                                                        top: "-7px"
+                                                    }
+                                                }}
+                                            />
+                                        </Box>
+                                    </Box>
+                                    </Grid>)}
                                 </Grid>
 
                                 {/* Variants and Attributes */}
