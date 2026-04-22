@@ -244,11 +244,11 @@ const CombinationsTable = ({ isSynced }) => {
                                 <TableHead>
                                     <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
                                         <TableCell align="center" sx={{ fontWeight: 600 }}>
-                                            {comb.combinations[combindex]?.name1}
+                                            {comb.combinations[0]?.name1}
                                         </TableCell>
                                         {comb.combinations[0]?.name2 && (
                                             <TableCell align="center" sx={{ fontWeight: 600 }}>
-                                                {comb.combinations[combindex].name2}
+                                                {comb.combinations[0].name2}
                                             </TableCell>
                                         )}
                                         {(variationsData.length >= 2 ? formValues?.prices === comb.variant_name : true) &&

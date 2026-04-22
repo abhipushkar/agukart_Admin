@@ -1422,9 +1422,30 @@ const Add = () => {
                                                                     readOnly
                                                                     value={selectedCatLable}
                                                                     placeholder="Select Category"
+                                                                    InputProps={{
+                                                                        endAdornment: (
+                                                                            <>
+                                                                                {/* Clear button */}
+                                                                                {selectedCatLable ? (
+                                                                                    <IconButton
+                                                                                        size="small"
+                                                                                        onClick={(e) => { e.stopPropagation(); setSelectedCatLable(""); setParentId(""); }}
+                                                                                    >
+                                                                                        <ClearIcon fontSize="small" />
+                                                                                    </IconButton>
+                                                                                ) :
+                                                                                    <ArrowDropDownIcon />
+                                                                                }
+
+
+                                                                                {/* Dropdown icon */}
+
+                                                                            </>
+                                                                        ),
+                                                                    }}
                                                                 />
 
-                                                                <ArrowDropDownIcon
+                                                                {/* <ArrowDropDownIcon
                                                                     sx={{
                                                                         position: "absolute",
                                                                         right: "10px",
@@ -1432,7 +1453,7 @@ const Add = () => {
                                                                         width: "20px",
                                                                         height: "20px"
                                                                     }}
-                                                                />
+                                                                /> */}
                                                             </Stack>
                                                         }
                                                         menu={returnJSX(item?.subs || []) || []}
