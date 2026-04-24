@@ -57,6 +57,8 @@ import ConfirmModal from "app/components/ConfirmModal";
 import SmartAutocomplete from "app/components/SmartAutocomplete";
 import { useCallback } from "react";
 import { useRef } from "react";
+import CommonQuill from "app/components/ReactQuillTextEditor/ReusableReactQuill/CommonQuill";
+
 
 function Tag(props) {
     const { label, onDelete, ...other } = props;
@@ -139,7 +141,11 @@ const Add = () => {
 
     const validationSchema = Yup.object().shape({
         name: Yup.string().required("Name is required"),
-        description: Yup.string().required("Description is required"),
+        description: Yup.string().test(
+            "not-empty",
+            "Description is required",
+            (value) => value && value !== "<p><br></p>"
+        ),
         metaTitle: Yup.string().required("Meta Title is required"),
         metaKeywords: Yup.string().required("Meta Keywords is required"),
         metaDescription: Yup.string().required("Meta Description is required"),
@@ -1366,7 +1372,7 @@ const Add = () => {
                         validationSchema={validationSchema}
                         onSubmit={handleSubmit}
                     >
-                        {({ setFieldValue, resetForm, values, handleChange, errors, touched }) => {
+                        {({ setFieldValue, setFieldTouched, resetForm, values, handleChange, errors, touched }) => {
                             console.log("values", values);
                             const handleTagHandler = (event, newValue) => {
                                 const processedValues = newValue
@@ -1844,24 +1850,20 @@ const Add = () => {
                                                 Description:
                                             </Typography>
                                             <Box sx={{ flex: 1 }}>
-                                                <Field
-                                                    as={TextField}
-                                                    multiline
-                                                    rows={2}
-                                                    variant="outlined"
-                                                    fullWidth
-                                                    placeholder={queryId ? "Description" : ""}
-                                                    name="description"
-                                                    helperText={
-                                                        <span style={{ color: "red" }}>
-                                                            <ErrorMessage name="description" />
-                                                        </span>
-                                                    }
+                                                <CommonQuill
+                                                    value={values.description}
+                                                    onChange={(val) => {
+                                                        setFieldValue("description", val);
+                                                        setFieldTouched("description", true);
+                                                    }}
+                                                    error={touched.description && errors.description}
+                                                    placeholder="Write description..."
+                                                    required
                                                 />
                                             </Box>
                                         </Box>
                                     </Grid>
-                                    <Grid item xs={12}>
+                                    <Grid item xs={12} mt={3}>
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                                             <Typography sx={{ minWidth: '120px', fontWeight: 'bold' }}>
                                                 Meta Title:

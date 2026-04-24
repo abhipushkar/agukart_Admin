@@ -1683,7 +1683,7 @@ const Add = () => {
                                 </Box>
                             </Box>
                         </Box>
-                        <Grid container spacing={2} sx={{ mb: 3 }}>
+                        <Grid container spacing={2} sx={{ my: 3 }}>
                             <Grid item xs={12}>
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                                     <Typography sx={{ minWidth: '120px', fontWeight: 'bold' }}>
