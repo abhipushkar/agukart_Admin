@@ -529,7 +529,6 @@ const List = () => {
                                         {
                                             sortedRows?.length > 0 ? (
                                                 sortedRows.map((row, i) => {
-                                                    console.log(i, row);
                                                     const visibleInListing = row.showInProductListing ?? true;
                                                     const visibleInUI = row.showInMainUI ?? true;
                                                     return (
