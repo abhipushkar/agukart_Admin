@@ -289,6 +289,7 @@ const ProductRow = ({ product, index }) => {
     const navigate = useNavigate();
 
     const [actionAnchorEl, setActionAnchorEl] = useState(null);
+    const imageContainerRef = useRef(null);
 
     const designation_id = localStorage.getItem('designation_id');
     const isProduct = product.type === 'product';
@@ -482,6 +483,7 @@ const ProductRow = ({ product, index }) => {
                 {!filters.hiddenColumns.includes('Image') && (
                     <TableCell sx={{ width: '200px', minWidth: '200px', maxWidth: '200px', padding: '4px' }}>
                         <Box
+                            ref={imageContainerRef}
                             sx={{
                                 height: "200px",
                                 overflow: "hidden",
@@ -507,10 +509,24 @@ const ProductRow = ({ product, index }) => {
                                     willChange: "transform",
                                     backfaceVisibility: "hidden",
                                     ...(() => {
-                                        const { x, y, scale } = clampPan(product?.zoom || {});
-                                        return {
-                                            transform: `translate3d(${x}px, ${y}px, 0) scale(${scale})`,
-                                        };
+                                        // Only apply zoom if container is visible and not during scroll restoration
+                                        const zoom = product?.zoom || {};
+                                        const isContainerVisible = imageContainerRef.current &&
+                                            imageContainerRef.current.offsetParent !== null;
+
+                                        if (!isContainerVisible) {
+                                            return { transform: 'translate3d(0px, 0px, 0) scale(1)' };
+                                        }
+
+                                        if (typeof zoom.x === 'number' && !isNaN(zoom.x) &&
+                                            typeof zoom.y === 'number' && !isNaN(zoom.y) &&
+                                            typeof zoom.scale === 'number' && !isNaN(zoom.scale)) {
+                                            const { x, y, scale } = clampPan(zoom);
+                                            return {
+                                                transform: `translate3d(${x}px, ${y}px, 0) scale(${scale})`,
+                                            };
+                                        }
+                                        return { transform: 'translate3d(0px, 0px, 0) scale(1)' };
                                     })(),
                                 }}
                             />
@@ -761,6 +777,7 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
     const navigate = useNavigate();
 
     const [actionAnchorEl, setActionAnchorEl] = useState(null);
+    const imageContainerRef = useRef(null);
 
     const designation_id = localStorage.getItem('designation_id');
     const isSelected = selection.productIds.includes(variation._id);
@@ -925,6 +942,7 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
             {!filters.hiddenColumns.includes('Image') && (
                 <TableCell sx={{ width: '200px', minWidth: '200px', maxWidth: '200px', padding: '4px' }}>
                     <Box
+                        ref={imageContainerRef}
                         sx={{
                             height: "200px",
                             overflow: "hidden",
@@ -940,20 +958,34 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
                     >
                         <img
                             src={variation?.image?.[0]}
-                            alt="Variation"
+                            alt="Variantion"
                             style={{
                                 width: "100%",
                                 height: "100%",
                                 objectFit: "contain",
                                 transformOrigin: "center center",
-                                transition: "transform 0.15s ease-out",
+                                transition: "transform 0.1s ease-out",
                                 willChange: "transform",
                                 backfaceVisibility: "hidden",
                                 ...(() => {
-                                    const { x, y, scale } = clampPan(variation?.zoom || {});
-                                    return {
-                                        transform: `translate3d(${x}px, ${y}px, 0) scale(${scale})`,
-                                    };
+                                    // Only apply zoom if container is visible and not during scroll restoration
+                                    const zoom = variation?.zoom || {};
+                                    const isContainerVisible = imageContainerRef.current &&
+                                        imageContainerRef.current.offsetParent !== null;
+
+                                    if (!isContainerVisible) {
+                                        return { transform: 'translate3d(0px, 0px, 0) scale(1)' };
+                                    }
+
+                                    if (typeof zoom.x === 'number' && !isNaN(zoom.x) &&
+                                        typeof zoom.y === 'number' && !isNaN(zoom.y) &&
+                                        typeof zoom.scale === 'number' && !isNaN(zoom.scale)) {
+                                        const { x, y, scale } = clampPan(zoom);
+                                        return {
+                                            transform: `translate3d(${x}px, ${y}px, 0) scale(${scale})`,
+                                        };
+                                    }
+                                    return { transform: 'translate3d(0px, 0px, 0) scale(1)' };
                                 })(),
                             }}
                         />
