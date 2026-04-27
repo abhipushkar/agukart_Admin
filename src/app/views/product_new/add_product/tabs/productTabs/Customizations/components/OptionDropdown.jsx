@@ -403,7 +403,7 @@ const OptionDropdown = ({ index }) => {
         } else {
             updatedOption = {
                 ...updatedOption,
-                [imageType]: file
+                [imageType]: file          
             };
 
             // Clear edited preview image and edit data when uploading a new preview image
