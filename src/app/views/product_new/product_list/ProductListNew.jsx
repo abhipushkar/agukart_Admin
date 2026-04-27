@@ -204,7 +204,7 @@ const ProductListNew = () => {
     const restoreScrollPosition = (scrollY) => {
         if (typeof window === 'undefined' || typeof document === 'undefined') return;
 
-        window.scrollTo({ top: scrollY, behavior: 'auto' });
+        window.scrollTo({ top: scrollY, behavior: 'smooth' });
 
         const primaryTargets = [
             document.scrollingElement,

@@ -51,7 +51,7 @@ import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CommonQuill from "app/components/ReactQuillTextEditor/ReusableReactQuill/CommonQuill";
 import SmartAutocomplete from "app/components/SmartAutocomplete";
-import { imageAlt } from "@syncfusion/ej2-react-richtexteditor";
+import PasskeyModal from "./PasskeyModal";
 
 function Tag(props) {
     const { label, onDelete, ...other } = props;
@@ -182,6 +182,9 @@ const Add = () => {
     const [filteredVariants, setFilteredVariants] = useState([]);
     const [filteredAttributes, setFilteredAttributes] = useState([]);
     const [attributeList, setAttributeList] = useState([]);
+
+    const [passkeyModalOpen, setPasskeyModalOpen] = useState(false);
+    const [passkeyLoading, setPasskeyLoading] = useState(false);
 
     const logOut = () => {
         localStorage.removeItem(localStorageKey.auth_key);
@@ -572,62 +575,73 @@ const Add = () => {
         const newErrors = {};
         if (!formValues.title) newErrors.title = "Title is required";
         if (!imgUrl) newErrors.images = "Image is required";
-        // if (formValues.tags?.length <= 0) newErrors.tags = "Tags is required";
         if (!formValues.metaTitle) {
             newErrors.metaTitle = "Meta Title is required";
         }
-
         if (!formValues.metaDescription) {
             newErrors.metaDescription = "Meta Description is required";
         }
-
         if (!formValues.metaKeywords) {
             newErrors.metaKeywords = "Meta Keywords are required";
         }
 
         setErrors(newErrors);
         if (Object.keys(newErrors).length === 0) {
-            try {
-                setLoading(true);
-
-                // Process conditions for payload
-                const processedConditions = processConditionsForSubmit(formValues.conditions);
-
-                const payload = {
-                    _id: queryId ? queryId : "new",
-                    title: formValues?.title,
-                    tag: formValues?.tags,
-                    parent_id: parentId,
-                    restricted_keywords: formValues?.restrictedTags || [],
-                    // New conditions data
-                    isAutomatic: formValues.isAutomatic,
-                    categoryScope: formValues.categoryScope,
-                    selectedCategories: formValues.selectedCategories.map(cat => cat._id),
-                    conditionType: formValues.conditionType,
-                    conditions: processedConditions,
-                    description: formValues.description,
-                    meta_title: formValues.metaTitle,
-                    meta_description: formValues.metaDescription,
-                    meta_keyword: formValues.metaKeywords,
-                    search_terms: formValues.searchTerms,
-                    image_alt: formValues.imageAlt.length ? formValues.imageAlt : formValues.metaTitle
-                };
-
-                const res = await ApiService.post(apiEndpoints.addAdminCategory, payload, auth_key);
-                console.log(res);
-                if (res.status === 200) {
-                    if (image) {
-                        await handleUploadImg(res?.data?.adminCategory?._id);
-                    }
-                    setRoute(ROUTE_CONSTANT.catalog.adminCategory.list);
-                    handleOpen("success", res?.data);
-                }
-            } catch (error) {
-                setLoading(false);
-                handleOpen("error", error);
-            } finally {
-                setLoading(false);
+            if (!parentId || parentId === "") {
+                setPasskeyModalOpen(true);
+                return;
             }
+
+            // Proceed with normal submission
+            await submitCategoryData();
+        }
+    };
+
+    const submitCategoryData = async (passkey = null) => {
+        try {
+            setLoading(true);
+
+            // Process conditions for payload
+            const processedConditions = processConditionsForSubmit(formValues.conditions);
+
+            const payload = {
+                _id: queryId ? queryId : "new",
+                title: formValues?.title,
+                tag: formValues?.tags,
+                parent_id: (!parentId || parentId === "") ? "" : parentId,
+                restricted_keywords: formValues?.restrictedTags || [],
+                isAutomatic: formValues.isAutomatic,
+                categoryScope: formValues.categoryScope,
+                selectedCategories: formValues.selectedCategories.map(cat => cat._id),
+                conditionType: formValues.conditionType,
+                conditions: processedConditions,
+                description: formValues.description,
+                meta_title: formValues.metaTitle,
+                meta_description: formValues.metaDescription,
+                meta_keyword: formValues.metaKeywords,
+                search_terms: formValues.searchTerms,
+                image_alt: formValues.imageAlt?.length > 0 ? formValues.imageAlt : formValues.metaTitle
+            };
+
+            // Add passkey to payload if provided
+            if (passkey) {
+                payload.password = passkey;
+            }
+
+            const res = await ApiService.post(apiEndpoints.addAdminCategory, payload, auth_key);
+            console.log(res);
+            if (res.status === 200) {
+                if (image) {
+                    await handleUploadImg(res?.data?.adminCategory?._id);
+                }
+                setRoute(ROUTE_CONSTANT.catalog.adminCategory.list);
+                handleOpen("success", res?.data);
+            }
+        } catch (error) {
+            setLoading(false);
+            handleOpen("error", error);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -643,6 +657,22 @@ const Add = () => {
         } catch (error) {
             handleOpen("error", error);
         }
+    };
+
+    const handlePasskeyConfirm = async (enteredPasskey) => {
+        setPasskeyLoading(true);
+        try {
+            await submitCategoryData(enteredPasskey);
+            setPasskeyModalOpen(false);
+        } catch (error) {
+            console.error("Error creating parent category:", error);
+        } finally {
+            setPasskeyLoading(false);
+        }
+    };
+
+    const handlePasskeyClose = () => {
+        setPasskeyModalOpen(false);
     };
 
     const getTagList = useCallback(async () => {
@@ -2057,6 +2087,13 @@ const Add = () => {
                 </StyledContainer>
             </MuiContainer>
             <ConfirmModal open={open} handleClose={handleClose} type={type} msg={msg} />
+            {/* Passkey Modal */}
+            <PasskeyModal
+                open={passkeyModalOpen}
+                onClose={handlePasskeyClose}
+                onConfirm={handlePasskeyConfirm}
+                loading={passkeyLoading}
+            />
         </ThemeProvider>
     );
 };
