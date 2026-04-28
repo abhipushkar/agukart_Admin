@@ -716,19 +716,48 @@ export const useProductAPI = () => {
     // Image upload handlers
     const handleUploadImage = async (id) => {
         const state = useProductFormStore.getState();
+
         const imgArr = state.formData.images.map((e) => e.file).filter(Boolean);
+
+        const altText =
+            state.altText && state.altText.length > 0
+                ? state.altText[0]
+                : state.formData.productTitle || "Product Image";
+
+        console.log("HANDLE UPLOAD IMAGE RUNNING");
+        console.log("FINAL ALT TEXT:", altText);
+        console.log("IMAGES:", imgArr);
 
         try {
             const fData = new FormData();
+
+            // Images
             imgArr.forEach((file) => {
                 fData.append("images", file);
             });
 
+            // ✅ Send only once
+            fData.append("altText", altText);
+
             fData.append("_id", id);
 
-            const res = await ApiService.postImage(apiEndpoints.addProductImages, fData, auth_key);
+            console.log("------ FORMDATA START ------");
+            for (let pair of fData.entries()) {
+                console.log(pair[0], pair[1]);
+            }
+            console.log("------ FORMDATA END ------");
+
+            const res = await ApiService.postImage(
+                apiEndpoints.addProductImages,
+                fData,
+                auth_key
+            );
+
+            console.log("UPLOAD RESPONSE:", res);
+
             if (res.status === 200) {
                 const apiRes = await handleUploadVideo(id);
+
                 if (apiRes) {
                     navigate(ROUTE_CONSTANT.catalog.product.list);
                     return true;
@@ -742,11 +771,19 @@ export const useProductAPI = () => {
 
     const handleUploadImage2 = async (id) => {
         const state = useProductFormStore.getState();
-        const { images, deleteIconData, altText } = state.formData;
+
+        const { images, deleteIconData } = state.formData;
+
+        const altText =
+            state.altText && state.altText.length > 0
+                ? state.altText[0]
+                : state.formData.productTitle || "Product Image";
 
         const filterImagesData = images.filter((img) => img.file);
         const sortImagesData = images.filter((img) => !img.file);
+
         const newSortArray = filterImagesData.map((img) => img.file?.sortOrder);
+
         const sortedArray = sortImagesData.map((img) => ({
             name: img.src.split("product/")[1],
             sortOrder: img.sortOrder,
@@ -760,20 +797,36 @@ export const useProductAPI = () => {
             };
 
             filterImagesData.forEach((img) => fData.append("images", img.file));
+
             appendArrayToFormData("newImgSortArray[]", newSortArray);
             appendArrayToFormData("existimageSortOrder[]", sortedArray);
 
-            altText?.forEach((text) => fData.append("altText", text));
+            // ✅ Send only once
+            fData.append("altText", altText);
 
             if (deleteIconData && deleteIconData.length > 0) {
-                deleteIconData.forEach((item) => fData.append("deleteImgArr[]", item));
+                deleteIconData.forEach((item) =>
+                    fData.append("deleteImgArr[]", item)
+                );
             }
 
             fData.append("_id", id);
 
-            const res = await ApiService.postImage(apiEndpoints.addProductImages, fData, auth_key);
+            console.log("EDIT IMAGE UPLOAD ALT:", altText);
+
+            for (let pair of fData.entries()) {
+                console.log(pair[0], pair[1]);
+            }
+
+            const res = await ApiService.postImage(
+                apiEndpoints.addProductImages,
+                fData,
+                auth_key
+            );
+
             if (res.status === 200) {
                 const apiRes = await editVideoHandler(id);
+
                 if (apiRes) {
                     navigate(ROUTE_CONSTANT.catalog.product.list);
                     return true;

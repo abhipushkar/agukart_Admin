@@ -862,7 +862,7 @@ const VariationsTable = ({ setShowVariantModal, isSynced }) => {
                                         )}
                                         {tableVisibleColumns.multipleUpload && (
                                             <TableCell align="center" sx={{ wordBreak: "keep-all", fontWeight: 600, py: 2 }}>
-                                                Multi Upload
+                                                Multi Upload 
                                             </TableCell>
                                         )}
                                         {tableVisibleColumns.mainImage1 && (
