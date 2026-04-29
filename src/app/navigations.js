@@ -344,7 +344,7 @@ export const navigations = [
             {
                 name: "Attributes",
                 iconText: "event",
-                path: ROUTE_CONSTANT.catalog.attribute.list,
+                path: ROUTE_CONSTANT.catalog.attribute.group,
             },
             {
                 name: "Occasions",
