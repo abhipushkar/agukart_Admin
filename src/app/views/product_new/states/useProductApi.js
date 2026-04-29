@@ -270,6 +270,12 @@ export const useProductAPI = () => {
                                     : JSON.stringify(attribute.edit_preview_image_data)
                             );
                         }
+                        if (attribute.altText) {
+                            fData.append(
+                                `product_variants[${vIndex}][variant_attributes][${aIndex}][altText]`,
+                                attribute.altText
+                            );
+                        }
                     });
                 }
             });
@@ -397,11 +403,20 @@ export const useProductAPI = () => {
 
                 // Handle option list for variant and dropdown customizations
                 if (customization.optionList && Array.isArray(customization.optionList)) {
-                    customization.optionList.forEach((option, oIndex) => {
+                    customization.optionList.forEach((option, oIndex) => {        
                         // Append basic option fields
                         fData.append(`customizationData[customizations][${cIndex}][optionList][${oIndex}][optionName]`, option.optionName || '');
                         fData.append(`customizationData[customizations][${cIndex}][optionList][${oIndex}][priceDifference]`, option.priceDifference || '0');
                         fData.append(`customizationData[customizations][${cIndex}][optionList][${oIndex}][isVisible]`, option.isVisible !== false || option.isVisible !== "false" ? 'true' : 'false');
+
+
+                        // altText append
+                        if (option.altText) {
+                            fData.append(
+                                `customizationData[customizations][${cIndex}][optionList][${oIndex}][altText]`,
+                                option.altText
+                            );
+                        }
 
                         // Handle edit data for images
                         if (option.edit_main_image_data) {
