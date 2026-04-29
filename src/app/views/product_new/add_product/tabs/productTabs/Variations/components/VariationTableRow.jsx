@@ -1,11 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import TableRow from "@mui/material/TableRow";
 import TableCell from "@mui/material/TableCell";
 import { Box, Button, IconButton, Typography } from "@mui/material";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import { useProductFormStore } from "../../../../../states/useAddProducts";
 import ImageCell, { BulkUploadCell } from "./imageComponents/ImageCell";
-
+import TextFieldsIcon from "@mui/icons-material/TextFields";
+import { Popover, TextField } from "@mui/material";
 const DraggableTableRow = ({
     children,
     index,
@@ -77,7 +78,6 @@ const DraggableTableRow = ({
         </TableRow>
     );
 };
-
 const VariationTableRow = ({
     variant,
     variantIndex,

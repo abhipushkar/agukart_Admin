@@ -51,8 +51,9 @@ import {
 } from "@mui/icons-material";
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { ApiService } from "../../services/ApiService";
-import {ROUTE_CONSTANT} from "../../constant/routeContanst";
+import { ROUTE_CONSTANT } from "../../constant/routeContanst";
 import ConfirmModal from "../../components/ConfirmModal";
+import { localStorageKey } from "app/constant/localStorageKey";
 
 // Reorder function for drag and drop
 const reorder = (list, startIndex, endIndex) => {
@@ -84,7 +85,8 @@ const AddAttribute = () => {
         viewOnProductPage: true,
         viewInFilters: true,
         status: true,
-        isMultiSelect: false
+        isMultiSelect: false,
+        groupId: "",
     });
     const [attributeValues, setAttributeValues] = useState([
         { id: `temp-${Date.now()}-0`, value: "", sortOrder: 1, status: true, error: false }
@@ -105,18 +107,29 @@ const AddAttribute = () => {
         onConfirm: null
     });
 
+    const [attributeGroups, setAtrributeGroups] = useState([]);
+
     // Bulk values state
     const [bulkValuesInput, setBulkValuesInput] = useState("");
     const [bulkValuesDialogOpen, setBulkValuesDialogOpen] = useState(false);
     const [currentBulkValuesContext, setCurrentBulkValuesContext] = useState(null); // 'main' or subAttrId
 
     const attributeId = searchParams.get("id");
+    const groupId = searchParams.get("groupId");
 
     useEffect(() => {
         fetchCategories();
-
+        fetchAttributeGroups();
         if (attributeId) {
             fetchAttributeDetails(attributeId);
+        }
+        if (groupId && !attributeId) {
+            setAttributeData(prev => {
+                return {
+                    ...prev, groupId: groupId
+                }
+            }
+            )
         }
     }, [attributeId]);
 
@@ -279,6 +292,18 @@ const AddAttribute = () => {
         }
     };
 
+    const fetchAttributeGroups = async () => {
+        try {
+            const authKey = localStorage.getItem(localStorageKey.auth_key);
+            const response = await ApiService.get(`attribute-group`, authKey);
+            if (response.status === 200) {
+                setAtrributeGroups(response.data.data);
+            }
+        } catch (error) {
+            console.error("Error fetching attribute groups:", error);
+        }
+    };
+
     const fetchAttributeDetails = async (id) => {
         setLoading(true);
         try {
@@ -297,7 +322,8 @@ const AddAttribute = () => {
                         viewOnProductPage: attribute.viewOnProductPage !== undefined ? attribute.viewOnProductPage : true,
                         viewInFilters: attribute.viewInFilters !== undefined ? attribute.viewInFilters : true,
                         status: attribute.status !== undefined ? attribute.status : true,
-                        isMultiSelect: attribute.multiSelect || false
+                        isMultiSelect: attribute.multiSelect || false,
+                        groupId: attribute?.groupId || ""
                     });
 
                     // Ensure attribute values have proper IDs
@@ -624,6 +650,7 @@ const AddAttribute = () => {
             status: attributeData.status,
             viewOnProductPage: attributeData.viewOnProductPage,
             viewInFilters: attributeData.viewInFilters,
+            groupId: attributeData.groupId,
         };
 
         // Add multiSelect for dropdown type
@@ -742,7 +769,7 @@ const AddAttribute = () => {
             if (isEdit) {
                 const response = await ApiService.post(`update-attribute-list/${attributeId}`, payload, accessToken);
 
-                if(response.data.success) {
+                if (response.data.success) {
                     showConfirmModal("success", "Attribute updated successfully!", () => {
                         navigate(ROUTE_CONSTANT.catalog.attribute.list);
                     });
@@ -823,7 +850,7 @@ const AddAttribute = () => {
                 </Link>
                 <Link
                     color="inherit"
-                    onClick={() => navigate(ROUTE_CONSTANT.catalog.attribute.list)}
+                    onClick={() => navigate(groupId ? `${ROUTE_CONSTANT.catalog.attribute.list}?groupId=${groupId}` : ROUTE_CONSTANT.catalog.attribute.group)}
                     sx={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
                 >
                     <ListIcon sx={{ mr: 0.5 }} fontSize="inherit" />
@@ -840,7 +867,7 @@ const AddAttribute = () => {
                 <Divider />
                 <Box sx={{ ml: "24px", mt: "16px" }}>
                     <Button
-                        onClick={() => navigate(ROUTE_CONSTANT.catalog.attribute.list)}
+                        onClick={() => navigate(groupId ? `${ROUTE_CONSTANT.catalog.attribute.list}?groupId=${groupId}` : ROUTE_CONSTANT.catalog.attribute.group)}
                         startIcon={<AppsIcon />}
                         variant="contained"
                     >
@@ -869,7 +896,7 @@ const AddAttribute = () => {
                                     </Alert>
                                 </Grid>
 
-                                <Grid item xs={12} md={6}>
+                                <Grid item xs={12} md={4}>
                                     <TextField
                                         fullWidth
                                         label="Attribute Name"
@@ -881,7 +908,7 @@ const AddAttribute = () => {
                                     />
                                 </Grid>
 
-                                <Grid item xs={12} md={6}>
+                                <Grid item xs={12} md={4}>
                                     <FormControl fullWidth>
                                         <InputLabel>Attribute Type *</InputLabel>
                                         <Select
@@ -893,6 +920,25 @@ const AddAttribute = () => {
                                         >
                                             {attributeTypes.map(type => (
                                                 <MenuItem key={type} value={type}>{type}</MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
+                                </Grid>
+
+                                <Grid item xs={12} md={4}>
+                                    <FormControl fullWidth required>
+                                        <InputLabel>Attribute Group</InputLabel>
+                                        <Select
+                                            name="groupId"
+                                            value={attributeData.groupId}
+                                            label="Attribute Group"
+                                            onChange={handleInputChange}
+                                            required
+                                        >
+                                            {attributeGroups.map((group) => (
+                                                <MenuItem key={group._id || group.id} value={group._id || group.id}>
+                                                    {group.name}
+                                                </MenuItem>
                                             ))}
                                         </Select>
                                     </FormControl>
@@ -928,7 +974,7 @@ const AddAttribute = () => {
                                             You can drag and drop to reorder the values.
                                         </Alert>
 
-                                        <TableContainer sx={{paddingX: 2}} component={Paper} variant="outlined">
+                                        <TableContainer sx={{ paddingX: 2 }} component={Paper} variant="outlined">
                                             <Table size="small">
                                                 <TableHead>
                                                     <TableRow>

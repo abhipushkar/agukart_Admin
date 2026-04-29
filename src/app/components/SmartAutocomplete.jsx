@@ -14,6 +14,7 @@ const SmartAutocomplete = ({
     multiple = true,
     allowComma = true,
     allowEnter = true,
+    allowBackspace = true,
     splitOnPaste = true,
     showChips = true,
     splitOnConfirmOnly = true,
@@ -114,6 +115,16 @@ const SmartAutocomplete = ({
                     }
                 }}
 
+                onKeyDown={(e) => {
+                    if (!allowBackspace && e.key === "Backspace" && !inputValue) {
+                        e.defaultMuiPrevented = true;
+                    }
+
+                    if (!allowEnter && e.key === "Enter" && inputValue.trim().length === 0) {
+                        e.defaultMuiPrevented = true;
+                    }
+                }}
+
                 getOptionLabel={getOptionLabel}
                 isOptionEqualToValue={isOptionEqualToValue}
 
@@ -150,6 +161,10 @@ const SmartAutocomplete = ({
 
                                 handleAddInput(e.target.value);
                                 return;
+                            }
+
+                            if (!allowBackspace && e.key === "Backspace" && !inputValue) {
+                                e.defaultPrevented = true;
                             }
 
                             textFieldProps?.onKeyDown?.(e);

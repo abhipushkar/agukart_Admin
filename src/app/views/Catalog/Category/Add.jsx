@@ -58,6 +58,7 @@ import SmartAutocomplete from "app/components/SmartAutocomplete";
 import { useCallback } from "react";
 import { useRef } from "react";
 import CommonQuill from "app/components/ReactQuillTextEditor/ReusableReactQuill/CommonQuill";
+import GroupedAutocomplete from './GroupedAutocomplete';
 
 
 function Tag(props) {
@@ -128,6 +129,7 @@ const Add = () => {
     // State for dynamic dropdown data
     const [parentCategories, setParentCategories] = useState([]);
     const [isParentCategoriesLoaded, setIsParentCategoriesLoaded] = useState(false);
+    const [attributeGroups, setAtrributeGroups] = useState([]);
 
     // New states for conditions
     const [selectedCategories, setSelectedCategories] = useState([]);
@@ -676,6 +678,10 @@ const Add = () => {
                 setAttributeList(res?.data?.data || []);
                 setFilteredAttributes(res?.data?.data || []);
             }
+            const groupdata = await ApiService.get(`attribute-group`, auth_key);
+            if (groupdata.status === 200) {
+                setAtrributeGroups(groupdata.data.data);
+            }
         } catch (error) {
             handleOpen("error", error?.response?.data || error);
             setAttributeList([]);
@@ -932,56 +938,59 @@ const Add = () => {
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                         {/* Attribute Selection */}
                         <FormControl fullWidth>
-                            <TextField
-                                select
-                                sx={{
-                                    "& .MuiInputBase-root": { height: "40px" }
-                                }}
-                                value={condition.value?.attributeId || ""}
-                                onChange={(e) => {
-                                    // const newAttribute = filteredAttributes.find(attr => attr._id === e.target.value);
-                                    const newValue = {
-                                        attributeId: e.target.value,
+                            <Autocomplete
+                                disablePortal
+                                options={filteredAttributes}
+                                getOptionLabel={(option) => `${option.name} ${option.type === "Compound" ? "(Compound)" : ""}`}
+                                value={filteredAttributes.find(attr => attr._id === condition.value?.attributeId) || null}
+                                onChange={(event, newValue) => {
+                                    const newValueObj = {
+                                        attributeId: newValue?._id || "",
                                         subAttributeId: "",
                                         value: ""
                                     };
-                                    setFieldValue(`conditions.${index}.value`, newValue);
+                                    setFieldValue(`conditions.${index}.value`, newValueObj);
                                 }}
-                                label="Select Attribute"
-                            >
-                                {filteredAttributes.map((attribute) => (
-                                    <MenuItem key={attribute._id} value={attribute._id}>
-                                        {attribute.name} {attribute.type === "Compound" ? "(Compound)" : ""}
-                                    </MenuItem>
-                                ))}
-                            </TextField>
+                                renderInput={(params) => (
+                                    <TextField
+                                        {...params}
+                                        label="Select Attribute"
+                                        sx={{
+                                            "& .MuiInputBase-root": { height: "40px" }
+                                        }}
+                                    />
+                                )}
+                                isOptionEqualToValue={(option, value) => option._id === value._id}
+                            />
                         </FormControl>
 
                         {/* Sub-attribute Selection for Compound types */}
                         {selectedAttribute?.type === "Compound" && (
                             <FormControl fullWidth>
-                                <TextField
-                                    select
-                                    sx={{
-                                        "& .MuiInputBase-root": { height: "40px" }
-                                    }}
-                                    value={condition.value?.subAttributeId || ""}
-                                    onChange={(e) => {
-                                        const newValue = {
+                                <Autocomplete
+                                    disablePortal
+                                    options={subAttributes}
+                                    getOptionLabel={(option) => `${option.name} (${option.type})`}
+                                    value={subAttributes.find(sub => sub._id === condition.value?.subAttributeId) || null}
+                                    onChange={(event, newValue) => {
+                                        const newValueObj = {
                                             ...condition.value,
-                                            subAttributeId: e.target.value,
+                                            subAttributeId: newValue?._id || "",
                                             value: ""
                                         };
-                                        setFieldValue(`conditions.${index}.value`, newValue);
+                                        setFieldValue(`conditions.${index}.value`, newValueObj);
                                     }}
-                                    label="Select Sub-Attribute"
-                                >
-                                    {subAttributes.map((subAttr) => (
-                                        <MenuItem key={subAttr._id} value={subAttr._id}>
-                                            {subAttr.name} ({subAttr.type})
-                                        </MenuItem>
-                                    ))}
-                                </TextField>
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            label="Select Sub-Attribute"
+                                            sx={{
+                                                "& .MuiInputBase-root": { height: "40px" }
+                                            }}
+                                        />
+                                    )}
+                                    isOptionEqualToValue={(option, value) => option._id === value._id}
+                                />
                             </FormControl>
                         )}
 
@@ -996,35 +1005,36 @@ const Add = () => {
             }
 
             // Handle regular attributes (Dropdown, Yes/No, Text)
-            // const attributeValues = selectedAttribute?.values || [];
             const selectedValuesCount = condition.value?.valueIds?.length || 0;
 
             return (
                 <Box sx={{ display: 'flex', flexDirection: selectedValuesCount > 1 ? 'column' : 'row', gap: 1 }}>
                     <FormControl fullWidth>
-                        <TextField
-                            select
-                            sx={{
-                                "& .MuiInputBase-root": {
-                                    height: selectedValuesCount > 1 ? "auto" : "40px"
-                                }
-                            }}
-                            value={condition.value?.attributeId || ""}
-                            onChange={(e) => {
-                                const newValue = {
-                                    attributeId: e.target.value,
+                        <Autocomplete
+                            disablePortal
+                            options={filteredAttributes}
+                            getOptionLabel={(option) => option.name}
+                            value={filteredAttributes.find(attr => attr._id === condition.value?.attributeId) || null}
+                            onChange={(event, newValue) => {
+                                const newValueObj = {
+                                    attributeId: newValue?._id || "",
                                     valueIds: []
                                 };
-                                setFieldValue(`conditions.${index}.value`, newValue);
+                                setFieldValue(`conditions.${index}.value`, newValueObj);
                             }}
-                            label="Select Attribute"
-                        >
-                            {filteredAttributes.map((attribute) => (
-                                <MenuItem key={attribute._id} value={attribute._id}>
-                                    {attribute.name}
-                                </MenuItem>
-                            ))}
-                        </TextField>
+                            renderInput={(params) => (
+                                <TextField
+                                    {...params}
+                                    label="Select Attribute"
+                                    sx={{
+                                        "& .MuiInputBase-root": {
+                                            height: selectedValuesCount > 1 ? "auto" : "40px"
+                                        }
+                                    }}
+                                />
+                            )}
+                            isOptionEqualToValue={(option, value) => option._id === value._id}
+                        />
                     </FormControl>
 
                     <FormControl fullWidth>
@@ -1042,34 +1052,37 @@ const Add = () => {
             return (
                 <Box sx={{ display: 'flex', flexDirection: selectedAttributesCount > 1 ? 'column' : 'row', gap: 1 }}>
                     <FormControl fullWidth>
-                        <TextField
-                            select
-                            sx={{
-                                "& .MuiInputBase-root": {
-                                    height: selectedAttributesCount > 1 ? "auto" : "40px"
-                                }
-                            }}
-                            value={condition.value?.variantId || ""}
-                            onChange={(e) => {
-                                const newValue = {
-                                    variantId: e.target.value,
+                        <Autocomplete
+                            disablePortal
+                            options={filteredVariants}
+                            getOptionLabel={(option) => option.variant_name}
+                            value={filteredVariants.find(variant => variant._id === condition.value?.variantId) || null}
+                            onChange={(event, newValue) => {
+                                const newValueObj = {
+                                    variantId: newValue?._id || "",
                                     attributeIds: []
                                 };
-                                setFieldValue(`conditions.${index}.value`, newValue);
+                                setFieldValue(`conditions.${index}.value`, newValueObj);
                             }}
-                            label="Select Variant"
-                        >
-                            {filteredVariants.map((variant) => (
-                                <MenuItem key={variant._id} value={variant._id}>
-                                    {variant.variant_name}
-                                </MenuItem>
-                            ))}
-                        </TextField>
+                            renderInput={(params) => (
+                                <TextField
+                                    {...params}
+                                    label="Select Variant"
+                                    sx={{
+                                        "& .MuiInputBase-root": {
+                                            height: selectedAttributesCount > 1 ? "auto" : "40px"
+                                        }
+                                    }}
+                                />
+                            )}
+                            isOptionEqualToValue={(option, value) => option._id === value._id}
+                        />
                     </FormControl>
 
                     <FormControl fullWidth>
                         <Autocomplete
                             multiple
+                            disableCloseOnSelect
                             options={variantAttributes}
                             getOptionLabel={(option) => option.attribute_value || ""}
                             value={variantAttributes.filter(attr =>
@@ -1188,46 +1201,47 @@ const Add = () => {
                 ];
 
                 return (
-                    <TextField
-                        select
-                        sx={{
-                            "& .MuiInputBase-root": { height: "40px" }
-                        }}
-                        value={condition.value?.valueIds?.[0] || ""}
-                        onChange={(e) => {
+                    <Autocomplete
+                        disablePortal
+                        options={yesNoOptions}
+                        getOptionLabel={(option) => option.value}
+                        value={yesNoOptions.find(opt => opt._id === condition.value?.valueIds?.[0]) || null}
+                        onChange={(event, newValue) => {
                             setFieldValue(`conditions.${index}.value`, {
                                 ...condition.value,
-                                valueIds: [e.target.value]
+                                valueIds: newValue ? [newValue._id] : []
                             });
                         }}
-                        label="Select Value"
-                    >
-                        {yesNoOptions.map((option) => (
-                            <MenuItem key={option._id} value={option._id}>
-                                {option.value}
-                            </MenuItem>
-                        ))}
-                    </TextField>
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                label="Select Value"
+                                sx={{
+                                    "& .MuiInputBase-root": { height: "40px" }
+                                }}
+                            />
+                        )}
+                        isOptionEqualToValue={(option, value) => option._id === value._id}
+                    />
                 );
 
             default:
                 return (
-                    <TextField
-                        select
-                        sx={{
-                            "& .MuiInputBase-root": { height: "40px" }
-                        }}
-                        value={""}
-                        onChange={(e) => {
-
-                        }}
+                    <Autocomplete
+                        disablePortal
+                        options={[]}
+                        value={null}
                         disabled
-                        label="Select Value"
-                    >
-                        <MenuItem value={""}>
-                            No Option
-                        </MenuItem>
-                    </TextField>
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                label="Select Value"
+                                sx={{
+                                    "& .MuiInputBase-root": { height: "40px" }
+                                }}
+                            />
+                        )}
+                    />
                 );
         }
     };
@@ -1277,46 +1291,47 @@ const Add = () => {
                 ];
 
                 return (
-                    <TextField
-                        select
-                        sx={{
-                            "& .MuiInputBase-root": { height: "40px" }
-                        }}
-                        value={condition.value?.valueIds?.[0] || ""}
-                        onChange={(e) => {
+                    <Autocomplete
+                        disablePortal
+                        options={yesNoOptions}
+                        getOptionLabel={(option) => option.value}
+                        value={yesNoOptions.find(opt => opt._id === condition.value?.valueIds?.[0]) || null}
+                        onChange={(event, newValue) => {
                             setFieldValue(`conditions.${index}.value`, {
                                 ...condition.value,
-                                valueIds: [e.target.value]
+                                valueIds: newValue ? [newValue._id] : []
                             });
                         }}
-                        label="Select Value"
-                    >
-                        {yesNoOptions.map((option) => (
-                            <MenuItem key={option._id} value={option._id}>
-                                {option.value}
-                            </MenuItem>
-                        ))}
-                    </TextField>
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                label="Select Value"
+                                sx={{
+                                    "& .MuiInputBase-root": { height: "40px" }
+                                }}
+                            />
+                        )}
+                        isOptionEqualToValue={(option, value) => option._id === value._id}
+                    />
                 );
 
             default:
                 return (
-                    <TextField
-                        select
-                        sx={{
-                            "& .MuiInputBase-root": { height: "40px" }
-                        }}
-                        value={""}
-                        onChange={(e) => {
-
-                        }}
+                    <Autocomplete
+                        disablePortal
+                        options={[]}
+                        value={null}
                         disabled
-                        label="Select Value"
-                    >
-                        <MenuItem value={""}>
-                            No Option
-                        </MenuItem>
-                    </TextField>
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                label="Select Value"
+                                sx={{
+                                    "& .MuiInputBase-root": { height: "40px" }
+                                }}
+                            />
+                        )}
+                    />
                 );
         }
     };
@@ -1385,7 +1400,17 @@ const Add = () => {
                                 setFieldValue("tags", [...new Set(processedValues)]);
                             };
 
-                            return <Form>
+                            return <Form
+                                onKeyDown={(e) => {
+                                    // Prevent form submission when pressing Enter
+                                    if (e.key === 'Enter') {
+                                        // Check if the target is not a textarea (where Enter is needed for new lines)
+                                        if (e.target.tagName !== 'TEXTAREA') {
+                                            e.preventDefault();
+                                        }
+                                    }
+                                }}
+                            >
                                 {/* Category and Title in row */}
                                 <Grid container spacing={2} sx={{ marginBottom: 4 }}>
                                     <Grid item xs={12} sm={6}>
@@ -1457,16 +1482,6 @@ const Add = () => {
                                                                                 ),
                                                                             }}
                                                                         />
-
-                                                                        {/* <ArrowDropDownIcon
-                                                                            sx={{
-                                                                                position: "absolute",
-                                                                                right: "10px",
-                                                                                top: "28%",
-                                                                                width: "20px",
-                                                                                height: "20px"
-                                                                            }}
-                                                                        /> */}
                                                                     </Stack>
                                                                 }
                                                                 menu={returnJSX(item?.subs || []) || []}
@@ -1771,6 +1786,11 @@ const Add = () => {
                                                     onChange={(event, value) => setSelectedEditVariant(value || [])}
                                                     value={SelectedEditVariant || []}
                                                     isOptionEqualToValue={(option, value) => option?._id === value?._id}
+                                                    onKeyDown={(event) => {
+                                                        if (event.key === "Enter" || event.key === "Backspace") {
+                                                            event.defaultMuiPrevented = true; // 🔥 THIS is the key
+                                                        }
+                                                    }}
                                                 />
                                             </Box>
                                         </Box>
@@ -1781,28 +1801,14 @@ const Add = () => {
                                                 Attributes:
                                             </Typography>
                                             <Box sx={{ flex: 1 }}>
-                                                <Autocomplete
-                                                    multiple
-                                                    limitTags={4}
-                                                    id="multiple-limit-tags-attributes"
+                                                <GroupedAutocomplete
+                                                    groups={attributeGroups}
                                                     options={attributeList || []}
-                                                    getOptionLabel={(option) => option?.name || ""}
-                                                    renderInput={(params) => {
-                                                        return (
-                                                            <TextField
-                                                                {...params}
-                                                                placeholder="Select Attributes"
-                                                                sx={{
-                                                                    "& .MuiInputBase-root": {
-                                                                        height: "auto"
-                                                                    }
-                                                                }}
-                                                            />
-                                                        );
-                                                    }}
-                                                    onChange={(event, value) => setSelectedEditAttribute(value || [])}
                                                     value={SelectedEditAttribute || []}
-                                                    isOptionEqualToValue={(option, value) => option?._id === value?._id}
+                                                    onChange={(newValue) => setSelectedEditAttribute(newValue)}
+                                                    placeholder="Select Attributes"
+                                                    label=""
+                                                    limitTags={4}
                                                 />
                                             </Box>
                                         </Box>
@@ -1822,6 +1828,11 @@ const Add = () => {
                                                 limitTags={4}
                                                 id="multiple-limit-tags"
                                                 options={[]}
+                                                onKeyDown={(event) => {
+                                                    if (event.key === "Backspace") {
+                                                        event.defaultMuiPrevented = true; // 🔥 THIS is the key
+                                                    }
+                                                }}
                                                 getOptionLabel={(option) => option || ""}
                                                 renderInput={(params) => (
                                                     <TextField
@@ -1852,11 +1863,12 @@ const Add = () => {
                                             <Box sx={{ flex: 1 }}>
                                                 <CommonQuill
                                                     value={values.description}
+                                                    height={50}
                                                     onChange={(val) => {
                                                         setFieldValue("description", val);
                                                         setFieldTouched("description", true);
                                                     }}
-                                                    error={touched.description && errors.description}
+                                                    error={touched.description && errors.description && (values.description === "<p><br></p>" || values.description === "") ? errors.description : ""}
                                                     placeholder="Write description..."
                                                     required
                                                 />
@@ -1952,14 +1964,15 @@ const Add = () => {
                                                 onChange={(val) => setFieldValue("searchTerms", val)}
 
                                                 label="Search Terms"
-                                                placeholder="Paste/Type and press Enter or comma"
+                                                placeholder="Paste/Type and press comma"
 
                                                 // 🔥 key configs for your use-case
                                                 options={[]}           // no dropdown
                                                 freeSolo={true}        // allow typing
                                                 multiple={true}        // multiple terms
                                                 allowComma={true}
-                                                allowEnter={true}
+                                                allowEnter={false}
+                                                allowBackspace={false}
                                                 showChips={true}       // show tags
                                                 splitOnConfirmOnly={true}
 

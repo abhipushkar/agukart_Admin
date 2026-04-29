@@ -30,6 +30,7 @@ export const ROUTE_CONSTANT = {
         attribute: {
             list: "/catalog/attribute-list",
             add: "/catalog/add-attribute",
+            group: "/catalog/attribute-group",
         },
         product: {
             list: "/catalog/product-list",
