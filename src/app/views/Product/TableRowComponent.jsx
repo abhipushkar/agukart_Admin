@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import TableRow from "@mui/material/TableRow";
 import TableCell from "@mui/material/TableCell";
-import {Box, Button, Checkbox, styled, Switch, Tooltip, IconButton, Slider, Dialog, DialogActions, DialogContent, DialogTitle, Chip} from "@mui/material";
+import { Box, Button, Checkbox, styled, Switch, Tooltip, IconButton, Slider, Dialog, DialogActions, DialogContent, DialogTitle, Chip } from "@mui/material";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 import EditIcon from "@mui/icons-material/Edit";
 import CropIcon from "@mui/icons-material/Crop";
@@ -14,7 +14,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import CollectionsIcon from "@mui/icons-material/Collections";
 import Cropper from 'react-easy-crop';
-import {createBlobUrl, fetchImageAsBlob, getCroppedImg, revokeBlobUrl} from './cropUtil';
+import { createBlobUrl, fetchImageAsBlob, getCroppedImg, revokeBlobUrl } from './cropUtil';
 import Typography from "@mui/material/Typography";
 
 const VisuallyHiddenInput = styled("input")({
@@ -31,16 +31,16 @@ const VisuallyHiddenInput = styled("input")({
 
 // Draggable row component
 const DraggableTableRow = ({
-                               children,
-                               index,
-                               onDragStart,
-                               onDragOver,
-                               onDrop,
-                               onDragEnd,
-                               isDragging,
-                               isDragOver,
-                               ...props
-                           }) => {
+    children,
+    index,
+    onDragStart,
+    onDragOver,
+    onDrop,
+    onDragEnd,
+    isDragging,
+    isDragOver,
+    ...props
+}) => {
     const handleDragStart = (e) => {
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/plain', index.toString());
@@ -99,20 +99,20 @@ const DraggableTableRow = ({
 };
 
 const TableRowComponent = ({
-                               comb,
-                               handleCombChange,
-                               handleToggle,
-                               combindex,
-                               formValues,
-                               variationsData,
-                               combinationError,
-                               showAll,
-                               handleImageUpload,
-                               handleImageRemove,
-                               setShowAll,
-                               handleEditImage,
-                               onRowReorder
-                           }) => {
+    comb,
+    handleCombChange,
+    handleToggle,
+    combindex,
+    formValues,
+    variationsData,
+    combinationError,
+    showAll,
+    handleImageUpload,
+    handleImageRemove,
+    setShowAll,
+    handleEditImage,
+    onRowReorder
+}) => {
     const label = { inputProps: { "aria-label": "Switch demo" } };
 
     // Drag and drop state
@@ -313,9 +313,9 @@ const TableRowComponent = ({
                             component="label"
                             variant="outlined"
                             size="small"
-                            sx={{mb: 1, aspectRatio: "1/1", width: "30px"}}
+                            sx={{ mb: 1, aspectRatio: "1/1", width: "30px" }}
                         >
-                            <AddPhotoAlternateIcon/>
+                            <AddPhotoAlternateIcon />
                             <VisuallyHiddenInput
                                 type="file"
                                 onChange={(e) => handleImageUpload(combindex, index, imageKey, e)}
@@ -501,20 +501,20 @@ const TableRowComponent = ({
 };
 
 const ImageTooltip = ({
-                          imageUrl,
-                          originalImage,
+    imageUrl,
+    originalImage,
     editData,
-                          editedImage,
-                          onImageChange,
-                          onImageRemove,
-                          onImageEdit,
-                          isEditable,
-                          children,
-                          combindex,
-                          rowIndex,
-                          imageType,
-                          imageIndex
-                      }) => {
+    editedImage,
+    onImageChange,
+    onImageRemove,
+    onImageEdit,
+    isEditable,
+    children,
+    combindex,
+    rowIndex,
+    imageType,
+    imageIndex
+}) => {
     const [open, setOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [cropDialogOpen, setCropDialogOpen] = useState(false);
@@ -530,8 +530,8 @@ const ImageTooltip = ({
         editData = typeof editData === "string" ? JSON.parse(editData) : editData;
         console.log("Edited Image in useEffect", editData, typeof editData);
         setZoom(editData?.scale || 1);
-            setCrop({x: editData?.x || 0, y: editData?.y || 0});
-            setRotation(0);
+        setCrop({ x: editData?.x || 0, y: editData?.y || 0 });
+        setRotation(0);
     }, [])
 
     const handleTooltipOpen = () => {
@@ -631,7 +631,7 @@ const ImageTooltip = ({
         editData = typeof editData === "string" ? JSON.parse(editData) : editData;
         console.log("Edited Data", typeof editData, editData);
         setZoom(editData?.scale || 1);
-        setCrop({x: editData?.x || 0, y: editData?.y || 0});
+        setCrop({ x: editData?.x || 0, y: editData?.y || 0 });
         setRotation(0);
     };
 
@@ -815,7 +815,7 @@ const ImageTooltip = ({
                         {/* Edited Image Preview */}
                         <Box sx={{ flex: 1 }}>
                             <Typography variant="subtitle2" gutterBottom align="center">
-                                Edited Preview
+                                Edited Previ
                             </Typography>
                             <Box sx={{
                                 position: 'relative',

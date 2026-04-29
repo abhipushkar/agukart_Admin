@@ -46,6 +46,10 @@ import { getCroppedImg } from './cropUtil';
 import { useProductFormStore } from "../../../../../states/useAddProducts";
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import Grid from "@mui/material/Grid";
+import ThumbUpOutlinedIcon from "@mui/icons-material/ThumbUpOutlined";
+import ThumbDownOutlinedIcon from "@mui/icons-material/ThumbDownOutlined";
 
 const VisuallyHiddenInput = styled("input")({
     clip: "rect(0 0 0 0)",
@@ -188,6 +192,11 @@ const OptionDropdown = ({ index }) => {
     const [dragOverIndex, setDragOverIndex] = useState(null);
     const [hoveredHeader, setHoveredHeader] = useState(null);
 
+    const [enhanceModalOpen, setEnhanceModalOpen] = useState(false);
+    const [hideAI, setHideAI] = useState(false);
+    const [acceptAll, setAcceptAll] = useState(false);
+    const [enhanceFields, setEnhanceFields] = useState([]);
+
     const handleOptionDropDownFormChange = (e) => {
         const { name, value } = e.target;
         if (name === "label" && value.length > 100) return;
@@ -323,6 +332,51 @@ const OptionDropdown = ({ index }) => {
             ...customizationData,
             customizations: updatedCustomizations
         });
+    };
+
+    const handleOpenEnhanceModal = () => {
+        setHideAI(true);
+        setAcceptAll(false);
+
+
+
+        const fields = customization?.optionList?.map((option, idx) => ({
+            id: idx,
+            label: option.optionName || `Option ${idx + 1}`,
+            original: option.altText || "",
+            generated: "",
+            accepted: false,
+            optionIndex: idx
+        })) || [];
+
+        setEnhanceFields(fields);
+        setEnhanceModalOpen(true);
+    };
+
+    const handleCloseEnhanceModal = () => {
+        setEnhanceModalOpen(false);
+        setHideAI(true);
+        setAcceptAll(false);
+        setEnhanceFields([]);
+    };
+
+    const handleAcceptAll = (checked) => {
+        setAcceptAll(checked);
+        setEnhanceFields(prev => prev.map(f => ({ ...f, accepted: checked })));
+    };
+
+    const handleFieldAccept = (id, checker) => {
+        const updated = enhanceFields.map(f =>
+            f.id === id ? { ...f, accepted: checker } : f
+        );
+        setEnhanceFields(updated);
+        setAcceptAll(updated.every(f => f.accepted));
+    };
+
+    const handleGeneratedChange = (id, value) => {
+        setEnhanceFields(prev => prev.map(f =>
+            f.id === id ? { ...f, generated: value } : f
+        ));
     };
 
     const handleCheckboxChange = (checked) => {
@@ -1360,9 +1414,57 @@ const OptionDropdown = ({ index }) => {
 
             <Card variant={"outlined"}>
                 <CardContent>
-                    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "10px" }}>
+                    <Box
+                        sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            marginTop: "10px",
+                            gap: 2,
+                            flexWrap: "wrap"
+                        }}
+                    >
                         <Box sx={{ fontSize: "24px", fontWeight: "700" }}>
                             Option List
+                        </Box>
+
+                        <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+                            <Button
+                                variant='outlined'
+                                size='small'
+                                startIcon={<AutoAwesomeIcon fontSize='small' />}
+                                onClick={handleOpenEnhanceModal}
+                                sx={{
+                                    borderColor: '#1976d2',
+                                    color: '#1976d2',
+                                    fontWeight: 600,
+                                    textTransform: 'none',
+                                    borderRadius: 2,
+                                    px: 2,
+                                    mr: 1,
+                                    '&:hover': {
+                                        backgroundColor: '#e3f2fd',
+                                        borderColor: '#1565c0'
+                                    }
+                                }}
+                            >
+                                Enhance
+                            </Button>
+                            <Typography fontWeight={500} fontSize={15}>
+                                View All visibility :
+                            </Typography>
+
+                            <Switch
+                                checked={customization.viewAll === "true" || customization.viewAll === true}
+                                onChange={() => {
+                                    const { setCustomizationViewAll } = useProductFormStore.getState();
+
+                                    setCustomizationViewAll(
+                                        index,
+                                        !(customization.viewAll === "true" || customization.viewAll === true)
+                                    );
+                                }}
+                            />
                         </Box>
                     </Box>
 
@@ -1797,6 +1899,244 @@ const OptionDropdown = ({ index }) => {
                         variant="contained"
                     >
                         Save Guide
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* ===== ENHANCE MODAL ===== */}
+            <Dialog
+                open={enhanceModalOpen}
+                onClose={handleCloseEnhanceModal}
+                fullScreen
+                sx={{
+                    '& .MuiDialog-container': {
+                        justifyContent: 'flex-end',
+                        alignItems: 'stretch',
+                    },
+                    '& .MuiBackdrop-root': {
+                        backgroundColor: 'rgba(0,0,0,0.35)',
+                    },
+                    '& .MuiPaper-root': {
+                        margin: 0,
+                        height: '100%',
+                        maxHeight: '100%',
+                        width: {
+                            xs: '95%',
+                            sm: '80%',
+                            md: '50vw',
+                            lg: '50vw'
+                        },
+                        maxWidth: '50vw',
+                        borderRadius: '16px 0 0 16px',
+                        overflow: 'hidden',
+                    }
+                }}
+            >
+                <DialogTitle sx={{ pb: 0 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <AutoAwesomeIcon sx={{ color: '#1976d2' }} />
+                        <Typography variant="h6" fontWeight={600}>
+                            Enhance listing
+                        </Typography>
+                    </Box>
+                    <Box sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 2,
+                        mt: 1.5,
+                        p: 1.5,
+                        bgcolor: '#f8f9fa',
+                        borderRadius: 1,
+                        border: '1px solid #e9ecef'
+                    }}>
+                        <Typography variant="body2">
+                            Customization: <strong>{customization?.label || customization?.title}</strong>
+                        </Typography>
+                        <Typography variant="body2" color="textSecondary">
+                            {customization?.optionList?.length || 0} option(s)
+                        </Typography>
+                    </Box>
+                </DialogTitle>
+
+                <DialogContent dividers sx={{ pt: 2 }}>
+                    <Box sx={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        mb: 0.5,
+                        height: 40
+                    }}>
+                        <FormControlLabel
+                            control={
+                                <Checkbox
+                                    checked={acceptAll}
+                                    onChange={(e) => handleAcceptAll(e.target.checked)}
+                                    sx={{
+                                        color: '#1976d2',
+                                        '&.Mui-checked': { color: '#1976d2' }
+                                    }}
+                                />
+                            }
+                            label={
+                                <Typography variant="body2" fontWeight={500}>
+                                    Accept all ({enhanceFields.length})
+                                </Typography>
+                            }
+                        />
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="body2" color="textSecondary">Hide AI</Typography>
+                            <Switch
+                                checked={hideAI}
+                                onChange={(e) => setHideAI(e.target.checked)}
+                                size="small"
+                                sx={{
+                                    '& .MuiSwitch-switchBase.Mui-checked': { color: '#1976d2' },
+                                    '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                                        backgroundColor: '#1976d2'
+                                    }
+                                }}
+                            />
+                        </Box>
+                    </Box>
+
+                    {enhanceFields.map((field) => (
+                        <Box
+                            key={field.id}
+                            sx={{
+                                border: '1px solid',
+                                borderColor: field.accepted ? '#1976d2' : '#e0e0e0',
+                                borderRadius: 2,
+                                p: 2,
+                                mb: 2,
+                                transition: 'all 0.2s ease',
+                                backgroundColor: field.accepted ? '#eff6ff' : 'white'
+                            }}
+                        >
+                            <Grid container spacing={2} alignItems="flex-start">
+                                <Grid item xs={hideAI ? 12 : 6}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5, height: 40 }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                            <Checkbox
+                                                checked={field.accepted}
+                                                onChange={(e) => handleFieldAccept(field.id, e.target.checked)}
+                                                size="small"
+                                                sx={{
+                                                    color: '#3544c5',
+                                                    '&.Mui-checked': { color: '#3544c5' },
+                                                    p: 0.5
+                                                }}
+                                            />
+                                            <Typography variant="subtitle1" fontWeight={700}>
+                                                {field.label}
+                                            </Typography>
+                                        </Box>
+                                        <Typography variant="caption" color="textSecondary">
+                                            Original Alt Text
+                                        </Typography>
+                                    </Box>
+                                    <TextField
+                                        fullWidth
+                                        multiline
+                                        minRows={2}
+                                        maxRows={8}
+                                        size="small"
+                                        value={field.original}
+                                        onChange={(e) => {
+                                            setEnhanceFields(prev =>
+                                                prev.map(f =>
+                                                    f.id === field.id ? { ...f, original: e.target.value } : f
+                                                )
+                                            );
+                                        }}
+                                        sx={{
+                                            '& .MuiOutlinedInput-root': {
+                                                backgroundColor: '#f5f5f5'
+                                            }
+                                        }}
+                                    />
+                                </Grid>
+
+                                {!hideAI && (
+                                    <Grid item xs={6}>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5, height: 40 }}>
+                                            <Box sx={{ display: 'flex', alignItems: 'center' }} />
+                                            <Typography variant="caption" color="textSecondary">
+                                                AI generated Alt Text
+                                            </Typography>
+                                        </Box>
+                                        <TextField
+                                            fullWidth
+                                            multiline
+                                            minRows={2}
+                                            maxRows={8}
+                                            size="small"
+                                            value={field.generated}
+                                            onChange={(e) => handleGeneratedChange(field.id, e.target.value)}
+                                            placeholder="AI content will appear here..."
+                                            sx={{
+                                                '& .MuiOutlinedInput-root': {
+                                                    backgroundColor: '#fffde7'
+                                                }
+                                            }}
+                                        />
+                                        <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                                            <Button
+                                                size="small"
+                                                variant="outlined"
+                                                startIcon={<AutoAwesomeIcon fontSize="small" />}
+                                            >
+                                                Regenerate
+                                            </Button>
+                                            <IconButton size="small">
+                                                <ThumbUpOutlinedIcon fontSize="small" />
+                                            </IconButton>
+                                            <IconButton size="small">
+                                                <ThumbDownOutlinedIcon fontSize="small" />
+                                            </IconButton>
+                                        </Box>
+                                    </Grid>
+                                )}
+                            </Grid>
+                        </Box>
+                    ))}
+                </DialogContent>
+
+                <DialogActions sx={{ px: 3, py: 2, gap: 1 }}>
+                    <Button variant="outlined" onClick={handleCloseEnhanceModal}>
+                        Cancel
+                    </Button>
+                    <Button
+                        variant="contained"
+                        onClick={() => {
+                            const updatedCustomizations = [...customizationData.customizations];
+                            const updatedOptionList = [...updatedCustomizations[index].optionList];
+
+                            enhanceFields.forEach((field) => {
+                                updatedOptionList[field.optionIndex] = {
+                                    ...updatedOptionList[field.optionIndex],
+                                    altText: field.original
+                                };
+                            });
+
+                            updatedCustomizations[index] = {
+                                ...updatedCustomizations[index],
+                                optionList: updatedOptionList
+                            };
+
+                            setCustomizationData({
+                                ...customizationData,
+                                customizations: updatedCustomizations
+                            });
+
+                            handleCloseEnhanceModal();
+                        }}
+                        sx={{
+                            backgroundColor: '#1976d2',
+                            '&:hover': { backgroundColor: '#074079' },
+                            minWidth: 120
+                        }}
+                    >
+                        Add to form
                     </Button>
                 </DialogActions>
             </Dialog>

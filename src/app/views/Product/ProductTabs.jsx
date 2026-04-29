@@ -1234,22 +1234,44 @@ export default function BasicTabs() {
 
     const handleUploadImage = async (id, msg) => {
         const imgArr = formData.images.map((e) => e.file);
-        console.log({ imgArr });
+
         try {
             const fData = new FormData();
 
             imgArr.forEach((file) => {
                 fData.append("images", file);
             });
+
+            // fallback constant alt text
+            const finalAltText =
+                altText && altText.length > 0
+                    ? altText
+                    : formData.images.map(() => formData.productTitle || "Product Image");
+
+            finalAltText.forEach((text) => {
+                fData.append("altText", text);
+            });
+
             fData.append("_id", id);
-            const res = await ApiService.postImage(apiEndpoints.addProductImages, fData, auth_key);
+
+            // debug
+            console.log("---- FORM DATA ----");
+            for (let pair of fData.entries()) {
+                console.log(pair[0], pair[1]);
+            }
+
+            const res = await ApiService.postImage(
+                apiEndpoints.addProductImages,
+                fData,
+                auth_key
+            );
+
             if (res.status === 200) {
                 const apiRes = await handleUploadVideo(id);
-                console.log({ apiRes });
+
                 if (apiRes) {
                     setLoading(false);
                     setDraftLoading(false);
-                    // navigate(ROUTE_CONSTANT.catalog.product.list);
                     setRoute(ROUTE_CONSTANT.catalog.product.list);
                     handleOpen("success", msg);
                 }
