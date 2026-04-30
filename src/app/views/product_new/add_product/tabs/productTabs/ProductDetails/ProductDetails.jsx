@@ -136,6 +136,30 @@ export default function ProductDetails() {
         return formData.dynamicFields?.[`${parentFieldName}_instances`] || 1;
     };
 
+    const handleClearRadio = (fieldName, isDynamic = false, parentField = null, subField = null) => {
+        if (isDynamic && parentField && subField) {
+            // Compound field
+            const fieldKey = `${parentField}.${subField}`;
+            setFormData({
+                dynamicFields: {
+                    ...formData.dynamicFields,
+                    [fieldKey]: ""
+                }
+            });
+        } else if (isDynamic) {
+            // Dynamic field
+            setFormData({
+                dynamicFields: {
+                    ...formData.dynamicFields,
+                    [fieldName]: ""
+                }
+            });
+        } else {
+            // Static field
+            setFormData({ [fieldName]: "" });
+        }
+    };
+
     // Calculate search terms width based on number of chips
     const getSearchTermsWidth = () => {
         const chipCount = formData.serchTemsKeyArray?.length || 0;
@@ -263,17 +287,35 @@ export default function ProductDetails() {
                 );
 
             case "Yes/No":
+                const dynamicValue = formData.dynamicFields?.[field.name] || "";
+
                 return (
                     <FormControl component="fieldset" fullWidth>
                         <FormLabel component="legend">{field.name}</FormLabel>
-                        <RadioGroup
-                            row
-                            value={formData.dynamicFields?.[field.name] || ""}
-                            onChange={(e) => handleDynamicFieldChange(field.name, e.target.value)}
-                        >
-                            <FormControlLabel value="Yes" control={<Radio />} label="Yes" />
-                            <FormControlLabel value="No" control={<Radio />} label="No" />
-                        </RadioGroup>
+
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                            <RadioGroup
+                                row
+                                value={dynamicValue}
+                                onChange={(e) => handleDynamicFieldChange(field.name, e.target.value)}
+                            >
+                                <FormControlLabel value="Yes" control={<Radio />} label="Yes" />
+                                <FormControlLabel value="No" control={<Radio />} label="No" />
+                            </RadioGroup>
+                            <Button
+                                size="small"
+                                color="inherit"
+                                onClick={() => handleClearRadio(field.name, true)}
+                                sx={{
+                                    ":hover": {
+                                        color: 'primary.main'
+                                    }
+                                }}
+                                disabled={!dynamicValue}
+                            >
+                                Clear
+                            </Button>
+                        </Box>
                     </FormControl>
                 );
 
@@ -377,16 +419,38 @@ export default function ProductDetails() {
                 );
 
             case "Yes/No":
+                const compoundValue = value || "";
+
                 return (
                     <FormControl component="fieldset" fullWidth>
-                        <RadioGroup
-                            row
-                            value={value || ""}
-                            onChange={(e, value) => handleCompoundFieldChange(parentFieldName, subField.name, value, instanceIndex)}
-                        >
-                            <FormControlLabel value="Yes" control={<Radio size="small" />} label="Yes" />
-                            <FormControlLabel value="No" control={<Radio size="small" />} label="No" />
-                        </RadioGroup>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                            <RadioGroup
+                                row
+                                value={compoundValue}
+                                onChange={(e, val) =>
+                                    handleCompoundFieldChange(parentFieldName, subField.name, val, instanceIndex)
+                                }
+                            >
+                                <FormControlLabel value="Yes" control={<Radio size="small" />} label="Yes" />
+                                <FormControlLabel value="No" control={<Radio size="small" />} label="No" />
+                            </RadioGroup>
+                            <Button
+                                size="small"
+                                color="inherit"
+                                onClick={() =>
+                                    handleClearRadio(null, true, parentFieldName, subField.name)
+                                }
+                                sx={{
+                                    ":hover": {
+                                        color: 'primary.main'
+                                    }
+                                }}
+                                disabled={!compoundValue}
+                            >
+                                Clear
+                            </Button>
+
+                        </Box>
                     </FormControl>
                 );
 

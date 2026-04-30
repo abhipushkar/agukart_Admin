@@ -362,7 +362,7 @@ export default function AddProductNew() {
                             disabled={loading}
                             startIcon={loading ? <CircularProgress size={16} /> : null}
                         >
-                            {loading ? "Saving..." : "Save Product"}
+                            {loading ? "Publishing..." : queryId ? "Update & Publish" : "Save & Publish"}
                         </Button>
                     </Box>
                 </Box>
