@@ -8,8 +8,16 @@ import {
     Typography,
     Button,
     Grid,
-    Card
+    Card,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    Switch,
+    IconButton
 } from "@mui/material";
+import ThumbUpOutlinedIcon from "@mui/icons-material/ThumbUpOutlined";
+import ThumbDownOutlinedIcon from "@mui/icons-material/ThumbDownOutlined";
 import { ApiService } from "app/services/ApiService";
 import { apiEndpoints } from "app/constant/apiEndpoints";
 import { localStorageKey } from "app/constant/localStorageKey";
@@ -21,6 +29,7 @@ import ImageGrid from "./components/images/ImageGrid";
 import CropImage from "./components/images/CropImage";
 import VideoGrid from "./components/videos/VideoGrid";
 import { v4 as uuidv4 } from "uuid";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 
 const ProductIdentity = ({ store, currentTab, tabIndex }) => {
     const {
@@ -40,6 +49,9 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
     const [openEdit, setOpenEdit] = useState(false);
     const imageInputRef = React.useRef(null);
     const videoInputRef = React.useRef(null);
+    const [enhanceModalOpen, setEnhanceModalOpen] = useState(false);
+    const [hideAI, setHideAI] = useState(false);
+    const [enhanceFields, setEnhanceFields] = useState([]);
 
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
     const designation_id = localStorage.getItem(localStorageKey.designation_id);
@@ -197,6 +209,48 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
         }
     };
 
+
+    const handleOpenEnhanceModal = () => {
+        setHideAI(true);
+        const stripHtml = (html) => {
+            const tmp = document.createElement("div");
+            tmp.innerHTML = html;
+            return tmp.textContent || tmp.innerText || "";
+        };
+        setEnhanceFields([
+            {
+                id: 0,
+                label: "Title",
+                original: stripHtml(formData.productTitle),
+                generated: "",
+            },
+            {
+                id: 1,
+                label: "Meta Description",
+                original: formData.metaDescription || "",
+                generated: "",
+            },
+            {
+                id: 2,
+                label: "Search Terms",
+                original: formData.serchTemsKeyArray?.join(", ") || "",
+                generated: "",
+            }
+        ]);
+        setEnhanceModalOpen(true);
+    };
+
+    const handleCloseEnhanceModal = () => {
+        setEnhanceModalOpen(false);
+        setHideAI(true);
+        setEnhanceFields([]);
+    };
+
+    const handleGeneratedChange = (id, value) => {
+        setEnhanceFields(prev => prev.map(f =>
+            f.id === id ? { ...f, generated: value } : f
+        ));
+    };
     const fetchDynamicFields = async () => {
         try {
             const res = await ApiService.get(`${apiEndpoints.GetAttributesCategories}/${formData?.subCategory}`, auth_key);
@@ -256,6 +310,7 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                         Shop Name
                         <span style={{ color: "red", marginLeft: "3px" }}>*</span>:
                     </Box>
+
                     <Box sx={{ width: "50%" }}>
                         <Autocomplete
                             options={allVendors}
@@ -284,6 +339,23 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                             isOptionEqualToValue={(option, value) => option._id === value._id}
                         />
                     </Box>
+
+                    <Button
+                        variant="contained"
+                        onClick={handleOpenEnhanceModal}
+                        sx={{
+                            backgroundColor: "#374151",
+                            color: "#fff",
+                            textTransform: "none",
+                            height: "40px",
+                            px: 2,
+                            '&:hover': {
+                                backgroundColor: "#4B5563"
+                            }
+                        }}
+                    >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}><AutoAwesomeIcon sx={{ color: '#fff', fontSize: '18px' }} /><span>View Enhancement</span></Box>
+                    </Button>
                 </Box>
             )}
 
@@ -702,6 +774,248 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                 handleEditClose={handleEditClose}
                 handleOpen={handleOpen}
             />
+
+            {/* ===== ENHANCE MODAL ===== */}
+            <Dialog
+                open={enhanceModalOpen}
+                onClose={handleCloseEnhanceModal}
+                fullScreen
+                sx={{
+                    '& .MuiDialog-container': {
+                        justifyContent: 'flex-end',
+                        alignItems: 'stretch',
+                    },
+                    '& .MuiBackdrop-root': {
+                        backgroundColor: 'rgba(0,0,0,0.35)',
+                    },
+                    '& .MuiPaper-root': {
+                        margin: 0,
+                        height: '100%',
+                        maxHeight: '100%',
+                        width: {
+                            xs: '95%',
+                            sm: '80%',
+                            md: '50vw',
+                            lg: '50vw'
+                        },
+                        maxWidth: '50vw',
+                        borderRadius: '16px 0 0 16px',
+                        overflow: 'hidden',
+                    }
+                }}
+            >
+                <DialogTitle sx={{ pb: 0 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <AutoAwesomeIcon sx={{ color: '#1976d2' }} />
+                        <Typography variant="h6" fontWeight={600}>
+                            Enhance listing
+                        </Typography>
+                    </Box>
+                    <Box sx={{
+                        mt: 1.5, p: 1.5,
+                        bgcolor: '#f8f9fa',
+                        borderRadius: 1,
+                        border: '1px solid #e9ecef'
+                    }}>
+                        <Typography variant="body2">
+                            Product: <strong>{formData.productTitle?.replace(/<[^>]*>/g, '') || ""}</strong>
+                        </Typography>
+                    </Box>
+                </DialogTitle>
+
+                <DialogContent dividers sx={{ pt: 2 }}>
+                    {/* Hide AI Toggle */}
+                    <Box sx={{
+                        display: 'flex',
+                        justifyContent: 'flex-end',
+                        alignItems: 'center',
+                        mb: 2,
+                        gap: 1
+                    }}>
+                        <Typography variant="body2" color="textSecondary">Hide AI</Typography>
+                        <Switch
+                            checked={hideAI}
+                            onChange={(e) => setHideAI(e.target.checked)}
+                            size="small"
+                            sx={{
+                                '& .MuiSwitch-switchBase.Mui-checked': { color: '#1976d2' },
+                                '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                                    backgroundColor: '#1976d2'
+                                }
+                            }}
+                        />
+                    </Box>
+
+                    {/* Fields */}
+                    {enhanceFields.map((field) => (
+                        <Box
+                            key={field.id}
+                            sx={{
+                                border: '1px solid #e0e0e0',
+                                borderRadius: 2,
+                                p: 2,
+                                mb: 2,
+                                backgroundColor: 'white'
+                            }}
+                        >
+                            <Grid
+                                container
+                                spacing={2}
+                                alignItems="stretch"
+                                sx={{ width: "100%" }}
+                            >
+                                {/* Original Side */}
+                                <Grid
+                                    item
+                                    xs={hideAI ? 12 : 6}
+                                    sx={{ display: "flex", flexDirection: "column" }}
+                                >
+                                    <Box
+                                        sx={{
+                                            display: "flex",
+                                            justifyContent: "space-between",
+                                            alignItems: "center",
+                                            minHeight: 32,
+                                            mb: 0.75
+                                        }}
+                                    >
+                                        <Typography variant="subtitle1" fontWeight={700}>
+                                            {field.label}
+                                        </Typography>
+
+                                        <Typography
+                                            variant="caption"
+                                            sx={{ color: "text.secondary", fontWeight: 600 }}
+                                        >
+                                            Original
+                                        </Typography>
+                                    </Box>
+                                    <TextField
+                                        fullWidth
+                                        multiline
+                                        minRows={2}
+                                        maxRows={8}
+                                        size="small"
+                                        value={field.original}
+                                        onChange={(e) => {
+                                            setEnhanceFields(prev =>
+                                                prev.map(f =>
+                                                    f.id === field.id ? { ...f, original: e.target.value } : f
+                                                )
+                                            );
+                                        }}
+                                        sx={{
+                                            '& .MuiOutlinedInput-root': {
+                                                backgroundColor: '#f5f5f5',
+                                                height: '100%',
+                                                alignItems: 'flex-start'
+                                            }
+                                        }}
+                                    />
+                                </Grid>
+
+                                {/* AI Side */}
+                                {!hideAI && (
+                                    <Grid
+                                        item
+                                        xs={6}
+                                        sx={{ display: "flex", flexDirection: "column" }}
+                                    >
+                                        <Box
+                                            sx={{
+                                                display: "flex",
+                                                justifyContent: "space-between",
+                                                alignItems: "center",
+                                                minHeight: 32,
+                                                mb: 0.75
+                                            }}
+                                        >
+                                            <Typography
+                                                variant="subtitle1"
+                                                fontWeight={700}
+                                                sx={{ visibility: "hidden" }}
+                                            >
+                                                {field.label}
+                                            </Typography>
+
+                                            <Typography
+                                                variant="caption"
+                                                sx={{ color: "text.secondary", fontWeight: 600 }}
+                                            >
+                                                AI Generated
+                                            </Typography>
+                                        </Box>
+                                        <TextField
+                                            fullWidth
+                                            multiline
+                                            minRows={2}
+                                            maxRows={8}
+                                            size="small"
+                                            value={field.generated}
+                                            onChange={(e) => handleGeneratedChange(field.id, e.target.value)}
+                                            placeholder="AI content will appear here..."
+                                            sx={{
+                                                '& .MuiOutlinedInput-root': {
+                                                    backgroundColor: '#fffde7',
+                                                    height: '100%',
+                                                    alignItems: 'flex-start'
+                                                }
+                                            }}
+                                        />
+                                        <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                                            <Button
+                                                size="small"
+                                                variant="outlined"
+                                                startIcon={<AutoAwesomeIcon fontSize="small" />}
+                                            >
+                                                Regenerate
+                                            </Button>
+                                            <IconButton size="small">
+                                                <ThumbUpOutlinedIcon fontSize="small" />
+                                            </IconButton>
+                                            <IconButton size="small">
+                                                <ThumbDownOutlinedIcon fontSize="small" />
+                                            </IconButton>
+                                        </Box>
+                                    </Grid>
+                                )}
+                            </Grid>
+                        </Box>
+                    ))}
+                </DialogContent>
+
+                <DialogActions sx={{ px: 3, py: 2, gap: 1 }}>
+                    <Button variant="outlined" onClick={handleCloseEnhanceModal}>
+                        Cancel
+                    </Button>
+                    <Button
+                        variant="contained"
+                        onClick={() => {
+                            const titleField = enhanceFields.find(f => f.label === "Title");
+                            const metaField = enhanceFields.find(f => f.label === "Meta Description");
+                            const searchField = enhanceFields.find(f => f.label === "Search Terms");
+
+                            setFormData({
+                                productTitle: titleField?.generated || titleField?.original || "",
+                                metaDescription: metaField?.generated || metaField?.original || "",
+                                serchTemsKeyArray: (searchField?.generated || searchField?.original || "")
+                                    .split(",")
+                                    .map(item => item.trim())
+                                    .filter(Boolean),
+                            });
+
+                            handleCloseEnhanceModal();
+                        }}
+                        sx={{
+                            backgroundColor: '#1976d2',
+                            '&:hover': { backgroundColor: '#074079' },
+                            minWidth: 120
+                        }}
+                    >
+                        Add to form
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 };

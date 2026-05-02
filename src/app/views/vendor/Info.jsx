@@ -1,6 +1,12 @@
-import React from "react";
-import { Box, Grid, Typography, List, ListItem, TextField, Button, Link, CircularProgress } from "@mui/material";
-
+import React, { useState } from "react";
+import { Box, Grid, Typography, List, ListItem, TextField, Button, Link, CircularProgress, IconButton } from "@mui/material";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import ThumbUpOutlinedIcon from "@mui/icons-material/ThumbUpOutlined";
+import ThumbDownOutlinedIcon from "@mui/icons-material/ThumbDownOutlined";
+import {
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  Switch, Checkbox, FormControlLabel
+} from "@mui/material";
 const Info = ({
   formValues,
   setFormValues,
@@ -43,6 +49,70 @@ const Info = ({
       setShopTab(true);
     }
   };
+  const [enhanceModalOpen, setEnhanceModalOpen] = useState(false);
+  const [hideAI, setHideAI] = useState(false);
+  const [acceptAll, setAcceptAll] = useState(false);
+  const [enhanceFields, setEnhanceFields] = useState([]);
+
+  const ENHANCE_FIELDS_CONFIG = [
+    { key: 'meta_title', label: 'Meta title' },
+    { key: 'meta_description', label: 'Meta description' },
+    { key: 'meta_keywords', label: 'Meta keywords' },
+    { key: 'shopIconAlt', label: 'Icon alt text' },
+  ];
+
+  const handleOpenEnhanceModal = () => {
+    const fields = ENHANCE_FIELDS_CONFIG.map((f, i) => ({
+      id: i,
+      key: f.key,
+      label: f.label,
+      original: formValues[f.key] || "",
+      generated: "",
+      accepted: false,
+    }));
+    setEnhanceFields(fields);
+    setHideAI(false);
+    setAcceptAll(false);
+    setEnhanceModalOpen(true);
+  };
+
+  const handleCloseEnhanceModal = () => {
+    setEnhanceModalOpen(false);
+    setEnhanceFields([]);
+    setAcceptAll(false);
+  };
+
+  const handleAcceptAll = (checked) => {
+    setAcceptAll(checked);
+    setEnhanceFields(prev => prev.map(f => ({ ...f, accepted: checked })));
+  };
+
+  const handleFieldAccept = (id, checked) => {
+    const updated = enhanceFields.map(f =>
+      f.id === id ? { ...f, accepted: checked } : f
+    );
+    setEnhanceFields(updated);
+    setAcceptAll(updated.every(f => f.accepted));
+  };
+
+  const handleGeneratedChange = (id, value) => {
+    setEnhanceFields(prev =>
+      prev.map(f => f.id === id ? { ...f, generated: value } : f)
+    );
+  };
+
+  const handleAddToForm = () => {
+    const updates = {};
+    enhanceFields.forEach(f => {
+      if (f.accepted) updates[f.key] = f.original; // original side save hogi
+    });
+    if (Object.keys(updates).length > 0) {
+      setFormValues(prev => ({ ...prev, ...updates }));
+    }
+    handleCloseEnhanceModal();
+  };
+
+
 
   return (
     <>
@@ -77,12 +147,32 @@ const Info = ({
                   </ListItem>
                 </List>
               </Box>
+
             </Grid>
-            {/* <Grid lg={6} md={6} xs={12} mb={1}>
-              <Typography component="div" sx={{ display: "flex", justifyContent: "end" }}>
-                <Typography sx={{ color: "gray", fontSize: "16px" }}>Open on 5 February</Typography>
-              </Typography>
-            </Grid> */}
+            <Grid lg={6} md={6} xs={12} mb={1}>
+              <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<AutoAwesomeIcon fontSize="small" />}
+                  onClick={handleOpenEnhanceModal}
+                  sx={{
+                    borderColor: '#1976d2',
+                    color: '#1976d2',
+                    fontWeight: 600,
+                    textTransform: 'none',
+                    borderRadius: 2,
+                    px: 2,
+                    '&:hover': {
+                      backgroundColor: '#e3f2fd',
+                      borderColor: '#1565c0'
+                    }
+                  }}
+                >
+                  Enhance
+                </Button>
+              </Box>
+            </Grid>
           </Grid>
         </Box>
         <Box py={3} sx={{ borderBottom: "1px solid #d6d6d6" }}>
@@ -136,6 +226,58 @@ const Info = ({
               }}
             />
           </Typography>
+        </Box>
+
+        {/* Meta Title */}
+        {/* Meta Title */}
+        <Box py={3} sx={{ borderBottom: "1px solid #d6d6d6" }}>
+          <Typography pb={1} sx={{ fontSize: "16px", fontWeight: "600" }}>
+            Meta Title
+          </Typography>
+          <TextField
+            name="meta_title"
+            value={formValues.meta_title || ""}
+            onChange={handleChange}
+            error={errors.meta_title && true}
+            helperText={errors.meta_title || `${formValues.meta_title?.length || 0}/60`}
+            fullWidth
+            placeholder="Enter meta title"
+            sx={{
+              "& .MuiInputBase-root": { height: "40px" }
+            }}
+          />
+        </Box>
+
+        {/* Meta Description */}
+        <Box py={3} sx={{ borderBottom: "1px solid #d6d6d6" }}>
+          <Typography pb={1} sx={{ fontSize: "16px", fontWeight: "600" }}>
+            Meta Description
+          </Typography>
+          <TextField
+            name="meta_description"
+            value={formValues.meta_description || ""}
+            onChange={handleChange}
+            error={errors.meta_description && true}
+            helperText={errors.meta_description || `${formValues.meta_description?.length || 0}/160`}
+            fullWidth
+            multiline
+            rows={3}
+          />
+        </Box>
+
+        {/* Meta Keywords */}
+        <Box py={3} sx={{ borderBottom: "1px solid #d6d6d6" }}>
+          <Typography pb={1} sx={{ fontSize: "16px", fontWeight: "600" }}>
+            Meta Keywords
+          </Typography>
+          <TextField
+            name="meta_keywords"
+            value={formValues.meta_keywords || ""}
+            onChange={handleChange}
+            error={errors.meta_keywords && true}
+            helperText={errors.meta_keywords || "Use comma separated keywords"}
+            fullWidth
+          />
         </Box>
         <Box py={3} sx={{ borderBottom: "1px solid #d6d6d6" }}>
           <Typography component="div">
@@ -195,8 +337,27 @@ const Info = ({
                   </Typography>
                 </Typography>
               )}
+              {/* Alt Text for Shop Icon */}
+              <Box mt={2}>
+                <Typography pb={1} sx={{ fontSize: "14px", fontWeight: "600" }}>
+                  Icon Alt Text
+                </Typography>
+
+                <TextField
+                  name="shopIconAlt"
+                  value={formValues.shopIconAlt || ""}
+                  onChange={handleChange}
+                  placeholder="Describe the shop icon (e.g. brand logo)"
+                  fullWidth
+                  error={errors.shopIconAlt && true}
+                  helperText={errors.shopIconAlt}
+                  sx={{
+                    "& .MuiInputBase-root": { height: "40px" }
+                  }}
+                />
+              </Box>
               <Typography pt={1}>
-                must be jpg, png file samller then 10 MB and at least 500px{" "}
+                must be jpg, png file samller than 10 MB and at least 500px{" "}
               </Typography>
             </Box>
           </Typography>
@@ -209,7 +370,7 @@ const Info = ({
             <TextField
               error={errors.shopAnnouncement && true}
               helperText={errors.shopAnnouncement}
-              // onBlur={() => {
+              // onBlur={() => {                    
               //   if (!formValues.shopAnnouncement) {
               //     setErrors((prv) => ({
               //       ...prv,
@@ -304,6 +465,148 @@ const Info = ({
           Next
         </Button>
       </Typography>
+      {/* ===== ENHANCE MODAL ===== */}
+      <Dialog
+        open={enhanceModalOpen}
+        onClose={handleCloseEnhanceModal}
+        fullScreen
+        sx={{
+          '& .MuiDialog-container': { justifyContent: 'flex-end', alignItems: 'stretch' },
+          '& .MuiBackdrop-root': { backgroundColor: 'rgba(0,0,0,0.35)' },
+          '& .MuiPaper-root': {
+            margin: 0, height: '100%', maxHeight: '100%',
+            width: { xs: '95%', sm: '80%', md: '50vw', lg: '50vw' },
+            maxWidth: '50vw',
+            borderRadius: '16px 0 0 16px', overflow: 'hidden',
+          }
+        }}
+      >
+        <DialogTitle sx={{ pb: 0 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <AutoAwesomeIcon sx={{ color: '#1976d2' }} />
+            <Typography variant="h6" fontWeight={600}>Enhance listing</Typography>
+          </Box>
+          <Box sx={{
+            display: 'flex', alignItems: 'center', gap: 2, mt: 1.5, mb: 1,
+            p: 1.5, bgcolor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef'
+          }}>
+            <Typography variant="body2">
+              Shop: <strong>{formValues?.newShopName}</strong>
+            </Typography>
+            <Typography variant="body2" color="textSecondary">4 field(s)</Typography>
+          </Box>
+        </DialogTitle>
+
+        <DialogContent dividers sx={{ pt: 2 }}>
+          {/* Accept All + Hide AI */}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5, height: 40 }}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={acceptAll}
+                  onChange={(e) => handleAcceptAll(e.target.checked)}
+                  sx={{ color: '#1976d2', '&.Mui-checked': { color: '#1976d2' } }}
+                />
+              }
+              label={
+                <Typography variant="body2" fontWeight={500}>
+                  Accept all ({enhanceFields.length})
+                </Typography>
+              }
+            />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="body2" color="textSecondary">Hide AI</Typography>
+              <Switch
+                checked={hideAI}
+                onChange={(e) => setHideAI(e.target.checked)}
+                size="small"
+                sx={{
+                  '& .MuiSwitch-switchBase.Mui-checked': { color: '#1976d2' },
+                  '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { backgroundColor: '#1976d2' }
+                }}
+              />
+            </Box>
+          </Box>
+
+          {/* Fields */}
+          {enhanceFields.map((field) => (
+            <Box
+              key={field.id}
+              sx={{
+                border: '1px solid',
+                borderColor: field.accepted ? '#1976d2' : '#e0e0e0',
+                borderRadius: 2, p: 2, mb: 2,
+                transition: 'all 0.2s ease',
+                backgroundColor: field.accepted ? '#eff6ff' : 'white'
+              }}
+            >
+              <Grid container spacing={2} alignItems="flex-start">
+                {/* Original Side */}
+                <Grid item xs={hideAI ? 12 : 6}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5, height: 40 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <Checkbox
+                        checked={field.accepted}
+                        onChange={(e) => handleFieldAccept(field.id, e.target.checked)}
+                        size="small"
+                        sx={{ color: '#3544c5', '&.Mui-checked': { color: '#3544c5' }, p: 0.5 }}
+                      />
+                      <Typography variant="subtitle1" fontWeight={700}>{field.label}</Typography>
+                    </Box>
+                    <Typography variant="caption" color="textSecondary">Original text</Typography>
+                  </Box>
+                  <TextField
+                    fullWidth multiline minRows={2} maxRows={6} size="small"
+                    value={field.original}
+                    onChange={(e) => setEnhanceFields(prev =>
+                      prev.map(f => f.id === field.id ? { ...f, original: e.target.value } : f)
+                    )}
+                    sx={{ '& .MuiOutlinedInput-root': { backgroundColor: '#f5f5f5' } }}
+                  />
+                </Grid>
+
+                {/* AI Side */}
+                {!hideAI && (
+                  <Grid item xs={6}>
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', mb: 0.5, height: 40 }}>
+                      <Typography variant="caption" color="textSecondary">AI generated text</Typography>
+                    </Box>
+                    <TextField
+                      fullWidth multiline minRows={2} maxRows={6} size="small"
+                      value={field.generated}
+                      onChange={(e) => handleGeneratedChange(field.id, e.target.value)}
+                      placeholder="AI content will appear here..."
+                      sx={{ '& .MuiOutlinedInput-root': { backgroundColor: '#fffde7' } }}
+                    />
+                    <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                      <Button size="small" variant="outlined" startIcon={<AutoAwesomeIcon fontSize="small" />}>
+                        Regenerate
+                      </Button>
+                      <IconButton size="small"><ThumbUpOutlinedIcon fontSize="small" /></IconButton>
+                      <IconButton size="small"><ThumbDownOutlinedIcon fontSize="small" /></IconButton>
+                    </Box>
+                  </Grid>
+                )}
+              </Grid>
+            </Box>
+          ))}
+        </DialogContent>
+
+        <DialogActions sx={{ px: 3, py: 2, gap: 1 }}>
+          <Button variant="outlined" onClick={handleCloseEnhanceModal}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={handleAddToForm}
+            sx={{
+              backgroundColor: '#1976d2',
+              '&:hover': { backgroundColor: '#074079' },
+              minWidth: 120
+            }}
+          >
+            Add to form
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };
