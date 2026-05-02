@@ -25,6 +25,12 @@ import Cropper from 'react-easy-crop';
 import { getCroppedImg } from './cropUtils';
 import { useProductFormStore } from "../../../../../../states/useAddProducts";
 
+const stripHtml = (html) => {
+    const div = document.createElement("div");
+    div.innerHTML = html;
+    return div.textContent || div.innerText || "";
+};
+
 const modalStyle = {
     position: "absolute",
     top: "50%",
@@ -84,11 +90,16 @@ const CropImage = ({
     useEffect(() => {
         if (openEdit) {
             setTempImages([...formData.images]);
-            setTempAltText([...altText]);
+
+            // ✅ FIX: clean HTML from alt text
+            setTempAltText(
+                altText.map((text) => stripHtml(text || ""))
+            );
+
             setSelectedImageIndex(0);
             setIsCropping(false);
             setCrop({ x: 0, y: 0 });
-            // Initialize transformData if not present
+
             if (!transformData || !transformData.scale) {
                 updateTransformData({ scale: 1, x: 0, y: 0 });
             }
@@ -283,18 +294,15 @@ const CropImage = ({
         const updatedImages = [...tempImages];
         const updatedAltText = [...tempAltText];
 
-        // Move the dragged image to the target position
         const [movedImage] = updatedImages.splice(draggedIndex, 1);
         const [movedAltText] = updatedAltText.splice(draggedIndex, 1);
 
         updatedImages.splice(targetIndex, 0, movedImage);
         updatedAltText.splice(targetIndex, 0, movedAltText);
-
-        // Update sort orders and mark first image as primary
         const reorderedImages = updatedImages.map((img, idx) => ({
             ...img,
             sortOrder: idx + 1,
-            isPrimary: idx === 0 // First image is always primary
+            isPrimary: idx === 0
         }));
 
         setTempImages(reorderedImages);
@@ -314,8 +322,6 @@ const CropImage = ({
         ) {
             setSelectedImageIndex(selectedImageIndex + 1);
         }
-
-        // If primary image changed, reset transform data
         if (draggedIndex === 0 || targetIndex === 0) {
             updateTransformData({ scale: 1, x: 0, y: 0 });
         }
@@ -350,7 +356,6 @@ const CropImage = ({
 
     return (
         <>
-            {/* Main Crop Dialog */}
             <Dialog
                 open={openEdit}
                 onClose={() => setDiscardModalOpen(true)}
@@ -366,7 +371,6 @@ const CropImage = ({
                 }}
             >
                 <Box sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
-                    {/* Header */}
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                         <Typography variant="h6" fontWeight="bold">
                             Edit Images
@@ -377,7 +381,6 @@ const CropImage = ({
                     </Box>
 
                     <Grid container spacing={2} sx={{ flex: 1, minHeight: 0 }}>
-                        {/* Thumbnail Sidebar */}
                         <Grid item xs={12} md={4}>
                             <Box sx={{
                                 maxHeight: '600px',
@@ -424,8 +427,6 @@ const CropImage = ({
                                                         objectFit: 'cover'
                                                     }}
                                                 />
-
-                                                {/* Remove Button (Cross Icon) */}
                                                 <IconButton
                                                     onClick={(e) => {
                                                         e.stopPropagation();
@@ -447,14 +448,12 @@ const CropImage = ({
                                                 >
                                                     <Close sx={{ fontSize: 14 }} />
                                                 </IconButton>
-
-                                                {/* Primary Badge */}
                                                 {index === 0 && (
                                                     <Box
                                                         sx={{
                                                             position: 'absolute',
                                                             top: 2,
-                                                            right: 24, // Moved left to make space for remove button
+                                                            right: 24,
                                                             background: '#1976d2',
                                                             color: 'white',
                                                             fontSize: '10px',
@@ -466,8 +465,6 @@ const CropImage = ({
                                                         Primary
                                                     </Box>
                                                 )}
-
-                                                {/* Image Number */}
                                                 <Box
                                                     sx={{
                                                         position: 'absolute',
@@ -486,8 +483,6 @@ const CropImage = ({
                                         </Grid>
                                     ))}
                                 </Grid>
-
-                                {/* Add Image Button */}
                                 <Button
                                     fullWidth
                                     variant="outlined"
@@ -508,20 +503,18 @@ const CropImage = ({
                                 />
                             </Box>
                         </Grid>
-
-                        {/* Main Image Area */}
                         <Grid item xs={12} md={5}>
                             <Box
                                 ref={imageContainerRef}
                                 sx={{
-                                    width: '350px',
-                                    height: '350px',
+                                    width: '100%',
+                                    maxWidth: '500px',
+                                    aspectRatio: '1',
                                     position: 'relative',
                                     border: '2px solid gray',
                                     borderRadius: '8px',
                                     overflow: 'hidden',
                                     bgcolor: '#f5f5f5',
-                                    cursor: isPrimaryImage && !isCropping ? (isDragging ? 'grabbing' : 'grab') : 'default'
                                 }}
                                 onMouseDown={handleMouseDown}
                                 onMouseMove={handleMouseMove}
@@ -549,8 +542,7 @@ const CropImage = ({
                                         />
                                     ) : (
                                         <>
-                                            {/* Background image */}
-                                            {isPrimaryImage && (transformData?.scale || 1) >= 1 && (
+                                            {isPrimaryImage && (transformData?.scale || 1) > 1 && (
                                                 <>
                                                     <img
                                                         src={selectedImage.src}
@@ -569,57 +561,97 @@ const CropImage = ({
                                                             pointerEvents: "none",
                                                         }}
                                                     />
-
-                                                    {/* Transparent black overlay */}
                                                     <Box
                                                         sx={{
                                                             position: "absolute",
                                                             inset: 0,
-                                                            background: "rgba(0,0,0,0.45)",
                                                             zIndex: 1,
                                                             pointerEvents: "none",
                                                         }}
-                                                    />
+                                                    >
+                                                        {/* Top */}
+                                                        <Box sx={{
+                                                            position: "absolute",
+                                                            top: 0,
+                                                            left: 0,
+                                                            right: 0,
+                                                            height: "14%",
+                                                            background: "rgba(0,0,0,0.5)"
+                                                        }} />
+
+                                                        {/* Bottom */}
+                                                        <Box sx={{
+                                                            position: "absolute",
+                                                            bottom: 0,
+                                                            left: 0,
+                                                            right: 0,
+                                                            height: "14%",
+                                                            background: "rgba(0,0,0,0.5)"
+                                                        }} />
+
+                                                        {/* Left */}
+                                                        <Box sx={{
+                                                            position: "absolute",
+                                                            top: "14%",
+                                                            bottom: "14%",
+                                                            left: 0,
+                                                            width: "14%",
+                                                            background: "rgba(0,0,0,0.5)"
+                                                        }} />
+
+                                                        {/* Right */}
+                                                        <Box sx={{
+                                                            position: "absolute",
+                                                            top: "14%",
+                                                            bottom: "14%",
+                                                            right: 0,
+                                                            width: "14%",
+                                                            background: "rgba(0,0,0,0.5)"
+                                                        }} />
+                                                    </Box>
                                                 </>
                                             )}
 
-                                            {/* Center clear viewport */}
-                                            <Box
-                                                sx={{
-                                                    position: "absolute",
-                                                    top: "50%",
-                                                    left: "50%",
-                                                    width: "72%",
-                                                    height: "92%",
-                                                    transform: "translate(-50%, -50%)",
-                                                    overflow: "hidden",
-                                                    background: "#fff",
-                                                    zIndex: 2,
-                                                    boxShadow: "0 0 0 2px rgba(255,255,255,0.8)",
-                                                }}
-                                            >
+
+                                            {isPrimaryImage && (transformData?.scale || 1) > 1 ? (
+
+                                                <Box
+                                                    sx={{
+                                                        position: "absolute",
+                                                        top: "50%",
+                                                        left: "50%",
+                                                        width: "85%",
+                                                        aspectRatio: "1 / 1",
+                                                        transform: "translate(-50%, -50%)",
+                                                        overflow: "hidden",
+                                                        background: "#fff",
+                                                        zIndex: 2,
+                                                    }}
+                                                >
+                                                    <img
+                                                        src={selectedImage.src}
+                                                        draggable={false}
+                                                        style={{
+                                                            width: "100%",
+                                                            height: "100%",
+                                                            objectFit: "cover",
+                                                            transform: `translate3d(${transformData?.x || 0}px, ${transformData?.y || 0}px, 0)
+                scale(${transformData?.scale || 1})`,
+                                                        }}
+                                                    />
+                                                </Box>
+                                            ) : (
+
                                                 <img
                                                     src={selectedImage.src}
-                                                    alt="Selected"
-                                                    onLoad={handleImageLoad}
                                                     draggable={false}
                                                     style={{
                                                         width: "100%",
                                                         height: "100%",
-                                                        objectFit: "cover",
-                                                        transform: `translate3d(${isPrimaryImage ? (transformData?.x || 0) : 0}px,
-          ${isPrimaryImage ? (transformData?.y || 0) : 0}px, 0)
-          scale(${isPrimaryImage ? (transformData?.scale || 1) : 1})`,
-                                                        transformOrigin: "center center",
-                                                        transition: isDragging ? "none" : "transform 0.1s ease",
-                                                        cursor: isPrimaryImage
-                                                            ? isDragging
-                                                                ? "grabbing"
-                                                                : "grab"
-                                                            : "default",
+                                                        objectFit: "contain",
                                                     }}
                                                 />
-                                            </Box>
+                                            )}
                                         </>
                                     )
                                 ) : (

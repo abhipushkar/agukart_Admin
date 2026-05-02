@@ -42,7 +42,7 @@ const ProductIdentity = ({
   draftLoading,
   EditProducthandler,
   queryId,
-  handleDraftProduct 
+  handleDraftProduct
 }) => {
   const [value, setValue] = React.useState("female");
   const [selectedBrand, setSelectedBand] = React.useState("");

@@ -562,6 +562,7 @@ export const useProductAPI = () => {
             tax_ratio: formData.taxRatio,
             bullet_points: formData.bulletPoints,
             description: formData.productDescription,
+            meta_description: formData.metaDescription,
             customize: formData.customization,
             search_terms: formData.serchTemsKeyArray,
             launch_date: formData.launchData,

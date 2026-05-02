@@ -83,13 +83,13 @@ const DescriptionTabs = ({
       handleOpen("error", "Selected Images Must be 10");
       return;
     }
-  
+
     const fileList = Array.from(e.target.files);
     if (fileList.length + images.length > 10) {
       handleOpen("error", "Selected Images Must be 10");
       return;
     }
-  
+
     const imageUrls = fileList?.map((file, i) => {
       return {
         src: URL.createObjectURL(file),
@@ -98,20 +98,20 @@ const DescriptionTabs = ({
         _id: uuidv4(),
       };
     });
-  
+
     imageUrls?.forEach((image, i) => {
       image.file.sortOrder = images.length + i + 1;
     });
-  
+
     console.log({ imageUrls });
-  
+
     setImages((prevImages) => [...prevImages, ...imageUrls]);
     setAltText((prevAltText) => [
       ...prevAltText,
       ...new Array(fileList.length).fill(""),
     ]);
   };
-  
+
   const handleVideoChange = (e) => {
     console.log(e.target.files);
     if (formData.videos.length == 2) {
@@ -372,7 +372,7 @@ const DescriptionTabs = ({
             Upload Images:
           </Box>
           <Box sx={{ width: 400 }}>
-            <MyImageGrid images={images} setImages={setImages} setFormData={setFormData} altText={altText} setAltText={setAltText}/>
+            <MyImageGrid images={images} setImages={setImages} setFormData={setFormData} altText={altText} setAltText={setAltText} />
             {inputErrors.images && (
               <Typography
                 sx={{
