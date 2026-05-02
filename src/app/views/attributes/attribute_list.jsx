@@ -528,7 +528,7 @@ const AttributesList = () => {
                             <TableHead>
                                 <TableRow>
                                     <TableCell sx={{ width: '50px' }}>Drag</TableCell>
-                                    <TableCell>S.No</TableCell>
+                                    <TableCell sx={{ width: '100px' }}>S.No</TableCell>
                                     <TableCell>Name</TableCell>
                                     <TableCell>Type</TableCell>
                                     <TableCell>Status</TableCell>
