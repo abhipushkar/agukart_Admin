@@ -20,6 +20,7 @@ export const useProductStore = create((set, get) => ({
     },
     filters: {
         search: '',
+        searchType: 'all', // to filter according to sku or product_code on frontend only
         isSearched: false,
         status: 'all',
         category: '',
@@ -159,7 +160,7 @@ export const useProductStore = create((set, get) => ({
             const res = await ApiService.get(url, auth_key);
 
             if (res.status === 200) {
-                console.log(res.data.data.slice(0, 5));
+                console.log(res.data.data.slice(0, 11));
                 set({
                     products: res.data.data,
                     filteredProducts: res.data.data,

@@ -575,11 +575,9 @@ const ProductRow = ({ product, index }) => {
                                     <a
                                         href={product.type === 'variations'
                                             ? activeChild
-                                                ? `${REACT_APP_WEB_URL}/products/${activeChild._id}`
+                                                ? `${REACT_APP_WEB_URL}/product/${activeChild.slug}/${activeChild.product_code}`
                                                 : undefined
-                                            : product.status === 'active'
-                                                ? `${REACT_APP_WEB_URL}/products/${product._id}`
-                                                : undefined
+                                            : `${REACT_APP_WEB_URL}/product/${product.slug}/${product.product_code}`
                                         }
                                         target="_blank"
                                         rel="noopener noreferrer"
@@ -601,7 +599,7 @@ const ProductRow = ({ product, index }) => {
                             )}
 
                             {/* Shop Name */}
-                            {!hasVariations && !filters.hiddenColumns.includes('Shop Name') && (
+                            {!filters.hiddenColumns.includes('Shop Name') && (
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
                                     <Typography variant="body2"
                                         sx={{ fontWeight: 'bold', minWidth: '45px', fontSize: '0.7rem' }}>
@@ -610,6 +608,23 @@ const ProductRow = ({ product, index }) => {
                                     <Typography variant="body2"
                                         sx={{ fontFamily: 'monospace', fontSize: '0.65rem', wordBreak: 'break-all' }}>
                                         {product.shop_name || "-"}
+                                    </Typography>
+                                </Box>
+                            )}
+
+                            {/* Product Code */}
+                            {!filters.hiddenColumns.includes('Product Id') && (
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
+                                    <Typography variant="body2"
+                                        sx={{ fontWeight: 'bold', minWidth: '45px', fontSize: '0.7rem' }}>
+                                        Listing ID:
+                                    </Typography>
+                                    <Typography variant="body2" sx={{
+                                        fontFamily: 'monospace',
+                                        fontSize: '0.65rem',
+                                        wordBreak: 'break-all'
+                                    }}>
+                                        {hasVariations ? product.parent_product_code : product.product_code || ""}
                                     </Typography>
                                 </Box>
                             )}
@@ -748,7 +763,7 @@ const ProductRow = ({ product, index }) => {
             </TableRow>
 
             {/* Expanded variations */}
-            {!filters.isSearched && isExpanded && hasVariations && product.productData.map((variation) => (
+            {isExpanded && hasVariations && product.productData.map((variation) => (
                 <VariationRow
                     key={variation._id}
                     variation={variation}
@@ -1032,7 +1047,7 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
                         {!filters.hiddenColumns.includes('Product Title') && (
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
                                 <a
-                                    href={`${REACT_APP_WEB_URL}/products/${variation._id}`}
+                                    href={`${REACT_APP_WEB_URL}/product/${variation.slug}/${variation.product_code}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     style={{
@@ -1062,6 +1077,23 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
                                 <Typography variant="body2"
                                     sx={{ fontFamily: 'monospace', fontSize: '0.65rem', wordBreak: 'break-all' }}>
                                     {variation.shop_name || "-"}
+                                </Typography>
+                            </Box>
+                        )}
+
+                        {/* Product Code */}
+                        {!filters.hiddenColumns.includes('Product Id') && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
+                                <Typography variant="body2"
+                                    sx={{ fontWeight: 'bold', minWidth: '45px', fontSize: '0.7rem' }}>
+                                    Listing ID:
+                                </Typography>
+                                <Typography variant="body2" sx={{
+                                    fontFamily: 'monospace',
+                                    fontSize: '0.65rem',
+                                    wordBreak: 'break-all'
+                                }}>
+                                    {variation.product_code}
                                 </Typography>
                             </Box>
                         )}
@@ -1328,15 +1360,17 @@ const ProductTableNew = () => {
                         visibleProducts.length > 0 &&
                         visibleProducts[0] !== 'No Product Found' ? (
                         visibleProducts.map((product, index) => {
-                            if (product.type === 'variations') {
-                                const searchValue = filters.search.trim().toLowerCase();
+                            const searchValue = filters.search.trim().toLowerCase();
+                            const filterBy = filters.searchType;
+                            if (filterBy !== 'all' && product.type === 'variations' && !(product.seller_sku?.toLowerCase().includes(searchValue) || product.parent_product_code?.toLowerCase().includes(searchValue))) {
 
-                                return product.productData
-                                    .filter((variation) =>
-                                        variation.sku_code
-                                            ?.toLowerCase()
-                                            .includes(searchValue)
-                                    )
+                                return product.productData.filter((variation) => {
+                                    const valueToCheck = filterBy === 'sku'
+                                        ? variation.sku_code
+                                        : variation.product_code;
+
+                                    return valueToCheck?.toLowerCase().includes(searchValue);
+                                })
                                     .map((variation) => (
                                         <VariationRow
                                             key={variation._id}

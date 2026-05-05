@@ -114,6 +114,12 @@ const ProductListNew = () => {
         { value: { sortBy: 'updatedAt', order: -1 }, label: 'Last Updated' },
     ];
 
+    const FILTER_OPTIONS = [
+        { value: "all", label: 'All' }, // do not extract child product
+        { value: "sku", label: 'SKU' }, // extract child on basis of sku
+        { value: "code", label: 'Listing ID' }, // extract child on basis of product_code
+    ];
+
     // Zustand store
     const {
         products,
@@ -816,7 +822,26 @@ const ProductListNew = () => {
                 </FormControl>
 
                 {/* Search */}
-                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                    <FormControl size="small" sx={{ minWidth: 110 }}>
+                        <InputLabel>Filter Type</InputLabel>
+                        <Select
+                            value={filters.searchType ? filters.searchType : 'all'}
+                            label="Filter Type"
+                            onChange={(e) => {
+                                setFilters({ searchType: e.target.value });
+                            }}
+                        >
+                            {FILTER_OPTIONS.map((option, index) => (
+                                <MenuItem
+                                    key={index}
+                                    value={option.value}
+                                >
+                                    {option.label}
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
                     <TextField
                         size="small"
                         label="Search SKU, Title, Product Id"
