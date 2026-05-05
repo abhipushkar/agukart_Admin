@@ -28,7 +28,6 @@ const ShippingTemplateDialog = ({ isOpen = false, onClose }) => {
     const [selectedTemplate, setSelectedTemplate] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    console.log(selection.flatSelectedProducts);
 
     useEffect(() => {
         const getTemplateData = async () => {
