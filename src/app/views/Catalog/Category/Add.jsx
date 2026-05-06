@@ -673,7 +673,7 @@ const Add = () => {
 
     const getAttributeList = useCallback(async () => {
         try {
-            const res = await ApiService.get("get-attribute-list?fulldata=true", auth_key);
+            const res = await ApiService.get("attribute-dropdown-for-categories", auth_key);
             if (res?.data?.success) {
                 setAttributeList(res?.data?.data || []);
                 setFilteredAttributes(res?.data?.data || []);

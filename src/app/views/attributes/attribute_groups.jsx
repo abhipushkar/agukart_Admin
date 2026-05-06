@@ -36,7 +36,8 @@ import {
     MoreVert as MoreVertIcon,
     Edit as EditIcon,
     FormatListBulleted as FormatListBulletedIcon,
-    Delete as DeleteIcon
+    Delete as DeleteIcon,
+    Reorder as ReorderIcon
 } from "@mui/icons-material";
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { ROUTE_CONSTANT } from "../../constant/routeContanst";
@@ -478,6 +479,14 @@ const AttributeGroups = () => {
                     >
                         Add Group
                     </Button>
+
+                    <Button
+                        onClick={() => navigate(ROUTE_CONSTANT.catalog.attribute.listAll)}
+                        startIcon={<ReorderIcon />}
+                        variant="outlined"
+                    >
+                        All Attributes
+                    </Button>
                 </Box>
             </Box>
 
@@ -602,13 +611,13 @@ const AttributeGroups = () => {
                 open={Boolean(menuAnchorEl)}
                 onClose={handleMenuClose}
             >
-                <MenuItem onClick={handleEditNameClick}>
-                    <EditIcon fontSize="small" color="primary" sx={{ mr: 1 }} />
-                    Edit Name
-                </MenuItem>
                 <MenuItem onClick={handleAttributesListClick}>
                     <FormatListBulletedIcon fontSize="small" color="primary" sx={{ mr: 1 }} />
                     Attributes List
+                </MenuItem>
+                <MenuItem onClick={handleEditNameClick}>
+                    <EditIcon fontSize="small" color="primary" sx={{ mr: 1 }} />
+                    Edit Name
                 </MenuItem>
                 {/* <MenuItem onClick={handleDeleteClick} sx={{ color: 'error.main' }}>
                     <DeleteIcon fontSize="small" sx={{ mr: 1 }} />
