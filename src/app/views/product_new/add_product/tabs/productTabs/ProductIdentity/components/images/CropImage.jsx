@@ -1,20 +1,11 @@
-// ProductIdentity/components/CropImage.jsx
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import {
-    Dialog,
-    Box,
-    Button,
-    Typography,
-    IconButton,
-    Slider,
-    Grid,
-    Modal,
-    TextField
+    Dialog, Box, Button, Typography,
+    IconButton, Grid, Modal, TextField,
+    Slider
 } from "@mui/material";
 import {
     HighlightOff,
-    ZoomIn,
-    ZoomOut,
     Crop,
     Check,
     DeleteOutline,
@@ -24,13 +15,11 @@ import {
 import Cropper from 'react-easy-crop';
 import { getCroppedImg } from './cropUtils';
 import { useProductFormStore } from "../../../../../../states/useAddProducts";
-
 const stripHtml = (html) => {
     const div = document.createElement("div");
     div.innerHTML = html;
     return div.textContent || div.innerText || "";
 };
-
 const modalStyle = {
     position: "absolute",
     top: "50%",
@@ -42,7 +31,6 @@ const modalStyle = {
     p: 4,
     borderRadius: "8px",
 };
-
 const CropImage = ({
     openEdit,
     handleEditClose,
@@ -54,11 +42,8 @@ const CropImage = ({
         altText,
         setAltText
     } = useProductFormStore();
-
     const transformData = formData.transformData || { scale: 1, x: 0, y: 0 };
-
     console.log("Transform data", transformData);
-
     const [crop, setCrop] = useState({ x: 0, y: 0 });
     const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -66,162 +51,93 @@ const CropImage = ({
     const [discardModalOpen, setDiscardModalOpen] = useState(false);
     const [tempImages, setTempImages] = useState([]);
     const [tempAltText, setTempAltText] = useState([]);
-    const [isDragging, setIsDragging] = useState(false);
-    const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-    const [imgDimensions, setImgDimensions] = useState({ width: 0, height: 0 });
-    const [showBlurOverlay, setShowBlurOverlay] = useState(false);
-
     // Drag and drop state
     const [dragOverIndex, setDragOverIndex] = useState(null);
     const [draggedIndex, setDraggedIndex] = useState(null);
+    const [previewDragging, setPreviewDragging] = useState(false);
 
+    const [previewDragStart, setPreviewDragStart] = useState({
+        x: 0,
+        y: 0
+    });
     const inputFileRef = useRef(null);
-    const imageContainerRef = useRef(null);
 
-    // Check if selected image is primary (first image)
-    const isPrimaryImage = selectedImageIndex === 0;
+    const handlePreviewMouseDown = (e) => {
+        e.preventDefault();
 
-    // Update transformData in formData
-    const updateTransformData = (newTransformData) => {
-        setFormData({ transformData: newTransformData });
+        setPreviewDragging(true);
+
+        setPreviewDragStart({
+            x: e.clientX - (formData.transformData?.x || 0),
+            y: e.clientY - (formData.transformData?.y || 0)
+        });
     };
 
+    const handlePreviewMouseMove = (e) => {
+        if (!previewDragging) return;
+
+        updateTransformData({
+            ...formData.transformData,
+            x: e.clientX - previewDragStart.x,
+            y: e.clientY - previewDragStart.y
+        });
+    };
+
+    const handlePreviewMouseUp = () => {
+        setPreviewDragging(false);
+    };
+    const imageContainerRef = useRef(null);
     // Initialize temp state when modal opens
     useEffect(() => {
         if (openEdit) {
             setTempImages([...formData.images]);
-
             // ✅ FIX: clean HTML from alt text
             setTempAltText(
                 altText.map((text) => stripHtml(text || ""))
             );
-
             setSelectedImageIndex(0);
             setIsCropping(false);
             setCrop({ x: 0, y: 0 });
-
-            if (!transformData || !transformData.scale) {
-                updateTransformData({ scale: 1, x: 0, y: 0 });
-            }
         }
     }, [openEdit, formData.images, altText]);
+    const updateTransformData = (newTransformData) => {
 
+        setFormData({ transformData: newTransformData });
+    };
     const selectedImage = tempImages[selectedImageIndex];
-
     const onCropComplete = useCallback((croppedArea, croppedAreaPixels) => {
         setCroppedAreaPixels(croppedAreaPixels);
     }, []);
-
     const handleCrop = async () => {
         if (!selectedImage || !croppedAreaPixels) return;
-
         try {
             const croppedImageBlob = await getCroppedImg(
                 selectedImage.src,
                 croppedAreaPixels
             );
-
             const croppedDataUrl = URL.createObjectURL(croppedImageBlob);
             const croppedFile = new File([croppedImageBlob], "cropped-image.jpg", {
                 type: 'image/jpeg'
             });
-
             const updatedImages = tempImages.map((img, index) =>
                 index === selectedImageIndex
                     ? { ...img, src: croppedDataUrl, file: croppedFile }
                     : img
             );
-
             setTempImages(updatedImages);
             setIsCropping(false);
             setCrop({ x: 0, y: 0 });
-            // Reset transform data only for primary image after crop
-            if (isPrimaryImage) {
-                updateTransformData({ scale: 1, x: 0, y: 0 });
-            }
         } catch (error) {
             console.error('Error cropping image:', error);
             handleOpen("error", "Error cropping image");
         }
     };
-
-    // Pan and zoom functionality for primary image only
-    const handleMouseDown = (e) => {
-        if (isCropping || !isPrimaryImage) return;
-        e.preventDefault();
-        setIsDragging(true);
-        setDragStart({
-            x: e.clientX - (transformData?.x || 0),
-            y: e.clientY - (transformData?.y || 0)
-        });
-    };
-
-    const handleMouseMove = (e) => {
-        if (!isDragging || isCropping || !isPrimaryImage) return;
-
-        const newX = e.clientX - dragStart.x;
-        const newY = e.clientY - dragStart.y;
-
-        updateTransformData({
-            ...transformData,
-            x: newX,
-            y: newY
-        });
-    };
-
-    const handleMouseUp = () => {
-        setIsDragging(false);
-    };
-
-    const handleWheel = (e) => {
-        if (isCropping || !isPrimaryImage) return;
-        e.preventDefault();
-
-        const delta = -e.deltaY / 100;
-        const newScale = Math.max(0.1, Math.min((transformData?.scale || 1) + delta * 0.1, 5));
-
-        updateTransformData({
-            ...transformData,
-            scale: newScale
-        });
-    };
-
-    const handleZoomIn = () => {
-        if (!isPrimaryImage) return;
-        const newScale = Math.min((transformData?.scale || 1) + 0.1, 5);
-        updateTransformData({
-            ...transformData,
-            scale: newScale
-        });
-    };
-
-    const handleZoomOut = () => {
-        if (!isPrimaryImage) return;
-        const newScale = Math.max((transformData?.scale || 1) - 0.1, 0.1);
-        updateTransformData({
-            ...transformData,
-            scale: newScale
-        });
-    };
-
-    const handleResetZoom = () => {
-        if (!isPrimaryImage) return;
-        updateTransformData({ scale: 1, x: 0, y: 0 });
-    };
-
-    const handleImageLoad = (e) => {
-        const { naturalWidth, naturalHeight } = e.target;
-        setImgDimensions({ width: naturalWidth, height: naturalHeight });
-    };
-
     const handleImageUpload = (event) => {
         const files = Array.from(event.target.files);
-
         if (tempImages.length + files.length > 15) {
             handleOpen("error", "Maximum 15 images allowed");
             return;
         }
-
         const newImages = files.map((file, index) => ({
             src: URL.createObjectURL(file),
             file: file,
@@ -229,74 +145,60 @@ const CropImage = ({
             isPrimary: tempImages.length === 0 && index === 0,
             sortOrder: tempImages.length + index + 1
         }));
-
         const updatedImages = [...tempImages, ...newImages];
         const updatedAltText = [...tempAltText, ...new Array(files.length).fill("")];
-
         setTempImages(updatedImages);
         setTempAltText(updatedAltText);
-
         // Select the first new image if no image was selected
         if (tempImages.length === 0) {
             setSelectedImageIndex(0);
         }
     };
-
     const handleDeleteImage = (index) => {
         const updatedImages = tempImages.filter((_, i) => i !== index);
         const updatedAltText = tempAltText.filter((_, i) => i !== index);
-
         // Update sort orders and mark first image as primary
         const reorderedImages = updatedImages.map((img, idx) => ({
             ...img,
             sortOrder: idx + 1,
             isPrimary: idx === 0 // First image is always primary
         }));
-
         setTempImages(reorderedImages);
         setTempAltText(updatedAltText);
-
         // Adjust selected index if needed
         if (selectedImageIndex >= reorderedImages.length) {
             setSelectedImageIndex(Math.max(0, reorderedImages.length - 1));
         }
-
-        // If primary image was deleted, reset transform data
         if (index === 0) {
             updateTransformData({ scale: 1, x: 0, y: 0 });
         }
     };
-
     // Drag and Drop Handlers
     const handleDragStart = (e, index) => {
         setDraggedIndex(index);
         e.dataTransfer.effectAllowed = 'move';
     };
-
     const handleDragOver = (e, index) => {
         e.preventDefault();
         setDragOverIndex(index);
     };
-
     const handleDragLeave = () => {
         setDragOverIndex(null);
     };
-
     const handleDrop = (e, targetIndex) => {
         e.preventDefault();
-
         if (draggedIndex === null || draggedIndex === targetIndex) {
             setDragOverIndex(null);
             setDraggedIndex(null);
             return;
         }
-
+        if (draggedIndex === 0 || targetIndex === 0) {
+            updateTransformData({ scale: 1, x: 0, y: 0 });
+        }
         const updatedImages = [...tempImages];
         const updatedAltText = [...tempAltText];
-
         const [movedImage] = updatedImages.splice(draggedIndex, 1);
         const [movedAltText] = updatedAltText.splice(draggedIndex, 1);
-
         updatedImages.splice(targetIndex, 0, movedImage);
         updatedAltText.splice(targetIndex, 0, movedAltText);
         const reorderedImages = updatedImages.map((img, idx) => ({
@@ -304,10 +206,8 @@ const CropImage = ({
             sortOrder: idx + 1,
             isPrimary: idx === 0
         }));
-
         setTempImages(reorderedImages);
         setTempAltText(updatedAltText);
-
         // Update selected index if it moved
         if (selectedImageIndex === draggedIndex) {
             setSelectedImageIndex(targetIndex);
@@ -322,38 +222,26 @@ const CropImage = ({
         ) {
             setSelectedImageIndex(selectedImageIndex + 1);
         }
-        if (draggedIndex === 0 || targetIndex === 0) {
-            updateTransformData({ scale: 1, x: 0, y: 0 });
-        }
-
         setDragOverIndex(null);
         setDraggedIndex(null);
     };
-
     const handleApplyChanges = () => {
         const commonAltText = tempAltText[selectedImageIndex] || "";
-
         setFormData({
             images: tempImages,
-            transformData: transformData
+            transformData: formData.transformData
         });
-
         setAltText(tempImages.map(() => commonAltText));
-
         handleEditClose();
     };
-
     const handleDiscard = () => {
         setDiscardModalOpen(false);
         handleEditClose();
     };
-
     const triggerFileInput = () => {
         inputFileRef.current?.click();
     };
-
     const canApply = tempImages.length > 0;
-
     return (
         <>
             <Dialog
@@ -379,7 +267,6 @@ const CropImage = ({
                             <HighlightOff />
                         </IconButton>
                     </Box>
-
                     <Grid container spacing={2} sx={{ flex: 1, minHeight: 0 }}>
                         <Grid item xs={12} md={4}>
                             <Box sx={{
@@ -515,22 +402,24 @@ const CropImage = ({
                                     borderRadius: '8px',
                                     overflow: 'hidden',
                                     bgcolor: '#f5f5f5',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: selectedImageIndex === 0 ? (previewDragging ? 'grabbing' : 'grab') : 'default'
                                 }}
-                                onMouseDown={handleMouseDown}
-                                onMouseMove={handleMouseMove}
-                                onMouseUp={handleMouseUp}
-                                onMouseLeave={handleMouseUp}
-                                onWheel={handleWheel}
+                                onMouseDown={selectedImageIndex === 0 ? handlePreviewMouseDown : undefined}
+                                onMouseMove={selectedImageIndex === 0 ? handlePreviewMouseMove : undefined}
+                                onMouseUp={handlePreviewMouseUp}
+                                onMouseLeave={handlePreviewMouseUp}
                             >
                                 {selectedImage ? (
                                     isCropping ? (
                                         <Cropper
                                             image={selectedImage.src}
                                             crop={crop}
-                                            zoom={transformData?.scale || 1}
+                                            zoom={1}
                                             aspect={1}
                                             onCropChange={setCrop}
-                                            onZoomChange={(zoom) => updateTransformData({ ...transformData, scale: zoom })}
                                             onCropComplete={onCropComplete}
                                             style={{
                                                 containerStyle: {
@@ -542,116 +431,26 @@ const CropImage = ({
                                         />
                                     ) : (
                                         <>
-                                            {isPrimaryImage && (transformData?.scale || 1) > 1 && (
-                                                <>
-                                                    <img
-                                                        src={selectedImage.src}
-                                                        alt=""
-                                                        draggable={false}
-                                                        style={{
-                                                            position: "absolute",
-                                                            inset: 0,
-                                                            width: "100%",
-                                                            height: "100%",
-                                                            objectFit: "cover",
-                                                            transform: `translate3d(${transformData?.x || 0}px, ${transformData?.y || 0
-                                                                }px, 0) scale(${transformData?.scale || 1})`,
-                                                            transformOrigin: "center center",
-                                                            zIndex: 0,
-                                                            pointerEvents: "none",
-                                                        }}
-                                                    />
-                                                    <Box
-                                                        sx={{
-                                                            position: "absolute",
-                                                            inset: 0,
-                                                            zIndex: 1,
-                                                            pointerEvents: "none",
-                                                        }}
-                                                    >
-                                                        {/* Top */}
-                                                        <Box sx={{
-                                                            position: "absolute",
-                                                            top: 0,
-                                                            left: 0,
-                                                            right: 0,
-                                                            height: "14%",
-                                                            background: "rgba(0,0,0,0.5)"
-                                                        }} />
-
-                                                        {/* Bottom */}
-                                                        <Box sx={{
-                                                            position: "absolute",
-                                                            bottom: 0,
-                                                            left: 0,
-                                                            right: 0,
-                                                            height: "14%",
-                                                            background: "rgba(0,0,0,0.5)"
-                                                        }} />
-
-                                                        {/* Left */}
-                                                        <Box sx={{
-                                                            position: "absolute",
-                                                            top: "14%",
-                                                            bottom: "14%",
-                                                            left: 0,
-                                                            width: "14%",
-                                                            background: "rgba(0,0,0,0.5)"
-                                                        }} />
-
-                                                        {/* Right */}
-                                                        <Box sx={{
-                                                            position: "absolute",
-                                                            top: "14%",
-                                                            bottom: "14%",
-                                                            right: 0,
-                                                            width: "14%",
-                                                            background: "rgba(0,0,0,0.5)"
-                                                        }} />
-                                                    </Box>
-                                                </>
-                                            )}
-
-
-                                            {isPrimaryImage && (transformData?.scale || 1) > 1 ? (
-
-                                                <Box
-                                                    sx={{
-                                                        position: "absolute",
-                                                        top: "50%",
-                                                        left: "50%",
-                                                        width: "85%",
-                                                        aspectRatio: "1 / 1",
-                                                        transform: "translate(-50%, -50%)",
-                                                        overflow: "hidden",
-                                                        background: "#fff",
-                                                        zIndex: 2,
-                                                    }}
-                                                >
-                                                    <img
-                                                        src={selectedImage.src}
-                                                        draggable={false}
-                                                        style={{
-                                                            width: "100%",
-                                                            height: "100%",
-                                                            objectFit: "cover",
-                                                            transform: `translate3d(${transformData?.x || 0}px, ${transformData?.y || 0}px, 0)
-                scale(${transformData?.scale || 1})`,
-                                                        }}
-                                                    />
-                                                </Box>
-                                            ) : (
-
-                                                <img
-                                                    src={selectedImage.src}
-                                                    draggable={false}
-                                                    style={{
-                                                        width: "100%",
-                                                        height: "100%",
-                                                        objectFit: "contain",
-                                                    }}
-                                                />
-                                            )}
+                                            <img
+                                                src={selectedImage.src}
+                                                draggable={false}
+                                                style={{
+                                                    width: "100%",
+                                                    height: "100%",
+                                                    objectFit: "contain",
+                                                    // ✅ Primary image pe transform apply karo
+                                                    transform: selectedImageIndex === 0
+                                                        ? `translate3d(
+      ${formData.transformData?.x || 0}px,
+      ${formData.transformData?.y || 0}px,
+      0
+    ) scale(${formData.transformData?.scale || 1})`
+                                                        : 'none',
+                                                    transformOrigin: 'center center',
+                                                    transition: 'transform 0.1s ease',
+                                                    willChange: 'transform'
+                                                }}
+                                            />
                                         </>
                                     )
                                 ) : (
@@ -678,85 +477,42 @@ const CropImage = ({
                                     </Box>
                                 )}
                             </Box>
-
                             {/* Controls */}
                             {selectedImage && (
                                 <Box sx={{ mt: 1 }}>
                                     {isCropping ? (
-                                        <Grid container spacing={1} alignItems="center">
-                                            <Grid item xs={12}>
-                                                <Typography variant="body2" gutterBottom>
-                                                    Zoom: {(transformData?.scale || 1).toFixed(1)}x
-                                                </Typography>
-                                                <Slider
-                                                    value={transformData?.scale || 1}
-                                                    min={1}
-                                                    max={3}
-                                                    step={0.1}
-                                                    onChange={(e, value) => updateTransformData({ ...transformData, scale: value })}
-                                                    size="small"
-                                                />
-                                            </Grid>
-                                            <Grid item>
-                                                <Button
-                                                    onClick={() => {
-                                                        setIsCropping(false);
-                                                        if (isPrimaryImage) {
-                                                            updateTransformData({ scale: 1, x: 0, y: 0 });
-                                                        }
-                                                    }}
-                                                    variant="outlined"
-                                                    size="small"
-                                                >
-                                                    Cancel Crop
-                                                </Button>
-                                            </Grid>
-                                            <Grid item>
-                                                <Button
-                                                    variant="contained"
-                                                    startIcon={<Check />}
-                                                    onClick={handleCrop}
-                                                    size="small"
-                                                >
-                                                    Apply Crop
-                                                </Button>
-                                            </Grid>
-                                        </Grid>
+                                        <Box sx={{ display: 'flex', gap: 1 }}>
+                                            <Button onClick={() => setIsCropping(false)} variant="outlined" size="small">
+                                                Cancel Crop
+                                            </Button>
+                                            <Button variant="contained" startIcon={<Check />} onClick={handleCrop} size="small">
+                                                Apply Crop
+                                            </Button>
+                                        </Box>
                                     ) : (
                                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                            {/* Zoom Controls - Only for primary image */}
-                                            {isPrimaryImage && (
+                                            {/* ✅ ZOOM SLIDER — sirf primary image pe */}
+                                            {selectedImageIndex === 0 && (
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                                    <Typography variant="body2" sx={{ minWidth: 60 }}>
-                                                        Zoom: {(transformData?.scale || 1).toFixed(1)}x
+                                                    <Typography variant="body2" sx={{ minWidth: 70 }}>
+                                                        Zoom: {(formData.transformData?.scale || 1).toFixed(1)}x
                                                     </Typography>
-                                                    <IconButton
-                                                        onClick={handleZoomOut}
-                                                        size="small"
-                                                        disabled={(transformData?.scale || 1) <= 0.1}
-                                                    >
-                                                        <ZoomOut fontSize="small" />
-                                                    </IconButton>
                                                     <Slider
-                                                        value={transformData?.scale || 1}
-                                                        min={0.1}
+                                                        value={formData.transformData?.scale || 1}
+                                                        min={1}
                                                         max={5}
                                                         step={0.1}
-                                                        onChange={(e, value) => {
-                                                            updateTransformData({ ...transformData, scale: value });
-                                                        }}
+                                                        onChange={(e, value) =>
+                                                            updateTransformData({
+                                                                ...formData.transformData,
+                                                                scale: value
+                                                            })
+                                                        }
                                                         sx={{ flex: 1, mx: 1 }}
                                                         size="small"
                                                     />
-                                                    <IconButton
-                                                        onClick={handleZoomIn}
-                                                        size="small"
-                                                        disabled={(transformData?.scale || 1) >= 5}
-                                                    >
-                                                        <ZoomIn fontSize="small" />
-                                                    </IconButton>
                                                     <Button
-                                                        onClick={handleResetZoom}
+                                                        onClick={() => updateTransformData({ scale: 1, x: 0, y: 0 })}
                                                         size="small"
                                                         variant="outlined"
                                                         sx={{ minWidth: 'auto', px: 1 }}
@@ -765,7 +521,6 @@ const CropImage = ({
                                                     </Button>
                                                 </Box>
                                             )}
-
                                             {/* Action Buttons */}
                                             <Box sx={{ display: 'flex', gap: 0.5 }}>
                                                 <Button
@@ -786,19 +541,11 @@ const CropImage = ({
                                                     Delete
                                                 </Button>
                                             </Box>
-
-                                            {/* Info message for non-primary images */}
-                                            {!isPrimaryImage && (
-                                                <Typography variant="caption" color="textSecondary" sx={{ fontStyle: 'italic' }}>
-                                                    Only the primary image (first image) can be zoomed and dragged. All images can be cropped.
-                                                </Typography>
-                                            )}
                                         </Box>
                                     )}
                                 </Box>
                             )}
                         </Grid>
-
                         {/* Right Sidebar - Alt Text and Actions */}
                         <Grid item xs={12} md={3}>
                             {selectedImage && !isCropping && (
@@ -827,7 +574,6 @@ const CropImage = ({
                             )}
                         </Grid>
                     </Grid>
-
                     {/* Footer Actions */}
                     <Box sx={{
                         display: 'flex',
@@ -855,7 +601,6 @@ const CropImage = ({
                     </Box>
                 </Box>
             </Dialog>
-
             {/* Discard Changes Modal */}
             <Modal
                 open={discardModalOpen}
@@ -890,5 +635,4 @@ const CropImage = ({
         </>
     );
 };
-
 export default CropImage;

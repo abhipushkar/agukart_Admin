@@ -31,6 +31,8 @@ import {
   DialogContent
 } from "@mui/material";
 import React, { useCallback, useEffect } from "react";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import SearchIcon from "@mui/icons-material/Search";
 import Tab from "@mui/material/Tab";
 import TabContext from "@mui/lab/TabContext";
@@ -57,16 +59,20 @@ const Reviews = () => {
     from: new Date().toISOString().split("T")[0],
     to: new Date().toISOString().split("T")[0]
   });
+  const [notePopupOpen, setNotePopupOpen] = useState(false);
+  const [noteType, setNoteType] = useState("");
+  const [noteText, setNoteText] = useState("");
+  const [selectedNoteItem, setSelectedNoteItem] = useState(null);
 
+  const [buyerNotes, setBuyerNotes] = useState({});
+  const [sellerNotes, setSellerNotes] = useState({});
   const [openModal, setModalOpen] = useState(false);
-
+  const [localReplies, setLocalReplies] = useState({});
   const handleModalOpen = () => setModalOpen(true);
   const handleModalClose = () => setModalOpen(false);
-
-   const handleDateRange = (option) => {
+  const handleDateRange = (option) => {
     const today = new Date();
     let fromDate = new Date();
-
     const returnDate = (range, dayAgo) => {
       fromDate.setDate(today.getDate() - dayAgo);
       return setDate({
@@ -75,7 +81,6 @@ const Reviews = () => {
         to: today.toISOString().split("T")[0]
       });
     };
-
     if (option === "Today") {
       returnDate("Today", 0);
     } else if (option === "Last day") {
@@ -102,12 +107,18 @@ const Reviews = () => {
   };
   const auth_key = localStorage.getItem(localStorageKey.auth_key);
   const designation_id = +localStorage.getItem(localStorageKey.designation_id);
-  const [tab, setTab] = useState("pending");
+  console.log("designation_id:", designation_id);
+  const isAdmin = Number(designation_id) === 2;
+  const [localNotes, setLocalNotes] = useState({});
+  const [tab, setTab] = useState("new");
   const [open1, setOpen1] = React.useState(false);
   const [reviews, setReviews] = useState([]);
   const [productList, setProductList] = useState([]);
   const [reviewIds, setReviewIds] = useState([]);
   const [isAllChecked, setIsAllChecked] = useState(false);
+  const [internalNoteOpen, setInternalNoteOpen] = useState(false);
+  const [internalNoteText, setInternalNoteText] = useState("");
+  const [selectedNoteReview, setSelectedNoteReview] = useState(null);
   const [filters, setFilters] = useState({
     productId: "",
     deliveryStar: "",
@@ -129,21 +140,20 @@ const Reviews = () => {
   const [anchorEl, setAnchorEl] = useState(null);
   const openOption = Boolean(anchorEl);
   const navigate = useNavigate();
-
   console.log({ reviewIds });
-
   const [open, setOpen] = React.useState(false);
   const [type, setType] = useState("");
   const [route, setRoute] = useState(null);
   const [msg, setMsg] = useState(null);
-
+  const [replyOpen, setReplyOpen] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const [selectedReview, setSelectedReview] = useState(null);
   const logOut = () => {
     localStorage.removeItem(localStorageKey.auth_key);
     localStorage.removeItem(localStorageKey.designation_id);
     localStorage.removeItem(localStorageKey.vendorId);
     setRoute(ROUTE_CONSTANT.login)
   };
-
   const handleOpen = (type, msg) => {
     setMsg(msg?.message);
     setOpen(true);
@@ -152,7 +162,30 @@ const Reviews = () => {
       logOut()
     }
   };
-
+  const handleReplyOpen = (item) => {
+    setSelectedReview(item);
+    setReplyText(localReplies[item._id] || "");
+    setReplyOpen(true);
+  };
+  const handleReplyClose = () => {
+    setReplyOpen(false);
+    setReplyText("");
+    setSelectedReview(null);
+  };
+  const handleNoteOpen = (item) => {
+    setSelectedNoteReview(item);
+    setInternalNoteText("");
+    setInternalNoteOpen(true);
+  };
+  const handleNoteClose = () => {
+    setInternalNoteOpen(false);
+    setInternalNoteText("");
+    setSelectedNoteReview(null);
+  };
+  const handleMessageClick = (item) => {
+    const fakeChatId = item._id;
+    navigate(`/pages/message?slug=${fakeChatId}`);
+  };
   const handleClose = () => {
     setOpen(false);
     if (route !== null) {
@@ -161,11 +194,9 @@ const Reviews = () => {
     setRoute(null);
     setMsg(null);
   };
-
   const handleClick = (event, index) => {
     setAnchorEl(event.currentTarget);
   };
-
   const handleTabChange = (event, newValue) => {
     setTab(newValue);
     setReviewIds([]);
@@ -174,16 +205,28 @@ const Reviews = () => {
     setAddCmnt("");
     setType1("");
   };
-
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
   };
-
+  const handleOpenNotePopup = (type, item) => {
+    setNoteType(type);
+    setSelectedNoteItem(item);
+    if (type === "buyer") {
+      setNoteText(buyerNotes[item._id] || "");
+    } else {
+      setNoteText(sellerNotes[item._id] || "");
+    }
+    setNotePopupOpen(true);
+  };
+  const handleCloseNotePopup = () => {
+    setNotePopupOpen(false);
+    setNoteText("");
+    setSelectedNoteItem(null);
+  };
   const handleChangeRowsPerPage = (event) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
-
   const getProductList = useCallback(async () => {
     try {
       const res = await ApiService.get(apiEndpoints.getAllVendorProduct, auth_key);
@@ -195,13 +238,13 @@ const Reviews = () => {
       handleOpen("error", error);
     }
   }, [auth_key]);
-
   // const getReviewList = useCallback(async () => {
   const getReviewList = async () => {
     try {
       console.log({ filters });
+      const apiTab = tab === "completed" ? "approved" : tab;
       const res = await ApiService.get(
-        `${apiEndpoints.getRatingByType}/${tab}?startDate=${date.from}&endDate=${date.to}&delivery_rating=${filters.deliveryStar}&item_rating=${filters.itemStar}&product_id=${filters.productId}`,
+        `${apiEndpoints.getRatingByType}/${apiTab}?startDate=${date.from}&endDate=${date.to}&delivery_rating=${filters.deliveryStar}&item_rating=${filters.itemStar}&product_id=${filters.productId}`,
         auth_key
       );
       if (res?.status === 200) {
@@ -211,17 +254,13 @@ const Reviews = () => {
     } catch (error) {
       handleOpen("error", error);
     }
-    // }, [auth_key, tab]);
   };
-
   useEffect(() => {
     getReviewList();
   }, [tab]);
-
   useEffect(() => {
     getProductList();
   }, []);
-
   const changeReviewStatus = async () => {
     try {
       const payload = {
@@ -244,12 +283,12 @@ const Reviews = () => {
       handleOpen("error", error);
     }
   };
-
-  const approveReviewStatus = async (status,id) => {
+  const approveReviewStatus = async (status, id) => {
+    console.log("STATUS SENT:", status);
     try {
       const payload = {
         status: status,
-        id: reviewIds.length > 0  ? reviewIds : [id]
+        id: reviewIds.length > 0 ? reviewIds : [id]
       };
       const res = await ApiService.post(apiEndpoints.changeRatingStatus, payload, auth_key);
       if (res?.status === 200) {
@@ -268,29 +307,22 @@ const Reviews = () => {
   };
   function formatDate(isoString) {
     const date = new Date(isoString);
-
     const day = String(date.getDate()).padStart(2, "0");
     const month = String(date.getMonth() + 1).padStart(2, "0");
     const year = date.getFullYear();
-
     return `${day}-${month}-${year}`;
   }
-
   function formatTime(isoString) {
     const date = new Date(isoString);
-
     const hours = String(date.getHours()).padStart(2, "0");
     const minutes = String(date.getMinutes()).padStart(2, "0");
     const seconds = String(date.getSeconds()).padStart(2, "0");
-
     return `${hours}:${minutes}:${seconds}`;
   }
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFilters((prev) => ({ ...prev, [name]: value }));
   };
-
   const handleMasterCheckboxChange = () => {
     setIsAllChecked(!isAllChecked);
     if (!isAllChecked) {
@@ -300,20 +332,59 @@ const Reviews = () => {
       setReviewIds([]);
     }
   };
-
   const handleCheckboxChange = (id) => {
     setReviewIds((prev) =>
       prev.includes(id) ? prev.filter((reviewId) => reviewId !== id) : [...prev, id]
     );
   };
-
+  const btnStyle = (bg, hover) => ({
+    fontSize: 12,
+    px: 2,
+    py: 0.8,
+    borderRadius: "6px",
+    textTransform: 'none',
+    fontWeight: 600,
+    boxShadow: 'none',
+    bgcolor: bg,
+    '&:hover': { bgcolor: hover, boxShadow: '0px 4px 8px rgba(0,0,0,0.1)' }
+  });
+  const handleSaveNote = () => {
+    if (!noteText.trim()) return;
+    if (noteType === "buyer") {
+      setBuyerNotes((prev) => ({
+        ...prev,
+        [selectedNoteItem._id]: noteText
+      }));
+    } else {
+      setSellerNotes((prev) => ({
+        ...prev,
+        [selectedNoteItem._id]: noteText
+      }));
+    }
+    handleCloseNotePopup();
+  };
   function removeHTMLTags(str) {
-    return str.replace(/<\/?[^>]+(>|$)/g, ""); 
+    return str.replace(/<\/?[^>]+(>|$)/g, "");
   }
+  const sendReply = () => {
+    if (!replyText.trim()) return;
 
+    setLocalReplies((prev) => ({
+      ...prev,
+      [selectedReview._id]: replyText
+    }));
+    handleReplyClose();
+  };
   return (
     <>
-      <Box sx={{ padding: "30px", background: "#fff" }}>
+      <Box
+        sx={{
+          padding: "30px",
+          background: "#fff",
+          width: "100%",
+          overflowX: "hidden"
+        }}
+      >
         <Grid container width={"100%"} m={0} spacing={2} alignItems={"center"}>
           <Grid lg={6} md={6} xs={6}>
             <Typography variant="h5" fontWeight={600}>
@@ -321,12 +392,22 @@ const Reviews = () => {
             </Typography>
           </Grid>
         </Grid>
+        <Box
+          sx={{
+            p: 2,
+            border: '1px solid #eee',
+            borderRadius: 2,
+            bgcolor: '#fafafa',
+            mb: 2
+          }}
+        ></Box>
         <Grid container spacing={2} my={2} px={2}>
           <Grid item xs={12}>
             <Box
               sx={{
                 display: "flex",
                 flexWrap: "wrap",
+                overflowX: "auto",
                 gap: 2,
                 alignItems: "center"
               }}
@@ -356,7 +437,6 @@ const Reviews = () => {
                   });
                 }}
               />
-
               {/* Date Fields (Only if Custom) */}
               {date.range === "Custom Date Range" && (
                 <>
@@ -378,7 +458,6 @@ const Reviews = () => {
                   />
                 </>
               )}
-
               {/* Date Range Selector */}
               <TextField
                 select
@@ -394,7 +473,6 @@ const Reviews = () => {
                   </MenuItem>
                 ))}
               </TextField>
-
               {/* Delivery Star Selector */}
               <TextField
                 select
@@ -422,7 +500,6 @@ const Reviews = () => {
                   <MenuItem key={num} value={num}>{num}</MenuItem>
                 ))}
               </TextField>
-
               {/* Item Star Selector */}
               <TextField
                 select
@@ -450,7 +527,6 @@ const Reviews = () => {
                   <MenuItem key={num} value={num}>{num}</MenuItem>
                 ))}
               </TextField>
-
               {/* Search Button */}
               <Button
                 variant="contained"
@@ -469,15 +545,13 @@ const Reviews = () => {
             <Box>
               <TabContext value={tab}>
                 <Box>
-                  <TabList
-                    onChange={handleTabChange}
-                    aria-label="lab API tabs example"
-                    variant="scrollable"
-                    scrollButtons="auto"
-                  >
-                    <Tab label="Pending" value="pending" />
-                    <Tab label="Approved" value="approved" />
-                    <Tab label="Rejected" value="rejected" />
+                  <TabList onChange={handleTabChange} aria-label="review tabs" variant="scrollable" scrollButtons="auto">
+                    <Tab label={<Box sx={{ textAlign: 'center' }}><Typography fontWeight={700} fontSize={13}>NEW</Typography><Typography fontSize={12}>2</Typography></Box>} value="new" />
+                    <Tab label={<Box sx={{ textAlign: 'center' }}><Typography fontWeight={700} fontSize={13}>REPLIED</Typography><Typography fontSize={12}>5</Typography></Box>} value="replied" />
+                    <Tab label={<Box sx={{ textAlign: 'center' }}><Typography fontWeight={700} fontSize={13}>FLAGGED</Typography><Typography fontSize={12}>3</Typography></Box>} value="flagged" />
+                    <Tab label={<Box sx={{ textAlign: 'center' }}><Typography fontWeight={700} fontSize={13}>ARCHIVAL</Typography><Typography fontSize={12}>15</Typography></Box>} value="archival" />
+                    <Tab label={<Box sx={{ textAlign: 'center' }}><Typography fontWeight={700} fontSize={13}>Completed</Typography><Typography fontSize={12}>25</Typography></Box>} value="completed" />
+                    <Tab label={<Box sx={{ textAlign: 'center' }}><Typography fontWeight={700} fontSize={13}>All</Typography><Typography fontSize={12}>50</Typography></Box>} value="all" />
                   </TabList>
                 </Box>
                 <TabPanel value={tab} sx={{ padding: "24px 0" }}></TabPanel>
@@ -488,7 +562,15 @@ const Reviews = () => {
         <Grid container width={"100%"} m={0} spacing={2} alignItems={"center"}>
           <Grid lg={6} md={6} xs={12}>
             <Box>
-              {(tab === "pending") && (
+
+              <Box
+                sx={{
+                  position: 'sticky',
+                  top: 0,
+                  zIndex: 10,
+                  bgcolor: '#fff'
+                }}
+              >
                 <List>
                   <ListItem sx={{ width: "auto", paddingLeft: "0", display: "inline-block" }}>
                     <Box
@@ -548,7 +630,7 @@ const Reviews = () => {
                     </Box>
                   </ListItem>
                 </List>
-              )} 
+              </Box>
             </Box>
           </Grid>
           <Grid lg={6} md={6} xs={12}>
@@ -558,138 +640,235 @@ const Reviews = () => {
           </Grid>
         </Grid>
         <Box>
-          <TableContainer sx={{ paddingLeft: 2, paddingRight: 2 }} component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>S.No</TableCell>
-                  {
-                    designation_id == "2" && (
-                      <TableCell>Shop Name</TableCell>
-                    )
-                  }
-                  <TableCell>Date & Time</TableCell>
-                  <TableCell>Order No.</TableCell>
-                  <TableCell>Product Name</TableCell>
-                  <TableCell>Product SKU</TableCell>
-                  <TableCell>User Name</TableCell>
-                  <TableCell>Delivery Rating</TableCell>
-                  <TableCell>Item Rating</TableCell>
-                  <TableCell>Feedback</TableCell>
-                  {tab === "approved" && <TableCell>Approval Date</TableCell>}
-                  {tab === "rejected" && <TableCell>Approval Date</TableCell>}
-                  {tab === "pending" && <TableCell sx={{ textAlign: "center" }}>Action</TableCell>}
+          <TableContainer
+            component={Paper}
+            sx={{
+              width: "105%",
+              overflowX: "auto"
+            }}
+          >
+            <Table sx={{ minWidth: 1250 }}>
+              <TableHead
+                sx={{
+                  bgcolor: '#fafafa',
+                  borderBottom: '2px solid #eee'
+                }}
+              >
+                <TableRow sx={{
+                  '&:hover': { bgcolor: '#fafafa' },
+                  verticalAlign: 'top'
+                }}>
+                  <TableCell sx={{ minWidth: 70, width: 70 }}>S.No</TableCell>
+                  <TableCell sx={{ minWidth: 80, width: 80 }}>Date & Time</TableCell>
+                  <TableCell sx={{ minWidth: 110, width: 110 }}>User Details</TableCell>
+                  <TableCell sx={{ minWidth: 230, width: 230 }}>Item Image, Title, SKU, Product ID, Shop name</TableCell>
+                  <TableCell sx={{ minWidth: 200, width: 200 }}>Full Feedback (Full text & Images)</TableCell>
+                  <TableCell sx={{ minWidth: 200, width: 200 }} align="center">Actions</TableCell>
                 </TableRow>
               </TableHead>
               {reviews?.length > 0 ? (
                 <TableBody>
                   {reviews.map((item, index) => (
-                    <TableRow key={index}>
+                    <TableRow key={index} sx={{ verticalAlign: 'top', '& .MuiTableCell-root': { py: 1.5 } }}>
+                      {/* S.No */}
                       <TableCell>
-                        {(tab === "pending") ? (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                           <Checkbox
                             checked={reviewIds.includes(item._id)}
                             onClick={() => handleCheckboxChange(item._id)}
                           />
-                        ) : (
-                          index + 1
-                        )}
+                          {index + 1}
+                        </Box>
                       </TableCell>
-                      {
-                        designation_id == "2" && (
-                          <TableCell>
-                            {item?.shopName}
-                          </TableCell>
-                        )
-                      }
+                      {/* Date & Time */}
                       <TableCell>
-                        {formatDate(item?.createdAt)} {formatTime(item?.createdAt)}
+                        <Typography fontSize={13}>{formatDate(item?.createdAt)}</Typography>
+                        <Typography fontSize={12} color="text.secondary">{formatTime(item?.createdAt)}</Typography>
                       </TableCell>
-                      <TableCell>{item?.orderId}</TableCell>
-                      <TableCell>{removeHTMLTags(item?.product_name || "")}</TableCell>
-                      <TableCell>{item?.productSku}</TableCell>
-                      <TableCell>{item?.user_name}</TableCell>
+                      {/* User Details */}
                       <TableCell>
-                        <Rating
-                          name="read-only"
-                          value={item?.delivery_rating}
-                          precision={0.5}
-                          readOnly
-                        />
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, minWidth: 150 }}>
+                          <Box sx={{ width: 44, height: 44, borderRadius: '50%', overflow: 'hidden', border: '1px solid #ddd' }}>
+                            <img
+                              src={item?.userImage || "/placeholder-user.png"}
+                              alt=""
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            // onError={e => e.target.src = "https:via.placeholder.com/44"}
+                            />
+                          </Box>
+                          <Typography fontSize={13} fontWeight={600}>{item?.user_name}</Typography>
+                          <Typography fontSize={12} color="text.secondary">User ID : {item?.userId || "—"}</Typography>
+                        </Box>
                       </TableCell>
+                      {/* Item Image, Title, SKU, Product ID, Shop name */}
                       <TableCell>
-                        <Rating
-                          name="read-only"
-                          value={item?.item_rating}
-                          precision={0.5}
-                          readOnly
-                        />
+                        <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start', minWidth: 200 }}>
+                          <Box
+                            sx={{
+                              width: 60,
+                              height: 60,
+                              overflow: 'hidden',
+                              borderRadius: 1,
+                              border: '1px solid #ddd',
+                              '& img': { transition: '0.3s' },
+                              '&:hover img': { transform: 'scale(1.1)' }
+                            }}
+                          >
+                            <img
+                              src={item?.productImage || ""}
+                              alt=""
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            // onError={e => e.target.src = "https://via.placeholder.com/60"}
+                            />
+                          </Box>
+                          <Box>
+                            <Typography
+                              fontSize={14}
+                              fontWeight={500}
+                              sx={{
+                                maxWidth: 210,
+                                lineHeight: 1.5,
+                                display: '-webkit-box',
+                                WebkitLineClamp: 3,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis'
+                              }}
+                            >
+                              {removeHTMLTags(item?.product_name || "")}
+                            </Typography>
+                            <Typography fontSize={12} color="text.secondary">SKU : {item?.productSku || "—"}</Typography>
+                            <Typography fontSize={12} color="text.secondary">Product ID : {item?.product_id || "—"}</Typography>
+                            <Typography fontSize={12} color="text.secondary">Shop Name : {item?.shopName || "—"}</Typography>
+                          </Box>
+                        </Box>
                       </TableCell>
+                      {/* Full Feedback */}
                       <TableCell>
-                        <Button onClick={handleModalOpen} size="small" color="primary" variant="outlined">
-                          Feedback
-                        </Button>
+                        <Box sx={{ minWidth: 300 }}>
+                          {/* Review Rating */}
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                            <Typography fontSize={13} fontWeight={500}>Review Rating</Typography>
+                            <Rating value={item?.item_rating} precision={0.5} readOnly size="small" />
+                          </Box>
+                          {/* 3 Photos */}
+                          {item?.images?.length > 0 && (
+                            <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+                              {item.images.slice(0, 3).map((img, i) => (
+                                <Box key={i} sx={{ width: 60, height: 60, borderRadius: 1, overflow: 'hidden', border: '1px solid #ddd' }}>
+                                  <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                </Box>
+                              ))}
+                            </Box>
+                          )}
+                          {/* Item Quality, Delivery, Customer Service */}
+                          {[
+                            { label: 'Item Quality', value: item?.item_rating },
+                            { label: 'Delivery', value: item?.delivery_rating },
+                            { label: 'Customer Service', value: item?.customer_service_rating },
+                          ].map(({ label, value }) => (
+                            <Box key={label} sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.2 }}>
+                              <Typography fontSize={11} sx={{ width: 95, flexShrink: 0, color: 'text.secondary' }}>
+                                {label}
+                              </Typography>
+                              <Rating value={value} precision={0.5} readOnly size="small" sx={{ fontSize: 14 }} />
+                            </Box>
+                          ))}
+                          {/* Comment */}
+                          <Typography fontSize={12} color="text.secondary" mt={0.5} sx={{ maxWidth: 280 }}>
+                            {item?.additional_comment || ""}
+                            {isAdmin && localNotes[item._id] && (
+                              <Typography fontSize={12} mt={0.5} color="purple">
+                                <strong>Internal Note:</strong> {localNotes[item._id]}
+                              </Typography>
+                            )}
+                          </Typography>
+                        </Box>
                       </TableCell>
-                      <Dialog open={openModal} onClose={handleModalClose} maxWidth="sm" fullWidth>
-                        <DialogTitle>
-                          <Box display="flex" justifyContent="space-between" alignItems="center">
-                            Feedback
-                            <IconButton onClick={handleModalClose} size="small">
-                              <CloseIcon />
+                      {/* Actions */}
+                      <TableCell>
+                        <Box sx={{ display: "flex", flexDirection: 'column', gap: 0.9 }}>
+                          {/* Row 1 */}
+                          <Box sx={{ display: 'flex', gap: 1.0 }}>
+                            <Button
+                              size="large"
+                              variant="contained"
+                              sx={btnStyle('#4CAF50', '#3d8b40')}
+                              disabled={!!localReplies[item._id]}
+                              onClick={() => handleReplyOpen(item)}
+                            >
+                              Reply
+                            </Button>
+                            <Button
+                              size="large"
+                              variant="contained"
+                              sx={btnStyle('#1976D2', '#125ea5')}
+                              disabled={!localReplies[item._id]}
+                              onClick={() => handleReplyOpen(item)}
+                            >
+                              Edit
+                            </Button>
+                            {isAdmin && (
+                              <Button
+                                size="large"
+                                variant="contained"
+                                sx={btnStyle('#7B1FA2', '#5e1580')}
+                                onClick={() => handleNoteOpen(item)}
+                              >
+                                Internal Note
+                              </Button>
+                            )}
+                          </Box>
+                          {/* Row 2 */}
+                          <Box sx={{ display: 'flex', gap: 1.0 }}>
+                            <Button
+                              size="large"
+                              variant="contained"
+                              sx={btnStyle('#0097A7', '#007c91')}
+                              onClick={() => handleMessageClick(item)}
+                            >
+                              Message
+                            </Button>
+                            <Button size="large" variant="contained" sx={btnStyle('#D32F2F', '#a72828')}>
+                              Flag
+                            </Button>
+                            <Button
+                              size="large"
+                              variant="contained"
+                              sx={btnStyle('#F57C00', '#c26400')}
+                              onClick={() => handleOpenNotePopup("buyer", item)}
+                            >
+                              Note to buyer
+                            </Button>
+                          </Box>
+                          {/* Row 3 */}
+                          <Box sx={{ display: 'flex', gap: 1.2, alignItems: 'center' }}>
+                            <Button size="large" variant="contained" sx={btnStyle('#455A64', '#37474f')}>
+                              Hide Reviews
+                            </Button>
+                            <Button
+                              size="large"
+                              variant="contained"
+                              sx={btnStyle('#6D4C41', '#523931')}
+                              onClick={() => handleOpenNotePopup("seller", item)}
+                            >
+                              Seller Note
+                            </Button>
+                            <IconButton
+                              size="small"
+                              sx={{
+                                border: '1px solid #ddd',
+                                borderRadius: 1,
+                                bgcolor: '#f5f5f5',
+                                '&:hover': { bgcolor: '#e0e0e0' }
+                              }}
+                            >
+                              <LockOutlinedIcon fontSize="large" />
                             </IconButton>
                           </Box>
-                        </DialogTitle>
-                        <DialogContent>
-                          {item?.additional_comment || "No comment provided."}
-                        </DialogContent>
-                      </Dialog>
-                      {tab === "approved" && (
-                        <TableCell>
-                          {formatDate(item?.approved_date)} {formatTime(item?.approved_date)}
-                        </TableCell>
-                      )}
-                      {tab === "rejected" && (
-                        <TableCell>
-                          {formatDate(item?.rejected_date)} {formatTime(item?.rejected_date)}
-                        </TableCell>
-                      )}
-                      {tab === "pending" && (
-                        <TableCell>
-                          <Box
-                            display={"flex"}
-                            alignItems={"center"}
-                            justifyContent={"space-evenly"}
-                            width={"250px"}
-                          >
-                            <Button
-                              variant="contained"
-                              color="success"
-                              startIcon={<CheckCircleIcon />}
-                              // onClick={() => changeReviewStatus("approved", item?._id)}
-                              onClick={() =>
-                                {
-                                  setId(item?._id)
-                                  approveReviewStatus("approved", item?._id)
-                                }
-                              }
-                            >
-                              Approve
-                            </Button>
-                            <Button
-                              variant="contained"
-                              color="error"
-                              startIcon={<CancelIcon />}
-                              // onClick={() => changeReviewStatus("rejected", item?._id)}
-                              onClick={() =>
-                                handleOpen1("rejected", item?._id, item?.additional_comment)
-                              }
-                              style={{ marginLeft: "10px" }}
-                            >
-                              Reject
-                            </Button>
-                          </Box>
-                        </TableCell>
-                      )}
+
+                        </Box>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -724,8 +903,121 @@ const Reviews = () => {
         />
       </Box>
       <ConfirmModal open={open} handleClose={handleClose} type={type} msg={msg} />
+      <Dialog open={replyOpen} onClose={handleReplyClose} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          Reply to Review
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 1 }}>
+            {/* Review text show */}
+            <Typography fontSize={13} mb={1} color="text.secondary">
+              {selectedReview?.additional_comment}
+            </Typography>
+            {/* Input */}
+            <TextField
+              fullWidth
+              multiline
+              rows={4}
+              placeholder="Write your reply..."
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+            />
+            {/* Buttons */}
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 2 }}>
+              <Button onClick={handleReplyClose}>
+                Cancel
+              </Button>
+              <Button
+                variant="contained"
+                onClick={sendReply}
+                disabled={!replyText.trim()}
+              >
+                Send Reply
+              </Button>
+            </Box>
+          </Box>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={internalNoteOpen} onClose={handleNoteClose} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          Internal Note (Admin Only)
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 1 }}>
+            {/* Review text */}
+            <Typography fontSize={13} mb={1} color="text.secondary">
+              {selectedNoteReview?.additional_comment}
+            </Typography>
+            {/* Input */}
+            <TextField
+              fullWidth
+              multiline
+              rows={6}
+              placeholder="Write internal note..."
+              value={internalNoteText}
+              onChange={(e) => setInternalNoteText(e.target.value)}
+            />
+            {/* Buttons */}
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 2 }}>
+              <Button onClick={() => {
+                setLocalNotes((prev) => ({
+                  ...prev,
+                  [selectedNoteReview._id]: internalNoteText
+                }));
+                handleNoteClose();
+              }}>
+                Cancel
+              </Button>
+              <Button
+                variant="contained"
+                onClick={() => {
+                  setLocalNotes((prev) => ({
+                    ...prev,
+                    [selectedNoteReview._id]: internalNoteText
+                  }));
+                  handleNoteClose();
+                }}
+                disabled={!internalNoteText.trim()}
+              >
+                Save Note
+              </Button>
+            </Box>
+          </Box>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={notePopupOpen} onClose={handleCloseNotePopup} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          {noteType === "buyer" ? "Note to Buyer" : "Seller Note"}
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 1 }}>
+            <Typography fontSize={13} mb={1} color="text.secondary">
+              {selectedNoteItem?.additional_comment}
+            </Typography>
+            <TextField
+              fullWidth
+              multiline
+              rows={4}
+              placeholder="Write your note..."
+              value={noteText}
+              onChange={(e) => setNoteText(e.target.value)}
+            />
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 2 }}>
+              <Button onClick={handleCloseNotePopup}>
+                Cancel
+              </Button>
+              <Button
+                variant="contained"
+                onClick={handleSaveNote}
+                disabled={!noteText.trim()}
+              >
+                Save
+              </Button>
+            </Box>
+          </Box>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
-
 export default Reviews;

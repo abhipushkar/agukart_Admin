@@ -23,13 +23,11 @@ const Info = ({
   handleVendorSave
 }) => {
   const inputFileRef = React.useRef(null);
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormValues((prev) => ({ ...prev, [name]: value }));
     setErrors((prv) => ({ ...prv, [name]: "" }));
   };
-
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     setFormValues((prev) => ({ ...prev, shopIcon: file }));
@@ -41,7 +39,6 @@ const Info = ({
       reader.readAsDataURL(file);
     }
   };
-
   const handleNext = () => {
     if (handleValidate("info")) {
       setValue("shop");
@@ -53,14 +50,12 @@ const Info = ({
   const [hideAI, setHideAI] = useState(false);
   const [acceptAll, setAcceptAll] = useState(false);
   const [enhanceFields, setEnhanceFields] = useState([]);
-
   const ENHANCE_FIELDS_CONFIG = [
     { key: 'meta_title', label: 'Meta title' },
     { key: 'meta_description', label: 'Meta description' },
     { key: 'meta_keywords', label: 'Meta keywords' },
     { key: 'shopIconAlt', label: 'Icon alt text' },
   ];
-
   const handleOpenEnhanceModal = () => {
     const fields = ENHANCE_FIELDS_CONFIG.map((f, i) => ({
       id: i,
@@ -75,18 +70,15 @@ const Info = ({
     setAcceptAll(false);
     setEnhanceModalOpen(true);
   };
-
   const handleCloseEnhanceModal = () => {
     setEnhanceModalOpen(false);
     setEnhanceFields([]);
     setAcceptAll(false);
   };
-
   const handleAcceptAll = (checked) => {
     setAcceptAll(checked);
     setEnhanceFields(prev => prev.map(f => ({ ...f, accepted: checked })));
   };
-
   const handleFieldAccept = (id, checked) => {
     const updated = enhanceFields.map(f =>
       f.id === id ? { ...f, accepted: checked } : f
@@ -94,13 +86,11 @@ const Info = ({
     setEnhanceFields(updated);
     setAcceptAll(updated.every(f => f.accepted));
   };
-
   const handleGeneratedChange = (id, value) => {
     setEnhanceFields(prev =>
       prev.map(f => f.id === id ? { ...f, generated: value } : f)
     );
   };
-
   const handleAddToForm = () => {
     const updates = {};
     enhanceFields.forEach(f => {
@@ -111,9 +101,6 @@ const Info = ({
     }
     handleCloseEnhanceModal();
   };
-
-
-
   return (
     <>
       <h2 style={{ marginTop: "0" }}>Info & Appearance</h2>
@@ -147,7 +134,6 @@ const Info = ({
                   </ListItem>
                 </List>
               </Box>
-
             </Grid>
             <Grid lg={6} md={6} xs={12} mb={1}>
               <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
@@ -227,7 +213,6 @@ const Info = ({
             />
           </Typography>
         </Box>
-
         {/* Meta Title */}
         {/* Meta Title */}
         <Box py={3} sx={{ borderBottom: "1px solid #d6d6d6" }}>
@@ -247,7 +232,6 @@ const Info = ({
             }}
           />
         </Box>
-
         {/* Meta Description */}
         <Box py={3} sx={{ borderBottom: "1px solid #d6d6d6" }}>
           <Typography pb={1} sx={{ fontSize: "16px", fontWeight: "600" }}>
@@ -264,7 +248,6 @@ const Info = ({
             rows={3}
           />
         </Box>
-
         {/* Meta Keywords */}
         <Box py={3} sx={{ borderBottom: "1px solid #d6d6d6" }}>
           <Typography pb={1} sx={{ fontSize: "16px", fontWeight: "600" }}>
@@ -342,7 +325,6 @@ const Info = ({
                 <Typography pb={1} sx={{ fontSize: "14px", fontWeight: "600" }}>
                   Icon Alt Text
                 </Typography>
-
                 <TextField
                   name="shopIconAlt"
                   value={formValues.shopIconAlt || ""}
@@ -370,14 +352,6 @@ const Info = ({
             <TextField
               error={errors.shopAnnouncement && true}
               helperText={errors.shopAnnouncement}
-              // onBlur={() => {                    
-              //   if (!formValues.shopAnnouncement) {
-              //     setErrors((prv) => ({
-              //       ...prv,
-              //       shopAnnouncement: "Shop Announcement is Required"
-              //     }));
-              //   }
-              // }}
               type="text"
               value={formValues.shopAnnouncement}
               onChange={handleChange}
@@ -397,14 +371,6 @@ const Info = ({
             <TextField
               error={errors.msgToBuyers && true}
               helperText={errors.msgToBuyers}
-              // onBlur={() => {
-              //   if (!formValues.msgToBuyers) {
-              //     setErrors((prv) => ({
-              //       ...prv,
-              //       msgToBuyers: "Message To Buyers is Required"
-              //     }));
-              //   }
-              // }}
               type="text"
               value={formValues.msgToBuyers}
               onChange={handleChange}
@@ -496,7 +462,6 @@ const Info = ({
             <Typography variant="body2" color="textSecondary">4 field(s)</Typography>
           </Box>
         </DialogTitle>
-
         <DialogContent dividers sx={{ pt: 2 }}>
           {/* Accept All + Hide AI */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5, height: 40 }}>
@@ -527,7 +492,6 @@ const Info = ({
               />
             </Box>
           </Box>
-
           {/* Fields */}
           {enhanceFields.map((field) => (
             <Box
@@ -564,7 +528,6 @@ const Info = ({
                     sx={{ '& .MuiOutlinedInput-root': { backgroundColor: '#f5f5f5' } }}
                   />
                 </Grid>
-
                 {/* AI Side */}
                 {!hideAI && (
                   <Grid item xs={6}>
@@ -591,7 +554,6 @@ const Info = ({
             </Box>
           ))}
         </DialogContent>
-
         <DialogActions sx={{ px: 3, py: 2, gap: 1 }}>
           <Button variant="outlined" onClick={handleCloseEnhanceModal}>Cancel</Button>
           <Button
@@ -610,5 +572,4 @@ const Info = ({
     </>
   );
 };
-
 export default Info;

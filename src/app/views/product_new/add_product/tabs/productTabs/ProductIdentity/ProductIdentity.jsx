@@ -1,4 +1,3 @@
-// ProductIdentity/ProductIdentity.jsx
 import * as React from "react";
 import FormControl from "@mui/material/FormControl";
 import {
@@ -21,7 +20,6 @@ import ThumbDownOutlinedIcon from "@mui/icons-material/ThumbDownOutlined";
 import { ApiService } from "app/services/ApiService";
 import { apiEndpoints } from "app/constant/apiEndpoints";
 import { localStorageKey } from "app/constant/localStorageKey";
-import { useEffect, useState } from "react";
 import { useProductFormStore } from "../../../../states/useAddProducts";
 import ProductTitleEditor from "./components/ProductTitleEditor";
 import ControlPointIcon from "@mui/icons-material/ControlPoint";
@@ -30,7 +28,7 @@ import CropImage from "./components/images/CropImage";
 import VideoGrid from "./components/videos/VideoGrid";
 import { v4 as uuidv4 } from "uuid";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
-
+import { useEffect, useState, useCallback } from "react";
 const ProductIdentity = ({ store, currentTab, tabIndex }) => {
     const {
         formData,
@@ -45,61 +43,77 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
         allCategory,
         allVendors,
     } = useProductFormStore();
-
     const [openEdit, setOpenEdit] = useState(false);
     const imageInputRef = React.useRef(null);
     const videoInputRef = React.useRef(null);
+    const previewBoxRef = React.useRef(null);
     const [enhanceModalOpen, setEnhanceModalOpen] = useState(false);
     const [hideAI, setHideAI] = useState(false);
     const [enhanceFields, setEnhanceFields] = useState([]);
-
+    const [previewDragging, setPreviewDragging] = useState(false);
+    const [previewDragStart, setPreviewDragStart] = useState({ x: 0, y: 0 });
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
     const designation_id = localStorage.getItem(localStorageKey.designation_id);
-
-    // Get primary image
     const primaryImage = formData.images.find(img => img.isPrimary) || formData.images[0];
-
     const handleFieldChange = (field, value) => {
         setFormData({ [field]: value });
-
-        // Clear error when field is updated
         if (inputErrors[field]) {
             setInputErrors({ [field]: "" });
         }
     };
-
+    const handlePreviewMouseDown = (e) => {
+        e.preventDefault();
+        setPreviewDragging(true);
+        setPreviewDragStart({
+            x: e.clientX - (formData.transformData?.x || 0),  // ✅
+            y: e.clientY - (formData.transformData?.y || 0)   // ✅
+        });
+    };
+    const handlePreviewMouseMove = (e) => {
+        if (!previewDragging) return;
+        setFormData({                                          // ✅
+            transformData: {
+                ...formData.transformData,
+                x: e.clientX - previewDragStart.x,
+                y: e.clientY - previewDragStart.y
+            }
+        });
+    };
+    const handlePreviewMouseUp = () => setPreviewDragging(false);
+    const handlePreviewWheel = useCallback((e) => {
+        e.preventDefault();
+        const delta = -e.deltaY / 500;
+        setFormData(prev => ({                                 // ✅
+            transformData: {
+                ...prev.transformData,
+                scale: Math.max(1, Math.min((prev.transformData?.scale || 1) + delta, 5))
+            }
+        }));
+    }, []);
     const handleVendorChange = (newValue) => {
         handleFieldChange('vendor', newValue ? newValue._id : "");
         handleFieldChange('shipingTemplates', ""); // clear shippingTemplates field on vendor change 
         handleFieldChange('exchangePolicy', ""); // clear exchangePolicy field on vendor change
     };
-
     const handleCategoryChange = (newValue) => {
         handleFieldChange('subCategory', newValue ? newValue._id : "");
     };
-
     const handleBrandChange = (newValue) => {
         handleFieldChange('brandName', newValue ? newValue._id : "");
     };
-
     const handleSKUChange = (event) => {
         const { value } = event.target;
         handleFieldChange('sellerSku', value);
     };
-
-    // Image handling functions
     const handleImageButtonClick = () => {
         imageInputRef.current.click();
     };
-
     const handleImageUpload = (event) => {
         const files = Array.from(event.target.files);
-
         if (formData.images.length + files.length > 15) {
             handleOpen("error", "Maximum 15 images allowed");
             return;
         }
-
         const newImages = files.map((file, index) => ({
             src: URL.createObjectURL(file),
             file: file,
@@ -107,77 +121,53 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
             isPrimary: formData.images.length === 0 && index === 0,
             sortOrder: formData.images.length + index + 1
         }));
-
         const updatedImages = [...formData.images, ...newImages];
         const updatedAltText = [...altText, ...new Array(files.length).fill("")];
-
-        // Update sort orders for all images
         updatedImages.forEach((img, idx) => {
             img.sortOrder = idx + 1;
             img.isPrimary = idx === 0;
         });
-
         setFormData({ images: updatedImages });
         setAltText(updatedAltText);
-
-        // Clear the file input
         event.target.value = '';
     };
-
-    // SIMPLE Image removal function - just remove by index
     const handleRemoveImage = (imageIndex) => {
-        // Create new arrays without the removed image
         const updatedImages = formData.images.filter((_, index) => index !== imageIndex);
         const updatedAltText = altText.filter((_, index) => index !== imageIndex);
-
-        // Update sort orders and primary image
         updatedImages.forEach((img, idx) => {
             img.sortOrder = idx + 1;
             img.isPrimary = idx === 0;
         });
-
         setFormData({ images: updatedImages });
         setAltText(updatedAltText);
-
     };
-
-    // Video handling functions
     const handleVideoButtonClick = () => {
         videoInputRef.current.click();
     };
-
     const handleVideoUpload = (event) => {
         const files = Array.from(event.target.files);
-
         if (formData.videos.length + files.length > 2) {
             handleOpen("error", "Maximum 2 videos allowed");
             return;
         }
-
         const newVideos = files.map((file, index) => ({
             src: URL.createObjectURL(file),
             file: file,
             _id: uuidv4(),
             sortOrder: formData.videos.length + index + 1
         }));
-
         const updatedVideos = [...formData.videos, ...newVideos];
-
         // Update sort orders for all videos
         updatedVideos.forEach((video, idx) => {
             video.sortOrder = idx + 1;
         });
-
         setFormData({ videos: updatedVideos });
-
         // Clear the file input
         event.target.value = '';
     };
-
     // Video removal function
     const handleRemoveVideo = (videoId) => {
         const updatedVideos = formData.videos.filter(video => video._id !== videoId);
-
         // Update sort orders
         updatedVideos.forEach((video, idx) => {
             video.sortOrder = idx + 1;
@@ -185,7 +175,6 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
 
         setFormData({ videos: updatedVideos });
     };
-
     const handleEditPopup = () => {
         if (formData.images.length === 0) {
 
@@ -194,7 +183,6 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
         }
         setOpenEdit(true);
     };
-
     // Fetch variations when category changes
     const getCategoryData = async () => {
         if (formData?.subCategory) {
@@ -208,8 +196,6 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
             }
         }
     };
-
-
     const handleOpenEnhanceModal = () => {
         setHideAI(true);
         const stripHtml = (html) => {
@@ -239,13 +225,11 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
         ]);
         setEnhanceModalOpen(true);
     };
-
     const handleCloseEnhanceModal = () => {
         setEnhanceModalOpen(false);
         setHideAI(true);
         setEnhanceFields([]);
     };
-
     const handleGeneratedChange = (id, value) => {
         setEnhanceFields(prev => prev.map(f =>
             f.id === id ? { ...f, generated: value } : f
@@ -264,16 +248,19 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
             console.error("Error fetching dynamic fields:", error);
         }
     };
-
     useEffect(() => {
         getCategoryData();
         fetchDynamicFields();
     }, [formData?.subCategory]);
-
+    useEffect(() => {
+        const el = previewBoxRef.current;
+        if (!el) return;
+        el.addEventListener("wheel", handlePreviewWheel, { passive: false });
+        return () => el.removeEventListener("wheel", handlePreviewWheel);
+    }, [handlePreviewWheel]);
     const handleEditClose = () => {
         setOpenEdit(false);
     };
-
     const handleOpen = (type, message) => {
         console.log(`${type}: ${message}`);
         alert(`${type}: ${message}`);
@@ -310,7 +297,6 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                         Shop Name
                         <span style={{ color: "red", marginLeft: "3px" }}>*</span>:
                     </Box>
-
                     <Box sx={{ width: "50%" }}>
                         <Autocomplete
                             options={allVendors}
@@ -339,7 +325,6 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                             isOptionEqualToValue={(option, value) => option._id === value._id}
                         />
                     </Box>
-
                     <Button
                         variant="contained"
                         onClick={handleOpenEnhanceModal}
@@ -358,7 +343,6 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                     </Button>
                 </Box>
             )}
-
             {/* Product Title Field */}
             <Box
                 sx={{
@@ -398,7 +382,6 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                     )}
                 </Box>
             </Box>
-
             {/* Category Field */}
             <Box
                 sx={{
@@ -449,7 +432,6 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                     </FormControl>
                 </Box>
             </Box>
-
             {/* Brand Name Field */}
             <Box
                 sx={{
@@ -536,7 +518,6 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                     </FormControl>
                 </Box>
             </Box>
-
             {/* Images Section */}
             <Box
                 sx={{
@@ -599,13 +580,11 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                             Edit
                         </Button>
                     </Box>
-
                     {/* Image Count and Status */}
                     <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
                         {formData.images.length} / 15 images uploaded
                         {formData.images.length > 0 && ` • First image is primary`}
                     </Typography>
-
                     {/* Primary Image Preview and Image Grid in same row */}
                     {formData.images.length > 0 && (
                         <Grid container spacing={2} sx={{ mb: 2 }}>
@@ -619,7 +598,6 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                                     onRemoveImage={handleRemoveImage}
                                 />
                             </Grid>
-
                             {/* Primary Image Preview - Right Side */}
                             <Grid item xs={12} md={4}>
                                 <Card
@@ -639,9 +617,9 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                                     >
                                         Primary Image Preview
                                     </Typography>
-
                                     {/* Zoomed Preview */}
                                     <Box
+                                        ref={previewBoxRef}
                                         sx={{
                                             height: "100%",
                                             aspectRatio: "1/1",
@@ -651,37 +629,45 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                                             bgcolor: "#f5f5f5",
                                             display: "flex",
                                             alignItems: "center",
-                                            justifyContent: "center"
+                                            justifyContent: "center",
+                                            cursor: 'default', // ✅
                                         }}
                                     >
                                         <img
                                             src={primaryImage?.src}
                                             alt="Primary preview"
+                                            draggable={false}
                                             style={{
-                                                transform: `translate3d(${formData.transformData?.x || 0}px, ${formData.transformData?.y || 0}px, 0) scale(${formData.transformData?.scale || 1})`,
+                                                transform: `translate3d(
+            ${formData.transformData?.x || 0}px, 
+            ${formData.transformData?.y || 0}px, 0) 
+            scale(${formData.transformData?.scale || 1})`,
                                                 transformOrigin: 'center center',
                                                 maxWidth: '100%',
                                                 maxHeight: '100%',
                                                 aspectRatio: "1/1",
-                                                objectFit: 'contain'
+                                                objectFit: 'contain',
+                                                userSelect: 'none',
                                             }}
                                         />
                                     </Box>
-
                                     {/* Transform Data Info */}
                                     <Box sx={{ mt: 1, textAlign: "center" }}>
                                         <Typography variant="caption" color="textSecondary">
-                                            Scale: {(formData.transformData?.scale || 1).toFixed(1)}x
+                                            Scroll to zoom • Drag to pan
                                         </Typography>
-                                        <Typography variant="caption" color="textSecondary" display="block">
-                                            Position: X:{formData.transformData?.x || 0}, Y:{formData.transformData?.y || 0}
-                                        </Typography>
+                                        <Button
+                                            size="small"
+                                            onClick={() => setFormData({ transformData: { scale: 1, x: 0, y: 0 } })}  // ✅
+                                            sx={{ display: 'block', mx: 'auto', mt: 0.5 }}
+                                        >
+                                            Reset
+                                        </Button>
                                     </Box>
                                 </Card>
                             </Grid>
                         </Grid>
                     )}
-
                     {/* Show ImageGrid alone when no images */}
                     {formData.images.length === 0 && (
                         <ImageGrid
@@ -692,7 +678,6 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                             onRemoveImage={handleRemoveImage}
                         />
                     )}
-
                     {inputErrors.images && (
                         <Typography
                             sx={{
@@ -706,7 +691,6 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                     )}
                 </Box>
             </Box>
-
             {/* Videos Section */}
             <Box
                 sx={{
@@ -753,12 +737,10 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                             />
                         </Typography>
                     </Box>
-
                     {/* Video Count and Status */}
                     <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
                         {formData.videos.length} / 2 videos uploaded
                     </Typography>
-
                     {/* Video Grid Preview */}
                     <VideoGrid
                         videos={formData.videos}
@@ -767,14 +749,12 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                     />
                 </Box>
             </Box>
-
             {/* Crop Image Modal */}
             <CropImage
                 openEdit={openEdit}
                 handleEditClose={handleEditClose}
                 handleOpen={handleOpen}
             />
-
             {/* ===== ENHANCE MODAL ===== */}
             <Dialog
                 open={enhanceModalOpen}
@@ -822,7 +802,6 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                         </Typography>
                     </Box>
                 </DialogTitle>
-
                 <DialogContent dividers sx={{ pt: 2 }}>
                     {/* Hide AI Toggle */}
                     <Box sx={{
@@ -845,7 +824,6 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                             }}
                         />
                     </Box>
-
                     {/* Fields */}
                     {enhanceFields.map((field) => (
                         <Box
@@ -882,7 +860,6 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                                         <Typography variant="subtitle1" fontWeight={700}>
                                             {field.label}
                                         </Typography>
-
                                         <Typography
                                             variant="caption"
                                             sx={{ color: "text.secondary", fontWeight: 600 }}
@@ -913,7 +890,6 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                                         }}
                                     />
                                 </Grid>
-
                                 {/* AI Side */}
                                 {!hideAI && (
                                     <Grid
@@ -937,7 +913,6 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                                             >
                                                 {field.label}
                                             </Typography>
-
                                             <Typography
                                                 variant="caption"
                                                 sx={{ color: "text.secondary", fontWeight: 600 }}
@@ -983,7 +958,6 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                         </Box>
                     ))}
                 </DialogContent>
-
                 <DialogActions sx={{ px: 3, py: 2, gap: 1 }}>
                     <Button variant="outlined" onClick={handleCloseEnhanceModal}>
                         Cancel
@@ -994,7 +968,6 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                             const titleField = enhanceFields.find(f => f.label === "Title");
                             const metaField = enhanceFields.find(f => f.label === "Meta Description");
                             const searchField = enhanceFields.find(f => f.label === "Search Terms");
-
                             setFormData({
                                 productTitle: titleField?.generated || titleField?.original || "",
                                 metaDescription: metaField?.generated || metaField?.original || "",
@@ -1003,7 +976,6 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                                     .map(item => item.trim())
                                     .filter(Boolean),
                             });
-
                             handleCloseEnhanceModal();
                         }}
                         sx={{
@@ -1019,5 +991,4 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
         </Box>
     );
 };
-
 export default ProductIdentity;
