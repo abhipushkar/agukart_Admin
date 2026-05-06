@@ -47,7 +47,8 @@ import {
     Apps as AppsIcon,
     ExpandMore as ExpandMoreIcon,
     ExpandLess as ExpandLessIcon,
-    DragIndicator as DragIndicatorIcon
+    DragIndicator as DragIndicatorIcon,
+    Reorder as ReorderIcon
 } from "@mui/icons-material";
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { ApiService } from "../../services/ApiService";
@@ -865,7 +866,7 @@ const AddAttribute = () => {
                     <Typography sx={{ fontWeight: "600", fontSize: "18px" }}>Go To</Typography>
                 </Stack>
                 <Divider />
-                <Box sx={{ ml: "24px", mt: "16px" }}>
+                <Box sx={{ ml: "24px", mt: "16px", display: "flex", flexDirection: "column", gap: 2, alignItems: "flex-start" }}>
                     <Button
                         onClick={() => navigate(groupId ? `${ROUTE_CONSTANT.catalog.attribute.list}?groupId=${groupId}` : ROUTE_CONSTANT.catalog.attribute.group)}
                         startIcon={<AppsIcon />}
@@ -873,6 +874,13 @@ const AddAttribute = () => {
                     >
                         Attributes List
                     </Button>
+                    {/* <Button
+                        onClick={() => navigate(ROUTE_CONSTANT.catalog.attribute.listAll)}
+                        startIcon={<ReorderIcon />}
+                        variant="contained"
+                    >
+                        All Attributes
+                    </Button> */}
                 </Box>
             </Box>
 

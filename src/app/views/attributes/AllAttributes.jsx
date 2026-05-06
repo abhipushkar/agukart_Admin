@@ -31,11 +31,8 @@ import {
     Add as AddIcon,
     Home as HomeIcon,
     List as ListIcon,
-    Apps as AppsIcon,
-    DragIndicator as DragIndicatorIcon,
-    Reorder as ReorderIcon
+    Apps as AppsIcon
 } from "@mui/icons-material";
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { ROUTE_CONSTANT } from "../../constant/routeContanst";
 import { ApiService } from "../../services/ApiService";
 import ConfirmModal from "../../components/ConfirmModal";
@@ -43,7 +40,6 @@ import debounce from "lodash.debounce";
 
 // Sorting options
 const SORTING_OPTIONS = [
-    { value: { sortBy: 'attributeOrder', order: 1 }, label: 'S.No.' },
     { value: { sortBy: 'name', order: 1 }, label: 'Name (A to Z)' },
     { value: { sortBy: 'name', order: -1 }, label: 'Name (Z to A)' },
     { value: { sortBy: 'createdAt', order: -1 }, label: 'Date Created (New to Old)' },
@@ -51,27 +47,22 @@ const SORTING_OPTIONS = [
     { value: { sortBy: 'updatedAt', order: -1 }, label: 'Last Updated' },
 ];
 
-const AttributesList = () => {
+const AllAttributes = () => {
     // State management
     const [attributes, setAttributes] = useState([]);
-    const [groupData, setGroupData] = useState(null);
     const [totalCount, setTotalCount] = useState(0);
     const [search, setSearch] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [selectedAttribute, setSelectedAttribute] = useState(null);
     const [loading, setLoading] = useState(true);
     const [apiLoading, setApiLoading] = useState(false);
-    const groupId = new URLSearchParams(window.location.search).get("groupId");
 
     // Pagination state
     const [page, setPage] = useState(0);
-    const [rowsPerPage, setRowsPerPage] = useState(100);
+    const [rowsPerPage, setRowsPerPage] = useState(200);
 
     // Sorting state
-    const [sorting, setSorting] = useState({ sortBy: 'attributeOrder', order: 1 });
-
-    const [hasOrderChanges, setHasOrderChanges] = useState(false);
-    const [pendingReorderData, setPendingReorderData] = useState([]);
+    const [sorting, setSorting] = useState({ sortBy: "name", order: 1 });
 
     // UI state
     const navigate = useNavigate();
@@ -128,7 +119,7 @@ const AttributesList = () => {
                 }));
             }
 
-            const url = `get-attribute-list?groupId=${groupId}&${params.toString()}`;
+            const url = `get-attribute-list?${params.toString()}&fulldata=true`;
             const response = await ApiService.get(url, accessToken);
 
             if (response.data.success) {
@@ -136,14 +127,13 @@ const AttributesList = () => {
                 const pagination = response.data.pagination || {};
 
                 // Add serial numbers based on current page
-                // const attributesWithSerial = attributesData.map((attr, index) => ({
-                //     ...attr,
-                //     serialNumber: (page * rowsPerPage) + index + 1
-                // }));
+                const attributesWithSerial = attributesData.map((attr, index) => ({
+                    ...attr,
+                    serialNumber: (page * rowsPerPage) + index + 1
+                }));
 
-                setAttributes(attributesData);
-                setTotalCount(pagination.total || attributesData.length || 0);
-                setGroupData(response.data.group);
+                setAttributes(attributesWithSerial);
+                setTotalCount(pagination.totalDocs || attributesData.length || 0);
             } else {
                 console.error("Failed to fetch attributes:", response.data.message);
                 setAttributes([]);
@@ -189,76 +179,6 @@ const AttributesList = () => {
             confirmModal.onConfirm();
         }
         closeConfirmModal();
-    };
-
-    // Reorder function for drag and drop
-    const reorder = (list, startIndex, endIndex) => {
-        const result = Array.from(list);
-        const [removed] = result.splice(startIndex, 1);
-        result.splice(endIndex, 0, removed);
-
-        // Update order based on new position
-        return result.map((item, index) => ({
-            ...item,
-            order: index + 1
-        }));
-    };
-
-    // Drag and Drop Handler
-    const onDragEnd = (result) => {
-        if (!result.destination) {
-            return;
-        }
-
-        const { source, destination } = result;
-
-        // Get current displayed attributes
-        const currentDisplayAttributes = [...attributes];
-
-        // Reorder the displayed attributes
-        const reorderedAttributes = reorder(
-            currentDisplayAttributes,
-            source.index,
-            destination.index
-        );
-
-        setAttributes(reorderedAttributes);
-
-        // Prepare reorder data for ALL attributes in the current display order
-        const reorderPayload = reorderedAttributes.map((attr, index) => ({
-            _id: attr._id,
-            attributeOrder: index + 1,
-            name: attr.name,
-        }));
-
-        setPendingReorderData(reorderPayload);
-        setHasOrderChanges(true);
-    };
-
-    // Handle reorder save
-    const handleSaveReorder = async () => {
-        if (!pendingReorderData.length) return;
-
-        setApiLoading(true);
-        try {
-            const accessToken = localStorage.getItem("auth_key");
-            const response = await ApiService.post(`reorder-attribute/${groupId}`, pendingReorderData, accessToken);
-
-            if (response.data.success) {
-                showConfirmModal("success", "Attribute order updated successfully!");
-                setHasOrderChanges(false);
-                setPendingReorderData([]);
-                // Refresh the list to get updated data
-                await fetchAttributes();
-            } else {
-                showConfirmModal("error", response.data.message || "Failed to update order");
-            }
-        } catch (error) {
-            console.error("Error updating order:", error);
-            showConfirmModal("error", error.response?.data?.message || "Error updating order");
-        } finally {
-            setApiLoading(false);
-        }
     };
 
     // Status change handlers
@@ -420,13 +340,13 @@ const AttributesList = () => {
     return (
         <Box sx={{ p: 3 }}>
             <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 2 }}>
-                <Link color="inherit" href="#" sx={{ display: 'flex', alignItems: 'center' }}>
+                <Link color="inherit" href="/" sx={{ display: 'flex', alignItems: 'center' }}>
                     <HomeIcon sx={{ mr: 0.5 }} fontSize="inherit" />
                     Home
                 </Link>
                 <Link color="inherit" href="catalog/attribute-group" sx={{ display: 'flex', alignItems: 'center' }}>
                     <ListIcon sx={{ mr: 0.5 }} fontSize="inherit" />
-                    Attribute Groups
+                    Groups
                 </Link>
                 <Typography color="text.primary">Attributes List</Typography>
             </Breadcrumbs>
@@ -449,7 +369,7 @@ const AttributesList = () => {
             </Box>
 
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
-                <Typography variant="h4">{groupData?.name || "Attributes List"}</Typography>
+                <Typography variant="h4">All Attributes</Typography>
                 <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
                     {/* Sorting Filter */}
                     <FormControl size="small" sx={{ minWidth: 200 }}>
@@ -488,7 +408,7 @@ const AttributesList = () => {
                         placeholder="Search by name..."
                     />
 
-                    <Link href={`${ROUTE_CONSTANT.catalog.attribute.add}?groupId=${groupId}`} underline="none">
+                    <Link href={ROUTE_CONSTANT.catalog.attribute.add} underline="none">
                         <Button
                             variant="contained"
                             startIcon={<AddIcon />}
@@ -504,14 +424,6 @@ const AttributesList = () => {
                     >
                         Export Attributes
                     </Button>
-
-                    {/* <Button
-                        onClick={() => navigate(ROUTE_CONSTANT.catalog.attribute.listAll)}
-                        startIcon={<ReorderIcon />}
-                        variant="outlined"
-                    >
-                        All Attributes
-                    </Button> */}
                 </Box>
             </Box>
 
@@ -530,139 +442,92 @@ const AttributesList = () => {
                         opacity: loading ? 0.6 : 1,
                         transition: 'opacity 0.3s ease'
                     }}
+
                     component={Paper}
                 >
-                    <DragDropContext onDragEnd={onDragEnd}>
-                        <Table>
-                            <TableHead>
+                    <Table>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell sx={{ width: "70px" }}>S.No</TableCell>
+                                <TableCell>Name</TableCell>
+                                <TableCell>Type</TableCell>
+                                <TableCell>Group</TableCell>
+                                <TableCell sx={{ width: "10%" }}>Status</TableCell>
+                                <TableCell sx={{ width: "12%" }}>View on Product Page</TableCell>
+                                <TableCell sx={{ width: "12%" }}>View in Filters</TableCell>
+                                <TableCell sx={{ width: "10%" }}>Action</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {attributes.length === 0 ? (
                                 <TableRow>
-                                    <TableCell sx={{ width: '50px' }}>Drag</TableCell>
-                                    <TableCell sx={{ width: '100px' }}>S.No</TableCell>
-                                    <TableCell>Name</TableCell>
-                                    <TableCell>Type</TableCell>
-                                    <TableCell>Status</TableCell>
-                                    <TableCell>View on Product Page</TableCell>
-                                    <TableCell>View in Filters</TableCell>
-                                    <TableCell>Action</TableCell>
+                                    <TableCell colSpan={7} align="center">
+                                        {loading ? 'Loading attributes...' : 'No attributes found'}
+                                    </TableCell>
                                 </TableRow>
-                            </TableHead>
-                            <Droppable droppableId="attributes" type="attributes">
-                                {(provided) => (
-                                    <TableBody
-                                        ref={provided.innerRef}
-                                        {...provided.droppableProps}
-                                    >
-                                        {attributes.length === 0 ? (
-                                            <TableRow>
-                                                <TableCell colSpan={8} align="center">
-                                                    {loading ? 'Loading attributes...' : 'No attributes found'}
-                                                </TableCell>
-                                            </TableRow>
-                                        ) : (
-                                            attributes.map((attr, index) => (
-                                                <Draggable
-                                                    key={attr._id}
-                                                    draggableId={attr._id.toString()}
-                                                    index={index}
-                                                    isDragDisabled={apiLoading}
+                            ) : (
+                                attributes.map((attr) => (
+                                    <TableRow key={attr._id}>
+                                        <TableCell>{attr.serialNumber}</TableCell>
+                                        <TableCell>{attr.name}</TableCell>
+                                        <TableCell>{attr.type}</TableCell>
+                                        <TableCell>{attr.groupName}</TableCell>
+                                        <TableCell>
+                                            <Switch
+                                                checked={attr.status}
+                                                onChange={() => handleStatusChange(attr._id)}
+                                                disabled={apiLoading}
+                                            />
+                                        </TableCell>
+                                        <TableCell>
+                                            <Switch
+                                                checked={attr.viewOnProductPage}
+                                                onChange={() => handleViewOnProductChange(attr._id)}
+                                                disabled={apiLoading}
+                                            />
+                                        </TableCell>
+                                        <TableCell>
+                                            <Switch
+                                                checked={attr.viewInFilters}
+                                                onChange={() => handleViewInFiltersChange(attr._id)}
+                                                disabled={apiLoading}
+                                            />
+                                        </TableCell>
+                                        <TableCell>
+                                            <Link href={`${ROUTE_CONSTANT.catalog.attribute.add}?id=${attr._id}&groupId=${attr.groupId}`}>
+                                                <IconButton
+                                                    color="primary"
+                                                    disabled={apiLoading}
                                                 >
-                                                    {(provided, snapshot) => (
-                                                        <TableRow
-                                                            ref={provided.innerRef}
-                                                            {...provided.draggableProps}
-                                                            style={{
-                                                                ...provided.draggableProps.style,
-                                                                backgroundColor: snapshot.isDragging ? '#f5f5f5' : 'inherit',
-                                                            }}
-                                                        >
-                                                            <TableCell>
-                                                                <IconButton
-                                                                    {...provided.dragHandleProps}
-                                                                    size="small"
-                                                                    sx={{ cursor: 'grab' }}
-                                                                    disabled={apiLoading}
-                                                                >
-                                                                    <DragIndicatorIcon />
-                                                                </IconButton>
-                                                            </TableCell>
-                                                            <TableCell>{attr.attributeOrder}</TableCell>
-                                                            <TableCell>{attr.name}</TableCell>
-                                                            <TableCell>{attr.type}</TableCell>
-                                                            <TableCell>
-                                                                <Switch
-                                                                    checked={attr.status}
-                                                                    onChange={() => handleStatusChange(attr._id)}
-                                                                    disabled={apiLoading}
-                                                                />
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                <Switch
-                                                                    checked={attr.viewOnProductPage}
-                                                                    onChange={() => handleViewOnProductChange(attr._id)}
-                                                                    disabled={apiLoading}
-                                                                />
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                <Switch
-                                                                    checked={attr.viewInFilters}
-                                                                    onChange={() => handleViewInFiltersChange(attr._id)}
-                                                                    disabled={apiLoading}
-                                                                />
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                <Link href={`${ROUTE_CONSTANT.catalog.attribute.add}?id=${attr._id}&groupId=${groupId}`} underline="none">
-                                                                    <IconButton
-                                                                        color="primary"
-                                                                        disabled={apiLoading}
-                                                                    >
-                                                                        <EditIcon />
-                                                                    </IconButton>
-                                                                </Link>
-                                                                <IconButton
-                                                                    onClick={() => handleDeleteClick(attr)}
-                                                                    color="error"
-                                                                    disabled={apiLoading}
-                                                                >
-                                                                    <DeleteIcon />
-                                                                </IconButton>
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    )}
-                                                </Draggable>
-                                            ))
-                                        )}
-                                        {provided.placeholder}
-                                    </TableBody>
-                                )}
-                            </Droppable>
-                        </Table>
-                    </DragDropContext>
+                                                    <EditIcon />
+                                                </IconButton>
+                                            </Link>
+                                            <IconButton
+                                                onClick={() => handleDeleteClick(attr)}
+                                                color="error"
+                                                disabled={apiLoading}
+                                            >
+                                                <DeleteIcon />
+                                            </IconButton>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
                 </TableContainer>
 
-                <Box display={"flex"} justifyContent={"space-between"} alignItems={"center"} my={2}>
-                    {hasOrderChanges && (
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={handleSaveReorder}
-                            disabled={apiLoading}
-                            startIcon={apiLoading ? <CircularProgress size={20} /> : null}
-                        >
-                            Update Order
-                        </Button>
-                    )}
-                    <TablePagination
-                        rowsPerPageOptions={[10, 25, 50, 100, 200]}
-                        component="div"
-                        count={totalCount}
-                        rowsPerPage={rowsPerPage}
-                        page={page}
-                        onPageChange={handleChangePage}
-                        onRowsPerPageChange={handleChangeRowsPerPage}
-                        disabled={loading || apiLoading}
-                        sx={{ ml: "auto" }}
-                    />
-                </Box>
+                {/* Pagination */}
+                <TablePagination
+                    rowsPerPageOptions={[25, 50, 75, 100, 200]}
+                    component="div"
+                    count={totalCount} // Changed from attributes.length to totalCount
+                    rowsPerPage={rowsPerPage}
+                    page={page}
+                    onPageChange={handleChangePage}
+                    onRowsPerPageChange={handleChangeRowsPerPage}
+                    disabled={loading || apiLoading}
+                />
             </Box>
 
             {/* Confirm Modal */}
@@ -677,4 +542,4 @@ const AttributesList = () => {
     );
 };
 
-export default AttributesList;
+export default AllAttributes;
