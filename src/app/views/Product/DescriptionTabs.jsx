@@ -25,7 +25,6 @@ import "./index.css"; // import your custom styles
 import { set } from "lodash";
 import VideoGrid from "./VideoGrid";
 import CropImage from "./CropImage";
-
 const Item = styled(Paper)(({ theme }) => ({
   backgroundColor: "#fff",
   ...theme.typography.body2,
@@ -36,7 +35,6 @@ const Item = styled(Paper)(({ theme }) => ({
     backgroundColor: "#1A2027"
   })
 }));
-
 const DescriptionTabs = ({
   formData,
   setFormData,
@@ -56,40 +54,32 @@ const DescriptionTabs = ({
 }) => {
   const [des, setDes] = useState(formData.productDescription);
   const [bullet, setBullet] = useState(formData.bulletPoints);
-
   const [images, setImages] = useState(formData.images);
   const [videos, setVideos] = useState(formData.videos);
   const handleChange = (e, name) => {
     setFormData((prv) => ({ ...prv, name: e.target.value }));
   };
-
   const onDragEnd = (result) => {
     if (!result.destination) {
       return;
     }
-
     const reorderedImages = Array.from(images);
     const [removed] = reorderedImages.splice(result.source.index, 1);
     reorderedImages.splice(result.destination.index, 0, removed);
-
     setImages(reorderedImages);
   };
-
   const inputFileRef = React.useRef(null);
   const inputFileRef2 = React.useRef(null);
-
   const handleImageChange = (e) => {
     if (images.length === 10) {
       handleOpen("error", "Selected Images Must be 10");
       return;
     }
-
     const fileList = Array.from(e.target.files);
     if (fileList.length + images.length > 10) {
       handleOpen("error", "Selected Images Must be 10");
       return;
     }
-
     const imageUrls = fileList?.map((file, i) => {
       return {
         src: URL.createObjectURL(file),
@@ -98,20 +88,16 @@ const DescriptionTabs = ({
         _id: uuidv4(),
       };
     });
-
     imageUrls?.forEach((image, i) => {
       image.file.sortOrder = images.length + i + 1;
     });
-
     console.log({ imageUrls });
-
     setImages((prevImages) => [...prevImages, ...imageUrls]);
     setAltText((prevAltText) => [
       ...prevAltText,
       ...new Array(fileList.length).fill(""),
     ]);
   };
-
   const handleVideoChange = (e) => {
     console.log(e.target.files);
     if (formData.videos.length == 2) {
@@ -123,47 +109,37 @@ const DescriptionTabs = ({
       handleOpen("error", "Selected Videos must Be 2");
       return;
     }
-
     const videoList = fileList.map((file, i) => {
       return { src: URL.createObjectURL(file), id: images.length, file: file, _id: uuidv4() };
     });
-
     setVideos((prv) => [...prv, ...videoList]);
   };
-
   const handleButtonClick = () => {
     inputFileRef.current.click();
   };
   const handleButtonClick2 = () => {
     inputFileRef2.current.click();
   };
-
   React.useEffect(() => {
     setFormData((pre) => ({ ...pre, bulletPoints: bullet, productDescription: des }));
   }, [des, bullet]);
-
   React.useEffect(() => {
     if (images.length > 0) {
       setInputErrors((pre) => ({ ...pre, images: "" }));
     }
     setFormData((pre) => ({ ...pre, images: images }));
   }, [images]);
-
   React.useEffect(() => {
     setFormData((pre) => ({ ...pre, videos: videos }));
   }, [videos]);
   console.log({ formData });
-
   const [openEdit, setOpenEdit] = useState(false);
-
   const handleEditPopup = () => {
     setOpenEdit(true);
   };
-
   const handleEditClose = () => {
     setOpenEdit(false);
   };
-
   return (
     <>
       <Box
@@ -198,36 +174,11 @@ const DescriptionTabs = ({
                 width: "100%"
               }}
             >
-              {/* <TextField
-              multiline
-              rows={6}
-              sx={{
-                width: "100%"
-              }}
-            /> */}
-              {/* 
-              <ReactQuill
-                theme="snow"
-                onBlur={() => {
-                  if (!des || des === "<p><br></p>") {
-                    setInputErrors((prv) => ({ ...prv, des: "Description is Required" }));
-                  }
-                }}
-                value={des === "<p><br></p>" ? "" : des}
-                name="productDescription"
-                onChange={(e) => {
-                  setDes(e);
-                  setInputErrors((prv) => ({ ...prv, des: "" }));
-                }}
-                style={{ height: "100%" }}
-              /> */}
-
               <QuilDes
                 formData={formData}
                 setInputErrors={setInputErrors}
                 setFormData={setFormData}
               />
-
               {/* <MyEditor /> */}
             </Box>
             {inputErrors.des && (
@@ -242,7 +193,6 @@ const DescriptionTabs = ({
             )}
           </Box>
         </Box>
-
         <Box
           sx={{
             display: "flex",
@@ -271,29 +221,6 @@ const DescriptionTabs = ({
                 }}
               >
                 <QuillBulletPoints formData={formData} setFormData={setFormData} />
-
-                {/* <ReactQuill
-                  theme="snow"
-                  name="bulletPoints"
-                  value={bullet === "<p><br></p>" ? "" : bullet}
-                  onChange={(e) => {
-                    setBullet(e);
-                  }}
-                  style={{ height: "100%" }}
-                />
-                {inputErrors.bullet && (
-                  <Typography
-                    sx={{
-                      fontSize: "12px",
-                      color: "#FF3D57",
-                      marginLeft: "14px",
-                      marginRight: "14px",
-                      marginTop: "45px"
-                    }}
-                  >
-                    {inputErrors.bullet}
-                  </Typography>
-                )} */}
               </Box>
             </Box>
           </Box>
@@ -449,7 +376,6 @@ const DescriptionTabs = ({
             <VideoGrid videos={formData.videos} setVideos={setVideos} setFormData={setFormData} />
           </Box>
         </Box>
-
         <Box
           sx={{
             display: "flex",
@@ -487,7 +413,6 @@ const DescriptionTabs = ({
             >
               Next
             </Button>
-
             {queryId ? (
               <Button
                 endIcon={loading ? <CircularProgress size={15} /> : ""}
@@ -503,7 +428,6 @@ const DescriptionTabs = ({
           </Box>
         </Box>
       </Box>
-
       {/* editimage popup */}
       <CropImage
         openEdit={openEdit}
@@ -521,5 +445,4 @@ const DescriptionTabs = ({
     </>
   );
 };
-
 export default DescriptionTabs;

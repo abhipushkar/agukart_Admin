@@ -1,56 +1,40 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import dayjs from 'dayjs';
-
 export const useProductFormStore = create(
     persist(
         (set, get) => ({
             loading: false,
             draftLoading: false,
             loadingProductData: false,
-
             cancelDisabled: false,
-
             setLoading: (loading) => set({ loading }),
             setDraftLoading: (draftLoading) => set({ draftLoading }),
             setLoadingProductData: (loadingProductData) => set({ loadingProductData }),
             setCancelDisabled: (value) => set({ cancelDisabled: value }),
-
             brandList: [],
             setBrandList: (brandList => set((state) => ({ brandList }))),
-
             allCategory: [],
             setAllCategory: (allCategory) => set((state) => ({ allCategory })),
-
             allVendors: [],
             setAllVendors: (allVendors) => set((state) => ({ allVendors })),
-
             varientName: [],
             setVarientName: (varientName) => set((state) => ({
                 varientName: varientName
             })),
-
             shippingTemplateData: [],
             setShippingTemplateData: (shippingTemplateData) => set((state) => ({ shippingTemplateData })),
-
             exchangePolicy: [],
             setExchangePolicy: (exchangePolicy) => set((state) => ({ exchangePolicy })),
-
-            // NEW: Parent product data
             parentProductData: null,
             setParentProductData: (parentProductData) => set({ parentProductData }),
-
             deletedVariantImages: {},
             setDeletedVariantImages: (deletedVariantImages) => set({ deletedVariantImages }),
-
             deletedCustomizationImages: {},
             setDeletedCustomizationImages: (deletedCustomizationImages) => set({ deletedCustomizationImages }),
-
-            // ========== CUSTOMIZATION DELETE TRACKING ==========
             trackCustomizationImageDelete: (customizationIndex, optionIndex, imageIndex) => {
                 const state = get();
                 const deletedCustomizationImages = { ...state.deletedCustomizationImages };
-
                 const deleteKey = `${customizationIndex}-${optionIndex}`;
                 if (!deletedCustomizationImages[deleteKey]) {
                     deletedCustomizationImages[deleteKey] = [];
@@ -58,14 +42,11 @@ export const useProductFormStore = create(
                 if (!deletedCustomizationImages[deleteKey].includes(imageIndex)) {
                     deletedCustomizationImages[deleteKey].push(imageIndex);
                 }
-
                 set({ deletedCustomizationImages });
             },
-
             clearCustomizationImageDelete: (customizationIndex, optionIndex, imageIndex) => {
                 const state = get();
                 const deletedCustomizationImages = { ...state.deletedCustomizationImages };
-
                 const deleteKey = `${customizationIndex}-${optionIndex}`;
                 if (deletedCustomizationImages[deleteKey]) {
                     deletedCustomizationImages[deleteKey] = deletedCustomizationImages[deleteKey].filter(idx => idx !== imageIndex);
@@ -73,11 +54,22 @@ export const useProductFormStore = create(
                         delete deletedCustomizationImages[deleteKey];
                     }
                 }
-
                 set({ deletedCustomizationImages });
             },
-
-            // Form Data (main state)
+            updateVariantAltText: (variantName, attributeIndex, altText) => {
+                set((state) => {
+                    const updatedVariants = state.product_variants.map((variant) => {
+                        if (variant.variant_name !== variantName) return variant;
+                        const updatedAttributes = variant.variant_attributes.map((attr, idx) => {
+                            if (idx !== attributeIndex) return attr;
+                            return { ...attr, altText: altText };
+                        });
+                        return { ...variant, variant_attributes: updatedAttributes };
+                    });
+                    return { product_variants: updatedVariants };
+                });
+            },
+        
             formData: {
                 productTitle: "",
                 productType: "productType",
@@ -154,12 +146,10 @@ export const useProductFormStore = create(
                 deletedVariantIds: [],
                 inActiveReason: "",
             },
-
             dynamicFields: [],
             setDynamicField: (dynamicFields) => set((state) => (
                 { dynamicFields: dynamicFields }
             )),
-
             // Form Values for variations
             formValues: {
                 prices: "",
@@ -167,13 +157,10 @@ export const useProductFormStore = create(
                 isCheckedPrice: false,
                 isCheckedQuantity: false
             },
-
             // Variations Data
             variationsData: [],
-
             // Selected Variations
             selectedVariations: [],
-
             // Customization Data
             customizationData: {
                 label: "",
@@ -181,13 +168,10 @@ export const useProductFormStore = create(
                 isExpanded: false,
                 customizations: []
             },
-
             // ========== NEW: PRODUCT VARIANTS (for images) ==========
             product_variants: [], // NEW: Separate array for variant images
-
             // ========== KEEP: COMBINATIONS (for price/quantity only) ==========
             combinations: [], // Now only contains price/quantity data
-
             // Errors
             inputErrors: {
                 productTitle: "",
@@ -203,20 +187,15 @@ export const useProductFormStore = create(
                 productionTime: "",
                 exchangePolicy: ""
             },
-
             combinationError: {},
-
             // UI State
             showAll: false,
             altText: [],
             keys: [],
-
             // ========== ACTIONS ==========
-
             setFormData: (updates) => set((state) => ({
                 formData: { ...state.formData, ...updates }
             })),
-
             // NEW: Safe setter with copy mode protection
             safeSetFormData: (updates, isCopyMode = false) => set((state) => {
                 // If in copy mode, ensure parentProduct is null
@@ -224,22 +203,16 @@ export const useProductFormStore = create(
                     ...updates,
                     parentProduct: null
                 } : updates;
-
                 return {
                     formData: { ...state.formData, ...safeUpdates }
                 };
             }),
-
             setFormValues: (updates) => set((state) => ({
                 formValues: { ...state.formValues, ...updates }
             })),
-
             setVariationsData: (variationsData) => set({ variationsData }),
-
             setSelectedVariations: (selectedVariations) => set({ selectedVariations }),
-
             setCustomizationData: (customizationData) => set({ customizationData }),
-
             setVariantViewAll: (variantIndex, value) => {
                 const variants = get().product_variants || [];
                 const updated = [...variants];
@@ -251,20 +224,16 @@ export const useProductFormStore = create(
                 }
                 set({ product_variants: updated });
             },
-
             setCustomizationViewAll: (customizationIndex, value) => {
                 const customizationData = get().customizationData || {};
                 const customizations = customizationData.customizations || [];
-
                 const updatedCustomizations = [...customizations];
-
                 if (updatedCustomizations[customizationIndex]) {
                     updatedCustomizations[customizationIndex] = {
                         ...updatedCustomizations[customizationIndex],
                         viewAll: value
                     };
                 }
-
                 set({
                     customizationData: {
                         ...customizationData,
@@ -272,37 +241,29 @@ export const useProductFormStore = create(
                     }
                 });
             },
-
             // ========== NEW: PRODUCT VARIANTS ACTIONS ==========
             setProductVariants: (product_variants) => set({ product_variants }),
-
             // Initialize product_variants from selected variations - UPDATED FOR DATA PRESERVATION
             initializeProductVariants: (variationsData, allVariants) => {
                 const newProductVariants = [];
                 const existingVariantsMap = new Map();
                 const removedGuideMap = get().isGuideRemovedMap || {};
-
                 // Create a map of existing product_variants for quick lookup
                 get().product_variants.forEach(variant => {
                     const normalize = (str) => (str || "").trim().toLowerCase();
-
                     existingVariantsMap.set(normalize(variant.variant_name), variant);
                 });
-
                 variationsData.forEach((variation) => {
                     const normalize = (str) => (str || "").trim().toLowerCase();
-
                     const variantData = allVariants.find(
                         v => normalize(v.variant_name) === normalize(variation.name)
                     );
-
                     if (!variantData) {
                         console.warn("Variant not found:", variation.name);
                         return; // skip instead of breaking
                     }
                     if (variantData) {
                         const existingVariant = existingVariantsMap.get(normalize(variation.name));
-
                         // ========== ADDED: Extract guide data from API response ==========
                         // Check if variantData has guide properties from API
                         const hasApiGuideData = variantData.guide_name || variantData.guide_file || variantData.guide_description;
@@ -312,14 +273,12 @@ export const useProductFormStore = create(
                             guide_description: variantData.guide_description || "",
                             guide_type: variantData.guide_type || (variantData.guide_file ? "image" : "")
                         } : null;
-
                         if (existingVariant) {
                             // Preserve existing variant, but update attributes if needed
                             const updatedAttributes = variation.values.map(value => {
                                 const existingAttribute = existingVariant.variant_attributes.find(
                                     attr => normalize(attr.attribute) === normalize(value)
                                 );
-
                                 if (existingAttribute) {
                                     // Preserve all existing image data
                                     return existingAttribute;
@@ -328,7 +287,6 @@ export const useProductFormStore = create(
                                     const attributeData = variantData.variant_attribute.find(attr =>
                                         attr.attribute_value === value
                                     );
-
                                     return {
                                         attribute: value,
                                         main_images: attributeData?.main_images || [null, null, null],
@@ -342,7 +300,6 @@ export const useProductFormStore = create(
                                 }
                             });
                             const isRemoved = removedGuideMap[variation.name] === true;
-
                             newProductVariants.push({
                                 variant_name: variation.name,
                                 variant_attributes: updatedAttributes,
@@ -361,7 +318,6 @@ export const useProductFormStore = create(
                                 const attributeData = variantData.variant_attribute.find(attr =>
                                     attr.attribute_value === value
                                 );
-
                                 return {
                                     attribute: value,
                                     main_images: attributeData?.main_images || [null, null, null],
@@ -386,48 +342,36 @@ export const useProductFormStore = create(
                         }
                     }
                 });
-
                 const existingVariants = get().product_variants || [];
-
                 const normalize = (str) => (str || "").trim().toLowerCase();
-
                 // 👉 STEP 0: valid variant names (current truth)
                 const validVariantNames = new Set(
                     variationsData.map(v => normalize(v.name))
                 );
-
                 const mergedMap = new Map();
-
                 // 👉 STEP 1: keep ONLY valid old variants
                 existingVariants.forEach(v => {
                     const key = normalize(v.variant_name);
-
                     if (validVariantNames.has(key)) {
                         mergedMap.set(key, v);
                     }
                 });
-
                 // 👉 STEP 2: override/add new variants
                 newProductVariants.forEach(v => {
                     const key = normalize(v.variant_name);
                     mergedMap.set(key, v);
                 });
-
                 // 👉 STEP 3: set final
                 set({ product_variants: Array.from(mergedMap.values()) });
             },
-
             // ========== KEEP: COMBINATIONS ACTIONS (price/quantity only) ==========
             setCombinations: (combinations) => set({ combinations }),
-
             setInputErrors: (updates) => set((state) => ({
                 inputErrors: { ...state.inputErrors, ...updates }
             })),
-
             clearCombinationErrors: (type) =>
                 set((state) => {
                     const updatedErrors = { ...state.inputErrors };
-
                     Object.keys(updatedErrors).forEach((key) => {
                         if (type === "price" && key.startsWith("Price-")) {
                             delete updatedErrors[key];
@@ -436,27 +380,19 @@ export const useProductFormStore = create(
                             delete updatedErrors[key];
                         }
                     });
-
                     return { inputErrors: updatedErrors };
                 }),
-
             setCombinationError: (combinationError) => set({ combinationError }),
-
             setShowAll: (showAll) => set({ showAll }),
-
             setTransformData: (transformData) => set((state) => ({
                 formData: { ...state.formData, transformData }
             })),
-
             setAltText: (altText) => set({ altText }),
-
             setKeys: (keys) => set({ keys }),
-
             // ========== GUIDE HANDLERS (for variant guides) ==========
             handleGuideUpdate: (variantIndex, guideData) => {
                 const state = get();
                 const updatedProductVariants = [...state.product_variants];
-
                 const newProductVariants = updatedProductVariants.map((variant, vIndex) => {
                     if (vIndex === variantIndex) {
                         return {
@@ -466,12 +402,9 @@ export const useProductFormStore = create(
                     }
                     return variant;
                 });
-
                 set({ product_variants: newProductVariants });
             },
-
             isGuideRemovedMap: {},
-
             setIsGuideRemoved: (variantName, value) =>
                 set((state) => ({
                     isGuideRemovedMap: {
@@ -479,40 +412,29 @@ export const useProductFormStore = create(
                         [variantName]: value
                     }
                 })),
-
             setGuideRemovedMap: (map) => set({ isGuideRemovedMap: map }),
-
             handleGuideRemove: (variantIndex) => {
                 const state = get();
                 const variant = state.product_variants[variantIndex];
-
                 if (!variant) return;
-
                 const variantName = variant.variant_name;
-
                 state.setIsGuideRemoved(variantName, true);
-
                 const updated = state.product_variants.map((v, i) =>
                     i === variantIndex ? { ...v, guide: [] } : v
                 );
-
                 set({ product_variants: updated });
             },
-
             // ========== IMAGE HANDLERS (now work with product_variants) ==========
             handleImageUpload: (variantIndex, attributeIndex, imageKey, event) => {
                 const file = event.target.files[0];
                 if (!file) return;
-
                 const state = get();
                 const updatedProductVariants = [...state.product_variants];
                 const deletedVariantImages = { ...state.deletedVariantImages };
-
                 const newProductVariants = updatedProductVariants.map((variant, vIndex) => {
                     if (vIndex === variantIndex) {
                         const updatedAttributes = [...variant.variant_attributes];
                         const updatedAttribute = { ...updatedAttributes[attributeIndex] };
-
                         if (imageKey.startsWith('main_images')) {
                             const imgIndex = parseInt(imageKey.match(/\[(\d+)\]/)[1]);
                             const mainImages = [...(updatedAttribute.main_images || [])];
@@ -521,7 +443,6 @@ export const useProductFormStore = create(
                             }
                             mainImages[imgIndex] = file;
                             updatedAttribute.main_images = mainImages;
-
                             // If user uploads to a previously deleted index, remove it from delete tracking
                             const deleteKey = `${variantIndex}-${attributeIndex}`;
                             if (deletedVariantImages[deleteKey] && deletedVariantImages[deleteKey].includes(imgIndex)) {
@@ -533,7 +454,6 @@ export const useProductFormStore = create(
                         } else {
                             updatedAttribute[imageKey] = file;
                         }
-
                         updatedAttributes[attributeIndex] = updatedAttribute;
                         return {
                             ...variant,
@@ -542,27 +462,22 @@ export const useProductFormStore = create(
                     }
                     return variant;
                 });
-
                 set({
                     product_variants: newProductVariants,
                     deletedVariantImages
                 });
             },
-
             handleImageRemove: (variantIndex, attributeIndex, imageKey) => {
                 const state = get();
                 const updatedProductVariants = [...state.product_variants];
                 const deletedVariantImages = { ...state.deletedVariantImages };
-
                 const newProductVariants = updatedProductVariants.map((variant, vIndex) => {
                     if (vIndex === variantIndex) {
                         const updatedAttributes = [...variant.variant_attributes];
                         const updatedAttribute = { ...updatedAttributes[attributeIndex] };
-
                         if (imageKey.startsWith('main_images')) {
                             const imgIndex = parseInt(imageKey.match(/\[(\d+)\]/)[1]);
                             const mainImages = [...(updatedAttribute.main_images || [])];
-
                             if (mainImages[imgIndex]) {
                                 // Track the deleted index
                                 const deleteKey = `${variantIndex}-${attributeIndex}`;
@@ -572,7 +487,6 @@ export const useProductFormStore = create(
                                 if (!deletedVariantImages[deleteKey].includes(imgIndex)) {
                                     deletedVariantImages[deleteKey].push(imgIndex);
                                 }
-
                                 // Clear the image
                                 mainImages[imgIndex] = "__DELETE__";
                                 updatedAttribute.main_images = mainImages;
@@ -580,7 +494,6 @@ export const useProductFormStore = create(
                         } else {
                             updatedAttribute[imageKey] = "__DELETE__";
                         }
-
                         // Also remove any edit data for this image
                         if (imageKey === 'main_images[0]') {
                             updatedAttribute.edit_main_image = "";
@@ -589,7 +502,6 @@ export const useProductFormStore = create(
                             updatedAttribute.edit_preview_image = "";
                             updatedAttribute.edit_preview_image_data = "";
                         }
-
                         updatedAttributes[attributeIndex] = updatedAttribute;
                         return {
                             ...variant,
@@ -598,22 +510,18 @@ export const useProductFormStore = create(
                     }
                     return variant;
                 });
-
                 set({
                     product_variants: newProductVariants,
                     deletedVariantImages
                 });
             },
-
             handleEditImage: (variantIndex, attributeIndex, imageType, editedImage, imageIndex, editData) => {
                 const state = get();
                 const updatedProductVariants = [...state.product_variants];
-
                 const newProductVariants = updatedProductVariants.map((variant, vIndex) => {
                     if (vIndex === variantIndex) {
                         const updatedAttributes = [...variant.variant_attributes];
                         const updatedAttribute = { ...updatedAttributes[attributeIndex] };
-
                         if (imageType === 'main_images' && imageIndex === 0) {
                             updatedAttribute.edit_main_image = editedImage;
                             updatedAttribute.edit_main_image_data = editData;
@@ -621,7 +529,6 @@ export const useProductFormStore = create(
                             updatedAttribute.edit_preview_image = editedImage;
                             updatedAttribute.edit_preview_image_data = editData;
                         }
-
                         updatedAttributes[attributeIndex] = updatedAttribute;
                         return {
                             ...variant,
@@ -630,22 +537,18 @@ export const useProductFormStore = create(
                     }
                     return variant;
                 });
-
                 set({ product_variants: newProductVariants });
             },
-
             // ========== COMBINATION HANDLERS (price/quantity only) ==========
             handleToggle: (combindex, index) => {
                 const state = get();
                 const updatedCombinations = [...state.combinations];
-
                 const newCombinations = updatedCombinations.map((item, i) => {
                     if (i === combindex) {
                         const updatedCombos = [...item.combinations];
                         const updatedCombo = { ...updatedCombos[index] };
                         updatedCombo.isVisible = !updatedCombo.isVisible;
                         updatedCombos[index] = updatedCombo;
-
                         return {
                             ...item,
                             combinations: updatedCombos
@@ -653,23 +556,19 @@ export const useProductFormStore = create(
                     }
                     return item;
                 });
-
                 set({ combinations: newCombinations });
             },
-
             handleCombChange: (e, combindex, index) => {
                 const { name, value } = e.target;
                 if (/^\d*$/.test(value) && value.length <= 7) {
                     const state = get();
                     const updatedCombinations = [...state.combinations];
-
                     const newCombinations = updatedCombinations.map((item, i) => {
                         if (i === combindex) {
                             const updatedCombos = [...item.combinations];
                             const updatedCombo = { ...updatedCombos[index] };
                             updatedCombo[name] = value;
                             updatedCombos[index] = updatedCombo;
-
                             return {
                                 ...item,
                                 combinations: updatedCombos
@@ -677,15 +576,12 @@ export const useProductFormStore = create(
                         }
                         return item;
                     });
-
                     set({ combinations: newCombinations });
                 }
             },
-
             handleRowReorder: (combindex, sourceIndex, targetIndex) => {
                 const state = get();
                 const updatedCombinations = [...state.combinations];
-
                 const newCombinations = updatedCombinations.map((comb, i) => {
                     if (i === combindex) {
                         const updatedCombinations = [...comb.combinations];
@@ -695,95 +591,74 @@ export const useProductFormStore = create(
                     }
                     return comb;
                 });
-
                 set({ combinations: newCombinations });
             },
-
             // ========== SYNC FUNCTIONS: Reorder product_variants and sync to combinations ==========
             handleProductVariantReorder: (variantIndex, sourceIndex, targetIndex) => {
                 const state = get();
                 const { product_variants, combinations } = state;
-
                 console.log(`Reordering: variantIndex=${variantIndex}, sourceIndex=${sourceIndex}, targetIndex=${targetIndex}`);
-
                 // Reorder product_variants (images table)
                 const updatedProductVariants = [...product_variants];
-
                 // Check if variantIndex is valid
                 if (variantIndex >= updatedProductVariants.length) {
                     console.error('Invalid variantIndex:', variantIndex);
                     return;
                 }
-
                 const variantGroup = { ...updatedProductVariants[variantIndex] };
                 const updatedAttributes = [...variantGroup.variant_attributes];
-
                 // Validate source and target indices
                 if (sourceIndex >= updatedAttributes.length || targetIndex >= updatedAttributes.length) {
                     console.error('Invalid source or target index:', { sourceIndex, targetIndex, attributesLength: updatedAttributes.length });
                     return;
                 }
-
                 // Remove the item from source index and insert at target index
                 const [movedAttribute] = updatedAttributes.splice(sourceIndex, 1);
                 updatedAttributes.splice(targetIndex, 0, movedAttribute);
-
                 variantGroup.variant_attributes = updatedAttributes;
                 updatedProductVariants[variantIndex] = variantGroup;
-
                 // Now sync the same reordering to combinations (price/quantity table)
                 const updatedCombinations = [...combinations];
                 if (updatedCombinations[variantIndex]) {
                     const combGroup = { ...updatedCombinations[variantIndex] };
                     const updatedCombArray = [...combGroup.combinations];
-
                     // Apply the same reordering to combinations
                     const [movedComb] = updatedCombArray.splice(sourceIndex, 1);
                     updatedCombArray.splice(targetIndex, 0, movedComb);
-
                     combGroup.combinations = updatedCombArray;
                     updatedCombinations[variantIndex] = combGroup;
                 }
-
                 set({
                     product_variants: updatedProductVariants,
                     combinations: updatedCombinations
                 });
             },
-
             // For reordering entire variant groups (if needed)
             handleVariantGroupReorder: (sourceIndex, targetIndex) => {
                 const state = get();
                 const { product_variants } = state;
-
                 // Reorder product_variants groups
                 const updatedProductVariants = [...product_variants];
                 const [movedVariant] = updatedProductVariants.splice(sourceIndex, 1);
                 updatedProductVariants.splice(targetIndex, 0, movedVariant);
-
                 set({
                     product_variants: updatedProductVariants
                 });
             },
-
             handleCombinationGroupReorder: (sourceIndex, targetIndex) => {
                 const state = get();
                 const { combinations } = state;
-
                 // Reorder combinations groups independently
                 const updatedCombinations = [...combinations];
                 const [movedCombGroup] = updatedCombinations.splice(sourceIndex, 1);
                 updatedCombinations.splice(targetIndex, 0, movedCombGroup);
-
                 set({
                     combinations: updatedCombinations
                 });
             },
-
             // ========== INITIALIZE FORM WITH EDIT DATA ==========
             initializeFormWithEditData: (editData, isCopied = false) => {
                 console.log("IS COPIED:", isCopied, editData?.sellerSku, editData?.seller_sku);
-
                 // Clean parent-related fields for copy mode
                 const cleanedEditData = isCopied ? {
                     ...editData,
@@ -791,15 +666,12 @@ export const useProductFormStore = create(
                     parent_product: null,
                     isChild: false
                 } : editData;
-
                 const imageObjects = isCopied ? [] : cleanedEditData?.image?.map((image) => ({
                     src: `${cleanedEditData.imageBaseUrl}${image}`
                 })) || [];
-
                 const videoObjects = isCopied ? [] : cleanedEditData?.videos?.map((video) => ({
                     src: `${cleanedEditData.videoBaseUrl}${video}`
                 })) || [];
-
                 const variationsData = cleanedEditData?.variations_data || [];
                 const formValues = cleanedEditData?.form_values || {
                     prices: "",
@@ -807,10 +679,8 @@ export const useProductFormStore = create(
                     isCheckedPrice: false,
                     isCheckedQuantity: false
                 };
-
                 // Initialize product_variants from edit data if available
                 const product_variants = cleanedEditData?.product_variants || [];
-
                 set({
                     formData: {
                         productTitle: cleanedEditData?.product_title || "",
@@ -890,7 +760,6 @@ export const useProductFormStore = create(
                     keys: cleanedEditData?.search_terms || [],
                     altText: cleanedEditData?.altText || []
                 });
-
                 const guideRemovedMap = {};
                 product_variants.forEach(v => {
                     const hasGuide = Array.isArray(v.guide) && v.guide.length > 0;
@@ -900,7 +769,6 @@ export const useProductFormStore = create(
                     isGuideRemovedMap: guideRemovedMap
                 });
             },
-
             // ========== RESET FORM ==========
             resetForm: () => set({
                 formData: {
@@ -1007,12 +875,10 @@ export const useProductFormStore = create(
                 keys: [],
                 parentProductData: null
             }),
-
             // ========== VALIDATION HELPER ==========
             validateForm: () => {
                 const state = get();
                 const errors = {};
-
                 if (!state.formData.sellerSku) errors.sellerSku = "Seller Sku is Required";
                 if (!state.formData.shipingTemplates) errors.shipingTemplates = "Shipping Template is Required";
                 if (!state.formData.vendor) errors.vendor = "Shop name is Required";
@@ -1022,13 +888,11 @@ export const useProductFormStore = create(
                 if (!state.formValues?.isCheckedPrice && (!state.formData.salePrice || state.formData.salePrice === "0")) errors.salePrice = "Sale Price is Required";
                 if (!state.formValues?.isCheckedQuantity && !state.formData.quantity) errors.quantity = "Quantity is Required";
                 if (!state.formData.exchangePolicy) errors.exchangePolicy = "Return and exchange policy is required";
-
                 const isTrue = (val) => val === true || val === "true";
                 const isEmpty = (val) =>
                     val === "" || val === null || val === undefined;
                 const isSameVariant = (a, b) =>
                     (a || "").toString().trim() === (b || "").toString().trim();
-
                 // ========== COMBINATION PRICE / QUANTITY VALIDATION ==========
                 if (isTrue(state.formData.isCombination) || (state.combinations || []).length > 0) {
                     const {
@@ -1037,30 +901,24 @@ export const useProductFormStore = create(
                         prices: priceControllerVariant,
                         quantities: qtyControllerVariant,
                     } = state.formValues;
-
                     const priceToggle = isTrue(isCheckedPrice);
                     const qtyToggle = isTrue(isCheckedQuantity);
-
                     const combinations = state.combinations || [];
-
                     combinations.forEach((group) => {
                         const showsPriceByController =
                             priceToggle &&
                             ((state.variationsData || []).length >= 2
                                 ? isSameVariant(group.variant_name, priceControllerVariant)
                                 : true);
-
                         const showsQtyByController =
                             qtyToggle &&
                             ((state.variationsData || []).length >= 2
                                 ? isSameVariant(group.variant_name, qtyControllerVariant)
                                 : true);
-
                         group.combinations?.forEach((combo, index) => {
                             const isVisible =
                                 combo.isVisible === true || combo.isVisible === "true";
                             if (!isVisible) return;
-
                             // ✅ PRICE VALIDATION (ONLY if toggle ON AND controller)
                             const rowPriceVariation =
                                 combo.isPriceVariation === true || combo.isPriceVariation === "true";
@@ -1080,7 +938,6 @@ export const useProductFormStore = create(
                                         "Price is required";
                                 }
                             }
-
                             // ✅ QUANTITY VALIDATION (ONLY if toggle ON AND controller)
                             if (shouldValidateQty) {
                                 if (isEmpty(combo.qty)) {
@@ -1091,7 +948,6 @@ export const useProductFormStore = create(
                         });
                     });
                 }
-
                 console.log("[validateForm] summary", {
                     isCombination: state.formData.isCombination,
                     combinationsCount: (state.combinations || []).length,
@@ -1113,7 +969,7 @@ export const useProductFormStore = create(
                 formValues: state.formValues,
                 variationsData: state.variationsData,
                 customizationData: state.customizationData,
-                product_variants: state.product_variants, // NEW: Include in persistence
+                product_variants: state.product_variants,
                 combinations: state.combinations
             })
         }
