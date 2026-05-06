@@ -1396,13 +1396,24 @@ const VariationsTable = ({ setShowVariantModal, isSynced }) => {
                     <Button
                         variant="contained"
                         onClick={() => {
-                            // Add to form — baad mein implement karenge
+                            if (!currentEnhanceVariant) return;
+
+                            const { updateVariantAltText } = useProductFormStore.getState();
+
+                            enhanceFields.forEach((field) => {
+                                // Jo accepted hai uski generated value lo, warna original
+                                const finalValue = field.accepted && field.generated
+                                    ? field.generated
+                                    : field.original;
+
+                                updateVariantAltText(
+                                    currentEnhanceVariant.variant_name,
+                                    field.attributeIndex,
+                                    finalValue
+                                );
+                            });
+
                             handleCloseEnhanceModal();
-                        }}
-                        sx={{
-                            backgroundColor: '#1976d2',
-                            '&:hover': { backgroundColor: '#074079' },
-                            minWidth: 120
                         }}
                     >
                         Add to form

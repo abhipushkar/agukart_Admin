@@ -45,7 +45,6 @@ import { apiEndpoints } from "app/constant/apiEndpoints";
 import { AccordionDetails, Stack, AccordionSummary, Accordion, IconButton, ListItemAvatar, ListItemText, Avatar, Rating, Card, CardContent } from "@mui/material";
 import { set } from "lodash";
 import { localStorageKey } from "app/constant/localStorageKey";
-
 const nameSelect = [
   {
     value: "Inbox",
@@ -72,7 +71,6 @@ const nameSelect = [
     label: "Recyle bin"
   }
 ];
-
 const Message = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -93,12 +91,10 @@ const Message = () => {
   console.log(userId, vendorId, userData, productData, reviewHistory, favoriteHistory, messageHistory, "Drtuytyutyuyu")
   const [expanded, setExpanded] = useState(null);
   console.log({ productData, userData })
-
   const formatDate = (timestamp) => {
     const date = new Date(timestamp?.seconds * 1000);
     return date?.toLocaleDateString();
   };
-
   const [searchParams] = useSearchParams();
   let slug = searchParams.get("slug");
   const role = searchParams.get("role");
@@ -108,12 +104,10 @@ const Message = () => {
   const [privateNoteExists, setPrivateNoteExists] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [suborderid, setSuborderid] = useState("");
-
   const handleEdit = () => {
     setIsEditing(true);
     setNote(privateNoteExists);
   };
-
   const handleSave = async () => {
     console.log("Saved Note:", note);
     if (note.trim()) {
@@ -123,24 +117,18 @@ const Message = () => {
       const documents = querySnapshot.docs.map((doc) => {
         const docId = doc.id;
         const docData = doc.data();
-
         console.log("Document ID: ", docId);
         console.log("Document Data: ", docData);
-
         return {
           id: docId,
           data: docData
         };
       });
-
       console.log("All documents: ", documents);
-
       const matchingDocument = documents?.find((doc) => {
         return doc?.id === slug;
       });
-
       console.log("matchingDocumentmatchingDocumenttt", matchingDocument);
-
       if (matchingDocument) {
         console.log("Matching document:", matchingDocument);
         await updateDoc(
@@ -153,7 +141,6 @@ const Message = () => {
         setIsEditing(false);
         const updatedDocRef = doc(db, role === "admin" ? "composeChat" : "chatRooms", matchingDocument.id);
         const updatedDocSnap = await getDoc(updatedDocRef);
-
         if (updatedDocSnap.exists()) {
           const data = updatedDocSnap.data();
           if (data?.privateNote) {
@@ -165,23 +152,18 @@ const Message = () => {
       }
     }
   };
-
   const handleClick = (event) => {
     setAnchorEl(event.currentTarget);
   };
-
   const handleClose = () => {
     setAnchorEl(null);
   };
-
   const handleClick2 = (event) => {
     setAnchorEl2(event.currentTarget);
   };
-
   const handleClose2 = () => {
     setAnchorEl2(null);
   };
-
   const {
     moveToTrashHandler,
     moveToChatHandler,
@@ -196,20 +178,14 @@ const Message = () => {
     searchHandler,
     getUserDetails
   } = useChat();
-
   console.log("jkahsiduh", showCount);
-
   const { pathname } = useLocation();
-
   const designationId = localStorage.getItem(localStorageKey.designation_id);
   const auth_key = localStorage.getItem(localStorageKey.auth_key);
-
-
   const removeHtmlTags = (htmlString) => {
     if (!htmlString) return;
     return htmlString.replace(/<[^>]*>/g, "");
   };
-
   useEffect(() => {
     if (slug) {
       setProductData({});
@@ -238,15 +214,12 @@ const Message = () => {
         setProducts(matchingDocument[0]?.products || [])
         setSuborderid(matchingDocument[0]?.subOrderId || "")
       });
-
       return () => unsubscribe();
     }
   }, [slug,]);
-
   const handleChange = (panel) => (event, isExpanded) => {
     setExpanded(isExpanded ? panel : null);
   };
-
   const getOrderHistory = async (userId, vendorId) => {
     try {
       const payload = {
@@ -261,13 +234,11 @@ const Message = () => {
           base_url: baseUrl
         })) || [];
         setOrderHistory(salesWithBaseUrl);
-
       }
     } catch (error) {
       console.log("error", error?.response?.data || error);
     }
   }
-
   const getReviewHistory = async (userId, vendorId) => {
     try {
       const payload = {
@@ -287,7 +258,6 @@ const Message = () => {
       console.log("error", error?.response?.data || error);
     }
   }
-
   const getFavoriteHistory = async (userId, vendorId) => {
     try {
       const payload = {
@@ -307,7 +277,6 @@ const Message = () => {
       console.log("error", error?.response?.data || error);
     }
   }
-
   useEffect(() => {
     if (userId && vendorId) {
       getOrderHistory(userId, vendorId);
@@ -315,7 +284,6 @@ const Message = () => {
       getFavoriteHistory(userId, vendorId);
     }
   }, [userId, vendorId])
-
   return (
     <>
       <Box sx={{ background: "#fff" }}>
@@ -711,7 +679,6 @@ const Message = () => {
                             </Button>
                           </Tooltip>
                         </ListItem>
-
                         {pathname === "/pages/message/trash" ? (
                           <ListItem
                             sx={{
@@ -901,7 +868,6 @@ const Message = () => {
                   const productsToRender = Array.isArray(products) && products.length > 0
                     ? products
                     : (Object.keys(productData || {}).length > 0 ? [productData] : []);
-
                   return productsToRender.length > 0 && (
                     <Box mt={2}>
                       <Typography
@@ -919,7 +885,6 @@ const Message = () => {
                       <Typography fontSize={16} fontWeight={600} pb={1}>
                         Items:
                       </Typography>
-
                       {productsToRender.map((item, itemIndex) => (
                         <Typography
                           key={`product-item-${itemIndex}`}
@@ -938,9 +903,7 @@ const Message = () => {
                               style={{ width: "50px", height: "50px", borderRadius: "4px" }}
                             />
                           </Typography>
-
                           <Typography component="div" sx={{ paddingLeft: { lg: 2, md: 2, xs: 0 } }}>
-
                             <Typography
                               fontSize={14}
                               fontWeight={500}
@@ -964,7 +927,6 @@ const Message = () => {
                                 {removeHtmlTags(item?.name || "") || "925 Sterling Silver Spinner Ring for Woman Girls"}
                               </Link>
                             </Typography>
-
                             <Typography
                               component="div"
                               sx={{
@@ -977,7 +939,6 @@ const Message = () => {
                             >
                               ${item?.sale_price}
                             </Typography>
-
                             {item?.isCombination && (
                               <>
                                 {item?.variantData?.map((variant, index) => (
@@ -995,7 +956,6 @@ const Message = () => {
                                 ))}
                               </>
                             )}
-
                             {item?.customize == "Yes" && (
                               <>
                                 {item?.customizationData?.map((customItem, index) => (
@@ -1159,7 +1119,6 @@ const Message = () => {
                       <AddIcon />
                     </IconButton>
                   </Box>
-
                   {openPrivateNote && (
                     <>
                       {
@@ -1208,5 +1167,4 @@ const Message = () => {
     </>
   );
 };
-
 export default Message;
