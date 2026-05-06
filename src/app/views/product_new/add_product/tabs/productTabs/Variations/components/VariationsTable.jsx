@@ -768,15 +768,12 @@ const VariationsTable = ({ setShowVariantModal, isSynced }) => {
     };
 
     const getVariantStatus = (variantName) => {
-        const { variationsData } = useProductFormStore.getState();
-        if (formData.deletedVariantIds.length === 0) {
-            return true;
-        }
-        const variantId = variationsData.find(v => v.name === variantName)?.variantId;
-        if (variantId && formData.deletedVariantIds.includes(variantId)) {
-            return false;
-        }
-        return true;
+        const { variationsData, formData } = useProductFormStore.getState();
+        const deletedIds = formData?.deletedVariantIds || [];
+        if (deletedIds.length === 0) return true;
+        const variant = variationsData.find(v => v.name === variantName);
+        if (!variant) return true;
+        return !deletedIds.includes(variant.variantId);
     };
 
     return (

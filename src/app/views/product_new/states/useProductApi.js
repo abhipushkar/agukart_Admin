@@ -403,7 +403,7 @@ export const useProductAPI = () => {
 
                 // Handle option list for variant and dropdown customizations
                 if (customization.optionList && Array.isArray(customization.optionList)) {
-                    customization.optionList.forEach((option, oIndex) => {        
+                    customization.optionList.forEach((option, oIndex) => {
                         // Append basic option fields
                         fData.append(`customizationData[customizations][${cIndex}][optionList][${oIndex}][optionName]`, option.optionName || '');
                         fData.append(`customizationData[customizations][${cIndex}][optionList][${oIndex}][priceDifference]`, option.priceDifference || '0');

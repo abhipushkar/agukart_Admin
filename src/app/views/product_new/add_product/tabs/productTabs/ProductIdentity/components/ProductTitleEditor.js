@@ -14,7 +14,25 @@ const modules = {
         ["clean"]
     ],
     clipboard: {
-        matchVisual: false
+        matchVisual: false,
+        matchers: [
+            ['h1', (node, delta) => {
+                delta.ops.forEach(op => {
+                    if (op.attributes) {
+                        delete op.attributes.header;
+                    }
+                });
+                return delta;
+            }],
+            ['h2', (node, delta) => {
+                delta.ops.forEach(op => {
+                    if (op.attributes) {
+                        delete op.attributes.header;
+                    }
+                });
+                return delta;
+            }]
+        ]
     },
     imageResize: {
         parchment: Quill.import("parchment"),
