@@ -6,9 +6,15 @@ import ParentProducts from "./parentProducts/ParentProducts";
 export const productsRoutes = [
   { name: "productlist", path: ROUTE_CONSTANT.catalog.product.list, element: <ProductListNew /> },
   { name: "productlist", path: ROUTE_CONSTANT.catalog.product.add, element: <AddProductNew /> },
+  { name: "productlist", path: ROUTE_CONSTANT.catalog.product.edit, element: <AddProductNew /> },
   {
     name: "parentproductlist",
     path: ROUTE_CONSTANT.catalog.product.parentProducts,
+    element: <ParentProducts />
+  },
+  {
+    name: "parentproductlist",
+    path: ROUTE_CONSTANT.catalog.product.editParentProducts,
     element: <ParentProducts />
   }
 ];
