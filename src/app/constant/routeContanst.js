@@ -36,7 +36,9 @@ export const ROUTE_CONSTANT = {
         product: {
             list: "/catalog/product-list",
             add: "/catalog/add-product/",
-            parentProducts: "/catalog/add-parent-products"
+            edit: "/catalog/edit-product/",
+            parentProducts: "/catalog/add-parent-products",
+            editParentProducts: "/catalog/edit-parent-products"
         },
         productNew: {
             list: "/catalog/product-list-new",

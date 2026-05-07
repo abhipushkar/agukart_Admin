@@ -301,13 +301,13 @@ const ProductRow = ({ product, index }) => {
     );
     const getEditUrl =
         product.type === "variations"
-            ? `${ROUTE_CONSTANT.catalog.product.parentProducts}?id=${product._id}`
-            : `${ROUTE_CONSTANT.catalog.product.add}?id=${product._id}`;
+            ? `${ROUTE_CONSTANT.catalog.product.editParentProducts}?id=${product.parent_product_code}`
+            : `${ROUTE_CONSTANT.catalog.product.edit}?id=${product.product_code}`;
 
     const getCopyUrl =
         product.type === "variations"
-            ? `${ROUTE_CONSTANT.catalog.product.parentProducts}?id=${product._id}&listing=copy`
-            : `${ROUTE_CONSTANT.catalog.product.add}?_id=${product._id}&listing=copy`;
+            ? `${ROUTE_CONSTANT.catalog.product.parentProducts}?id=${product.parent_product_code}&listing=copy`
+            : `${ROUTE_CONSTANT.catalog.product.add}?_id=${product.product_code}&listing=copy`;
 
     const handleLinkClick = (e) => {
         // Only run for normal left click (not ctrl/cmd/middle click)
@@ -806,8 +806,8 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
     const showCommonSettingsColumn = !filters.hiddenColumns.includes('Sale Price') ||
         !filters.hiddenColumns.includes('Sort Order');
 
-    const editUrl = `${ROUTE_CONSTANT.catalog.product.add}?id=${variation._id}`;
-    const copyUrl = `${ROUTE_CONSTANT.catalog.product.add}?_id=${variation._id}&listing=copy`;
+    const editUrl = `${ROUTE_CONSTANT.catalog.product.edit}?id=${variation.product_code}`;
+    const copyUrl = `${ROUTE_CONSTANT.catalog.product.add}?_id=${variation.product_code}&listing=copy`;
 
     const handleLinkClick = (e) => {
         // Only run for normal left click (not ctrl/cmd/middle click)
