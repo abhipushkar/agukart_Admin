@@ -46,6 +46,7 @@ import ConfirmModal from "../../components/ConfirmModal";
 import debounce from "lodash.debounce";
 import { localStorageKey } from "app/constant/localStorageKey";
 import { set } from "lodash";
+import { Link as RouterLink } from "react-router-dom";
 
 // Reorder function for drag and drop
 const reorder = (list, startIndex, endIndex) => {
@@ -611,8 +612,15 @@ const AttributeGroups = () => {
                 open={Boolean(menuAnchorEl)}
                 onClose={handleMenuClose}
             >
-                <MenuItem onClick={handleAttributesListClick}>
-                    <FormatListBulletedIcon fontSize="small" color="primary" sx={{ mr: 1 }} />
+                <MenuItem
+                    component={RouterLink}
+                    to={`${ROUTE_CONSTANT.catalog.attribute.list}?groupId=${menuGroup?._id || menuGroup?.id}`}
+                >
+                    <FormatListBulletedIcon
+                        fontSize="small"
+                        color="primary"
+                        sx={{ mr: 1 }}
+                    />
                     Attributes List
                 </MenuItem>
                 <MenuItem onClick={handleEditNameClick}>
