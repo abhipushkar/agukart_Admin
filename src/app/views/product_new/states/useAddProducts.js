@@ -69,7 +69,7 @@ export const useProductFormStore = create(
                     return { product_variants: updatedVariants };
                 });
             },
-        
+
             formData: {
                 productTitle: "",
                 productType: "productType",
@@ -135,7 +135,12 @@ export const useProductFormStore = create(
                 offeringCanBe: "",
                 isGiftWrap: "",
                 reStockDate: null,
-                transformData: { scale: 1, x: 0, y: 0 },
+                transformData: {
+                    scale: 1,
+                    x: 0,
+                    y: 0,
+                    rotation: 0
+                },
                 fullfillmentChannel: "",
                 productionTime: "",
                 vendor: "",
@@ -740,7 +745,12 @@ export const useProductFormStore = create(
                         color: cleanedEditData?.color || "",
                         offeringCanBe: cleanedEditData?.can_offer || "",
                         isGiftWrap: cleanedEditData?.gift_wrap || "",
-                        transformData: cleanedEditData?.zoom || { scale: 1, x: 0, y: 0 },
+                        transformData: {
+                            scale: cleanedEditData?.zoom?.scale || 1,
+                            x: cleanedEditData?.zoom?.x || 0,
+                            y: cleanedEditData?.zoom?.y || 0,
+                            rotation: cleanedEditData?.zoom?.rotation || 0
+                        },
                         reStockDate: cleanedEditData?.restock_date ? dayjs(cleanedEditData.restock_date) : null,
                         productionTime: cleanedEditData?.production_time || "",
                         vendor: cleanedEditData?.vendor_id || "",
@@ -803,7 +813,12 @@ export const useProductFormStore = create(
                     packageWidth: "",
                     launchData: null,
                     releaseDate: null,
-                    transformData: { scale: 1, x: 0, y: 0 },
+                    transformData: {
+                        scale: 1,
+                        x: 0,
+                        y: 0,
+                        rotation: 0
+                    },
                     brandId: "brandId",
                     taxRatio: "6",
                     images: [],
