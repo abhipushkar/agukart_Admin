@@ -26,7 +26,6 @@ import { useEffect } from "react";
 import Cropper from 'react-easy-crop';
 import { getCroppedImg } from './cropUtil';
 import Slider from '@mui/material/Slider';
-
 const style = {
     position: "absolute",
     top: "50%",
@@ -39,20 +38,19 @@ const style = {
     borderRadius: "5px",
     maxWidth: "100%"
 };
-
 const CropImage = ({
-                       handleEditClose,
-                       openEdit,
-                       imgs,
-                       setImgs,
-                       setFormData,
-                       formData,
-                       alts,
-                       setAlts,
-                       handleOpen,
-                       transformData,
-                       setTransformData
-                   }) => {
+    handleEditClose,
+    openEdit,
+    imgs,
+    setImgs,
+    setFormData,
+    formData,
+    alts,
+    setAlts,
+    handleOpen,
+    transformData,
+    setTransformData
+}) => {
     const inputRefs = useRef([]);
     const [images, setImages] = useState(imgs || []);
     console.log({ images, imgs });
@@ -67,13 +65,11 @@ const CropImage = ({
     const [isDragging, setIsDragging] = useState(false);
     const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
     const [imgDimensions, setImgDimensions] = useState({ width: 0, height: 0 });
-
     // React Easy Crop states
     const [crop, setCrop] = useState({ x: 0, y: 0 });
     const [zoom, setZoom] = useState(1);
     const [rotation, setRotation] = useState(0);
     const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
-
     const handleOpen1 = () => setOpen1(true);
     const handleClose = () => setOpen1(false);
     console.log({ images });
@@ -81,8 +77,6 @@ const CropImage = ({
     console.log({ deletedImg });
     console.log({ alts });
     console.log({ altText });
-
-
     const VIEW_W = 500;
     const VIEW_H = 500;
     const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
@@ -90,13 +84,10 @@ const CropImage = ({
         if (!imgDimensions.width || !imgDimensions.height) {
             return { scale, x: 0, y: 0 };
         }
-
         const imgAspect = imgDimensions.width / imgDimensions.height;
         const viewAspect = VIEW_W / VIEW_H;
-
         let maxX = 0;
         let maxY = 0;
-
         if (imgAspect > viewAspect) {
             // Wide image - constrain vertical movement, allow horizontal within bounds
             const scaledHeight = VIEW_W / imgAspect;
@@ -110,14 +101,12 @@ const CropImage = ({
             // When zoomed, allow more vertical movement
             maxY = (VIEW_H * (scale - 1)) / 2;
         }
-
         return {
             scale,
             x: clamp(x, -maxX, maxX),
             y: clamp(y, -maxY, maxY),
         };
     };
-
     const handleTranslateChange = (axis, value) => {
         setTransformData(prev => {
             const next = { scale: 1, x: 0, y: 0, ...(prev || {}) };
@@ -125,7 +114,6 @@ const CropImage = ({
             return clampPan(next);
         });
     };
-
     // Handle mouse/touch events for dragging
     const handleDragStart = (clientX, clientY) => {
         setIsDragging(true);
@@ -134,64 +122,51 @@ const CropImage = ({
             y: clientY - (transformData?.y || 0)
         });
     };
-
     const handleDragMove = (clientX, clientY) => {
         if (!isDragging) return;
-
         const newX = clientX - dragStart.x;
         const newY = clientY - dragStart.y;
-
         setTransformData(prev => {
             const next = { scale: prev?.scale || 1, x: newX, y: newY };
             return clampPan(next);
         });
     };
-
     const handleDragEnd = () => {
         setIsDragging(false);
     };
-
     // Mouse event handlers
     const handleMouseDown = (e) => {
         e.preventDefault();
         handleDragStart(e.clientX, e.clientY);
     };
-
     const handleMouseMove = (e) => {
         if (!isDragging) return;
         handleDragMove(e.clientX, e.clientY);
     };
-
     const handleMouseUp = () => {
         handleDragEnd();
     };
-
     // Touch event handlers
     const handleTouchStart = (e) => {
         if (e.touches.length !== 1) return;
         const touch = e.touches[0];
         handleDragStart(touch.clientX, touch.clientY);
     };
-
     const handleTouchMove = (e) => {
         if (!isDragging || e.touches.length !== 1) return;
         const touch = e.touches[0];
         handleDragMove(touch.clientX, touch.clientY);
     };
-
     const handleTouchEnd = () => {
         handleDragEnd();
     };
-
     const handleDoneThumbnail = () => {
         setThumbnailOpen(false);
     };
-
     useEffect(() => {
         setImages(imgs || []);
         setAltText(alts || []);
     }, [formData.images]);
-
     React.useEffect(() => {
         if (images.length > 0 && !images[0].isPrimary) {
             setImages((prevImages) =>
@@ -203,17 +178,14 @@ const CropImage = ({
             );
         }
     }, [images, setImages]);
-
     useEffect(() => {
         setSelectedImage(images.length > 0 ? images[0] : null);
         setIndexing(0);
     }, [images]);
-
     const handleImageLoad = (e) => {
         const { naturalWidth, naturalHeight } = e.target;
         setImgDimensions({ width: naturalWidth, height: naturalHeight });
     };
-
     const handleImageChange = (e) => {
         if (images.length === 10) {
             handleOpen("error", "Selected Images Must be 10");
@@ -227,11 +199,9 @@ const CropImage = ({
         const imageUrls = fileList.map((file, i) => {
             return { src: URL.createObjectURL(file), id: images.length, file: file, _id: uuidv4() };
         });
-
         console.log({ imageUrls });
         let sortArr = imageUrls;
         sortArr[imageUrls.length - 1].file.sortOrder = images.length + 1;
-
         setSelectedImage(images[0]?.src);
         setImages((prevImages) => [...prevImages, ...sortArr]);
         setAltText((prevAltText) => [
@@ -239,18 +209,15 @@ const CropImage = ({
             ...new Array(fileList.length).fill("") // Add empty strings for each new image
         ]);
     };
-
     const triggerInput = (index) => {
         if (inputRefs.current[index]) {
             inputRefs.current[index].click();
         }
     };
-
     const handleImageClick = (image, i) => {
         setSelectedImage(image);
         setIndexing(i);
     };
-
     const handleDeleteImage = (src) => {
         const newImages = images.filter((img) => img?.src !== src);
         newImages.forEach((img, index) => {
@@ -266,18 +233,13 @@ const CropImage = ({
         setAltText((prevAltText) => prevAltText.filter((_, idx) => idx !== indexing));
         setChooseImg(null);
     };
-
     const moveImage = (dragIndex, hoverIndex) => {
         console.log({ dragIndex });
         console.log({ hoverIndex });
-
         const draggedImage = images[dragIndex];
         const newImages = [...images];
-
         newImages.splice(dragIndex, 1);
-
         newImages.splice(hoverIndex, 0, draggedImage);
-
         newImages.forEach((img, idx) => {
             img.isPrimary = idx === 0;
             if (img?.file) {
@@ -286,63 +248,48 @@ const CropImage = ({
                 img.sortOrder = idx + 1;
             }
         });
-
         const newAltText = [...altText];
         const draggedAltText = newAltText[dragIndex];
-
         newAltText.splice(dragIndex, 1);
-
         newAltText.splice(hoverIndex, 0, draggedAltText);
-
         setImages(newImages);
         setAltText(newAltText);
     };
-
     const handleCropComplete = (croppedArea, croppedAreaPixels) => {
         setCroppedAreaPixels(croppedAreaPixels);
     };
-
     const handleCrop = async () => {
         if (selectedImage && croppedAreaPixels) {
             try {
                 const croppedImageBlob = await getCroppedImg(
-                    selectedImage?.src ? selectedImage.src : selectedImage,
+                    selectedImage.src,
                     croppedAreaPixels,
-                    rotation
+                    formData.transformData?.rotation || 0
                 );
-
                 const croppedDataUrl = URL.createObjectURL(croppedImageBlob);
-
                 const base64ToFile = (dataUrl, filename) => {
                     const arr = dataUrl?.split(",");
                     const mime = arr[0]?.match(/:(.*?);/)[1];
                     const bstr = atob(arr[1]);
                     let n = bstr?.length;
                     const u8arr = new Uint8Array(n);
-
                     while (n--) {
                         u8arr[n] = bstr?.charCodeAt(n);
                     }
-
                     return new File([u8arr], filename, { type: mime });
                 };
-
                 const newCroppedFile = new File([croppedImageBlob], "cropped-image.jpg", {
                     type: 'image/jpeg'
                 });
-
                 let sortArr = newCroppedFile;
                 sortArr.sortOrder = indexing + 1;
-
                 setImages((prevImages) =>
                     prevImages.map((img, idx) =>
                         idx === indexing ? { ...img, src: croppedDataUrl, file: sortArr } : img
                     )
                 );
-
                 setSelectedImage(croppedDataUrl);
                 setOpen(false);
-
                 // Reset crop state
                 setCrop({ x: 0, y: 0 });
                 setZoom(1);
@@ -353,15 +300,12 @@ const CropImage = ({
             }
         }
     };
-
     const handleZoom = (value) => {
         setZoom(prev => Math.max(0.1, Math.min(prev + value, 3)));
     };
-
     const handleRotate = (degree) => {
         setRotation(prev => (prev + degree) % 360);
     };
-
     const handleApply = () => {
         setImgs(images);
         handleEditClose();
@@ -378,7 +322,6 @@ const CropImage = ({
         setDeletedImg([]);
         setAlts(altText);
     };
-
     const handleDiscard = () => {
         handleClose();
         handleEditClose();
@@ -387,7 +330,6 @@ const CropImage = ({
         setAlts(alts);
         setAltText(alts);
     };
-
     return (
         <DndProvider backend={HTML5Backend}>
             <Dialog
@@ -458,7 +400,6 @@ const CropImage = ({
                                                 </Button>
                                             </Grid>
                                         ))}
-
                                         <Grid item lg={12} md={12} xs={12} sx={{ marginTop: "16px" }}>
                                             <Box>
                                                 <Button
@@ -584,7 +525,6 @@ const CropImage = ({
                                                         }}
                                                     />
                                                 </Box>
-
                                                 {thumbnailOpen && (
                                                     <>
                                                         {/* Zoom slider only - pan sliders removed */}
@@ -879,7 +819,6 @@ const CropImage = ({
                                                 </Button>
                                             </Typography>
                                         )}
-
                                         {!open && !thumbnailOpen && (
                                             <Box mt={2}>
                                                 <Typography component="div">
@@ -1018,5 +957,4 @@ const CropImage = ({
         </DndProvider>
     );
 };
-
 export default CropImage;

@@ -10,7 +10,9 @@ import {
     Check,
     DeleteOutline,
     DragIndicator,
-    Close
+    Close,
+    RotateLeft,
+    RotateRight
 } from "@mui/icons-material";
 import Cropper from 'react-easy-crop';
 import { getCroppedImg } from './cropUtils';
@@ -42,7 +44,12 @@ const CropImage = ({
         altText,
         setAltText
     } = useProductFormStore();
-    const transformData = formData.transformData || { scale: 1, x: 0, y: 0 };
+    const transformData = formData.transformData || {
+        scale: 1,
+        x: 0,
+        y: 0,
+        rotation: 0
+    };
     console.log("Transform data", transformData);
     const [crop, setCrop] = useState({ x: 0, y: 0 });
     const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
@@ -77,7 +84,7 @@ const CropImage = ({
         if (!previewDragging) return;
 
         updateTransformData({
-            ...formData.transformData,
+            ...(formData.transformData || {}),
             x: e.clientX - previewDragStart.x,
             y: e.clientY - previewDragStart.y
         });
@@ -85,6 +92,19 @@ const CropImage = ({
 
     const handlePreviewMouseUp = () => {
         setPreviewDragging(false);
+    };
+    const handleWheel = (e) => {
+        if (selectedImageIndex !== 0) return; // sirf primary image pe
+        e.preventDefault();
+
+        const delta = e.deltaY > 0 ? -0.1 : 0.1; // scroll down = zoom out, scroll up = zoom in
+        const currentScale = formData.transformData?.scale || 1;
+        const newScale = Math.min(5, Math.max(1, currentScale + delta)); // 1x to 5x limit
+
+        updateTransformData({
+            ...(formData.transformData || {}),
+            scale: parseFloat(newScale.toFixed(1))
+        });
     };
     const imageContainerRef = useRef(null);
     // Initialize temp state when modal opens
@@ -113,7 +133,8 @@ const CropImage = ({
         try {
             const croppedImageBlob = await getCroppedImg(
                 selectedImage.src,
-                croppedAreaPixels
+                croppedAreaPixels,
+                formData.transformData?.rotation || 0
             );
             const croppedDataUrl = URL.createObjectURL(croppedImageBlob);
             const croppedFile = new File([croppedImageBlob], "cropped-image.jpg", {
@@ -170,7 +191,12 @@ const CropImage = ({
             setSelectedImageIndex(Math.max(0, reorderedImages.length - 1));
         }
         if (index === 0) {
-            updateTransformData({ scale: 1, x: 0, y: 0 });
+            updateTransformData({
+                scale: 1,
+                x: 0,
+                y: 0,
+                rotation: 0
+            })
         }
     };
     // Drag and Drop Handlers
@@ -193,7 +219,12 @@ const CropImage = ({
             return;
         }
         if (draggedIndex === 0 || targetIndex === 0) {
-            updateTransformData({ scale: 1, x: 0, y: 0 });
+            updateTransformData({
+                scale: 1,
+                x: 0,
+                y: 0,
+                rotation: 0
+            });
         }
         const updatedImages = [...tempImages];
         const updatedAltText = [...tempAltText];
@@ -411,6 +442,8 @@ const CropImage = ({
                                 onMouseMove={selectedImageIndex === 0 ? handlePreviewMouseMove : undefined}
                                 onMouseUp={handlePreviewMouseUp}
                                 onMouseLeave={handlePreviewMouseUp}
+                                onWheel={selectedImageIndex === 0 ? handleWheel : undefined}  // ✅ YE ADD KAR
+
                             >
                                 {selectedImage ? (
                                     isCropping ? (
@@ -441,10 +474,12 @@ const CropImage = ({
                                                     // ✅ Primary image pe transform apply karo
                                                     transform: selectedImageIndex === 0
                                                         ? `translate3d(
-      ${formData.transformData?.x || 0}px,
-      ${formData.transformData?.y || 0}px,
-      0
-    ) scale(${formData.transformData?.scale || 1})`
+        ${formData.transformData?.x || 0}px,
+        ${formData.transformData?.y || 0}px,
+        0
+      )
+      rotate(${formData.transformData?.rotation || 0}deg)
+      scale(${formData.transformData?.scale || 1})`
                                                         : 'none',
                                                     transformOrigin: 'center center',
                                                     transition: 'transform 0.1s ease',
@@ -492,34 +527,93 @@ const CropImage = ({
                                     ) : (
                                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                                             {/* ✅ ZOOM SLIDER — sirf primary image pe */}
+
                                             {selectedImageIndex === 0 && (
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                                    <Typography variant="body2" sx={{ minWidth: 70 }}>
-                                                        Zoom: {(formData.transformData?.scale || 1).toFixed(1)}x
-                                                    </Typography>
-                                                    <Slider
-                                                        value={formData.transformData?.scale || 1}
-                                                        min={1}
-                                                        max={5}
-                                                        step={0.1}
-                                                        onChange={(e, value) =>
-                                                            updateTransformData({
-                                                                ...formData.transformData,
-                                                                scale: value
-                                                            })
-                                                        }
-                                                        sx={{ flex: 1, mx: 1 }}
-                                                        size="small"
-                                                    />
-                                                    <Button
-                                                        onClick={() => updateTransformData({ scale: 1, x: 0, y: 0 })}
-                                                        size="small"
-                                                        variant="outlined"
-                                                        sx={{ minWidth: 'auto', px: 1 }}
-                                                    >
-                                                        Reset
-                                                    </Button>
-                                                </Box>
+                                                <>
+                                                    {/* Rotate Controls */}
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                                        <Typography variant="body2" sx={{ minWidth: 70 }}>
+                                                            Rotate: {formData.transformData?.rotation || 0}°
+                                                        </Typography>
+
+                                                        <IconButton
+                                                            size="small"
+                                                            onClick={() =>
+                                                                updateTransformData({
+                                                                    ...(formData.transformData || {}),
+                                                                    rotation: (formData.transformData?.rotation || 0) - 90
+                                                                })
+                                                            }
+                                                        >
+                                                            <RotateLeft />
+                                                        </IconButton>
+
+                                                        <Slider
+                                                            value={formData.transformData?.rotation || 0}
+                                                            min={0}
+                                                            max={360}
+                                                            step={1}
+                                                            onChange={(e, value) =>
+                                                                updateTransformData({
+                                                                    ...(formData.transformData || {}),
+                                                                    rotation: value
+                                                                })
+                                                            }
+                                                            sx={{ flex: 1, mx: 1 }}
+                                                            size="small"
+                                                        />
+
+                                                        <IconButton
+                                                            size="small"
+                                                            onClick={() =>
+                                                                updateTransformData({
+                                                                    ...(formData.transformData || {}),
+                                                                    rotation: (formData.transformData?.rotation || 0) + 90
+                                                                })
+                                                            }
+                                                        >
+                                                            <RotateRight />
+                                                        </IconButton>
+                                                    </Box>
+
+                                                    {/* Zoom Controls */}
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                                        <Typography variant="body2" sx={{ minWidth: 70 }}>
+                                                            Zoom: {(formData.transformData?.scale || 1).toFixed(1)}x
+                                                        </Typography>
+
+                                                        <Slider
+                                                            value={formData.transformData?.scale || 1}
+                                                            min={1}
+                                                            max={5}
+                                                            step={0.1}
+                                                            onChange={(e, value) =>
+                                                                updateTransformData({
+                                                                    ...(formData.transformData || {}),
+                                                                    scale: value
+                                                                })
+                                                            }
+                                                            sx={{ flex: 1, mx: 1 }}
+                                                            size="small"
+                                                        />
+
+                                                        <Button
+                                                            onClick={() =>
+                                                                updateTransformData({
+                                                                    scale: 1,
+                                                                    x: 0,
+                                                                    y: 0,
+                                                                    rotation: 0
+                                                                })
+                                                            }
+                                                            size="small"
+                                                            variant="outlined"
+                                                            sx={{ minWidth: 'auto', px: 1 }}
+                                                        >
+                                                            Reset
+                                                        </Button>
+                                                    </Box>
+                                                </>
                                             )}
                                             {/* Action Buttons */}
                                             <Box sx={{ display: 'flex', gap: 0.5 }}>

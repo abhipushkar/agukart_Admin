@@ -1,4 +1,3 @@
-// CustomisationInner.jsx (Updated - Only drag functionality)
 import * as React from "react";
 import {
     Box,
@@ -31,7 +30,6 @@ import { ApiService } from "app/services/ApiService";
 import { apiEndpoints } from "app/constant/apiEndpoints";
 import { localStorageKey } from "app/constant/localStorageKey";
 import DraggableCustomizationItem from "./draggable_component";
-
 const VisuallyHiddenInput = styled("input")({
     clip: "rect(0 0 0 0)",
     clipPath: "inset(50%)",
@@ -43,7 +41,6 @@ const VisuallyHiddenInput = styled("input")({
     whiteSpace: "nowrap",
     width: 1
 });
-
 const CustomisationInner = ({
                                 customizationData,
                                 setCustomizationData,
@@ -69,7 +66,6 @@ const CustomisationInner = ({
     const [editingIndex, setEditingIndex] = useState(null);
     const [newTitle, setNewTitle] = useState("");
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
-
     // Fetch variants from API when categoryId changes
     const getCategoryVariants = async () => {
         if (categoryId) {
@@ -86,17 +82,14 @@ const CustomisationInner = ({
             }
         }
     };
-
     useEffect(() => {
         getCategoryVariants();
     }, [categoryId]);
-
     // Combine predefined variants with custom variants and API variants
     useEffect(() => {
         const combined = [...apiVariants];
         setAllVariants(combined);
     }, [variants, customVariants, apiVariants]);
-
     const handleOpen = () => {
         setOpen(true);
         setModalStep(1);
@@ -104,14 +97,12 @@ const CustomisationInner = ({
         setSelectedVariant(null);
         setSelectedAttributes([]);
     };
-
     const handleClose = () => {
         setOpen(false);
         setModalStep(1);
         setSelectedVariant(null);
         setSelectedAttributes([]);
     };
-
     const handleBoxClick = (boxId) => {
         setActiveBox(boxId);
         if (boxId !== "Variant") {
@@ -120,7 +111,6 @@ const CustomisationInner = ({
             setSelectedAttributes([]);
         }
     };
-
     const handleVariantSelect = (variant) => {
         setSelectedVariant(variant);
         setActiveBox("Variant");
@@ -136,7 +126,6 @@ const CustomisationInner = ({
         setSelectedAttributes([]);
         setModalStep(2);
     };
-
     const handleAttributeToggle = (attribute) => {
         setSelectedAttributes(prev => {
             if (prev.includes(attribute)) {
@@ -146,7 +135,6 @@ const CustomisationInner = ({
             }
         });
     };
-
     const handleSelectAllAttributes = () => {
         if (selectedAttributes.length === variantAttributes.length) {
             setSelectedAttributes([]);
@@ -154,7 +142,6 @@ const CustomisationInner = ({
             setSelectedAttributes([...variantAttributes]);
         }
     };
-
     const addCustomizationHandler = () => {
         if (activeBox === "Text") {
             const title = "Text Customization";
@@ -200,12 +187,10 @@ const CustomisationInner = ({
             const selectedVariantData = allVariants.find(v =>
                 v.variant_name === selectedVariant.variant_name
             );
-
             const optionList = selectedAttributes.map(attribute => {
                 const attributeData = selectedVariantData?.variant_attribute?.find(
                     attr => attr.attribute_value === attribute.value || attr.attribute_value === attribute
                 );
-
                 return {
                     optionName: attribute.value || attribute,
                     priceDifference: "0",
@@ -215,7 +200,6 @@ const CustomisationInner = ({
                     isVisible: true
                 };
             });
-
             const newVariantCustomization = {
                 title: selectedVariant.variant_name || selectedVariant.name,
                 label: selectedVariant.variant_name || selectedVariant.name,
@@ -225,7 +209,6 @@ const CustomisationInner = ({
                 isVariant: true,
                 variantId: selectedVariant.id || selectedVariant._id
             };
-
             setCustomizationData((prev) => ({
                 ...prev,
                 customizations: [
@@ -236,48 +219,39 @@ const CustomisationInner = ({
         }
         handleClose();
     };
-
     const isVariantSelected = (variantName) => {
         return customizationData?.customizations?.some(
             customization => customization.isVariant && customization.title === variantName
         );
     };
-
     const hasTextCustomization = customizationData?.customizations?.some(
         customization => !customization.optionList && !customization.isVariant
     );
-
     const hasOptionDropdown = customizationData?.customizations?.some(
         customization => customization.optionList && !customization.isVariant
     );
-
     const moveCustomizationItem = (fromIndex, toIndex) => {
         const updatedCustomizations = [...customizationData.customizations];
         const [movedItem] = updatedCustomizations.splice(fromIndex, 1);
         updatedCustomizations.splice(toIndex, 0, movedItem);
-
         setCustomizationData((prev) => ({
             ...prev,
             customizations: updatedCustomizations,
         }));
     };
-
     const handleCustomizationDelete = (index) => {
         setCustomizationData((prev) => ({
             ...prev,
             customizations: prev.customizations.filter((_, i) => i !== index)
         }));
     };
-
     const handleTitleEdit = (index) => {
         setEditingIndex(index);
         setNewTitle(customizationData.customizations[index]?.title || "");
         setTitleModalOpen(true);
     };
-
     const handleTitleChange = () => {
         if (editingIndex === null) return;
-
         setCustomizationData((prev) => ({
             ...prev,
             customizations: prev.customizations.map((item, idx) =>
@@ -288,7 +262,6 @@ const CustomisationInner = ({
         setEditingIndex(null);
         setNewTitle("");
     };
-
     const handleChange = (e) => {
         const { name, value } = e.target;
         if (name === "label" && value.length > 100) {
@@ -299,7 +272,6 @@ const CustomisationInner = ({
         }
         setCustomizationData((prev) => ({ ...prev, [name]: value }));
     }
-
     const renderModalContent = () => {
         if (modalStep === 1) {
             return (
@@ -385,7 +357,6 @@ const CustomisationInner = ({
                                 </Box>
                             );
                         })}
-
                         {loadingVariants ? (
                             <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', py: 2 }}>
                                 <CircularProgress size={24} />
@@ -463,7 +434,6 @@ const CustomisationInner = ({
                 </>
             );
         }
-
         if (modalStep === 2 && selectedVariant) {
             return (
                 <>
@@ -568,7 +538,6 @@ const CustomisationInner = ({
             );
         }
     };
-
     const renderDialogActions = () => {
         if (modalStep === 1) {
             return (
@@ -581,7 +550,6 @@ const CustomisationInner = ({
                 </Button>
             );
         }
-
         if (modalStep === 2) {
             return (
                 <>
@@ -607,7 +575,6 @@ const CustomisationInner = ({
             );
         }
     };
-
     const renderCustomizationContent = (item, index) => {
         if (item?.isVariant) {
             return (
@@ -638,7 +605,6 @@ const CustomisationInner = ({
             );
         }
     };
-
     return (
         <>
             <Box>
@@ -1029,7 +995,6 @@ const CustomisationInner = ({
                                 </Box>
                             </AccordionDetails>
                         </Accordion>
-
                         <Box
                             sx={{
                                 marginTop: "20px"
@@ -1080,7 +1045,6 @@ const CustomisationInner = ({
                     </div>
                 </Box>
             </Box>
-
             {/* Title Edit Modal */}
             <Dialog
                 open={titleModalOpen}
@@ -1111,5 +1075,4 @@ const CustomisationInner = ({
         </>
     );
 };
-
 export default CustomisationInner;

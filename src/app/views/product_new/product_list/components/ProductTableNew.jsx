@@ -31,28 +31,23 @@ import { ROUTE_CONSTANT } from 'app/constant/routeContanst';
 import { toast } from 'react-toastify';
 import { useProductStore } from "../../states/useProductStore";
 import debounce from 'lodash.debounce';
-
 const getCurrentScrollPosition = () => {
     if (typeof window === 'undefined' || typeof document === 'undefined') return 0;
-
     let maxScrollTop = Math.max(
         window.scrollY || 0,
         document.documentElement?.scrollTop || 0,
         document.body?.scrollTop || 0,
         document.scrollingElement?.scrollTop || 0
     );
-
     const containers = document.querySelectorAll(
         'main, [role="main"], .main-content, .main-content-wrap, .content-wrap, .simplebar-content-wrapper'
     );
-
     containers.forEach((el) => {
         if (!el) return;
         if (el.scrollHeight > el.clientHeight && el.scrollTop > maxScrollTop) {
             maxScrollTop = el.scrollTop;
         }
     });
-
     // Fallback: detect active scroll container even if selector-based lookup misses it.
     document.querySelectorAll('*').forEach((el) => {
         if (!el) return;
@@ -60,10 +55,8 @@ const getCurrentScrollPosition = () => {
             maxScrollTop = el.scrollTop;
         }
     });
-
     return maxScrollTop;
 };
-
 // Stats Sub-table Component
 const StatsSubTable = () => (
     <Box sx={{ display: 'flex', justifyContent: 'center' }}>
@@ -174,19 +167,16 @@ const StatsSubTable = () => (
         </Table>
     </Box>
 );
-
 // Common Settings Column Component (without Badge)
 const CommonSettingsColumn = ({ product, isProduct, onFieldChange, actionLoading, filters }) => {
     const [localData, setLocalData] = useState({
         sale_price: product.sale_price || '',
         sort_order: product.sort_order || ''
     });
-
     const handleFieldChange = (field, value) => {
         setLocalData(prev => ({ ...prev, [field]: value }));
         onFieldChange(field, value);
     };
-
     if (!isProduct) {
         return (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
@@ -194,7 +184,6 @@ const CommonSettingsColumn = ({ product, isProduct, onFieldChange, actionLoading
             </Box>
         );
     }
-
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'center', justifyContent: 'center' }}>
             {/* Sale Price */}
@@ -214,7 +203,6 @@ const CommonSettingsColumn = ({ product, isProduct, onFieldChange, actionLoading
                     />
                 </Box>
             )}
-
             {/* Sort Order */}
             {!filters.hiddenColumns.includes('Sort Order') && (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
@@ -235,7 +223,6 @@ const CommonSettingsColumn = ({ product, isProduct, onFieldChange, actionLoading
         </Box>
     );
 };
-
 // Image Badge Column Component
 const ImageBadgeColumn = ({ product, isProduct, onBadgeChange, actionLoading, filters }) => {
     if (!isProduct || filters.hiddenColumns.includes('Image Badge')) {
@@ -245,7 +232,6 @@ const ImageBadgeColumn = ({ product, isProduct, onBadgeChange, actionLoading, fi
             </Box>
         );
     }
-
     return (
         <Box sx={{ display: 'flex', flexDirection: "column", justifyContent: 'center', alignItems: 'center', height: '100%' }}>
             <FormControl size="small" sx={{ minWidth: '150px', px: 2 }} disabled={actionLoading}>
@@ -268,7 +254,6 @@ const ImageBadgeColumn = ({ product, isProduct, onBadgeChange, actionLoading, fi
         </Box>
     );
 };
-
 // Product Row Component
 const ProductRow = ({ product, index }) => {
     const {
@@ -287,10 +272,8 @@ const ProductRow = ({ product, index }) => {
         persistListViewContext,
     } = useProductStore();
     const navigate = useNavigate();
-
     const [actionAnchorEl, setActionAnchorEl] = useState(null);
     const imageContainerRef = useRef(null);
-
     const designation_id = localStorage.getItem('designation_id');
     const isProduct = product.type === 'product';
     const hasVariations = product.productData?.length > 0;
@@ -303,12 +286,10 @@ const ProductRow = ({ product, index }) => {
         product.type === "variations"
             ? `${ROUTE_CONSTANT.catalog.product.editParentProducts}?id=${product.parent_product_code}`
             : `${ROUTE_CONSTANT.catalog.product.edit}?id=${product.product_code}`;
-
     const getCopyUrl =
         product.type === "variations"
             ? `${ROUTE_CONSTANT.catalog.product.parentProducts}?id=${product.parent_product_code}&listing=copy`
             : `${ROUTE_CONSTANT.catalog.product.add}?_id=${product.product_code}&listing=copy`;
-
     const handleLinkClick = (e) => {
         // Only run for normal left click (not ctrl/cmd/middle click)
         if (
@@ -320,24 +301,19 @@ const ProductRow = ({ product, index }) => {
         ) {
             return; // let browser handle it (new tab etc.)
         }
-
         persistListViewContext({
             status: filters.status,
             scrollY: getCurrentScrollPosition()
         });
-
         setActionAnchorEl(null);
     };
-
     // Check if all Product Information sub-columns are hidden
     const showProductInfoColumn = !filters.hiddenColumns.includes('Product Id') ||
         !filters.hiddenColumns.includes('SKU') ||
         !filters.hiddenColumns.includes('Product Title') || !filters.hiddenColumns.includes("Featured") || !filters.hiddenColumns.includes("Shop Name");
-
     // Check if all Common Settings sub-columns are hidden
     const showCommonSettingsColumn = !filters.hiddenColumns.includes('Sale Price') ||
         !filters.hiddenColumns.includes('Sort Order');
-
     // Fixed debounce function for API calls
     const debouncedApiCall = useRef(
         debounce(async (field, value, productId, productPrice) => {
@@ -346,7 +322,6 @@ const ProductRow = ({ product, index }) => {
                     toast.error('Sale price must be less than your price');
                     return;
                 }
-
                 if (field === 'sort_order') {
                     await updateSortOrder(productId, parseInt(value) || 0);
                 } else {
@@ -357,13 +332,11 @@ const ProductRow = ({ product, index }) => {
             }
         }, 1000)
     ).current;
-
     const handleFieldChange = useCallback((field, value) => {
         // Convert to number and handle empty values
         const numValue = value === '' ? 0 : parseFloat(value);
         debouncedApiCall(field, numValue, product._id, product.price);
     }, [product._id, product.price, debouncedApiCall]);
-
     const handleBadgeChange = async (badge) => {
         try {
             await updateBadge(product._id, badge);
@@ -371,7 +344,6 @@ const ProductRow = ({ product, index }) => {
             console.error('Error updating badge:', error);
         }
     };
-
     const handleToggleFeatured = async () => {
         try {
             await toggleFeatured(product._id, product.featured);
@@ -380,7 +352,6 @@ const ProductRow = ({ product, index }) => {
             toast.error('Failed to update featured status');
         }
     };
-
     const handleDelete = async () => {
         try {
             if (designation_id === "2" && filters.status === "delete") {
@@ -394,16 +365,13 @@ const ProductRow = ({ product, index }) => {
             toast.error('Failed to delete product');
         }
     };
-
     const capitalizeFirstLetter = (str) => {
         if (!str) return str;
         return str.charAt(0).toUpperCase() + str.slice(1);
     };
-
     const getProductTitle = () => {
         return product.product_title?.replace(/<\/?[^>]+(>|$)/g, "") || '';
     };
-
     const navigateWithListContext = (url) => {
         persistListViewContext({
             status: filters.status,
@@ -412,7 +380,6 @@ const ProductRow = ({ product, index }) => {
         setActionAnchorEl(null);
         navigate(url);
     };
-
     const VIEW_W = 200;
     const VIEW_H = 200;
     const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
@@ -425,7 +392,6 @@ const ProductRow = ({ product, index }) => {
             y: clamp(y, -maxY, maxY),
         };
     };
-
     return (
         <>
             <TableRow
@@ -451,7 +417,6 @@ const ProductRow = ({ product, index }) => {
                         />
                     </Box>
                 </TableCell>
-
                 {/* Status - Contractible */}
                 {!filters.hiddenColumns.includes('Status') && (
                     <TableCell sx={{ padding: '4px' }}>
@@ -478,7 +443,6 @@ const ProductRow = ({ product, index }) => {
                         </Box>
                     </TableCell>
                 )}
-
                 {/* Image - Fixed 200px */}
                 {!filters.hiddenColumns.includes('Image') && (
                     <TableCell sx={{ width: '200px', minWidth: '200px', maxWidth: '200px', padding: '4px' }}>
@@ -513,17 +477,19 @@ const ProductRow = ({ product, index }) => {
                                         const zoom = product?.zoom || {};
                                         const isContainerVisible = imageContainerRef.current &&
                                             imageContainerRef.current.offsetParent !== null;
-
                                         if (!isContainerVisible) {
                                             return { transform: 'translate3d(0px, 0px, 0) scale(1)' };
                                         }
-
                                         if (typeof zoom.x === 'number' && !isNaN(zoom.x) &&
                                             typeof zoom.y === 'number' && !isNaN(zoom.y) &&
                                             typeof zoom.scale === 'number' && !isNaN(zoom.scale)) {
                                             const { x, y, scale } = clampPan(zoom);
                                             return {
-                                                transform: `translate3d(${x}px, ${y}px, 0) scale(${scale})`,
+                                                transform: `
+    translate3d(${x}px, ${y}px, 0)
+    rotate(${zoom.rotation || 0}deg)
+    scale(${scale})
+`,
                                             };
                                         }
                                         return { transform: 'translate3d(0px, 0px, 0) scale(1)' };
@@ -533,7 +499,6 @@ const ProductRow = ({ product, index }) => {
                         </Box>
                     </TableCell>
                 )}
-
                 {/* Image Badge - New Column */}
                 {!filters.hiddenColumns.includes('Image Badge') && (
                     <TableCell sx={{ padding: '4px', minWidth: '120px' }}>
@@ -546,7 +511,6 @@ const ProductRow = ({ product, index }) => {
                         />
                     </TableCell>
                 )}
-
                 {/* Product Information - Only show if at least one sub-column is visible */}
                 {showProductInfoColumn && (
                     <TableCell sx={{ padding: '4px 16px', minWidth: '150px' }}>
@@ -568,7 +532,6 @@ const ProductRow = ({ product, index }) => {
                                     </Typography>
                                 </Box>
                             )}
-
                             {/* Product Title */}
                             {!filters.hiddenColumns.includes('Product Title') && (
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
@@ -597,7 +560,6 @@ const ProductRow = ({ product, index }) => {
                                     </a>
                                 </Box>
                             )}
-
                             {/* Shop Name */}
                             {!filters.hiddenColumns.includes('Shop Name') && (
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
@@ -611,7 +573,6 @@ const ProductRow = ({ product, index }) => {
                                     </Typography>
                                 </Box>
                             )}
-
                             {/* Product Code */}
                             {!filters.hiddenColumns.includes('Product Id') && (
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
@@ -628,7 +589,6 @@ const ProductRow = ({ product, index }) => {
                                     </Typography>
                                 </Box>
                             )}
-
                             {/* Product ID */}
                             {!filters.hiddenColumns.includes('Product Id') && (
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
@@ -645,7 +605,6 @@ const ProductRow = ({ product, index }) => {
                                     </Typography>
                                 </Box>
                             )}
-
                             {/* SKU */}
                             {!filters.hiddenColumns.includes('SKU') && (
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
@@ -661,7 +620,6 @@ const ProductRow = ({ product, index }) => {
                         </Box>
                     </TableCell>
                 )}
-
                 {/* Available Quantity - Contractible */}
                 {!filters.hiddenColumns.includes('Available') && (
                     <TableCell sx={{ padding: '4px', minWidth: '80px' }}>
@@ -670,7 +628,6 @@ const ProductRow = ({ product, index }) => {
                         </Typography>
                     </TableCell>
                 )}
-
                 {/* Common Settings Column - Only show if at least one sub-column is visible */}
                 {showCommonSettingsColumn && (
                     <TableCell sx={{ padding: '4px', minWidth: '150px' }}>
@@ -683,12 +640,10 @@ const ProductRow = ({ product, index }) => {
                         />
                     </TableCell>
                 )}
-
                 {/* Performance Stats - Fixed 200px */}
                 <TableCell sx={{ width: '200px', minWidth: '200px', maxWidth: '200px', padding: '4px' }}>
                     <StatsSubTable />
                 </TableCell>
-
                 {/* Actions - Contractible */}
                 <TableCell sx={{ padding: '4px', minWidth: '120px' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -727,7 +682,6 @@ const ProductRow = ({ product, index }) => {
                         >
                             <ArrowDropDown fontSize="small" />
                         </Button>
-
                         <Menu
                             anchorEl={actionAnchorEl}
                             open={Boolean(actionAnchorEl)}
@@ -741,7 +695,6 @@ const ProductRow = ({ product, index }) => {
                             >
                                 Edit
                             </MenuItem>
-
                             <MenuItem
                                 component={Link}
                                 to={getCopyUrl}
@@ -750,7 +703,6 @@ const ProductRow = ({ product, index }) => {
                             >
                                 Copy Listing
                             </MenuItem>
-
                             {(filters.status === "delete" && designation_id === "2") ||
                                 filters.status !== "delete" ? (
                                 <MenuItem onClick={handleDelete} sx={{ fontSize: "0.8rem" }}>
@@ -761,7 +713,6 @@ const ProductRow = ({ product, index }) => {
                     </Box>
                 </TableCell>
             </TableRow>
-
             {/* Expanded variations */}
             {isExpanded && hasVariations && product.productData.map((variation) => (
                 <VariationRow
@@ -774,7 +725,6 @@ const ProductRow = ({ product, index }) => {
         </>
     );
 };
-
 // Variation Row Component
 const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
     const {
@@ -790,25 +740,19 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
         persistListViewContext,
     } = useProductStore();
     const navigate = useNavigate();
-
     const [actionAnchorEl, setActionAnchorEl] = useState(null);
     const imageContainerRef = useRef(null);
-
     const designation_id = localStorage.getItem('designation_id');
     const isSelected = selection.productIds.includes(variation._id);
-
     // Check if all Product Information sub-columns are hidden
     const showProductInfoColumn = !filters.hiddenColumns.includes('Product Id') ||
         !filters.hiddenColumns.includes('SKU') ||
         !filters.hiddenColumns.includes('Product Title') || !filters.hiddenColumns.includes("Featured") || !filters.hiddenColumns.includes("Shop Name");
-
     // Check if all Common Settings sub-columns are hidden
     const showCommonSettingsColumn = !filters.hiddenColumns.includes('Sale Price') ||
         !filters.hiddenColumns.includes('Sort Order');
-
     const editUrl = `${ROUTE_CONSTANT.catalog.product.edit}?id=${variation.product_code}`;
     const copyUrl = `${ROUTE_CONSTANT.catalog.product.add}?_id=${variation.product_code}&listing=copy`;
-
     const handleLinkClick = (e) => {
         // Only run for normal left click (not ctrl/cmd/middle click)
         if (
@@ -820,15 +764,12 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
         ) {
             return; // let browser handle it (new tab etc.)
         }
-
         persistListViewContext({
             status: filters.status,
             scrollY: getCurrentScrollPosition()
         });
-
         setActionAnchorEl(null);
     };
-
     // Fixed debounce function for API calls
     const debouncedApiCall = useRef(
         debounce(async (field, value, productId) => {
@@ -843,13 +784,11 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
             }
         }, 1000)
     ).current;
-
     const handleFieldChange = useCallback((field, value) => {
         // Convert to number and handle empty values
         const numValue = value === '' ? 0 : parseFloat(value);
         debouncedApiCall(field, numValue, variation._id);
     }, [variation._id, debouncedApiCall]);
-
     const handleBadgeChange = async (badge) => {
         try {
             await updateBadge(variation._id, badge);
@@ -857,7 +796,6 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
             console.error('Error updating badge:', error);
         }
     };
-
     const handleToggleFeatured = async () => {
         try {
             await toggleFeatured(variation._id, variation.featured);
@@ -866,7 +804,6 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
             toast.error('Failed to update featured status');
         }
     };
-
     const handleDelete = async () => {
         try {
             await deleteProduct(variation._id);
@@ -876,16 +813,13 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
             toast.error('Failed to delete product');
         }
     };
-
     const capitalizeFirstLetter = (str) => {
         if (!str) return str;
         return str.charAt(0).toUpperCase() + str.slice(1);
     };
-
     const getProductTitle = () => {
         return capitalizeFirstLetter(variation.product_title?.replace(/<\/?[^>]+(>|$)/g, "") || '');
     };
-
     const navigateWithListContext = (url) => {
         persistListViewContext({
             status: filters.status,
@@ -894,7 +828,6 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
         setActionAnchorEl(null);
         navigate(url);
     };
-
     const VIEW_W = 200;
     const VIEW_H = 200;
     const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
@@ -907,7 +840,6 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
             y: clamp(y, -maxY, maxY),
         };
     };
-
     return (
         <TableRow
             sx={{
@@ -944,7 +876,6 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
                     />
                 </Box>
             </TableCell>
-
             {!filters.hiddenColumns.includes('Status') && (
                 <TableCell sx={{ padding: '4px' }}>
                     <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>{variation.productStatus}</Typography>
@@ -953,7 +884,6 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
                     </Typography>)}
                 </TableCell>
             )}
-
             {!filters.hiddenColumns.includes('Image') && (
                 <TableCell sx={{ width: '200px', minWidth: '200px', maxWidth: '200px', padding: '4px' }}>
                     <Box
@@ -987,17 +917,19 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
                                     const zoom = variation?.zoom || {};
                                     const isContainerVisible = imageContainerRef.current &&
                                         imageContainerRef.current.offsetParent !== null;
-
                                     if (!isContainerVisible) {
                                         return { transform: 'translate3d(0px, 0px, 0) scale(1)' };
                                     }
-
                                     if (typeof zoom.x === 'number' && !isNaN(zoom.x) &&
                                         typeof zoom.y === 'number' && !isNaN(zoom.y) &&
                                         typeof zoom.scale === 'number' && !isNaN(zoom.scale)) {
                                         const { x, y, scale } = clampPan(zoom);
                                         return {
-                                            transform: `translate3d(${x}px, ${y}px, 0) scale(${scale})`,
+                                            transform: `
+    translate3d(${x}px, ${y}px, 0)
+    rotate(${zoom.rotation || 0}deg)
+    scale(${scale})
+`,
                                         };
                                     }
                                     return { transform: 'translate3d(0px, 0px, 0) scale(1)' };
@@ -1007,7 +939,6 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
                     </Box>
                 </TableCell>
             )}
-
             {/* Image Badge for Variation */}
             {!filters.hiddenColumns.includes('Image Badge') && (
                 <TableCell sx={{ padding: '4px', minWidth: '120px' }}>
@@ -1020,7 +951,6 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
                     />
                 </TableCell>
             )}
-
             {/* Product Information for Variation */}
             {showProductInfoColumn && (
                 <TableCell sx={{ padding: '4px 8px', minWidth: '150px' }}>
@@ -1042,7 +972,6 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
                                 </Typography>
                             </Box>
                         )}
-
                         {/* Product Title */}
                         {!filters.hiddenColumns.includes('Product Title') && (
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
@@ -1066,7 +995,6 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
                                 </a>
                             </Box>
                         )}
-
                         {/* Shop Name */}
                         {!filters.hiddenColumns.includes('Shop Name') && (
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
@@ -1080,7 +1008,6 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
                                 </Typography>
                             </Box>
                         )}
-
                         {/* Product Code */}
                         {!filters.hiddenColumns.includes('Product Id') && (
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
@@ -1097,7 +1024,6 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
                                 </Typography>
                             </Box>
                         )}
-
                         {/* Product ID */}
                         {!filters.hiddenColumns.includes('Product Id') && (
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
@@ -1111,7 +1037,6 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
                                 </Typography>
                             </Box>
                         )}
-
                         {/* SKU */}
                         {!filters.hiddenColumns.includes('SKU') && (
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
@@ -1127,13 +1052,11 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
                     </Box>
                 </TableCell>
             )}
-
             {!filters.hiddenColumns.includes('Available') && (
                 <TableCell sx={{ padding: '4px', minWidth: '80px' }}>
                     <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>{variation.productStatus !== "sold-out" && variation.qty === "0" ? "Combinations" : variation.qty}</Typography>
                 </TableCell>
             )}
-
             {/* Common Settings for Variation */}
             {showCommonSettingsColumn && (
                 <TableCell sx={{ padding: '4px', minWidth: '150px' }}>
@@ -1146,12 +1069,10 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
                     />
                 </TableCell>
             )}
-
             {/* Performance Stats */}
             <TableCell sx={{ width: '200px', minWidth: '200px', maxWidth: '200px', padding: '4px' }}>
                 <StatsSubTable />
             </TableCell>
-
             {/* Actions */}
             <TableCell sx={{ padding: '4px', minWidth: '120px' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1190,7 +1111,6 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
                     >
                         <ArrowDropDown fontSize="small" />
                     </Button>
-
                     <Menu
                         anchorEl={actionAnchorEl}
                         open={Boolean(actionAnchorEl)}
@@ -1204,7 +1124,6 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
                         >
                             Edit
                         </MenuItem>
-
                         <MenuItem
                             component={Link}
                             to={copyUrl}
@@ -1213,7 +1132,6 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
                         >
                             Copy Listing
                         </MenuItem>
-
                         <MenuItem onClick={handleDelete} sx={{ fontSize: "0.8rem" }}>
                             Delete
                         </MenuItem>
@@ -1223,7 +1141,6 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
         </TableRow>
     );
 };
-
 // Main Product Table Component
 const ProductTableNew = () => {
     const {
@@ -1233,16 +1150,13 @@ const ProductTableNew = () => {
         filters,
         pagination
     } = useProductStore();
-
     // Check if all Product Information sub-columns are hidden
     const showProductInfoColumn = !filters.hiddenColumns.includes('Product Id') ||
         !filters.hiddenColumns.includes('SKU') ||
         !filters.hiddenColumns.includes('Product Title') || !filters.hiddenColumns.includes("Featured") || !filters.hiddenColumns.includes("Shop Name");
-
     // Check if all Common Settings sub-columns are hidden
     const showCommonSettingsColumn = !filters.hiddenColumns.includes('Sale Price') ||
         !filters.hiddenColumns.includes('Sort Order');
-
     const columnHeaders = [
         { key: 'checkbox', label: '', align: 'center', fixed: true, width: '60px' },
         { key: 'Status', label: 'Status', align: 'center', hideable: true, fixed: true, width: "100px" },
@@ -1267,7 +1181,6 @@ const ProductTableNew = () => {
         { key: 'Performance', label: 'Performance Stats', align: 'center', fixed: true, width: '300px' },
         { key: 'Action', label: 'Action', align: 'center', fixed: true, width: "100px" },
     ];
-
     if (loading) {
         return (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
@@ -1275,14 +1188,12 @@ const ProductTableNew = () => {
             </Box>
         );
     }
-
     const visibleProducts = pagination.rowsPerPage > 0
         ? filteredProducts.slice(
             pagination.page * pagination.rowsPerPage,
             pagination.page * pagination.rowsPerPage + pagination.rowsPerPage
         )
         : filteredProducts;
-
     return (
         <TableContainer
             component={Paper}
@@ -1310,7 +1221,6 @@ const ProductTableNew = () => {
                     <CircularProgress />
                 </Box>
             )}
-
             <Table sx={{ minWidth: '100%' }} size="small">
                 <TableHead>
                     <TableRow>
@@ -1344,7 +1254,6 @@ const ProductTableNew = () => {
                         })}
                     </TableRow>
                 </TableHead>
-
                 <TableBody>
                     {!filters.isSearched &&
                         visibleProducts.length > 0 &&
@@ -1363,12 +1272,10 @@ const ProductTableNew = () => {
                             const searchValue = filters.search.trim().toLowerCase();
                             const filterBy = filters.searchType;
                             if (filterBy !== 'all' && product.type === 'variations' && !(product.seller_sku?.toLowerCase().includes(searchValue) || product.parent_product_code?.toLowerCase().includes(searchValue))) {
-
                                 return product.productData.filter((variation) => {
                                     const valueToCheck = filterBy === 'sku'
                                         ? variation.sku_code
                                         : variation.product_code;
-
                                     return valueToCheck?.toLowerCase().includes(searchValue);
                                 })
                                     .map((variation) => (
@@ -1377,9 +1284,8 @@ const ProductTableNew = () => {
                                             variation={variation}
                                             parentProduct={product}
                                         />
-                                    ));
+                                   ));
                             }
-
                             // product.type === 'product'
                             return (
                                 <ProductRow
@@ -1399,10 +1305,8 @@ const ProductTableNew = () => {
                         </TableRow>
                     )}
                 </TableBody>
-
             </Table>
         </TableContainer>
     );
 };
-
-export default ProductTableNew;
+export default ProductTableNew; 
