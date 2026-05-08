@@ -496,16 +496,16 @@ const AddAttribute = () => {
     };
 
     const handleRemoveValue = (id) => {
-        if (attributeValues.length > 1) {
-            const updatedValues = attributeValues.filter(value => value.id !== id);
-            // Recalculate sortOrder after removal
-            const reorderedValues = updatedValues.map((value, index) => ({
-                ...value,
-                sortOrder: index + 1
-            }));
-            const validatedValues = checkDuplicateMainValues(reorderedValues);
-            setAttributeValues(validatedValues);
-        }
+        // if (attributeValues.length > 1) {
+        const updatedValues = attributeValues.filter(value => value.id !== id);
+        // Recalculate sortOrder after removal
+        const reorderedValues = updatedValues.map((value, index) => ({
+            ...value,
+            sortOrder: index + 1
+        }));
+        const validatedValues = checkDuplicateMainValues(reorderedValues);
+        setAttributeValues(validatedValues);
+        // }
     };
 
     const handleValueChange = (id, field, value) => {
@@ -1050,7 +1050,7 @@ const AddAttribute = () => {
                                                                                 <IconButton
                                                                                     onClick={() => handleRemoveValue(value.id)}
                                                                                     color="error"
-                                                                                    disabled={attributeValues.length <= 1}
+                                                                                // disabled={attributeValues.length <= 1}
                                                                                 >
                                                                                     <DeleteIcon />
                                                                                 </IconButton>
