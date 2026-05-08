@@ -109,7 +109,7 @@ const AllAttributes = () => {
 
             // Add search if provided
             if (debouncedSearch.trim()) {
-                params.append('search', debouncedSearch.trim());
+                params.append('search', debouncedSearch);
             }
 
             // Add sorting if provided

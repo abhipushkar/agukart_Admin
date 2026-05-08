@@ -323,7 +323,7 @@ export default function ProductDetails() {
                 return (
                     <Autocomplete
                         multiple={field.multiSelect || false}
-                        disableCloseOnSelect={field.multiSelect}
+                        // disableCloseOnSelect={field.multiSelect}
                         options={field.values?.filter(item => item.status !== false).map(item => item.value) || []}
                         value={formData.dynamicFields?.[field.name] || (field.multiSelect ? [] : null)}
                         sx={{
