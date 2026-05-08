@@ -108,7 +108,7 @@ const ParentProducts = () => {
                     >
                         {/* Wrap with Error Boundary */}
                         <ProductErrorBoundary>
-                            <ParentProductIdentity productId={queryId} listing={listing} />
+                            <ParentProductIdentity productCode={queryId} listing={listing} />
                         </ProductErrorBoundary>
                     </Box>
                 </Box>

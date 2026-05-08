@@ -418,6 +418,13 @@ const AllAttributes = () => {
                         </Button>
                     </Link>
                     <Button
+                        onClick={() => navigate(ROUTE_CONSTANT.catalog.attribute.group)}
+                        startIcon={<AppsIcon />}
+                        variant="outlined"
+                    >
+                        Attribute Groups
+                    </Button>
+                    <Button
                         variant="contained"
                         onClick={handleExport}
                         disabled={apiLoading || attributes.length === 0}

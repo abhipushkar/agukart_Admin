@@ -4,7 +4,7 @@ import { Box, Typography } from '@mui/material';
 import ControlPointIcon from "@mui/icons-material/ControlPoint";
 import { toast } from 'react-toastify';
 import { v4 as uuidv4 } from 'uuid';
-import {useParentProductStore} from "../../../states/parentProductStore";
+import { useParentProductStore } from "../../../states/parentProductStore";
 import ImageGrid from "./ImageGrid";
 
 const ImageUploadSection = () => {
@@ -82,7 +82,7 @@ const ImageUploadSection = () => {
                         setImages={setImages}
                         setFormData={setFormData}
                     />
-                    {inputErrors.images && (
+                    {/* {inputErrors?.images && (
                         <Typography sx={{
                             fontSize: "12px",
                             color: "#FF3D57",
@@ -90,23 +90,23 @@ const ImageUploadSection = () => {
                             marginRight: "14px",
                             marginTop: "45px"
                         }}>
-                            {inputErrors.images}
+                            {inputErrors?.images}
                         </Typography>
-                    )}
+                    )} */}
                     {images.length > 0
                         ? ""
                         : inputErrors.parentImage && (
-                        <Typography sx={{
-                            fontSize: "12px",
-                            display: "block",
-                            color: "#FF3D57",
-                            marginLeft: "14px",
-                            marginRight: "14px",
-                            marginTop: "3px"
-                        }}>
-                            {inputErrors.parentImage}
-                        </Typography>
-                    )}
+                            <Typography sx={{
+                                fontSize: "12px",
+                                display: "block",
+                                color: "#FF3D57",
+                                marginLeft: "14px",
+                                marginRight: "14px",
+                                marginTop: "3px"
+                            }}>
+                                {inputErrors.parentImage}
+                            </Typography>
+                        )}
                 </Box>
             </Box>
         </>
