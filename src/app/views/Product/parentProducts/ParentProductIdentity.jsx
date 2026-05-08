@@ -40,7 +40,7 @@ import {
 import { useRef } from "react";
 import BulkSkuImport from "./bulkSkuImport";
 
-const ParentProductIdentity = ({ productId, listing }) => {
+const ParentProductIdentity = ({ productCode, listing }) => {
     const [formData, setFormData] = React.useState({
         productTitle: "",
         description: "",
@@ -54,6 +54,8 @@ const ParentProductIdentity = ({ productId, listing }) => {
         images: [],
         vendor: null,
     });
+
+    const [productId, setProductId] = useState(null);
 
     const [inputFields, setInputFields] = React.useState([
         { id: 1, attributeValue: "", sortOrder: "", status: false }
@@ -1333,11 +1335,12 @@ const ParentProductIdentity = ({ productId, listing }) => {
     const getParentProductDetail = useCallback(async () => {
         try {
             const res = await ApiService.get(
-                `${apiEndpoints.getParentProductDetail}/${productId}`,
+                `${apiEndpoints.getParentProductDetail}/${productCode}`,
                 auth_key
             );
             if (res?.status === 200) {
                 const resData = res?.data?.data;
+                setProductId(resData._id);
                 setImgName(resData?.image);
 
                 const vendor = resData?.vendor_id ? vendors.find(v => v._id === resData.vendor_id) : null;
@@ -1634,13 +1637,13 @@ const ParentProductIdentity = ({ productId, listing }) => {
         } catch (error) {
             handleApiError(error, "Failed to load product details");
         }
-    }, [auth_key, handleApiError, productId, vendors, sellerSky, variantArrValues, listing]);
+    }, [auth_key, handleApiError, productCode, vendors, sellerSky, variantArrValues, listing]);
 
     useEffect(() => {
-        if (productId) {
+        if (productCode) {
             setImages(formData?.images);
         }
-    }, [formData?.images, productId]);
+    }, [formData?.images, productCode]);
 
     useEffect(() => {
         if (!Array.isArray(formData?.variant_id)) return;
@@ -1699,11 +1702,11 @@ const ParentProductIdentity = ({ productId, listing }) => {
     const hasLoadedProductData = useRef(false);
 
     useEffect(() => {
-        if (productId && vendors.length > 0 && !hasLoadedProductData.current) {
+        if (productCode && vendors.length > 0 && !hasLoadedProductData.current) {
             getParentProductDetail();
             hasLoadedProductData.current = true;
         }
-    }, [getParentProductDetail, productId, vendors, listing]);
+    }, [getParentProductDetail, productCode, vendors, listing]);
 
     // Also add cleanup to reset the flag when component unmounts
     useEffect(() => {

@@ -148,7 +148,7 @@ const AttributeGroups = () => {
             });
 
             if (debouncedSearch.trim()) {
-                params.append('search', debouncedSearch.trim());
+                params.append('search', debouncedSearch);
             }
 
             const url = `attribute-group?${params.toString()}`;

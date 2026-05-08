@@ -23,6 +23,7 @@ export default function AddProductNew() {
     const listingMode = searchParams.get("listing");
     const isCopyMode = Boolean(queryId || copyQueryId) && listingMode === "copy";
     const [currentTab, setCurrentTab] = useState(0);
+    const [productId, setProductId] = useState(null);
 
     const {
         resetForm,
@@ -88,6 +89,11 @@ export default function AddProductNew() {
                         safeSetFormData({
                             parentProduct: null
                         }, true);
+                    }
+
+                    // explicitly setting productId to save product
+                    if (!isCopyMode) {
+                        setProductId(cleanedEditData._id);
                     }
                 }
             } catch (error) {
@@ -174,7 +180,7 @@ export default function AddProductNew() {
         }
 
         try {
-            await submitProduct(!!queryId, queryId);
+            await submitProduct(!!queryId, productId);
             handleOpen("success", "Product submitted successfully!");
         } catch (error) {
             handleOpen("error", error?.response?.data?.message);
@@ -183,7 +189,7 @@ export default function AddProductNew() {
 
     const handleSaveDraft = async () => {
         try {
-            await saveDraft(queryId);
+            await saveDraft(productId);
             handleOpen("success", "Product saved as draft successfully!");
         } catch (error) {
             handleOpen("error", error);
