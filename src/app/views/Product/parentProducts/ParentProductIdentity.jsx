@@ -1130,6 +1130,17 @@ const ParentProductIdentity = ({ productCode, listing }) => {
                                 : images?.[0]?.src
                             : images?.[0]?.file
                     );
+                    if (images?.[0]?.edited_image) {
+                        imageFormData.append(
+                            "edited_image",
+                            images[0].edited_image
+                        );
+
+                        console.log(
+                            "Edited image appended =>",
+                            images[0].edited_image
+                        );
+                    }
                     const ImagesurlWithParam = `${apiEndpoints.ParentImagesAddParentProduct}`;
                     await ApiService.postImage(ImagesurlWithParam, imageFormData, auth_key);
                 }

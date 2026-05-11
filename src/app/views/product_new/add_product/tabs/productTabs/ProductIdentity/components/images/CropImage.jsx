@@ -97,7 +97,7 @@ const CropImage = ({
         if (selectedImageIndex !== 0) return; // sirf primary image pe
         e.preventDefault();
 
-        const delta = e.deltaY > 0 ? -0.1 : 0.1; // scroll down = zoom out, scroll up = zoom in
+        const delta = e.deltaY > 0 ? -0.07 : 0.07; // scroll down = zoom out, scroll up = zoom in
         const currentScale = formData.transformData?.scale || 1;
         const newScale = Math.min(5, Math.max(1, currentScale + delta)); // 1x to 5x limit
 
@@ -153,6 +153,68 @@ const CropImage = ({
             handleOpen("error", "Error cropping image");
         }
     };
+
+    const generateEditedImage = async (imageSrc, transformData) => {
+        return new Promise((resolve, reject) => {
+            const image = new Image();
+            image.crossOrigin = "anonymous";
+            image.src = imageSrc;
+
+            image.onload = () => {
+                const canvas = document.createElement("canvas");
+                const ctx = canvas.getContext("2d");
+
+                canvas.width = image.width;
+                canvas.height = image.height;
+
+                ctx.save();
+
+                // center
+                ctx.translate(canvas.width / 2, canvas.height / 2);
+
+                // rotate
+                ctx.rotate((transformData.rotation || 0) * Math.PI / 180);
+
+                // scale
+                ctx.scale(
+                    transformData.scale || 1,
+                    transformData.scale || 1
+                );
+
+                // move
+                ctx.translate(
+                    transformData.x || 0,
+                    transformData.y || 0
+                );
+
+                ctx.drawImage(
+                    image,
+                    -image.width / 2,
+                    -image.height / 2
+                );
+
+                ctx.restore();
+
+                canvas.toBlob((blob) => {
+                    if (!blob) {
+                        reject(new Error("Failed to generate image"));
+                        return;
+                    }
+
+                    const file = new File(
+                        [blob],
+                        "edited-image.jpg",
+                        { type: "image/jpeg" }
+                    );
+
+                    resolve(file);
+                }, "image/jpeg");
+            };
+
+            image.onerror = reject;
+        });
+    };
+
     const handleImageUpload = (event) => {
         const files = Array.from(event.target.files);
         if (tempImages.length + files.length > 15) {
@@ -256,15 +318,38 @@ const CropImage = ({
         setDragOverIndex(null);
         setDraggedIndex(null);
     };
-    const handleApplyChanges = () => {
+    const handleApplyChanges = async () => {
         const commonAltText = tempAltText[selectedImageIndex] || "";
+        let updatedImages = [...tempImages];
+
+        if (updatedImages[0]) {
+            const editedFile = await generateEditedImage(
+                updatedImages[0].src,
+                formData.transformData || {}
+            );
+
+            updatedImages[0] = {
+                ...updatedImages[0],
+                edited_image: editedFile
+            };
+        }
+
+        console.log(
+            "Updated Images =>",
+            updatedImages
+        );
+
         setFormData({
-            images: tempImages,
+            ...formData,
+            images: updatedImages,
             transformData: formData.transformData
         });
+
         setAltText(tempImages.map(() => commonAltText));
+
         handleEditClose();
     };
+
     const handleDiscard = () => {
         setDiscardModalOpen(false);
         handleEditClose();
@@ -282,14 +367,15 @@ const CropImage = ({
                 fullWidth
                 sx={{
                     '& .MuiDialog-paper': {
-                        height: '85vh',
-                        maxHeight: '700px',
+                        height: '88vh',
+                        maxHeight: '640px',
                         margin: 2,
-                        width: 'calc(100% - 32px)'
+                        width: 'calc(100% - 32px)',
+                        maxWidth: '1000px',
                     }
                 }}
             >
-                <Box sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                <Box sx={{ p: 1, height: '100%', display: 'flex', flexDirection: 'column' }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                         <Typography variant="h6" fontWeight="bold">
                             Edit Images
@@ -298,10 +384,10 @@ const CropImage = ({
                             <HighlightOff />
                         </IconButton>
                     </Box>
-                    <Grid container spacing={2} sx={{ flex: 1, minHeight: 0 }}>
+                    <Grid container spacing={1} sx={{ flex: 1, minHeight: 0 }}>
                         <Grid item xs={12} md={4}>
                             <Box sx={{
-                                maxHeight: '600px',
+                                maxHeight: '520px',
                                 overflow: 'auto',
                                 border: '1px solid #e0e0e0',
                                 borderRadius: '8px',
@@ -312,7 +398,7 @@ const CropImage = ({
                                 </Typography>
                                 <Grid container spacing={0.5}>
                                     {tempImages.map((image, index) => (
-                                        <Grid item xs={6} key={image._id || index}>
+                                        <Grid item xs={4} key={image._id || index}>
                                             <Box
                                                 draggable
                                                 onDragStart={(e) => handleDragStart(e, index)}
@@ -421,12 +507,13 @@ const CropImage = ({
                                 />
                             </Box>
                         </Grid>
-                        <Grid item xs={12} md={5}>
+                        <Grid item xs={12} md={5} sx={{ mt: -2 }}>
                             <Box
                                 ref={imageContainerRef}
                                 sx={{
                                     width: '100%',
-                                    maxWidth: '500px',
+                                    maxWidth: '400px',
+                                    height: '400px',
                                     aspectRatio: '1',
                                     position: 'relative',
                                     border: '2px solid gray',
@@ -616,32 +703,14 @@ const CropImage = ({
                                                 </>
                                             )}
                                             {/* Action Buttons */}
-                                            <Box sx={{ display: 'flex', gap: 0.5 }}>
-                                                <Button
-                                                    variant="outlined"
-                                                    startIcon={<Crop />}
-                                                    onClick={() => setIsCropping(true)}
-                                                    size="small"
-                                                >
-                                                    Crop
-                                                </Button>
-                                                <Button
-                                                    variant="outlined"
-                                                    startIcon={<DeleteOutline />}
-                                                    onClick={() => handleDeleteImage(selectedImageIndex)}
-                                                    color="error"
-                                                    size="small"
-                                                >
-                                                    Delete
-                                                </Button>
-                                            </Box>
+
                                         </Box>
                                     )}
                                 </Box>
                             )}
                         </Grid>
                         {/* Right Sidebar - Alt Text and Actions */}
-                        <Grid item xs={12} md={3}>
+                        <Grid item xs={12} md={3} sx={{ mt: -3 }}>
                             {selectedImage && !isCropping && (
                                 <Box>
                                     <Typography variant="subtitle2" gutterBottom>
@@ -653,7 +722,7 @@ const CropImage = ({
                                     <TextField
                                         fullWidth
                                         multiline
-                                        rows={3}
+                                        rows={5}
                                         size="small"
                                         value={tempAltText[selectedImageIndex] || ''}
                                         onChange={(e) => {
@@ -664,35 +733,59 @@ const CropImage = ({
                                         placeholder="Describe your image in detail..."
                                         helperText={`${tempAltText[selectedImageIndex]?.length || 0}/124 characters`}
                                     />
+                                    <Box
+                                        sx={{
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: 2.0,
+                                            mt: 22
+                                        }}
+                                    >
+                                        <Button
+                                            variant="outlined"
+                                            startIcon={<Crop />}
+                                            onClick={() => setIsCropping(true)}
+                                            size="small"
+                                            sx={{
+                                                whiteSpace: 'nowrap',
+                                                width: '190px',
+                                                alignSelf: 'center'
+                                            }}
+                                        >
+                                            Crop
+                                        </Button>
+
+                                        <Button
+                                            variant="outlined"
+                                            onClick={() => setDiscardModalOpen(true)}
+                                            size="small"
+                                            sx={{
+                                                whiteSpace: 'nowrap',
+                                                width: '190px',
+                                                alignSelf: 'center'
+                                            }}
+                                        >
+                                            Cancel
+                                        </Button>
+
+                                        <Button
+                                            variant="contained"
+                                            onClick={handleApplyChanges}
+                                            disabled={!canApply}
+                                            size="small"
+                                            sx={{
+                                                whiteSpace: 'nowrap',
+                                                width: '190px',
+                                                alignSelf: 'center'
+                                            }}
+                                        >
+                                            Apply Changes
+                                        </Button>
+                                    </Box>
                                 </Box>
                             )}
                         </Grid>
                     </Grid>
-                    {/* Footer Actions */}
-                    <Box sx={{
-                        display: 'flex',
-                        justifyContent: 'flex-end',
-                        gap: 1,
-                        mt: 2,
-                        pt: 2,
-                        // borderTop: '1px solid #e0e0e0'
-                    }}>
-                        <Button
-                            variant="outlined"
-                            onClick={() => setDiscardModalOpen(true)}
-                            size="small"
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            variant="contained"
-                            onClick={handleApplyChanges}
-                            disabled={!canApply}
-                            size="small"
-                        >
-                            Apply Changes
-                        </Button>
-                    </Box>
                 </Box>
             </Dialog>
             {/* Discard Changes Modal */}
@@ -729,4 +822,4 @@ const CropImage = ({
         </>
     );
 };
-export default CropImage;
+export default CropImage;                                                                                   

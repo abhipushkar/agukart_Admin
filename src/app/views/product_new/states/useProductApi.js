@@ -815,6 +815,18 @@ export const useProductAPI = () => {
 
             filterImagesData.forEach((img) => fData.append("images", img.file));
 
+            if (images?.[0]?.edited_image) {
+                fData.append(
+                    "edited_image",
+                    images[0].edited_image
+                );
+
+                console.log(
+                    "EDITED IMAGE SENT =>",
+                    images[0].edited_image
+                );
+            }
+
             appendArrayToFormData("newImgSortArray[]", newSortArray);
             appendArrayToFormData("existimageSortOrder[]", sortedArray);
 
