@@ -507,16 +507,53 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
 
                                                 {/* Map through items in this sub-order */}
                                                 {subOrder.items?.map((itemData, itemIndex) => (
-                                                    <Product
-                                                        key={`${shopName}-${itemIndex}`}
-                                                        saleData={itemData}
-                                                        baseUrl={baseUrl}
-                                                        getOrderList={getOrderList}
-                                                        handleOpen={handleOpen}
-                                                        item={parentSale} // Pass the parent sale object
-                                                        shop_name={shopName}
-                                                        vendorData={subOrder} // Pass the sub-order data
-                                                    />
+                                                    <React.Fragment key={`${shopName}-${itemIndex}`}>
+
+                                                        <Product
+                                                            saleData={itemData}
+                                                            baseUrl={baseUrl}
+                                                            getOrderList={getOrderList}
+                                                            handleOpen={handleOpen}
+                                                            item={parentSale}
+                                                            shop_name={shopName}
+                                                            vendorData={subOrder}
+                                                        />
+
+                                                        {/* Review Section */}
+                                                        {itemIndex === 0 && subOrder.items.length > 1 && (
+                                                            <Box
+                                                                sx={{
+                                                                    display: "flex",
+                                                                    alignItems: "center",
+                                                                    gap: 1,
+                                                                    ml: "180px",
+                                                                    mt: 1,
+                                                                    mb: 2,
+                                                                }}
+                                                            >
+                                                                <Typography
+                                                                    sx={{
+                                                                        fontSize: "16px",
+                                                                        fontWeight: 500,
+                                                                        textDecoration: "underline",
+                                                                        cursor: "pointer",
+                                                                        color: "#000",
+                                                                    }}
+                                                                >
+                                                                    Review
+                                                                </Typography>
+
+                                                                <Box sx={{ display: "flex", color: "#f5c518" }}>
+                                                                    <StarIcon fontSize="small" />
+                                                                    <StarIcon fontSize="small" />
+                                                                    <StarIcon fontSize="small" />
+                                                                    <StarIcon fontSize="small" />
+                                                                    <StarIcon fontSize="small" />
+                                                                </Box>
+                                                            </Box>
+                                                        )}
+
+                                                    </React.Fragment>
                                                 ))}
 
                                                 {/* Display notes for this sub-order */}

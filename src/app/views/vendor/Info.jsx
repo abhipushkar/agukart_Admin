@@ -195,11 +195,6 @@ const Info = ({
             <TextField
               error={errors.shopAddress && true}
               helperText={errors.shopAddress}
-              // onBlur={() => {
-              //   if (!formValues.shopAddress) {
-              //     setErrors((prv) => ({ ...prv, shopAddress: "Shop addrerss is required" }));
-              //   }
-              // }}
               type="text"
               value={formValues.shopAddress}
               onChange={handleChange}
@@ -213,7 +208,6 @@ const Info = ({
             />
           </Typography>
         </Box>
-        {/* Meta Title */}
         {/* Meta Title */}
         <Box py={3} sx={{ borderBottom: "1px solid #d6d6d6" }}>
           <Typography pb={1} sx={{ fontSize: "16px", fontWeight: "600" }}>
@@ -415,7 +409,7 @@ const Info = ({
         )}
         <Button
           sx={{
-            backgroundColor: "#43a047", // green
+            backgroundColor: "#43a047",
             borderRadius: "8px",
             color: "#fff",
             padding: "8px 20px",

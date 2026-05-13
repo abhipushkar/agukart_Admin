@@ -5,18 +5,14 @@ import { localStorageKey } from "app/constant/localStorageKey";
 import { useNavigate } from "react-router-dom";
 import { ROUTE_CONSTANT } from "app/constant/routeContanst";
 import { useProductFormStore } from "./useAddProducts";
-
 export const useProductAPI = () => {
     const { setLoading, setDraftLoading, setLoadingProductData } = useProductFormStore();
     const navigate = useNavigate();
-
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
-
     // ---------------- helper to build FormData ----------------
     const buildProductFormData = (payload, product_variants, combinations, customizationData) => {
         const fData = new FormData();
         const { deletedVariantImages } = useProductFormStore.getState();
-
         // fields that can be null/dates
         const dateKeys = [
             "sale_start_date",
@@ -25,19 +21,15 @@ export const useProductAPI = () => {
             "release_date",
             "restock_date",
         ];
-
         if (deletedVariantImages && Object.keys(deletedVariantImages).length > 0) {
             fData.append("deleted_variant_images", JSON.stringify(deletedVariantImages));
         }
-
         const { deletedCustomizationImages } = useProductFormStore.getState();
         if (deletedCustomizationImages && Object.keys(deletedCustomizationImages).length > 0) {
             fData.append("deleted_customization_images", JSON.stringify(deletedCustomizationImages));
         }
-
         Object.keys(payload).forEach((key) => {
             let value = payload[key];
-
             // skip null-like and empty values
             if (
                 value === null ||
@@ -50,11 +42,9 @@ export const useProductAPI = () => {
             ) {
                 return;
             }
-
             // Handle date fields safely
             if (dateKeys.includes(key)) {
                 let formattedDate = null;
-
                 // Handle Day.js instances
                 if (value && typeof value === "object" && typeof value.format === "function") {
                     formattedDate = value.isValid() ? value.format("YYYY-MM-DD") : null;
@@ -70,14 +60,12 @@ export const useProductAPI = () => {
                         formattedDate = parsedDate.toISOString().split("T")[0];
                     }
                 }
-
                 // Only append if we have a valid formatted date
                 if (formattedDate) {
                     fData.append(key, formattedDate);
                 }
                 return; // Skip further processing for date fields
             }
-
             // Handle files
             if (value instanceof File) {
                 fData.append(key, value);
@@ -111,7 +99,6 @@ export const useProductAPI = () => {
                 fData.append(key, String(value));
             }
         });
-
         // 2) Append product_variants with proper image and guide handling
         if (product_variants && product_variants.length > 0) {
             product_variants.forEach((variant, vIndex) => {
@@ -125,7 +112,6 @@ export const useProductAPI = () => {
                         variant.viewAll === true || variant.viewAll === "true" ? "true" : "false"
                     );
                 }
-
                 // Handle guide data for variant
                 if (variant.guide && Array.isArray(variant.guide) && variant.guide.length > 0) {
                     variant.guide.forEach((guide, gIndex) => {
@@ -136,21 +122,18 @@ export const useProductAPI = () => {
                                 guide.guide_name
                             );
                         }
-
                         if (guide.guide_description) {
                             fData.append(
                                 `product_variants[${vIndex}][guide][${gIndex}][guide_description]`,
                                 guide.guide_description
                             );
                         }
-
                         if (guide.guide_type) {
                             fData.append(
                                 `product_variants[${vIndex}][guide][${gIndex}][guide_type]`,
                                 guide.guide_type
                             );
                         }
-
                         // Handle guide file - both File objects and strings
                         if (guide.guide_file instanceof File) {
                             fData.append(
@@ -165,7 +148,6 @@ export const useProductAPI = () => {
                         }
                     });
                 }
-
                 // Handle variant attributes and their images
                 if (variant.variant_attributes && Array.isArray(variant.variant_attributes)) {
                     variant.variant_attributes.forEach((attribute, aIndex) => {
@@ -176,7 +158,6 @@ export const useProductAPI = () => {
                                 attribute.attribute
                             );
                         }
-
                         // Handle main_images array
                         if (attribute.main_images && Array.isArray(attribute.main_images)) {
 
@@ -199,7 +180,6 @@ export const useProductAPI = () => {
                                 }
                             });
                         }
-
                         // Handle preview_image
                         if (attribute.preview_image instanceof File) {
                             fData.append(
@@ -212,7 +192,6 @@ export const useProductAPI = () => {
                                 attribute.preview_image
                             );
                         }
-
                         // Handle thumbnail
                         if (attribute.thumbnail instanceof File) {
                             fData.append(
@@ -225,7 +204,6 @@ export const useProductAPI = () => {
                                 attribute.thumbnail
                             );
                         }
-
                         // Handle edit_main_image
                         if (attribute.edit_main_image instanceof File) {
                             fData.append(
@@ -238,7 +216,6 @@ export const useProductAPI = () => {
                                 attribute.edit_main_image
                             );
                         }
-
                         // Handle edit_preview_image
                         if (attribute.edit_preview_image instanceof File) {
                             fData.append(
@@ -251,7 +228,6 @@ export const useProductAPI = () => {
                                 attribute.edit_preview_image
                             );
                         }
-
                         // Handle edit data (non-file data)
                         if (attribute.edit_main_image_data) {
                             fData.append(
@@ -261,7 +237,6 @@ export const useProductAPI = () => {
                                     : JSON.stringify(attribute.edit_main_image_data)
                             );
                         }
-
                         if (attribute.edit_preview_image_data) {
                             fData.append(
                                 `product_variants[${vIndex}][variant_attributes][${aIndex}][edit_preview_image_data]`,
@@ -280,7 +255,6 @@ export const useProductAPI = () => {
                 }
             });
         }
-
         // 3) Append ALL combination data (not just files) - only non-empty values
         combinations.forEach((variant, vIndex) => {
             if (variant.variant_name) {
@@ -289,19 +263,15 @@ export const useProductAPI = () => {
                     variant.variant_name
                 );
             }
-
             // Skip empty variants
             if (!variant || !variant.combinations || variant.combinations.length === 0) {
                 return;
             }
-
             (variant.combinations || []).forEach((comb, cIndex) => {
                 // Skip empty combinations
                 if (!comb) return;
-
                 Object.keys(comb).forEach((fieldKey) => {
                     const fieldVal = comb[fieldKey];
-
                     if (
                         fieldVal === null ||
                         fieldVal === undefined ||
@@ -316,7 +286,6 @@ export const useProductAPI = () => {
                     ) {
                         return;
                     }
-
                     // Force empty string for price and qty if their columns are not enabled
                     if (fieldKey === "price" && (comb.isCheckedPrice === "false" || comb.isCheckedPrice === false)) {
                         fData.append(`combinationData[${vIndex}][combinations][${cIndex}][${fieldKey}]`, "");
@@ -326,9 +295,6 @@ export const useProductAPI = () => {
                         fData.append(`combinationData[${vIndex}][combinations][${cIndex}][${fieldKey}]`, "");
                         return;
                     }
-
-
-
                     if (Array.isArray(fieldVal)) {
                         fieldVal.forEach((item, idx) => {
                             if (item !== null && item !== undefined && item !== "") {
@@ -352,14 +318,12 @@ export const useProductAPI = () => {
                 });
             });
         });
-
         // 4) Append customization data with images - UPDATED TO MATCH COMBINATIONS STRUCTURE
         if (customizationData && customizationData.customizations && customizationData.customizations.length > 0) {
             // Append basic customization fields
             fData.append(`customizationData[label]`, customizationData.label || '');
             fData.append(`customizationData[instructions]`, customizationData.instructions || '');
             fData.append(`customizationData[isExpanded]`, customizationData.isExpanded || '');
-
             customizationData.customizations.forEach((customization, cIndex) => {
                 // Append basic customization fields
                 fData.append(`customizationData[customizations][${cIndex}][title]`, customization.title || '');
@@ -368,7 +332,6 @@ export const useProductAPI = () => {
                 fData.append(`customizationData[customizations][${cIndex}][isCompulsory]`, customization.isCompulsory === true || customization.isCompulsory === "true" ? 'true' : 'false');
                 fData.append(`customizationData[customizations][${cIndex}][isVariant]`, customization.isVariant === true || customization.isVariant === "true" ? 'true' : 'false');
                 fData.append(`customizationData[customizations][${cIndex}][viewAll]`, customization.viewAll === true || customization.viewAll === "true" ? "true" : "false");
-
                 // ADDED: Append guide data for customization
                 if (customization.guide) {
                     if (customization.guide.guide_name) {
@@ -386,7 +349,6 @@ export const useProductAPI = () => {
                         fData.append(`customizationData[customizations][${cIndex}][guide][guide_file]`, customization.guide.guide_file);
                     }
                 }
-
                 // Handle text customization specific fields
                 if (customization.placeholder !== undefined) {
                     fData.append(`customizationData[customizations][${cIndex}][placeholder]`, customization.placeholder);
@@ -400,7 +362,6 @@ export const useProductAPI = () => {
                 if (customization.max !== undefined) {
                     fData.append(`customizationData[customizations][${cIndex}][max]`, customization.max);
                 }
-
                 // Handle option list for variant and dropdown customizations
                 if (customization.optionList && Array.isArray(customization.optionList)) {
                     customization.optionList.forEach((option, oIndex) => {
@@ -408,8 +369,6 @@ export const useProductAPI = () => {
                         fData.append(`customizationData[customizations][${cIndex}][optionList][${oIndex}][optionName]`, option.optionName || '');
                         fData.append(`customizationData[customizations][${cIndex}][optionList][${oIndex}][priceDifference]`, option.priceDifference || '0');
                         fData.append(`customizationData[customizations][${cIndex}][optionList][${oIndex}][isVisible]`, option.isVisible !== false || option.isVisible !== "false" ? 'true' : 'false');
-
-
                         // altText append
                         if (option.altText) {
                             fData.append(
@@ -417,7 +376,6 @@ export const useProductAPI = () => {
                                 option.altText
                             );
                         }
-
                         // Handle edit data for images
                         if (option.edit_main_image_data) {
                             fData.append(
@@ -425,14 +383,12 @@ export const useProductAPI = () => {
                                 typeof option.edit_main_image_data === "string" ? option.edit_main_image_data : JSON.stringify(option.edit_main_image_data)
                             );
                         }
-
                         if (option.edit_preview_image_data) {
                             fData.append(
                                 `customizationData[customizations][${cIndex}][optionList][${oIndex}][edit_preview_image_data]`,
                                 typeof option.edit_preview_image_data === "string" ? option.edit_preview_image_data : JSON.stringify(option.edit_preview_image_data)
                             );
                         }
-
                         // Handle main images array
                         if (option.main_images && Array.isArray(option.main_images)) {
                             option.main_images.forEach((image, imgIndex) => {
@@ -455,7 +411,6 @@ export const useProductAPI = () => {
                                 }
                             });
                         }
-
                         // Handle preview image
                         if (option.preview_image instanceof File) {
                             fData.append(
@@ -468,7 +423,6 @@ export const useProductAPI = () => {
                                 option.preview_image
                             );
                         }
-
                         // Handle thumbnail image
                         if (option.thumbnail instanceof File) {
                             fData.append(
@@ -481,7 +435,6 @@ export const useProductAPI = () => {
                                 option.thumbnail
                             );
                         }
-
                         // Handle edited images
                         if (option.edit_main_image instanceof File) {
                             fData.append(
@@ -494,7 +447,6 @@ export const useProductAPI = () => {
                                 option.edit_main_image
                             );
                         }
-
                         if (option.edit_preview_image instanceof File) {
                             fData.append(
                                 `customizationData[customizations][${cIndex}][optionList][${oIndex}][edit_preview_image]`,
@@ -510,10 +462,8 @@ export const useProductAPI = () => {
                 }
             });
         }
-
         return fData;
     };
-
     // Build payload for product submission
     const buildProductPayload = (isEdit = false, queryId = null) => {
         const state = useProductFormStore.getState();
@@ -524,35 +474,28 @@ export const useProductAPI = () => {
             combinations,
             varientName
         } = state;
-
         const occassion = formData.productdetailsOccassion?.map((o) => o._id) || [];
         const genderdata = formData.gender?.map((g) => g.label) || [];
         const materialdata = formData.combinedMaterials?.map((m) => m.label) || [];
-
         const variantMap = new Map(
             varientName.map(variant => [variant.variant_name, variant.id])
         );
-
         const sanitizedVariationsData = variationsData.map(v => {
             const variantId = variantMap.get(v.name);
-
             if (variantId) {
                 const { customId, ...rest } = v; // remove customId
-
                 return {
                     ...rest,
                     type: "global",
                     variantId: variantId
                 };
             }
-
             return {
                 ...v,
                 type: "custom"
             };
         });
         console.log({ san: sanitizedVariationsData, map: variantMap })
-
         let payload = {
             category: formData.subCategory,
             variant_id: formData.ParentMainId,
@@ -619,15 +562,12 @@ export const useProductAPI = () => {
             isCombination: combinations.length > 0,
             dynamicFields: formData.dynamicFields,
         };
-
         return payload;
     };
-
     // Validate combinations
     const validateCombinations = () => {
         const state = useProductFormStore.getState();
         const { variationsData, formValues, combinations } = state;
-
         const errors = {};
         combinations.forEach((variant) => {
             variant.combinations.forEach((item, index) => {
@@ -635,7 +575,6 @@ export const useProductAPI = () => {
                     (variationsData.length >= 2 ? formValues?.prices === variant.variant_name : true) &&
                     item?.isCheckedPrice &&
                     item?.isVisible;
-
                 if (isPriceCheckApplicable && (!item?.price)) {
                     errors[`Price-${variant.variant_name}-${index}`] = "Price is required";
                 }
@@ -643,40 +582,31 @@ export const useProductAPI = () => {
                     (variationsData.length >= 2 ? formValues?.quantities === variant.variant_name : true) &&
                     item?.isCheckedQuantity &&
                     item?.isVisible;
-
                 if (isQtyCheckApplicable && (!item?.qty)) {
                     errors[`Quantity-${variant.variant_name}-${index}`] = "Quantity is required";
                 }
             });
         });
-
         return errors;
     };
-
     const getRemovedDeletedVariants = () => {
         const { formData, variationsData } = useProductFormStore.getState();
         const existingIds = new Set(variationsData.map(v => v.variantId));
-
         return formData.deletedVariantIds.filter(id => !existingIds.has(id));
     };
-
     // Submit product (add or edit)
     const submitProduct = async (isEdit = false, queryId = null) => {
         try {
             setLoading(true);
-
             console.log("In Submit Product", queryId);
-
             // Build payload and form data
             const payload = buildProductPayload(isEdit, queryId);
             console.log("FINAL PAYLOAD", payload.zoom);
             const state = useProductFormStore.getState();
             const fData = buildProductFormData(payload, state.product_variants, state.combinations, state.customizationData);
-
             // Make API call
             const endpoint = isEdit ? apiEndpoints.addProduct : apiEndpoints.addProduct;
             const res = await ApiService.postImage(endpoint, fData, auth_key);
-
             if (res?.status === 200) {
                 if (!isEdit) {
                     await handleUploadImage(queryId || res?.data.product._id);
@@ -691,7 +621,6 @@ export const useProductAPI = () => {
                         await ApiService.patch(`restore-product-after-deletedVariants/${queryId}`, { variantIds: removedDeletedVariants }, auth_key);
                     }
                 }
-
                 return res;
             }
         } catch (error) {
@@ -701,25 +630,20 @@ export const useProductAPI = () => {
             setLoading(false);
         }
     };
-
     // Save as draft
     const saveDraft = async (queryId = null) => {
         try {
             setDraftLoading(true);
-
             const payload = buildProductPayload(!!queryId, queryId);
             const state = useProductFormStore.getState();
             const fData = buildProductFormData(payload, state.product_variants, state.combinations, state.customizationData);
-
             const res = await ApiService.postImage(apiEndpoints.addDraftProduct, fData, auth_key);
-
             if (res?.status === 200) {
                 if (queryId) {
                     await handleUploadImage2(queryId || res?.data.product._id);
                 } else {
                     await handleUploadImage(queryId || res?.data.product._id);
                 }
-
                 return res;
             }
         } catch (error) {
@@ -729,52 +653,39 @@ export const useProductAPI = () => {
             setDraftLoading(false);
         }
     };
-
     // Image upload handlers
     const handleUploadImage = async (id) => {
         const state = useProductFormStore.getState();
-
         const imgArr = state.formData.images.map((e) => e.file).filter(Boolean);
-
         const altText =
             state.altText && state.altText.length > 0
                 ? state.altText[0]
                 : state.formData.productTitle || "Product Image";
-
         console.log("HANDLE UPLOAD IMAGE RUNNING");
         console.log("FINAL ALT TEXT:", altText);
         console.log("IMAGES:", imgArr);
-
         try {
             const fData = new FormData();
-
             // Images
             imgArr.forEach((file) => {
                 fData.append("images", file);
             });
-
             // ✅ Send only once
             fData.append("altText", altText);
-
             fData.append("_id", id);
-
             console.log("------ FORMDATA START ------");
             for (let pair of fData.entries()) {
                 console.log(pair[0], pair[1]);
             }
             console.log("------ FORMDATA END ------");
-
             const res = await ApiService.postImage(
                 apiEndpoints.addProductImages,
                 fData,
                 auth_key
             );
-
             console.log("UPLOAD RESPONSE:", res);
-
             if (res.status === 200) {
                 const apiRes = await handleUploadVideo(id);
-
                 if (apiRes) {
                     navigate(ROUTE_CONSTANT.catalog.product.list);
                     return true;
@@ -785,77 +696,57 @@ export const useProductAPI = () => {
             throw error;
         }
     };
-
     const handleUploadImage2 = async (id) => {
         const state = useProductFormStore.getState();
-
         const { images, deleteIconData } = state.formData;
-
         const altText =
             state.altText && state.altText.length > 0
                 ? state.altText[0]
                 : state.formData.productTitle || "Product Image";
-
         const filterImagesData = images.filter((img) => img.file);
         const sortImagesData = images.filter((img) => !img.file);
-
         const newSortArray = filterImagesData.map((img) => img.file?.sortOrder);
-
         const sortedArray = sortImagesData.map((img) => ({
             name: img.src.split("product/")[1],
             sortOrder: img.sortOrder,
         }));
-
         try {
             const fData = new FormData();
-
             const appendArrayToFormData = (key, array) => {
                 array.forEach((item) => fData.append(key, JSON.stringify(item)));
             };
-
             filterImagesData.forEach((img) => fData.append("images", img.file));
-
             if (images?.[0]?.edited_image) {
                 fData.append(
                     "edited_image",
                     images[0].edited_image
                 );
-
                 console.log(
                     "EDITED IMAGE SENT =>",
                     images[0].edited_image
                 );
             }
-
             appendArrayToFormData("newImgSortArray[]", newSortArray);
             appendArrayToFormData("existimageSortOrder[]", sortedArray);
-
             // ✅ Send only once
             fData.append("altText", altText);
-
             if (deleteIconData && deleteIconData.length > 0) {
                 deleteIconData.forEach((item) =>
                     fData.append("deleteImgArr[]", item)
                 );
             }
-
             fData.append("_id", id);
-
             console.log("EDIT IMAGE UPLOAD ALT:", altText);
-
             for (let pair of fData.entries()) {
                 console.log(pair[0], pair[1]);
             }
-
             const res = await ApiService.postImage(
                 apiEndpoints.addProductImages,
                 fData,
                 auth_key
             );
-
             if (res.status === 200) {
                 const apiRes = await editVideoHandler(id);
-
                 if (apiRes) {
                     navigate(ROUTE_CONSTANT.catalog.product.list);
                     return true;
@@ -866,18 +757,15 @@ export const useProductAPI = () => {
             throw error;
         }
     };
-
     const handleUploadVideo = async (id) => {
         const state = useProductFormStore.getState();
         const videoArr = state.formData.videos.map((e) => e.file).filter(Boolean);
-
         try {
             const fData = new FormData();
             videoArr.forEach((file) => {
                 fData.append("videos", file);
             });
             fData.append("id", id);
-
             const res = await ApiService.postImage(apiEndpoints.uploadProductVideo, fData, auth_key);
             return res.status === 200;
         } catch (error) {
@@ -885,38 +773,29 @@ export const useProductAPI = () => {
             throw error;
         }
     };
-
     const editVideoHandler = async (id) => {
         const state = useProductFormStore.getState();
         const { videos, deletedVideos } = state.formData;
-
         const filterVideoData = videos.filter((res) => res.file);
         const videoArr = filterVideoData?.map((e) => e.file);
-
         const deleteVideoArr = deletedVideos?.map((item) => {
             const arrsplit = item.split("video/");
             return arrsplit[1];
         });
-
         const uniqueSetVideoarr = [...new Set(deleteVideoArr)];
-
         try {
             const fData = new FormData();
-
             videoArr.forEach((file) => {
                 if (filterVideoData.length > 0) {
                     fData.append("videos", file);
                 }
             });
-
             fData.append("id", id);
-
             if (deletedVideos && deletedVideos.length > 0) {
                 uniqueSetVideoarr.forEach((item) => {
                     fData.append("deleteVidArr[]", item);
                 });
             }
-
             if (filterVideoData.length === 0 && deletedVideos && deletedVideos.length === 0) {
                 navigate(ROUTE_CONSTANT.catalog.product.list);
                 return true;
@@ -929,15 +808,12 @@ export const useProductAPI = () => {
             throw error;
         }
     };
-
     // NEW: Fetch parent product data
     const fetchParentProductData = async (parentId) => {
         try {
             if (!parentId) return null;
-
             const parentApiUrl = `${apiEndpoints.getParentProductDetail}/${parentId}`;
             const res = await ApiService.get(parentApiUrl, auth_key);
-
             if (res?.status === 200) {
                 return res.data.data;
             }
@@ -947,7 +823,6 @@ export const useProductAPI = () => {
             return null;
         }
     };
-
     // UPDATED: Fetch edit product data with parent product
     const fetchEditProductData = async (productId, copyQueryId, isCopied) => {
         if (productId || copyQueryId) {
@@ -958,7 +833,6 @@ export const useProductAPI = () => {
                 const res = await ApiService.get(editapiUrl, auth_key);
                 if (res?.status === 200) {
                     const { productData } = res?.data;
-
                     // Fetch parent product data if parent_id exists
                     console.log("OUTSIDE IF Parent Id is", productData.parent_id);
                     if (productData.parent_id) {
@@ -970,7 +844,6 @@ export const useProductAPI = () => {
                             useProductFormStore.getState().setParentProductData(parentData);
                         }
                     }
-
                     useProductFormStore.getState().initializeFormWithEditData(productData, isCopied);
                     return productData;
                 }
@@ -982,18 +855,15 @@ export const useProductAPI = () => {
             }
         }
     };
-
     return {
         // Main actions
         submitProduct,
         saveDraft,
         fetchEditProductData,
-
         // Validation
         validateCombinations,
         buildProductFormData,
         buildProductPayload,
-
         // Image handlers
         handleUploadImage,
         handleUploadImage2,
@@ -1001,5 +871,4 @@ export const useProductAPI = () => {
         editVideoHandler
     };
 };
-
 export default useProductAPI;
