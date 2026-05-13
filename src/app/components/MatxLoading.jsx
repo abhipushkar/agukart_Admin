@@ -1,5 +1,4 @@
 import { CircularProgress, Box, styled } from "@mui/material";
-
 // STYLED COMPONENT
 const StyledLoading = styled("div")({
   width: "100%",
@@ -18,7 +17,6 @@ const StyledLoading = styled("div")({
     top: "calc(50% - 25px)"
   }
 });
-
 export default function Loading() {
   return (
     <StyledLoading>
