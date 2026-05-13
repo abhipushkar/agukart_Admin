@@ -2,6 +2,7 @@ export const createImage = (url) =>
     new Promise((resolve, reject) => {
         const image = new Image();
         image.crossOrigin = 'anonymous'; // Set crossOrigin BEFORE setting src
+        
         image.addEventListener('load', () => resolve(image));
         image.addEventListener('error', (error) => reject(error));
         image.src = url;

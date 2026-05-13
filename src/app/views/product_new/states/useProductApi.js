@@ -675,6 +675,7 @@ export const useProductAPI = () => {
 
             // Build payload and form data
             const payload = buildProductPayload(isEdit, queryId);
+            console.log("FINAL PAYLOAD", payload.zoom);
             const state = useProductFormStore.getState();
             const fData = buildProductFormData(payload, state.product_variants, state.combinations, state.customizationData);
             console.log(payload.brand_id, "here is brand");
@@ -820,6 +821,18 @@ export const useProductAPI = () => {
 
             filterImagesData.forEach((img) => fData.append("images", img.file));
 
+            if (images?.[0]?.edited_image) {
+                fData.append(
+                    "edited_image",
+                    images[0].edited_image
+                );
+
+                console.log(
+                    "EDITED IMAGE SENT =>",
+                    images[0].edited_image
+                );
+            }
+
             appendArrayToFormData("newImgSortArray[]", newSortArray);
             appendArrayToFormData("existimageSortOrder[]", sortedArray);
 
@@ -947,6 +960,7 @@ export const useProductAPI = () => {
             try {
                 setLoadingProductData(true);
                 const editapiUrl = `${apiEndpoints.EditProduct}/${copyQueryId || productId}`;
+                console.log("EDIT API URL", editapiUrl);
                 const res = await ApiService.get(editapiUrl, auth_key);
                 if (res?.status === 200) {
                     const { productData } = res?.data;

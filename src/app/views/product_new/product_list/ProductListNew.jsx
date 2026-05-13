@@ -39,7 +39,6 @@ import ProductTableNew from "./components/ProductTableNew";
 import { localStorageKey } from "../../../constant/localStorageKey";
 import Switch from "@mui/material/Switch";
 import ShippingTemplateDialog from './components/ShippingTemplateDialog';
-
 const IOSSwitch = styled((props) => (
     <Switch focusVisibleClassName=".Mui-focusVisible" disableRipple {...props} />
 ))(({ theme }) => ({
@@ -99,11 +98,9 @@ const IOSSwitch = styled((props) => (
         }),
     },
 }));
-
 const ProductListNew = () => {
     const navigate = useNavigate();
     const location = useLocation();
-
     const SORTING_OPTIONS = [
         { value: { sortBy: 'product_title', order: 1 }, label: 'Title (A to Z)' },
         { value: { sortBy: 'product_title', order: -1 }, label: 'Title (Z to A)' },
@@ -113,13 +110,11 @@ const ProductListNew = () => {
         { value: { sortBy: 'createdAt', order: 1 }, label: 'Date Created (Old to New)' },
         { value: { sortBy: 'updatedAt', order: -1 }, label: 'Last Updated' },
     ];
-
     const FILTER_OPTIONS = [
         { value: "all", label: 'All' }, // do not extract child product
         { value: "sku", label: 'SKU' }, // extract child on basis of sku
         { value: "code", label: 'Listing ID' }, // extract child on basis of product_code
     ];
-
     // Zustand store
     const {
         products,
@@ -144,7 +139,6 @@ const ProductListNew = () => {
         restoreListViewContext,
         clearListViewContext
     } = useProductStore();
-
     // Local state
     const [categories, setCategories] = useState([]);
     const [actionAnchorEl, setActionAnchorEl] = useState(null);
@@ -153,12 +147,10 @@ const ProductListNew = () => {
     const listRootRef = useRef(null);
     const pendingScrollRestoreRef = useRef(null);
     const hasAppliedViewContextRef = useRef(false);
-
     const getScrollableParents = (node) => {
         if (typeof window === 'undefined') return [];
         const parents = [];
         let current = node?.parentElement;
-
         while (current) {
             const style = window.getComputedStyle(current);
             const canScrollY = /(auto|scroll|overlay)/.test(style.overflowY);
@@ -167,27 +159,22 @@ const ProductListNew = () => {
             }
             current = current.parentElement;
         }
-
         return parents;
     };
-
     const getCurrentScrollPosition = () => {
         if (typeof window === 'undefined' || typeof document === 'undefined') return 0;
-
         let maxScrollTop = Math.max(
             window.scrollY || 0,
             document.documentElement?.scrollTop || 0,
             document.body?.scrollTop || 0,
             document.scrollingElement?.scrollTop || 0
         );
-
         const parentScrollContainers = getScrollableParents(listRootRef.current);
         parentScrollContainers.forEach((container) => {
             if (container.scrollTop > maxScrollTop) {
                 maxScrollTop = container.scrollTop;
             }
         });
-
         const knownContainers = document.querySelectorAll(
             'main, [role="main"], .main-content, .main-content-wrap, .content-wrap, .simplebar-content-wrapper'
         );
@@ -196,32 +183,25 @@ const ProductListNew = () => {
                 maxScrollTop = container.scrollTop;
             }
         });
-
         // Fallback for unknown scroll containers in layout wrappers.
         document.querySelectorAll('*').forEach((el) => {
             if (el.scrollHeight > el.clientHeight && el.scrollTop > maxScrollTop) {
                 maxScrollTop = el.scrollTop;
             }
         });
-
         return maxScrollTop;
     };
-
     const restoreScrollPosition = (scrollY) => {
         if (typeof window === 'undefined' || typeof document === 'undefined') return;
-
         window.scrollTo({ top: scrollY, behavior: 'smooth' });
-
         const primaryTargets = [
             document.scrollingElement,
             document.documentElement,
             document.body
         ].filter(Boolean);
-
         primaryTargets.forEach((target) => {
             target.scrollTop = scrollY;
         });
-
         const knownContainers = document.querySelectorAll(
             'main, [role="main"], .main-content, .main-content-wrap, .content-wrap, .simplebar-content-wrapper'
         );
@@ -230,12 +210,10 @@ const ProductListNew = () => {
                 container.scrollTop = scrollY;
             }
         });
-
         const parentScrollContainers = getScrollableParents(listRootRef.current);
         parentScrollContainers.forEach((container) => {
             container.scrollTop = scrollY;
         });
-
         // Brute-force fallback: apply to all scrollable elements.
         // This helps when app layout wraps content in dynamic containers.
         document.querySelectorAll('*').forEach((el) => {
@@ -250,7 +228,6 @@ const ProductListNew = () => {
         });
     };
     const isVendor = localStorage.getItem(localStorageKey.designation_id) === '3' ? true : false;
-
     // Column options for hide/show
     const columnOptions = [
         'Status',
@@ -265,24 +242,19 @@ const ProductListNew = () => {
         'Sort Order',
         'Image Badge'
     ];
-
     const handleShippingDialogClose = () => {
         setShippingDialogOpen(false);
     };
-
     // Get status of selected products
     const getSelectedProductsStatus = () => {
         if (selection.productIds.length === 0) return new Set();
-
         const selectedStatuses = new Set();
-
         // Check all products (including variations)
         products.forEach(product => {
             // Check main product
             if (selection.productIds.includes(product._id)) {
                 selectedStatuses.add(product.status);
             }
-
             // Check variations
             if (product.productData && product.productData.length > 0) {
                 product.productData.forEach(variation => {
@@ -292,32 +264,26 @@ const ProductListNew = () => {
                 });
             }
         });
-
         return selectedStatuses;
     };
-
     // Get available actions based on current filter status and selected products
     const getAvailableActions = () => {
         const { status } = filters;
         const selectedStatuses = getSelectedProductsStatus();
-
         // If no products selected, return empty array
         if (selection.productIds.length === 0) {
             return [];
         }
-
         // If we're in "all" filter, determine actions based on selected products' status
         if (status === 'all') {
             // If mixed statuses are selected, show only common actions
             if (selectedStatuses.size > 1) {
                 return getCommonActionsForMixedStatus(selectedStatuses);
             }
-
             // If all selected products have the same status, show actions for that status
             const singleStatus = Array.from(selectedStatuses)[0];
             return getActionsForStatus(singleStatus);
         }
-
         // For specific status filters, use the predefined logic
         switch (status) {
             case 'active':
@@ -355,7 +321,6 @@ const ProductListNew = () => {
                 return [];
         }
     };
-
     // Get actions for a specific status
     const getActionsForStatus = (status) => {
         switch (status) {
@@ -400,7 +365,6 @@ const ProductListNew = () => {
                 ];
         }
     };
-
     // Get common actions when multiple statuses are selected
     const getCommonActionsForMixedStatus = (selectedStatuses) => {
         const allPossibleActions = [
@@ -410,7 +374,6 @@ const ProductListNew = () => {
             { key: 'delete', label: 'Delete' },
             ...(isVendor ? [{ key: 'template', label: 'Change Shipping Template' }] : [])
         ];
-
         // Filter actions that are valid for ALL selected statuses
         return allPossibleActions.filter(action => {
             return Array.from(selectedStatuses).every(status => {
@@ -419,7 +382,6 @@ const ProductListNew = () => {
             });
         });
     };
-
     // Sync URL hash with status filter
     useEffect(() => {
         const hash = location.hash.replace('#', '');
@@ -427,7 +389,6 @@ const ProductListNew = () => {
             setFilters({ status: hash });
         }
     }, [location.hash]);
-
     // Update URL hash when status changes
     useEffect(() => {
         if (filters.status && filters.status !== 'all') {
@@ -435,50 +396,38 @@ const ProductListNew = () => {
         } else {
             window.location.hash = 'all';
         }
-
         deselectAll();
     }, [filters.status]);
-
     useEffect(() => {
         getAllActiveCategories();
     }, []);
-
     useEffect(() => {
         if (hasAppliedViewContextRef.current) return;
-
         const context = restoreListViewContext();
         if (!context?.shouldRestore) return;
-
         hasAppliedViewContextRef.current = true;
-
         if (context.status && context.status !== filters.status) {
             setFilters({ status: context.status });
             window.location.hash = context.status === 'all' ? 'all' : context.status;
         }
-
         if (typeof context.scrollY === 'number') {
             pendingScrollRestoreRef.current = context.scrollY;
         }
     }, [filters.status, restoreListViewContext, setFilters]);
-
     // Fetch initial data
     useEffect(() => {
         fetchProductsFirstTime();
         // getAllActiveCategories();
     }, [fetchProducts, filters.status, filters.category, filters.sorting, showFeaturedOnly, pagination.page, pagination.rowsPerPage]);
-
     useEffect(() => {
         if (loading) return;
         if (pendingScrollRestoreRef.current === null) return;
-
         const scrollY = pendingScrollRestoreRef.current;
-
         let attempts = 0;
         const maxAttempts = 160; // ~12.8s at 80ms interval
         const intervalId = setInterval(() => {
             restoreScrollPosition(scrollY);
             attempts += 1;
-
             const currentScroll = getCurrentScrollPosition();
             if (Math.abs(currentScroll - scrollY) <= 2 || attempts >= maxAttempts) {
                 clearInterval(intervalId);
@@ -488,13 +437,10 @@ const ProductListNew = () => {
                 }
             }
         }, 80);
-
         return () => clearInterval(intervalId);
     }, [clearListViewContext, filteredProducts.length, loading]);
-
     useEffect(() => {
         if (typeof window === 'undefined') return;
-
         let timeoutId = null;
         const saveCurrentViewContext = () => {
             if (timeoutId) clearTimeout(timeoutId);
@@ -505,14 +451,11 @@ const ProductListNew = () => {
                 });
             }, 120);
         };
-
         const parentScrollContainers = getScrollableParents(listRootRef.current);
-
         window.addEventListener('scroll', saveCurrentViewContext, { passive: true });
         parentScrollContainers.forEach((container) => {
             container.addEventListener('scroll', saveCurrentViewContext, { passive: true });
         });
-
         return () => {
             if (timeoutId) clearTimeout(timeoutId);
             window.removeEventListener('scroll', saveCurrentViewContext);
@@ -521,13 +464,11 @@ const ProductListNew = () => {
             });
         };
     }, [filters.status, persistListViewContext]);
-
     // Handle status filter change with hash routing
     const handleStatusChange = (event) => {
         const newStatus = event.target.value;
         setFilters({ status: newStatus });
         setPagination({ page: 0 })
-
         // Update URL hash
         if (newStatus && newStatus !== 'all') {
             window.location.hash = newStatus;
@@ -535,12 +476,10 @@ const ProductListNew = () => {
             window.location.hash = 'all';
         }
     };
-
     // Handle search
     const handleSearch = () => {
         searchProducts();
     };
-
     // Handle bulk actions
     const handleBulkAction = async (action) => {
         try {
@@ -565,7 +504,6 @@ const ProductListNew = () => {
                 default:
                     return;
             }
-
             if (result?.success) {
                 toast.success(result.message || 'Action completed successfully');
                 setActionAnchorEl(null);
@@ -574,17 +512,14 @@ const ProductListNew = () => {
             toast.error('Failed to perform bulk action');
         }
     };
-
     // Handle column visibility change
     const handleColumnVisibilityChange = (event) => {
         const value = event.target.value;
         setFilters({ hiddenColumns: value });
     };
-
     // Export in chunks for large datasets
     const handleExport = () => {
         const CHUNK_SIZE = 1000; // Export 1000 records at a time
-
         try {
             const allProducts = products
                 .filter(product => product.type === 'product')
@@ -594,34 +529,28 @@ const ProductListNew = () => {
                         .filter(product => product.type === 'variations')
                         .flatMap(product => product.productData.map(item => sanitizeProductData(item)))
                 );
-
             // If dataset is large, warn user
             if (allProducts.length > CHUNK_SIZE) {
                 toast.warning(`Exporting ${allProducts.length} products. This may take a while.`);
             }
-
             // Export in chunks if needed
             for (let i = 0; i < allProducts.length; i += CHUNK_SIZE) {
                 const chunk = allProducts.slice(i, i + CHUNK_SIZE);
                 const fileName = i === 0 ? 'Products.xlsx' : `Products_Part_${i / CHUNK_SIZE + 1}.xlsx`;
                 exportToExcel(chunk, fileName);
             }
-
             if (allProducts.length > CHUNK_SIZE) {
                 toast.success(`Exported ${allProducts.length} products in multiple files.`);
             } else {
                 toast.success(`Exported ${allProducts.length} products successfully.`);
             }
-
         } catch (error) {
             console.error('Export error:', error);
             toast.error('Failed to export products. Please try again with fewer records.');
         }
     };
-
     const sanitizeProductData = (product) => {
         const sanitized = { ...product };
-
         // Truncate long text fields to avoid Excel cell limits
         const textFields = [
             'description',
@@ -631,26 +560,22 @@ const ProductListNew = () => {
             'specifications',
             'features'
         ];
-
         textFields.forEach(field => {
             if (sanitized[field] && typeof sanitized[field] === 'string' && sanitized[field].length > 32700) {
                 // Truncate to 32700 characters and add ellipsis
                 sanitized[field] = sanitized[field].substring(0, 32700) + '... [truncated]';
             }
         });
-
         // Handle nested objects that might contain long text
         if (sanitized.productData && Array.isArray(sanitized.productData)) {
             sanitized.productData = sanitized.productData.map(variation =>
                 typeof variation === 'object' ? sanitizeProductData(variation) : variation
             );
         }
-
         // Remove any fields that are too complex for Excel
         delete sanitized.images; // Remove image arrays
         delete sanitized.variants; // Remove complex variant structures
         delete sanitized.combinations; // Remove combination data
-
         // Convert any remaining objects to strings if they're too complex
         Object.keys(sanitized).forEach(key => {
             if (typeof sanitized[key] === 'object' && sanitized[key] !== null) {
@@ -666,24 +591,18 @@ const ProductListNew = () => {
                 }
             }
         });
-
         return sanitized;
     };
-
     const isAllSelected = selection.productIds.length > 0 &&
         selection.productIds.length === selection.totalProductCount;
-
     const availableActions = getAvailableActions();
     const selectedStatuses = getSelectedProductsStatus();
-
     // console.log("Sorting Filters: ", filters.sorting);
-
     return (
         <Box ref={listRootRef} sx={{ margin: '30px' }}>
             {/* Header */}
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
                 <Breadcrumb routeSegments={[{ name: 'Product', path: '' }, { name: 'Product List' }]} />
-
                 <Box sx={{ display: 'flex', gap: 2 }}>
                     <Link href={ROUTE_CONSTANT.catalog.product.parentProducts}>
                         <Button
@@ -699,13 +618,11 @@ const ProductListNew = () => {
                             Add Product
                         </Button>
                     </Link>
-
                     <Button variant="contained" onClick={handleExport}>
                         Export Products
                     </Button>
                 </Box>
             </Box>
-
             {/* Filters and Actions */}
             <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>
                 {/* Bulk Actions */}
@@ -723,7 +640,6 @@ const ProductListNew = () => {
                             </Typography>
                         )}
                     </Typography>
-
                     <Button
                         size="small"
                         onClick={(e) => setActionAnchorEl(e.currentTarget)}
@@ -732,7 +648,6 @@ const ProductListNew = () => {
                     >
                         Actions
                     </Button>
-
                     <Menu
                         anchorEl={actionAnchorEl}
                         open={Boolean(actionAnchorEl)}
@@ -750,12 +665,10 @@ const ProductListNew = () => {
                         ))}
                     </Menu>
                 </Paper>
-
                 <ShippingTemplateDialog
                     isOpen={shippingDialogOpen}
                     onClose={handleShippingDialogClose}
                 />
-
                 {/* Category Filter */}
                 <FormControl size="small" sx={{ minWidth: 200 }}>
                     <Autocomplete
@@ -790,7 +703,6 @@ const ProductListNew = () => {
                         clearOnEscape
                     />
                 </FormControl>
-
                 {/* Sorting Filter */}
                 <FormControl size="small" sx={{ minWidth: 200 }}>
                     <InputLabel>Sort By</InputLabel>
@@ -820,7 +732,6 @@ const ProductListNew = () => {
                         ))}
                     </Select>
                 </FormControl>
-
                 {/* Search */}
                 <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
                     <FormControl size="small" sx={{ minWidth: 110 }}>
@@ -867,7 +778,6 @@ const ProductListNew = () => {
                     </Button>
                 </Box>
             </Box>
-
             {/* Status Filter and Column Preferences */}
             <Paper sx={{ p: 1, mb: 2, backgroundColor: '#f5f5f5' }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -890,7 +800,6 @@ const ProductListNew = () => {
                                 <FormControlLabel value="deleteByAdmin" control={<Radio />} label="Deleted By Admin" />)}
                         </RadioGroup>
                     </Box>
-
                     <FormControl sx={{
                         display: "flex",
                         alignItems: "center",
@@ -900,7 +809,6 @@ const ProductListNew = () => {
                             onChange={event => setShowFeaturedOnly(event.target.checked)}
                             control={<Switch sx={{ m: 1 }} />} label={"Show only Featured"} />
                     </FormControl>
-
                     {/* Column Preferences */}
                     <FormControl size="small" sx={{ minWidth: 300 }}>
                         <InputLabel>Columns</InputLabel>
@@ -921,10 +829,8 @@ const ProductListNew = () => {
                     </FormControl>
                 </Box>
             </Paper>
-
             {/* Product Table */}
             <ProductTableNew />
-
             {/* Pagination */}
             <TablePagination
                 rowsPerPageOptions={[25, 50, 75, 100]}
@@ -938,7 +844,6 @@ const ProductListNew = () => {
                     page: 0
                 })}
             />
-
             {/* Confirm Modal */}
             <ConfirmModal
                 open={confirmModal.open}
@@ -949,5 +854,4 @@ const ProductListNew = () => {
         </Box>
     );
 };
-
 export default ProductListNew;

@@ -71,22 +71,27 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
     };
     const handlePreviewMouseMove = (e) => {
         if (!previewDragging) return;
-        setFormData({                                          // ✅
+        setFormData(prev => ({
+            ...prev,
             transformData: {
-                ...formData.transformData,
+                ...(prev.transformData || {}),
                 x: e.clientX - previewDragStart.x,
                 y: e.clientY - previewDragStart.y
             }
-        });
+        }));
     };
     const handlePreviewMouseUp = () => setPreviewDragging(false);
     const handlePreviewWheel = useCallback((e) => {
         e.preventDefault();
         const delta = -e.deltaY / 500;
-        setFormData(prev => ({                                 // ✅
+        setFormData(prev => ({
+            ...prev,
             transformData: {
-                ...prev.transformData,
-                scale: Math.max(1, Math.min((prev.transformData?.scale || 1) + delta, 5))
+                ...(prev.transformData || {}),
+                scale: Math.max(
+                    1,
+                    Math.min((prev.transformData?.scale || 1) + delta, 5)
+                )
             }
         }));
     }, []);
@@ -639,9 +644,12 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                                             draggable={false}
                                             style={{
                                                 transform: `translate3d(
-            ${formData.transformData?.x || 0}px, 
-            ${formData.transformData?.y || 0}px, 0) 
-            scale(${formData.transformData?.scale || 1})`,
+    ${formData.transformData?.x || 0}px, 
+    ${formData.transformData?.y || 0}px, 
+    0
+)
+rotate(${formData.transformData?.rotation || 0}deg)
+scale(${formData.transformData?.scale || 1})`,
                                                 transformOrigin: 'center center',
                                                 maxWidth: '100%',
                                                 maxHeight: '100%',
@@ -658,7 +666,17 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                                         </Typography>
                                         <Button
                                             size="small"
-                                            onClick={() => setFormData({ transformData: { scale: 1, x: 0, y: 0 } })}  // ✅
+                                            onClick={() =>
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    transformData: {
+                                                        scale: 1,
+                                                        x: 0,
+                                                        y: 0,
+                                                        rotation: 0
+                                                    }
+                                                }))
+                                            }  // ✅
                                             sx={{ display: 'block', mx: 'auto', mt: 0.5 }}
                                         >
                                             Reset

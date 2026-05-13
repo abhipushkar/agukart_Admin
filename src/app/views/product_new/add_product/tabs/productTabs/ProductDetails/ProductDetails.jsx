@@ -19,7 +19,6 @@ import { useProductFormStore } from "../../../../states/useAddProducts";
 import { useState, useEffect, useRef } from "react";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
-
 export default function ProductDetails() {
     const {
         formData,
@@ -30,17 +29,14 @@ export default function ProductDetails() {
     const [error, setError] = useState("");
     const [isSearchFocused, setIsSearchFocused] = useState(true);
     const searchTermsRef = useRef(null);
-
     useEffect(() => {
         if (dynamicFields.length === 0) {
             setFormData({ dynamicFields: {} });
         }
     }, [dynamicFields]);
-
     const formDataHandler = (e) => {
         setFormData({ [e.target.name]: e.target.value });
     };
-
     const parseTerm = (term) => {
         if (Array.isArray(term)) {
             return term.map(t => t.trim());
@@ -51,7 +47,6 @@ export default function ProductDetails() {
             return newTerms;
         }
     };
-
     const handleChange = (event, newKeys) => {
         const titles = newKeys?.reduce((acc, option) => {
             return acc.concat(
@@ -63,14 +58,12 @@ export default function ProductDetails() {
         setFormData({ serchTemsKeyArray: titles });
         setError("");
     };
-
     const handleAddKey = () => {
         if (formData.searchTerms.trim() && !formData.serchTemsKeyArray.includes(formData.searchTerms.trim())) {
             const newKey = parseTerm(formData.searchTerms)
             setFormData({ serchTemsKeyArray: [...formData.serchTemsKeyArray, ...newKey] });
         }
     };
-
     const onSearchTermBlur = () => {
         const terms = formData.serchTemsKeyArray;
         const parsedterms = terms.reduce((acc, term) => {
@@ -78,16 +71,13 @@ export default function ProductDetails() {
         }, []);
         setFormData({ serchTemsKeyArray: parsedterms })
     };
-
     const handleDelete = (keyToDelete) => () => {
         const updatedKeys = formData.serchTemsKeyArray.filter((k) => k !== keyToDelete);
         setFormData({ serchTemsKeyArray: updatedKeys });
     };
-
     const handleDateChange = (dateType) => (newDate) => {
         setFormData({ [dateType]: newDate });
     };
-
     const handleDynamicFieldChange = (fieldName, value) => {
         setFormData({
             dynamicFields: {
@@ -96,7 +86,6 @@ export default function ProductDetails() {
             }
         });
     };
-
     const handleCompoundFieldChange = (parentFieldName, subFieldName, value, index = 0) => {
         const fieldKey = `${parentFieldName}.${subFieldName}`;
         setFormData({
@@ -106,7 +95,6 @@ export default function ProductDetails() {
             }
         });
     };
-
     const addCompoundInstance = (parentFieldName) => {
         const currentInstances = formData.dynamicFields?.[`${parentFieldName}_instances`] || 0;
         setFormData({
@@ -116,7 +104,6 @@ export default function ProductDetails() {
             }
         });
     };
-
     const removeCompoundInstance = (parentFieldName, index) => {
         const currentInstances = formData.dynamicFields?.[`${parentFieldName}_instances`] || 0;
         if (currentInstances > 0) {
@@ -131,11 +118,9 @@ export default function ProductDetails() {
             setFormData({ dynamicFields: updatedDynamicFields });
         }
     };
-
     const getCompoundInstances = (parentFieldName) => {
         return formData.dynamicFields?.[`${parentFieldName}_instances`] || 1;
     };
-
     const handleClearRadio = (fieldName, isDynamic = false, parentField = null, subField = null) => {
         if (isDynamic && parentField && subField) {
             // Compound field
@@ -159,7 +144,6 @@ export default function ProductDetails() {
             setFormData({ [fieldName]: "" });
         }
     };
-
     // Calculate search terms width based on number of chips
     const getSearchTermsWidth = () => {
         const chipCount = formData.serchTemsKeyArray?.length || 0;
@@ -171,14 +155,12 @@ export default function ProductDetails() {
         if (chipCount <= 4) return "75%";
         return "100%";
     };
-
     // Custom renderTags function for search terms
     const renderSearchTags = (value, getTagProps) => {
         if (!isSearchFocused && value.length > 3) {
             // Show first 3 chips and "+X more" indicator
             const visibleChips = value.slice(0, 3);
             const remainingCount = value.length - 3;
-
             return (
                 <>
                     {visibleChips.map((option, index) => (
@@ -203,7 +185,6 @@ export default function ProductDetails() {
                 </>
             );
         }
-
         // Show all chips when focused
         return value.map((option, index) => (
             <Chip
@@ -215,13 +196,11 @@ export default function ProductDetails() {
             />
         ));
     };
-
     // Custom renderTags function for dynamic fields dropdowns
     const renderDynamicTags = (value, getTagProps) => {
         if (value?.length > 6) {
             const visibleChips = value.slice(0, 6);
             const remainingCount = value.length - 6;
-
             return (
                 <>
                     {visibleChips.map((option, index) => (
@@ -242,7 +221,6 @@ export default function ProductDetails() {
                 </>
             );
         }
-
         return value?.map((option, index) => (
             <Chip
                 label={option}
@@ -251,10 +229,8 @@ export default function ProductDetails() {
             />
         ));
     };
-
     const renderDynamicField = (field) => {
         if (!field.status) return null;
-
         switch (field.type) {
             case "Text":
                 return (
@@ -269,7 +245,6 @@ export default function ProductDetails() {
                         }}
                     />
                 );
-
             case "Number":
                 return (
                     <TextField
@@ -285,14 +260,11 @@ export default function ProductDetails() {
                         }}
                     />
                 );
-
             case "Yes/No":
                 const dynamicValue = formData.dynamicFields?.[field.name] || "";
-
                 return (
                     <FormControl component="fieldset" fullWidth>
                         <FormLabel component="legend">{field.name}</FormLabel>
-
                         <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
                             <RadioGroup
                                 row
@@ -318,7 +290,6 @@ export default function ProductDetails() {
                         </Box>
                     </FormControl>
                 );
-
             case "Dropdown":
                 return (
                     <Autocomplete
@@ -349,7 +320,6 @@ export default function ProductDetails() {
                         renderTags={renderDynamicTags}
                     />
                 );
-
             case "Compound":
                 const instances = getCompoundInstances(field.name);
                 return (
@@ -384,16 +354,13 @@ export default function ProductDetails() {
                         </Box>
                     ))
                 );
-
             default:
                 return null;
         }
     };
-
     const renderSubField = (subField, parentFieldName, instanceIndex = 0) => {
         const fieldKey = `${parentFieldName}.${subField.name}`;
         const value = formData.dynamicFields?.[fieldKey];
-
         switch (subField.type) {
             case "Text":
                 return (
@@ -405,7 +372,6 @@ export default function ProductDetails() {
                         placeholder={`Enter ${subField.name}`}
                     />
                 );
-
             case "Number":
                 return (
                     <TextField
@@ -417,10 +383,8 @@ export default function ProductDetails() {
                         placeholder={`Enter ${subField.name}`}
                     />
                 );
-
             case "Yes/No":
                 const compoundValue = value || "";
-
                 return (
                     <FormControl component="fieldset" fullWidth>
                         <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
@@ -449,11 +413,9 @@ export default function ProductDetails() {
                             >
                                 Clear
                             </Button>
-
                         </Box>
                     </FormControl>
                 );
-
             case "Dropdown":
                 return (
                     <Autocomplete
@@ -474,12 +436,10 @@ export default function ProductDetails() {
                         renderTags={renderDynamicTags}
                     />
                 );
-
             default:
                 return null;
         }
     };
-
     return (
         <Box sx={{ display: "flex", flexDirection: "column", gap: "15px", maxWidth: "1200px", mx: "auto" }}>
             <Box sx={{ mt: 4 }}>
@@ -487,7 +447,6 @@ export default function ProductDetails() {
                 <Box sx={{ display: "flex", gap: "20px", mb: 3 }}>
                     <Box sx={{ fontSize: "14px", fontWeight: 700, width: "12.8%", display: "flex", textWrap: "wrap" }}>
                         Customizations
-
                     </Box>
                     <Box sx={{ width: "87.2%" }}>
                         <FormControl>
@@ -506,12 +465,10 @@ export default function ProductDetails() {
                         </FormControl>
                     </Box>
                 </Box>
-
                 {/* Popular Gifts */}
                 <Box sx={{ display: "flex", gap: "20px", mb: 3 }}>
                     <Box sx={{ fontSize: "14px", fontWeight: 700, width: "12.8%", display: "flex", textWrap: "wrap" }}>
                         Popular Gifts
-
                     </Box>
                     <Box sx={{ width: "87.2%" }}>
                         <FormControl>
@@ -530,12 +487,10 @@ export default function ProductDetails() {
                         </FormControl>
                     </Box>
                 </Box>
-
                 {/* Best Selling Product */}
                 <Box sx={{ display: "flex", gap: "20px", mb: 3 }}>
                     <Box sx={{ fontSize: "14px", fontWeight: 700, width: "12.8%", display: "flex", textWrap: "wrap" }}>
                         Is the best selling product
-
                     </Box>
                     <Box sx={{ width: "87.2%" }}>
                         <FormControl>
@@ -555,7 +510,6 @@ export default function ProductDetails() {
                     </Box>
                 </Box>
             </Box>
-
             {/* Dynamic Fields Section */}
             {dynamicFields.length > 0 && (
                 <Box sx={{ mt: 2 }}>
@@ -588,14 +542,12 @@ export default function ProductDetails() {
                     </Box>
                 </Box>
             )}
-
             {/* Static Fields Section */}
             <Box sx={{ mt: 4 }}>
                 {/* Launch Date */}
                 <Box sx={{ display: "flex", gap: "20px", mb: 3 }}>
                     <Box sx={{ fontSize: "14px", fontWeight: 700, width: "15%", display: "flex", textWrap: "wrap" }}>
                         Launch Date
-
                     </Box>
                     <Box sx={{ width: "25%" }}>
                         <LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -613,12 +565,10 @@ export default function ProductDetails() {
                         </LocalizationProvider>
                     </Box>
                 </Box>
-
                 {/* Release Date */}
                 <Box sx={{ display: "flex", gap: "20px", mb: 3 }}>
                     <Box sx={{ fontSize: "14px", fontWeight: 700, width: "15%", display: "flex", textWrap: "wrap" }}>
                         Release Date
-
                     </Box>
                     <Box sx={{ width: "25%" }}>
                         <LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -636,12 +586,10 @@ export default function ProductDetails() {
                         </LocalizationProvider>
                     </Box>
                 </Box>
-
                 {/* Search Terms */}
                 <Box sx={{ display: "flex", gap: "20px", position: "relative", mb: 3 }}>
                     <Box sx={{ fontSize: "14px", fontWeight: 700, width: "15%", display: "flex", textWrap: "wrap" }}>
                         Search Terms
-
                     </Box>
                     <Box sx={{ width: "85%" }}>
                         <Autocomplete
