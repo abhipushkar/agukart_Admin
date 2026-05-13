@@ -63,7 +63,6 @@ const Reviews = () => {
   const [noteType, setNoteType] = useState("");
   const [noteText, setNoteText] = useState("");
   const [selectedNoteItem, setSelectedNoteItem] = useState(null);
-
   const [buyerNotes, setBuyerNotes] = useState({});
   const [sellerNotes, setSellerNotes] = useState({});
   const [openModal, setModalOpen] = useState(false);
@@ -238,7 +237,6 @@ const Reviews = () => {
       handleOpen("error", error);
     }
   }, [auth_key]);
-  // const getReviewList = useCallback(async () => {
   const getReviewList = async () => {
     try {
       console.log({ filters });
@@ -527,6 +525,19 @@ const Reviews = () => {
                   <MenuItem key={num} value={num}>{num}</MenuItem>
                 ))}
               </TextField>
+              <TextField
+                label="Search product by keyword"
+                name="keyword"
+                value={filters?.keyword || ""}
+                onChange={(e) =>
+                  setFilters({
+                    ...filters,
+                    keyword: e.target.value,
+                  })
+                }
+                size="small"
+                sx={{ minWidth: 250 }}
+              />
               {/* Search Button */}
               <Button
                 variant="contained"
@@ -901,7 +912,7 @@ const Reviews = () => {
           addCmnt={addCmnt}
           changeReviewStatus={changeReviewStatus}
         />
-      </Box>
+      </Box >
       <ConfirmModal open={open} handleClose={handleClose} type={type} msg={msg} />
       <Dialog open={replyOpen} onClose={handleReplyClose} maxWidth="sm" fullWidth>
         <DialogTitle>

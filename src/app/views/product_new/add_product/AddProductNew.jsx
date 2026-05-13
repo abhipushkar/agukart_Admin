@@ -311,7 +311,7 @@ export default function AddProductNew() {
                         <Typography sx={{ fontWeight: "600", fontSize: "18px" }}>Add Product</Typography>
                     </Box>
                 </Stack>
-                <Divider />
+                {/* <Divider /> */}
                 {loadingProductData ?
                     (<Box sx={{
                         width: "100%",
@@ -350,7 +350,7 @@ export default function AddProductNew() {
                         <Button
                             variant="contained"
                             onClick={handleSaveDraft}
-                            disabled={draftLoading}
+                            disabled={draftLoading || loadingProductData}
                             startIcon={draftLoading ? <CircularProgress size={16} /> : null}
                         >
                             {draftLoading ? "Saving..." : "Save as Draft"}
@@ -365,7 +365,7 @@ export default function AddProductNew() {
                         <Button
                             variant="contained"
                             onClick={handleSubmit}
-                            disabled={loading}
+                            disabled={loading || loadingProductData}
                             startIcon={loading ? <CircularProgress size={16} /> : null}
                         >
                             {loading ? "Publishing..." : queryId ? "Update & Publish" : "Save & Publish"}

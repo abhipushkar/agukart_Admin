@@ -23,6 +23,7 @@ import {
     FormControl,
     InputLabel,
     Select,
+    Card,
     MenuItem
 } from "@mui/material";
 import {
@@ -421,6 +422,14 @@ const AllAttributes = () => {
                         onClick={() => navigate(ROUTE_CONSTANT.catalog.attribute.group)}
                         startIcon={<AppsIcon />}
                         variant="outlined"
+                        component={Card}
+                        sx={{
+                            border: "2px solid",
+                            borderWidth: 2,
+                            "&:hover": {
+                                borderWidth: 2,
+                            },
+                        }}
                     >
                         Attribute Groups
                     </Button>

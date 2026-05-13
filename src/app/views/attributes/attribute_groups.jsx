@@ -25,7 +25,8 @@ import {
     DialogTitle,
     DialogContent,
     DialogActions,
-    Alert
+    Alert,
+    Card
 } from "@mui/material";
 import {
     Add as AddIcon,
@@ -485,6 +486,14 @@ const AttributeGroups = () => {
                         onClick={() => navigate(ROUTE_CONSTANT.catalog.attribute.listAll)}
                         startIcon={<ReorderIcon />}
                         variant="outlined"
+                        component={Card}
+                        sx={{
+                            border: "2px solid",
+                            borderWidth: 2,
+                            "&:hover": {
+                                borderWidth: 2,
+                            },
+                        }}
                     >
                         All Attributes
                     </Button>
@@ -498,88 +507,125 @@ const AttributeGroups = () => {
             )}
 
             <Box sx={{ position: 'relative' }}>
-                <TableContainer
-                    sx={{
-                        paddingLeft: 2,
-                        paddingRight: 2,
-                        opacity: loading ? 0.6 : 1,
-                        transition: 'opacity 0.3s ease'
-                    }}
-                    component={Paper}
-                >
-                    <DragDropContext onDragEnd={onDragEnd}>
-                        <Table>
-                            <TableHead>
-                                <TableRow>
-                                    <TableCell sx={{ width: '100px' }}>Drag</TableCell>
-                                    <TableCell>Name</TableCell>
-                                    <TableCell sx={{ width: '100px' }}>Actions</TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <Droppable droppableId="attributeGroups" type="attributeGroups">
-                                {(provided) => (
-                                    <TableBody
-                                        ref={provided.innerRef}
-                                        {...provided.droppableProps}
-                                    >
-                                        {displayGroups.length === 0 ? (
-                                            <TableRow>
-                                                <TableCell colSpan={3} align="center">
-                                                    {loading ? 'Loading groups...' : 'No attribute groups found'}
-                                                </TableCell>
-                                            </TableRow>
-                                        ) : (
-                                            displayGroups.map((group, index) => {
-                                                const groupId = group._id || group.id;
-                                                return (
-                                                    <Draggable
-                                                        key={groupId}
-                                                        draggableId={groupId.toString()}
-                                                        index={index}
-                                                        isDragDisabled={apiLoading}
-                                                    >
-                                                        {(provided, snapshot) => (
-                                                            <TableRow
-                                                                ref={provided.innerRef}
-                                                                {...provided.draggableProps}
-                                                                style={{
-                                                                    ...provided.draggableProps.style,
-                                                                    backgroundColor: snapshot.isDragging ? '#f5f5f5' : 'inherit',
+                <DragDropContext onDragEnd={onDragEnd}>
+                    <Box
+                        sx={{
+                            paddingLeft: 2,
+                            paddingRight: 2,
+                            minWidth: 600,
+                        }}
+                        component={Paper}
+                    >
+                        {loading && (
+                            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+                                <CircularProgress />
+                            </Box>
+                        )}
+
+                        {/* Custom Table Header */}
+                        <Box
+                            sx={{
+                                display: 'grid',
+                                gridTemplateColumns: '80px 1fr 100px',
+                                gap: 2,
+                                padding: "12px 16px",
+                                borderBottom: '1px solid',
+                                borderColor: 'divider',
+                                borderRadius: '1px 1px 0 0',
+                                fontWeight: 500
+                            }}
+                        >
+                            <Box>Drag</Box>
+                            <Box>Name</Box>
+                            <Box>Action</Box>
+                        </Box>
+
+                        <Droppable droppableId="attributeGroups" type="attributeGroups">
+                            {(provided) => (
+                                <Box
+                                    {...provided.droppableProps}
+                                    ref={provided.innerRef}
+                                >
+                                    {displayGroups.length > 0 ? (
+                                        displayGroups.map((group, index) => {
+                                            const groupId = group._id || group.id;
+                                            return (
+                                                <Draggable
+                                                    key={groupId}
+                                                    draggableId={groupId.toString()}
+                                                    index={index}
+                                                    isDragDisabled={apiLoading}
+                                                >
+                                                    {(provided, snapshot) => (
+                                                        <Paper
+                                                            ref={provided.innerRef}
+                                                            {...provided.draggableProps}
+                                                            elevation={0}
+                                                            sx={{
+                                                                borderBottom: '1px solid',
+                                                                borderColor: 'divider',
+                                                                borderRadius: 0,
+                                                                backgroundColor: snapshot.isDragging ? '#f5f5f5' : 'white',
+                                                                transition: 'all 0.2s ease',
+                                                                ...provided.draggableProps.style
+                                                            }}
+                                                        >
+                                                            <Box
+                                                                sx={{
+                                                                    display: 'grid',
+                                                                    gridTemplateColumns: '80px 1fr 100px',
+                                                                    gap: 2,
+                                                                    alignItems: 'center',
+                                                                    padding: "12px 16px",
                                                                 }}
                                                             >
-                                                                <TableCell>
+                                                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                                                     <IconButton
+                                                                        className="drag-handle"
                                                                         {...provided.dragHandleProps}
-                                                                        size="small"
-                                                                        sx={{ cursor: 'grab' }}
                                                                         disabled={apiLoading}
+                                                                        sx={{
+                                                                            p: 0.5,
+                                                                            cursor: 'grab',
+                                                                            '&:active': {
+                                                                                cursor: 'grabbing',
+                                                                            },
+                                                                        }}
                                                                     >
-                                                                        <DragIndicatorIcon />
+                                                                        <DragIndicatorIcon
+                                                                            sx={{
+                                                                                color: 'text.secondary',
+                                                                            }}
+                                                                        />
                                                                     </IconButton>
-                                                                </TableCell>
-                                                                <TableCell>{group.name}</TableCell>
-                                                                <TableCell>
+                                                                </Box>
+                                                                <Box>{group.name}</Box>
+                                                                <Box>
                                                                     <IconButton
                                                                         onClick={(e) => handleMenuOpen(e, group)}
                                                                         disabled={apiLoading}
                                                                         size="small"
                                                                     >
-                                                                        <MoreVertIcon />
+                                                                        <MoreVertIcon fontSize="small" />
                                                                     </IconButton>
-                                                                </TableCell>
-                                                            </TableRow>
-                                                        )}
-                                                    </Draggable>
-                                                );
-                                            })
-                                        )}
-                                        {provided.placeholder}
-                                    </TableBody>
-                                )}
-                            </Droppable>
-                        </Table>
-                    </DragDropContext>
-                </TableContainer>
+                                                                </Box>
+                                                            </Box>
+                                                        </Paper>
+                                                    )}
+                                                </Draggable>
+                                            );
+                                        })
+                                    ) : (
+                                        <Box sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
+                                            {loading ? 'Loading groups...' : 'No attribute groups found'}
+                                        </Box>
+                                    )}
+                                    {provided.placeholder}
+                                </Box>
+                            )}
+                        </Droppable>
+                    </Box>
+                </DragDropContext>
                 <Box display={"flex"} justifyContent={"space-between"} alignItems={"center"} my={2}>
                     {hasOrderChanges && (
                         <Button
