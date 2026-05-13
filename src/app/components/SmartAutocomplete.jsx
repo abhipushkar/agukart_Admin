@@ -64,6 +64,11 @@ const SmartAutocomplete = ({
 
         if (!valueToUse?.trim()) return;
 
+        if (!freeSolo && !options.includes(valueToUse.trim())) {
+            setInputValue("");
+            return;
+        }
+
         let newValues;
 
         if (splitOnConfirmOnly) {

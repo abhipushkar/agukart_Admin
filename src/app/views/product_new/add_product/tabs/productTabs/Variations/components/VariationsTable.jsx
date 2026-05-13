@@ -531,7 +531,7 @@ const VariationsTable = ({ setShowVariantModal, isSynced }) => {
     const hasColumnImages = (columnType, variantIndex) => {
         if (!product_variants?.[variantIndex]?.variant_attributes) return false;
 
-        return product_variants[variantIndex].variant_attributes.some(attribute => {
+        return Array.isArray(product_variants[variantIndex].variant_attributes) && product_variants[variantIndex].variant_attributes.some(attribute => {
             switch (columnType) {
                 case 'mainImage1':
                     return attribute.main_images && attribute.main_images[0];

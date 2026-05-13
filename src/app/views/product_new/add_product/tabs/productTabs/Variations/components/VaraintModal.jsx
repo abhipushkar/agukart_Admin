@@ -33,6 +33,7 @@ import { ApiService } from "app/services/ApiService";
 import { apiEndpoints } from "app/constant/apiEndpoints";
 import { localStorageKey } from "app/constant/localStorageKey";
 import { useProductFormStore } from "../../../../../states/useAddProducts";
+import SmartAutocomplete from "app/components/SmartAutocomplete";
 
 const modalStyle = {
     position: "absolute",
@@ -1462,46 +1463,80 @@ const VariantModal = ({ show, handleCloseVariant }) => {
                                         </Box>
                                     )}
 
-                                    <Autocomplete
-                                        multiple
-                                        id="dropdown-with-list"
-                                        disableCloseOnSelect
-                                        options={[...(attrOptions || []), `Add All Options (${attrOptions?.length || 0})`]}
-                                        getOptionLabel={(option) => option}
-                                        value={[]}
-                                        onChange={handleTagHandler}
-                                        renderInput={(params) => (
-                                            <TextField
-                                                {...params}
-                                                label="Enter an option..."
-                                                placeholder="Enter an option..."
-                                                sx={{
-                                                    "& .MuiInputBase-root": {
-                                                        padding: "0 11px",
-                                                    },
-                                                    "& .MuiFormLabel-root": {
-                                                        top: "-7px",
-                                                    },
-                                                }}
-                                            />
-                                        )}
-                                        renderOption={(props, option) => {
-                                            const isSelected = attrValues.values.includes(option);
-                                            return (
-                                                <ListItem
-                                                    {...props}
-                                                    sx={{
-                                                        backgroundColor: isSelected ? "rgba(0, 123, 255, 0.2)" : "inherit",
-                                                        "&:hover": {
-                                                            backgroundColor: "rgba(0, 123, 255, 0.1)",
-                                                        },
-                                                    }}
-                                                >
-                                                    <ListItemText primary={option} />
-                                                </ListItem>
-                                            );
+                                    <SmartAutocomplete
+                                        value={attrValues.values || []}
+
+                                        onChange={(val) => {
+                                            handleTagHandler(null, val);
                                         }}
-                                        sx={{ mb: 2 }}
+
+                                        label="Enter an option..."
+                                        placeholder="Enter an option..."
+
+                                        // same behavior
+                                        options={[
+                                            ...(attrOptions || []),
+                                            `Add All Options (${attrOptions?.length || 0})`
+                                        ]}
+
+                                        multiple={true}
+                                        freeSolo={false}
+
+                                        allowComma={true}
+                                        allowEnter={true}
+                                        allowBackspace={true}
+
+                                        splitOnPaste={true}
+                                        splitOnConfirmOnly={true}
+
+                                        showChips={false}
+
+                                        // important
+                                        getOptionLabel={(option) =>
+                                            typeof option === "string" ? option : ""
+                                        }
+
+                                        isOptionEqualToValue={(option, value) => option === value}
+
+                                        autocompleteProps={{
+                                            id: "dropdown-with-list",
+                                            disableCloseOnSelect: true,
+
+                                            renderOption: (props, option) => {
+                                                const isSelected = attrValues.values.includes(option);
+
+                                                return (
+                                                    <ListItem
+                                                        {...props}
+                                                        sx={{
+                                                            backgroundColor: isSelected
+                                                                ? "rgba(0, 123, 255, 0.2)"
+                                                                : "inherit",
+
+                                                            "&:hover": {
+                                                                backgroundColor: "rgba(0, 123, 255, 0.1)",
+                                                            },
+                                                        }}
+                                                    >
+                                                        <ListItemText primary={option} />
+                                                    </ListItem>
+                                                );
+                                            },
+
+                                            sx: { mb: 2 }
+                                        }}
+
+                                        textFieldProps={{
+                                            sx: {
+                                                "& .MuiInputBase-root": {
+                                                    padding: "0 11px",
+                                                },
+
+                                                "& .MuiFormLabel-root": {
+                                                    top: "-7px",
+                                                },
+                                            }
+                                        }}
                                     />
 
                                     {/* ========== UPDATED: Drag and Drop List for Options ========== */}

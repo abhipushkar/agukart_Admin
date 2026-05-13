@@ -38,6 +38,12 @@ export const useProductAPI = () => {
         Object.keys(payload).forEach((key) => {
             let value = payload[key];
 
+            // explicitly add brand_id key
+            if (key === 'brand_id' && value === null) {
+                fData.append("brand_id", null);
+                return;
+            }
+
             // skip null-like and empty values
             if (
                 value === null ||
@@ -671,7 +677,7 @@ export const useProductAPI = () => {
             const payload = buildProductPayload(isEdit, queryId);
             const state = useProductFormStore.getState();
             const fData = buildProductFormData(payload, state.product_variants, state.combinations, state.customizationData);
-
+            console.log(payload.brand_id, "here is brand");
             // Make API call
             const endpoint = isEdit ? apiEndpoints.addProduct : apiEndpoints.addProduct;
             const res = await ApiService.postImage(endpoint, fData, auth_key);

@@ -982,36 +982,63 @@ const AddAttribute = () => {
                                             You can drag and drop to reorder the values.
                                         </Alert>
 
-                                        <TableContainer sx={{ paddingX: 2 }} component={Paper} variant="outlined">
-                                            <Table size="small">
-                                                <TableHead>
-                                                    <TableRow>
-                                                        <TableCell width="50px">Drag</TableCell>
-                                                        <TableCell>Value *</TableCell>
-                                                        <TableCell width="100px">Sort Order</TableCell>
-                                                        <TableCell width="100px">Status</TableCell>
-                                                        <TableCell width="100px">Action</TableCell>
-                                                    </TableRow>
-                                                </TableHead>
-                                                <Droppable droppableId="attributeValues" type="attributeValues">
-                                                    {(provided) => (
-                                                        <TableBody ref={provided.innerRef} {...provided.droppableProps}>
-                                                            {attributeValues.map((value, index) => (
-                                                                <Draggable
-                                                                    key={value.id}
-                                                                    draggableId={value.id.toString()}
-                                                                    index={index}
-                                                                >
-                                                                    {(provided, snapshot) => (
-                                                                        <TableRow
-                                                                            ref={provided.innerRef}
-                                                                            {...provided.draggableProps}
-                                                                            style={{
-                                                                                ...provided.draggableProps.style,
-                                                                                backgroundColor: snapshot.isDragging ? '#f5f5f5' : 'inherit',
+                                        <Box sx={{ paddingX: 2 }} component={Paper} variant="outlined">
+                                            {/* Custom Table Header */}
+                                            <Box
+                                                sx={{
+                                                    display: 'grid',
+                                                    gridTemplateColumns: '50px 1fr 100px 100px 100px',
+                                                    gap: 2,
+                                                    padding: "12px 16px",
+                                                    borderBottom: '1px solid',
+                                                    borderColor: 'divider',
+                                                    borderRadius: '1px 1px 0 0',
+                                                    fontWeight: 500,
+                                                }}
+                                            >
+                                                <Box>Drag</Box>
+                                                <Box>Value *</Box>
+                                                <Box>Sort Order</Box>
+                                                <Box>Status</Box>
+                                                <Box>Action</Box>
+                                            </Box>
+
+                                            <Droppable droppableId="attributeValues" type="attributeValues">
+                                                {(provided) => (
+                                                    <Box
+                                                        ref={provided.innerRef}
+                                                        {...provided.droppableProps}
+                                                    >
+                                                        {attributeValues.map((value, index) => (
+                                                            <Draggable
+                                                                key={value.id}
+                                                                draggableId={value.id.toString()}
+                                                                index={index}
+                                                            >
+                                                                {(provided, snapshot) => (
+                                                                    <Paper
+                                                                        ref={provided.innerRef}
+                                                                        {...provided.draggableProps}
+                                                                        elevation={0}
+                                                                        sx={{
+                                                                            borderBottom: '1px solid',
+                                                                            borderColor: 'divider',
+                                                                            borderRadius: 0,
+                                                                            backgroundColor: snapshot.isDragging ? '#f5f5f5' : 'white',
+                                                                            transition: 'all 0.2s ease',
+                                                                            ...provided.draggableProps.style
+                                                                        }}
+                                                                    >
+                                                                        <Box
+                                                                            sx={{
+                                                                                display: 'grid',
+                                                                                gridTemplateColumns: '50px 1fr 100px 100px 100px',
+                                                                                gap: 2,
+                                                                                alignItems: 'center',
+                                                                                padding: "12px 16px",
                                                                             }}
                                                                         >
-                                                                            <TableCell>
+                                                                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                                                                 <IconButton
                                                                                     {...provided.dragHandleProps}
                                                                                     size="small"
@@ -1019,8 +1046,8 @@ const AddAttribute = () => {
                                                                                 >
                                                                                     <DragIndicatorIcon />
                                                                                 </IconButton>
-                                                                            </TableCell>
-                                                                            <TableCell>
+                                                                            </Box>
+                                                                            <Box>
                                                                                 <TextField
                                                                                     fullWidth
                                                                                     size="small"
@@ -1031,40 +1058,39 @@ const AddAttribute = () => {
                                                                                     error={value.error}
                                                                                     helperText={value.error ? "Duplicate value found" : ""}
                                                                                 />
-                                                                            </TableCell>
-                                                                            <TableCell>
+                                                                            </Box>
+                                                                            <Box>
                                                                                 <TextField
                                                                                     type="number"
                                                                                     size="small"
                                                                                     value={value.sortOrder}
                                                                                     onChange={(e) => handleValueChange(value.id, 'sortOrder', parseInt(e.target.value))}
                                                                                 />
-                                                                            </TableCell>
-                                                                            <TableCell>
+                                                                            </Box>
+                                                                            <Box>
                                                                                 <Switch
                                                                                     checked={value.status}
                                                                                     onChange={(e) => handleValueChange(value.id, 'status', e.target.checked)}
                                                                                 />
-                                                                            </TableCell>
-                                                                            <TableCell>
+                                                                            </Box>
+                                                                            <Box>
                                                                                 <IconButton
                                                                                     onClick={() => handleRemoveValue(value.id)}
                                                                                     color="error"
-                                                                                // disabled={attributeValues.length <= 1}
                                                                                 >
                                                                                     <DeleteIcon />
                                                                                 </IconButton>
-                                                                            </TableCell>
-                                                                        </TableRow>
-                                                                    )}
-                                                                </Draggable>
-                                                            ))}
-                                                            {provided.placeholder}
-                                                        </TableBody>
-                                                    )}
-                                                </Droppable>
-                                            </Table>
-                                        </TableContainer>
+                                                                            </Box>
+                                                                        </Box>
+                                                                    </Paper>
+                                                                )}
+                                                            </Draggable>
+                                                        ))}
+                                                        {provided.placeholder}
+                                                    </Box>
+                                                )}
+                                            </Droppable>
+                                        </Box>
 
                                         {/* Add Multiple Values Button Group */}
                                         <Box sx={{ display: 'flex', gap: 2, mt: 2, flexWrap: 'wrap' }}>
@@ -1210,36 +1236,64 @@ const AddAttribute = () => {
                                                                                         </Button>
                                                                                     </Box>
 
-                                                                                    <TableContainer component={Paper} variant="outlined" sx={{ mb: 2, paddingX: 2 }}>
-                                                                                        <Table size="small">
-                                                                                            <TableHead>
-                                                                                                <TableRow>
-                                                                                                    <TableCell width="50px">Drag</TableCell>
-                                                                                                    <TableCell>Value *</TableCell>
-                                                                                                    <TableCell width="100px">Sort Order</TableCell>
-                                                                                                    <TableCell width="100px">Status</TableCell>
-                                                                                                    <TableCell width="100px">Action</TableCell>
-                                                                                                </TableRow>
-                                                                                            </TableHead>
-                                                                                            <Droppable droppableId={`subAttributeValues-${subAttr.id}`} type={`subAttributeValues-${subAttr.id}`}>
-                                                                                                {(provided) => (
-                                                                                                    <TableBody ref={provided.innerRef} {...provided.droppableProps}>
-                                                                                                        {subAttr.values.map((value, index) => (
-                                                                                                            <Draggable
-                                                                                                                key={value.id}
-                                                                                                                draggableId={value.id.toString()}
-                                                                                                                index={index}
-                                                                                                            >
-                                                                                                                {(provided, snapshot) => (
-                                                                                                                    <TableRow
-                                                                                                                        ref={provided.innerRef}
-                                                                                                                        {...provided.draggableProps}
-                                                                                                                        style={{
-                                                                                                                            ...provided.draggableProps.style,
-                                                                                                                            backgroundColor: snapshot.isDragging ? '#f5f5f5' : 'inherit',
+                                                                                    <Box component={Paper} variant="outlined" sx={{ mb: 2, paddingX: 2 }}>
+                                                                                        {/* Custom Table Header */}
+                                                                                        <Box
+                                                                                            sx={{
+                                                                                                display: 'grid',
+                                                                                                gridTemplateColumns: '50px 1fr 100px 100px 100px',
+                                                                                                gap: 2,
+                                                                                                padding: "12px 16px",
+                                                                                                borderBottom: '1px solid',
+                                                                                                borderColor: 'divider',
+                                                                                                borderRadius: '1px 1px 0 0',
+                                                                                                fontWeight: 600,
+                                                                                                color: 'text.secondary',
+                                                                                            }}
+                                                                                        >
+                                                                                            <Box>Drag</Box>
+                                                                                            <Box>Value *</Box>
+                                                                                            <Box>Sort Order</Box>
+                                                                                            <Box>Status</Box>
+                                                                                            <Box>Action</Box>
+                                                                                        </Box>
+
+                                                                                        <Droppable droppableId={`subAttributeValues-${subAttr.id}`} type={`subAttributeValues-${subAttr.id}`}>
+                                                                                            {(provided) => (
+                                                                                                <Box
+                                                                                                    ref={provided.innerRef}
+                                                                                                    {...provided.droppableProps}
+                                                                                                >
+                                                                                                    {subAttr.values.map((value, index) => (
+                                                                                                        <Draggable
+                                                                                                            key={value.id}
+                                                                                                            draggableId={value.id.toString()}
+                                                                                                            index={index}
+                                                                                                        >
+                                                                                                            {(provided, snapshot) => (
+                                                                                                                <Paper
+                                                                                                                    ref={provided.innerRef}
+                                                                                                                    {...provided.draggableProps}
+                                                                                                                    elevation={0}
+                                                                                                                    sx={{
+                                                                                                                        borderBottom: '1px solid',
+                                                                                                                        borderColor: 'divider',
+                                                                                                                        borderRadius: 0,
+                                                                                                                        backgroundColor: snapshot.isDragging ? '#f5f5f5' : 'white',
+                                                                                                                        transition: 'all 0.2s ease',
+                                                                                                                        ...provided.draggableProps.style
+                                                                                                                    }}
+                                                                                                                >
+                                                                                                                    <Box
+                                                                                                                        sx={{
+                                                                                                                            display: 'grid',
+                                                                                                                            gridTemplateColumns: '50px 1fr 100px 100px 100px',
+                                                                                                                            gap: 2,
+                                                                                                                            alignItems: 'center',
+                                                                                                                            padding: "12px 16px",
                                                                                                                         }}
                                                                                                                     >
-                                                                                                                        <TableCell>
+                                                                                                                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                                                                                                             <IconButton
                                                                                                                                 {...provided.dragHandleProps}
                                                                                                                                 size="small"
@@ -1247,8 +1301,8 @@ const AddAttribute = () => {
                                                                                                                             >
                                                                                                                                 <DragIndicatorIcon />
                                                                                                                             </IconButton>
-                                                                                                                        </TableCell>
-                                                                                                                        <TableCell>
+                                                                                                                        </Box>
+                                                                                                                        <Box>
                                                                                                                             <TextField
                                                                                                                                 fullWidth
                                                                                                                                 size="small"
@@ -1259,22 +1313,22 @@ const AddAttribute = () => {
                                                                                                                                 error={value.error}
                                                                                                                                 helperText={value.error ? "Duplicate value found" : ""}
                                                                                                                             />
-                                                                                                                        </TableCell>
-                                                                                                                        <TableCell>
+                                                                                                                        </Box>
+                                                                                                                        <Box>
                                                                                                                             <TextField
                                                                                                                                 type="number"
                                                                                                                                 size="small"
                                                                                                                                 value={value.sortOrder}
                                                                                                                                 onChange={(e) => handleSubAttributeValueChange(subAttr.id, index, 'sortOrder', parseInt(e.target.value))}
                                                                                                                             />
-                                                                                                                        </TableCell>
-                                                                                                                        <TableCell>
+                                                                                                                        </Box>
+                                                                                                                        <Box>
                                                                                                                             <Switch
                                                                                                                                 checked={value.status}
                                                                                                                                 onChange={(e) => handleSubAttributeValueChange(subAttr.id, index, 'status', e.target.checked)}
                                                                                                                             />
-                                                                                                                        </TableCell>
-                                                                                                                        <TableCell>
+                                                                                                                        </Box>
+                                                                                                                        <Box>
                                                                                                                             <IconButton
                                                                                                                                 onClick={() => handleRemoveSubAttributeValue(subAttr.id, value.id)}
                                                                                                                                 color="error"
@@ -1282,17 +1336,17 @@ const AddAttribute = () => {
                                                                                                                             >
                                                                                                                                 <DeleteIcon />
                                                                                                                             </IconButton>
-                                                                                                                        </TableCell>
-                                                                                                                    </TableRow>
-                                                                                                                )}
-                                                                                                            </Draggable>
-                                                                                                        ))}
-                                                                                                        {provided.placeholder}
-                                                                                                    </TableBody>
-                                                                                                )}
-                                                                                            </Droppable>
-                                                                                        </Table>
-                                                                                    </TableContainer>
+                                                                                                                        </Box>
+                                                                                                                    </Box>
+                                                                                                                </Paper>
+                                                                                                            )}
+                                                                                                        </Draggable>
+                                                                                                    ))}
+                                                                                                    {provided.placeholder}
+                                                                                                </Box>
+                                                                                            )}
+                                                                                        </Droppable>
+                                                                                    </Box>
                                                                                 </>
                                                                             )}
                                                                             {subAttr.type !== "Dropdown" && (

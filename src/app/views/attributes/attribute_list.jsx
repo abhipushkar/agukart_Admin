@@ -523,101 +523,136 @@ const AttributesList = () => {
             )}
 
             <Box sx={{ position: 'relative' }}>
-                <TableContainer
-                    sx={{
-                        paddingLeft: 2,
-                        paddingRight: 2,
-                        opacity: loading ? 0.6 : 1,
-                        transition: 'opacity 0.3s ease'
-                    }}
-                    component={Paper}
-                >
-                    <DragDropContext onDragEnd={onDragEnd}>
-                        <Table>
-                            <TableHead>
-                                <TableRow>
-                                    <TableCell sx={{ width: '50px' }}>Drag</TableCell>
-                                    <TableCell sx={{ width: '100px' }}>S.No</TableCell>
-                                    <TableCell>Name</TableCell>
-                                    <TableCell>Type</TableCell>
-                                    <TableCell>Status</TableCell>
-                                    <TableCell>View on Product Page</TableCell>
-                                    <TableCell>View in Filters</TableCell>
-                                    <TableCell>Action</TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <Droppable droppableId="attributes" type="attributes">
-                                {(provided) => (
-                                    <TableBody
-                                        ref={provided.innerRef}
-                                        {...provided.droppableProps}
-                                    >
-                                        {attributes.length === 0 ? (
-                                            <TableRow>
-                                                <TableCell colSpan={8} align="center">
-                                                    {loading ? 'Loading attributes...' : 'No attributes found'}
-                                                </TableCell>
-                                            </TableRow>
-                                        ) : (
-                                            attributes.map((attr, index) => (
-                                                <Draggable
-                                                    key={attr._id}
-                                                    draggableId={attr._id.toString()}
-                                                    index={index}
-                                                    isDragDisabled={apiLoading}
-                                                >
-                                                    {(provided, snapshot) => (
-                                                        <TableRow
-                                                            ref={provided.innerRef}
-                                                            {...provided.draggableProps}
-                                                            style={{
-                                                                ...provided.draggableProps.style,
-                                                                backgroundColor: snapshot.isDragging ? '#f5f5f5' : 'inherit',
+                <DragDropContext onDragEnd={onDragEnd}>
+                    <Box
+                        sx={{
+                            paddingLeft: 2,
+                            paddingRight: 2,
+                            minWidth: 1200,
+                        }}
+                        component={Paper}
+                    >
+                        {loading && (
+                            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+                                <CircularProgress />
+                            </Box>
+                        )}
+
+                        {/* Custom Table Header */}
+                        <Box
+                            sx={{
+                                display: 'grid',
+                                gridTemplateColumns: '60px 80px 1fr 120px 100px 150px 120px 120px',
+                                gap: 2,
+                                padding: "12px 16px",
+                                borderBottom: '1px solid',
+                                borderColor: 'divider',
+                                borderRadius: '1px 1px 0 0',
+                                fontWeight: 500
+                            }}
+                        >
+                            <Box>Drag</Box>
+                            <Box>S.No</Box>
+                            <Box>Name</Box>
+                            <Box>Type</Box>
+                            <Box>Status</Box>
+                            <Box>View on Product Page</Box>
+                            <Box>View in Filters</Box>
+                            <Box>Action</Box>
+                        </Box>
+
+                        <Droppable droppableId="attributes" type="attributes">
+                            {(provided) => (
+                                <Box
+                                    {...provided.droppableProps}
+                                    ref={provided.innerRef}
+                                >
+                                    {attributes.length > 0 ? (
+                                        attributes.map((attr, index) => (
+                                            <Draggable
+                                                key={attr._id}
+                                                draggableId={attr._id.toString()}
+                                                index={index}
+                                                isDragDisabled={apiLoading}
+                                            >
+                                                {(provided, snapshot) => (
+                                                    <Paper
+                                                        ref={provided.innerRef}
+                                                        {...provided.draggableProps}
+                                                        elevation={0}
+                                                        sx={{
+                                                            borderBottom: '1px solid',
+                                                            borderColor: 'divider',
+                                                            borderRadius: 0,
+                                                            backgroundColor: snapshot.isDragging ? '#f5f5f5' : 'white',
+                                                            transition: 'all 0.2s ease',
+                                                            ...provided.draggableProps.style
+                                                        }}
+                                                    >
+                                                        <Box
+                                                            sx={{
+                                                                display: 'grid',
+                                                                gridTemplateColumns: '60px 80px 1fr 120px 100px 150px 120px 120px',
+                                                                gap: 2,
+                                                                alignItems: 'center',
+                                                                padding: "12px 16px",
                                                             }}
                                                         >
-                                                            <TableCell>
+                                                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                                                 <IconButton
-                                                                    {...provided.dragHandleProps}
+                                                                    className="drag-handle"
                                                                     size="small"
-                                                                    sx={{ cursor: 'grab' }}
+                                                                    {...provided.dragHandleProps}
                                                                     disabled={apiLoading}
+                                                                    sx={{
+                                                                        p: 0.5,
+                                                                        cursor: 'grab',
+                                                                        '&:active': {
+                                                                            cursor: 'grabbing',
+                                                                        },
+                                                                    }}
                                                                 >
-                                                                    <DragIndicatorIcon />
+                                                                    <DragIndicatorIcon
+                                                                        sx={{
+                                                                            color: 'text.secondary',
+                                                                        }}
+                                                                    />
                                                                 </IconButton>
-                                                            </TableCell>
-                                                            <TableCell>{attr.attributeOrder}</TableCell>
-                                                            <TableCell>{attr.name}</TableCell>
-                                                            <TableCell>{attr.type}</TableCell>
-                                                            <TableCell>
+                                                            </Box>
+                                                            <Box>{attr.attributeOrder || attr.serialNumber || index + 1}</Box>
+                                                            <Box>{attr.name}</Box>
+                                                            <Box>{attr.type}</Box>
+                                                            <Box>
                                                                 <Switch
                                                                     checked={attr.status}
                                                                     onChange={() => handleStatusChange(attr._id)}
                                                                     disabled={apiLoading}
                                                                 />
-                                                            </TableCell>
-                                                            <TableCell>
+                                                            </Box>
+                                                            <Box>
                                                                 <Switch
                                                                     checked={attr.viewOnProductPage}
                                                                     onChange={() => handleViewOnProductChange(attr._id)}
                                                                     disabled={apiLoading}
                                                                 />
-                                                            </TableCell>
-                                                            <TableCell>
+                                                            </Box>
+                                                            <Box>
                                                                 <Switch
                                                                     checked={attr.viewInFilters}
                                                                     onChange={() => handleViewInFiltersChange(attr._id)}
                                                                     disabled={apiLoading}
                                                                 />
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                <Link href={`${ROUTE_CONSTANT.catalog.attribute.add}?id=${attr._id}&groupId=${groupId}`} underline="none">
-                                                                    <IconButton
-                                                                        color="primary"
-                                                                        disabled={apiLoading}
-                                                                    >
-                                                                        <EditIcon />
-                                                                    </IconButton>
-                                                                </Link>
+                                                            </Box>
+                                                            <Box>
+                                                                <IconButton
+                                                                    component={Link}
+                                                                    href={`${ROUTE_CONSTANT.catalog.attribute.add}?id=${attr._id}&groupId=${groupId}`}
+                                                                    color="primary"
+                                                                    disabled={apiLoading}
+
+                                                                >
+                                                                    <EditIcon />
+                                                                </IconButton>
                                                                 <IconButton
                                                                     onClick={() => handleDeleteClick(attr)}
                                                                     color="error"
@@ -625,19 +660,23 @@ const AttributesList = () => {
                                                                 >
                                                                     <DeleteIcon />
                                                                 </IconButton>
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    )}
-                                                </Draggable>
-                                            ))
-                                        )}
-                                        {provided.placeholder}
-                                    </TableBody>
-                                )}
-                            </Droppable>
-                        </Table>
-                    </DragDropContext>
-                </TableContainer>
+                                                            </Box>
+                                                        </Box>
+                                                    </Paper>
+                                                )}
+                                            </Draggable>
+                                        ))
+                                    ) : (
+                                        <Box sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
+                                            {loading ? 'Loading attributes...' : 'No attributes found'}
+                                        </Box>
+                                    )}
+                                    {provided.placeholder}
+                                </Box>
+                            )}
+                        </Droppable>
+                    </Box>
+                </DragDropContext>
 
                 <Box display={"flex"} justifyContent={"space-between"} alignItems={"center"} my={2}>
                     {hasOrderChanges && (

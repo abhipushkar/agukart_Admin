@@ -37,11 +37,11 @@ function a11yProps(index) {
 }
 
 export default function ProductTabs({
-                                        tabsComponents = [],
-                                        currentTab,
-                                        setCurrentTab,
-                                        ...props
-                                    }) {
+    tabsComponents = [],
+    currentTab,
+    setCurrentTab,
+    ...props
+}) {
     const store = useProductFormStore();
     const tabsList = useTabsList();
 
@@ -71,21 +71,32 @@ export default function ProductTabs({
     });
 
     return (
-        <Box>
-            <Tabs value={currentTab} onChange={handleTabChanges}>
-                {tabsList.map((tab, index) => (
-                    <Tab
-                        key={index}
-                        label={tab}
-                        {...a11yProps(index)}
-                    />
-                ))}
-            </Tabs>
+        <>
+            <Box
+                sx={{
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 1000,
+                    backgroundColor: 'background.paper',
+                    borderBottom: '1px solid',
+                    borderColor: 'divider'
+                }}
+            >
+                <Tabs value={currentTab} onChange={handleTabChanges}>
+                    {tabsList.map((tab, index) => (
+                        <Tab
+                            key={index}
+                            label={tab}
+                            {...a11yProps(index)}
+                        />
+                    ))}
+                </Tabs>
+            </Box>
             {filteredTabsComponents.map((TabComponent, index) => (
                 <TabPanel key={index} index={index} value={currentTab}>
                     {renderTabComponent(TabComponent, index)}
                 </TabPanel>
             ))}
-        </Box>
+        </>
     );
 }
