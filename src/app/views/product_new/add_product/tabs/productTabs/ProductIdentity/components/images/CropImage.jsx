@@ -43,7 +43,9 @@ const CropImage = ({
         formData,
         setFormData,
         altText,
-        setAltText
+        setAltText,
+        setCommittedTransformData,
+        committedTransformData,    // ✅ ADD KARO
     } = useProductFormStore();
 
     const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -289,6 +291,9 @@ const CropImage = ({
     };
 
     const handleDiscard = () => {
+        setFormData({
+            transformData: { ...committedTransformData }
+        });
         setDiscardModalOpen(false);
         handleEditClose();
     };

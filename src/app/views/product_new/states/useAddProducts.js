@@ -70,6 +70,14 @@ export const useProductFormStore = create(
                 });
             },
 
+            committedTransformData: {
+                scale: 1,
+                x: 0,
+                y: 0,
+                rotation: 0
+            },
+            setCommittedTransformData: (data) => set({ committedTransformData: data }),
+
             formData: {
                 productTitle: "",
                 productType: "productType",
@@ -805,7 +813,19 @@ export const useProductFormStore = create(
                     combinations: cleanedEditData?.combinationData || [],
                     product_variants: product_variants, // NEW: Initialize product_variants
                     keys: cleanedEditData?.search_terms || [],
-                    altText: cleanedEditData?.altText || []
+                    altText: cleanedEditData?.altText || [],
+
+                    committedTransformData: isCopied ? {
+                        scale: 1,
+                        x: 0,
+                        y: 0,
+                        rotation: 0
+                    } : {
+                        scale: cleanedEditData?.zoom?.scale || 1,
+                        x: cleanedEditData?.zoom?.x || 0,
+                        y: cleanedEditData?.zoom?.y || 0,
+                        rotation: cleanedEditData?.zoom?.rotation || 0
+                    },
                 });
                 const guideRemovedMap = {};
                 product_variants.forEach(v => {
@@ -896,6 +916,7 @@ export const useProductFormStore = create(
                     tabs: [],
                     exchangePolicy: ""
                 },
+                committedTransformData: { scale: 1, x: 0, y: 0, rotation: 0 },
                 formValues: {
                     prices: "",
                     quantities: "",
