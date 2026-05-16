@@ -293,12 +293,16 @@ export const useProductAPI = () => {
                     ) {
                         return;
                     }
+                    const isPriceVariation = (comb.isPriceVariation === false || comb.isPriceVariation === "false");
+                    const isQuantityVariation = (comb.isQuantityVariation === false || comb.isQuantityVariation === "false");
+                    const emptyPrice = isPriceVariation && combinations.length > 1; // in case of single variant, comb.isPriceVariation is always false but we don't want to force empty price
+                    const emptyQuantity = isQuantityVariation && combinations.length > 1; // in case of single variant, comb.isQuantityVariation is always false but we don't want to force empty quantity
                     // Force empty string for price and qty if their columns are not enabled
-                    if (fieldKey === "price" && (comb.isCheckedPrice === "false" || comb.isCheckedPrice === false)) {
+                    if (fieldKey === "price" && (comb.isCheckedPrice === "false" || comb.isCheckedPrice === false || emptyPrice)) {
                         fData.append(`combinationData[${vIndex}][combinations][${cIndex}][${fieldKey}]`, "");
                         return;
                     }
-                    if (fieldKey === "qty" && (comb.isCheckedQuantity === false || comb.isCheckedQuantity === "false")) {
+                    if (fieldKey === "qty" && (comb.isCheckedQuantity === false || comb.isCheckedQuantity === "false" || emptyQuantity)) {
                         fData.append(`combinationData[${vIndex}][combinations][${cIndex}][${fieldKey}]`, "");
                         return;
                     }

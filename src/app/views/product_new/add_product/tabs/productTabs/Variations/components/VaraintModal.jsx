@@ -155,26 +155,6 @@ const VariantModal = ({ show, handleCloseVariant }) => {
 
         setVariationsData(updatedVariations);
 
-        // ✅ 3. update product_variants (REAL FIX)
-        const variantIndex = product_variants.findIndex(
-            v => v.variant_name === selectedVariant
-        );
-
-        if (variantIndex !== -1) {
-            const updatedProductVariants = [...product_variants];
-
-            const variant = { ...updatedProductVariants[variantIndex] };
-            const attrs = [...variant.variant_attributes];
-
-            const movedAttr = attrs.splice(draggedOptionIndex, 1)[0];
-            attrs.splice(targetIndex, 0, movedAttr);
-
-            variant.variant_attributes = attrs;
-            updatedProductVariants[variantIndex] = variant;
-
-            setProductVariants(updatedProductVariants);
-        }
-
         setDraggedOptionIndex(null);
         setIsDraggingOption(false);
     };
