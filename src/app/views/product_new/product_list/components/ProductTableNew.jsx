@@ -462,7 +462,7 @@ const ProductRow = ({ product, index }) => {
                             }}
                         >
                             <img
-                                src={product?.type === "product" ? product?.image?.[0] : product?.image}
+                                src={product?.type === "product" ? (product.edited_image ?? product?.image?.[0]) : product?.image}
                                 alt="Zoomable"
                                 style={{
                                     width: "100%",
@@ -472,28 +472,6 @@ const ProductRow = ({ product, index }) => {
                                     transition: "transform 0.15s ease-out",
                                     willChange: "transform",
                                     backfaceVisibility: "hidden",
-                                    ...(() => {
-                                        // Only apply zoom if container is visible and not during scroll restoration
-                                        const zoom = product?.zoom || {};
-                                        const isContainerVisible = imageContainerRef.current &&
-                                            imageContainerRef.current.offsetParent !== null;
-                                        if (!isContainerVisible) {
-                                            return { transform: 'translate3d(0px, 0px, 0) scale(1)' };
-                                        }
-                                        if (typeof zoom.x === 'number' && !isNaN(zoom.x) &&
-                                            typeof zoom.y === 'number' && !isNaN(zoom.y) &&
-                                            typeof zoom.scale === 'number' && !isNaN(zoom.scale)) {
-                                            const { x, y, scale } = clampPan(zoom);
-                                            return {
-                                                transform: `
-    translate3d(${x}px, ${y}px, 0)
-    rotate(${zoom.rotation || 0}deg)
-    scale(${scale})
-`,
-                                            };
-                                        }
-                                        return { transform: 'translate3d(0px, 0px, 0) scale(1)' };
-                                    })(),
                                 }}
                             />
                         </Box>
@@ -902,7 +880,7 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
                         }}
                     >
                         <img
-                            src={variation?.image?.[0]}
+                            src={variation.edited_image ?? variation?.image?.[0]}
                             alt="Variantion"
                             style={{
                                 width: "100%",
@@ -912,28 +890,6 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
                                 transition: "transform 0.1s ease-out",
                                 willChange: "transform",
                                 backfaceVisibility: "hidden",
-                                ...(() => {
-                                    // Only apply zoom if container is visible and not during scroll restoration
-                                    const zoom = variation?.zoom || {};
-                                    const isContainerVisible = imageContainerRef.current &&
-                                        imageContainerRef.current.offsetParent !== null;
-                                    if (!isContainerVisible) {
-                                        return { transform: 'translate3d(0px, 0px, 0) scale(1)' };
-                                    }
-                                    if (typeof zoom.x === 'number' && !isNaN(zoom.x) &&
-                                        typeof zoom.y === 'number' && !isNaN(zoom.y) &&
-                                        typeof zoom.scale === 'number' && !isNaN(zoom.scale)) {
-                                        const { x, y, scale } = clampPan(zoom);
-                                        return {
-                                            transform: `
-    translate3d(${x}px, ${y}px, 0)
-    rotate(${zoom.rotation || 0}deg)
-    scale(${scale})
-`,
-                                        };
-                                    }
-                                    return { transform: 'translate3d(0px, 0px, 0) scale(1)' };
-                                })(),
                             }}
                         />
                     </Box>
@@ -1284,7 +1240,7 @@ const ProductTableNew = () => {
                                             variation={variation}
                                             parentProduct={product}
                                         />
-                                   ));
+                                    ));
                             }
                             // product.type === 'product'
                             return (

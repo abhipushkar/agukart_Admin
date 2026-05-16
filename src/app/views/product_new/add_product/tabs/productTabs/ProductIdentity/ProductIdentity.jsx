@@ -17,6 +17,7 @@ import {
 } from "@mui/material";
 import ThumbUpOutlinedIcon from "@mui/icons-material/ThumbUpOutlined";
 import ThumbDownOutlinedIcon from "@mui/icons-material/ThumbDownOutlined";
+import { OpenInNew } from "@mui/icons-material";
 import { ApiService } from "app/services/ApiService";
 import { apiEndpoints } from "app/constant/apiEndpoints";
 import { localStorageKey } from "app/constant/localStorageKey";
@@ -50,8 +51,6 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
     const [enhanceModalOpen, setEnhanceModalOpen] = useState(false);
     const [hideAI, setHideAI] = useState(false);
     const [enhanceFields, setEnhanceFields] = useState([]);
-    const [previewDragging, setPreviewDragging] = useState(false);
-    const [previewDragStart, setPreviewDragStart] = useState({ x: 0, y: 0 });
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
     const designation_id = localStorage.getItem(localStorageKey.designation_id);
     const primaryImage = formData.images.find(img => img.isPrimary) || formData.images[0];
@@ -61,47 +60,22 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
             setInputErrors({ [field]: "" });
         }
     };
-    const handlePreviewMouseDown = (e) => {
-        e.preventDefault();
-        setPreviewDragging(true);
-        setPreviewDragStart({
-            x: e.clientX - (formData.transformData?.x || 0),  // ✅
-            y: e.clientY - (formData.transformData?.y || 0)   // ✅
-        });
-    };
-    const handlePreviewMouseMove = (e) => {
-        if (!previewDragging) return;
-        setFormData(prev => ({
-            ...prev,
-            transformData: {
-                ...(prev.transformData || {}),
-                x: e.clientX - previewDragStart.x,
-                y: e.clientY - previewDragStart.y
-            }
-        }));
-    };
-    const handlePreviewMouseUp = () => setPreviewDragging(false);
-    const handlePreviewWheel = useCallback((e) => {
-        e.preventDefault();
-        const delta = -e.deltaY / 500;
-        setFormData(prev => ({
-            ...prev,
-            transformData: {
-                ...(prev.transformData || {}),
-                scale: Math.max(
-                    1,
-                    Math.min((prev.transformData?.scale || 1) + delta, 5)
-                )
-            }
-        }));
-    }, []);
+
+
     const handleVendorChange = (newValue) => {
         handleFieldChange('vendor', newValue ? newValue._id : "");
         handleFieldChange('shipingTemplates', ""); // clear shippingTemplates field on vendor change 
         handleFieldChange('exchangePolicy', ""); // clear exchangePolicy field on vendor change
     };
     const handleCategoryChange = (newValue) => {
-        handleFieldChange('subCategory', newValue ? newValue._id : "");
+        setFormData({
+            subCategory: newValue ? newValue._id : "",
+            dynamicFields: {}
+        });
+
+        if (inputErrors.subCategory) {
+            setInputErrors({ subCategory: "" });
+        }
     };
     const handleBrandChange = (newValue) => {
         handleFieldChange('brandName', newValue ? newValue._id : "");
@@ -257,12 +231,7 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
         getCategoryData();
         fetchDynamicFields();
     }, [formData?.subCategory]);
-    useEffect(() => {
-        const el = previewBoxRef.current;
-        if (!el) return;
-        el.addEventListener("wheel", handlePreviewWheel, { passive: false });
-        return () => el.removeEventListener("wheel", handlePreviewWheel);
-    }, [handlePreviewWheel]);
+
     const handleEditClose = () => {
         setOpenEdit(false);
     };
@@ -639,47 +608,47 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                                         }}
                                     >
                                         <img
-                                            src={primaryImage?.src}
+                                            src={
+                                                primaryImage?.previewSrc ||
+                                                (primaryImage?.edited_image
+                                                    ? URL.createObjectURL(primaryImage.edited_image)
+                                                    : primaryImage?.src)
+                                            }
                                             alt="Primary preview"
                                             draggable={false}
                                             style={{
-                                                transform: `translate3d(
-    ${formData.transformData?.x || 0}px, 
-    ${formData.transformData?.y || 0}px, 
-    0
-)
-rotate(${formData.transformData?.rotation || 0}deg)
-scale(${formData.transformData?.scale || 1})`,
-                                                transformOrigin: 'center center',
-                                                maxWidth: '100%',
-                                                maxHeight: '100%',
-                                                aspectRatio: "1/1",
+                                                width: '100%',
+                                                height: '100%',
                                                 objectFit: 'contain',
                                                 userSelect: 'none',
                                             }}
                                         />
                                     </Box>
                                     {/* Transform Data Info */}
-                                    <Box sx={{ mt: 1, textAlign: "center" }}>
-                                        <Typography variant="caption" color="textSecondary">
-                                            Scroll to zoom • Drag to pan
-                                        </Typography>
+                                    <Box sx={{ mt: 2, textAlign: "center" }}>
                                         <Button
                                             size="small"
-                                            onClick={() =>
-                                                setFormData(prev => ({
-                                                    ...prev,
-                                                    transformData: {
-                                                        scale: 1,
-                                                        x: 0,
-                                                        y: 0,
-                                                        rotation: 0
-                                                    }
-                                                }))
-                                            }  // ✅
-                                            sx={{ display: 'block', mx: 'auto', mt: 0.5 }}
+                                            variant="outlined"
+                                            endIcon={<OpenInNew />}
+                                            onClick={() => {
+
+                                                const previewUrl =
+                                                    primaryImage?.previewSrc ||
+                                                    (
+                                                        primaryImage?.edited_image
+                                                            ? URL.createObjectURL(
+                                                                primaryImage.edited_image
+                                                            )
+                                                            : primaryImage?.src
+                                                    );
+
+                                                if (!previewUrl) return;
+
+                                                window.open(previewUrl, "_blank");
+
+                                            }}
                                         >
-                                            Reset
+                                            Preview
                                         </Button>
                                     </Box>
                                 </Card>

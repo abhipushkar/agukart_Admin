@@ -136,10 +136,10 @@ export const useProductFormStore = create(
                 isGiftWrap: "",
                 reStockDate: null,
                 transformData: {
-                    scale: 1,
-                    x: 0,
-                    y: 0,
-                    rotation: 0
+                    crop: { x: 0, y: 0 },
+                    zoom: 1,
+                    rotation: 0,
+                    croppedAreaPixels: null
                 },
                 fullfillmentChannel: "",
                 productionTime: "",
@@ -671,9 +671,46 @@ export const useProductFormStore = create(
                     parent_product: null,
                     isChild: false
                 } : editData;
-                const imageObjects = isCopied ? [] : cleanedEditData?.image?.map((image) => ({
-                    src: `${cleanedEditData.imageBaseUrl}${image}`
-                })) || [];
+                const imageObjects = isCopied
+                    ? []
+                    : cleanedEditData?.image?.map((image, index) => {
+
+                        const fullUrl =
+                            `${cleanedEditData.imageBaseUrl}${image}`;
+
+                        const editedImageUrl =
+                            cleanedEditData?.edited_image
+                                ? `${cleanedEditData.imageBaseUrl}${cleanedEditData.edited_image}`
+                                : null;
+
+                        return {
+
+                            // ORIGINAL IMAGE
+                            src: fullUrl,
+
+                            // CROPPER ALWAYS USES THIS
+                            originalSrc: fullUrl,
+
+                            // PREVIEW SHOULD SHOW EDITED IMAGE
+                            previewSrc:
+                                index === 0
+                                    ? editedImageUrl
+                                    : null,
+
+                            // STORE EDITED IMAGE URL
+                            edited_image:
+                                index === 0
+                                    ? editedImageUrl
+                                    : null,
+
+                            _id: `edit-${index}`,
+
+                            isPrimary: index === 0,
+
+                            sortOrder: index + 1
+                        };
+
+                    }) || [];
                 const videoObjects = isCopied ? [] : cleanedEditData?.videos?.map((video) => ({
                     src: `${cleanedEditData.videoBaseUrl}${video}`
                 })) || [];
@@ -746,10 +783,10 @@ export const useProductFormStore = create(
                         offeringCanBe: cleanedEditData?.can_offer || "",
                         isGiftWrap: cleanedEditData?.gift_wrap || "",
                         transformData: {
-                            scale: cleanedEditData?.zoom?.scale || 1,
-                            x: cleanedEditData?.zoom?.x || 0,
-                            y: cleanedEditData?.zoom?.y || 0,
-                            rotation: cleanedEditData?.zoom?.rotation || 0
+                            crop: cleanedEditData?.zoom?.crop || { x: 0, y: 0 },
+                            zoom: cleanedEditData?.zoom?.zoom || 1,
+                            rotation: cleanedEditData?.zoom?.rotation || 0,
+                            croppedAreaPixels: cleanedEditData?.zoom?.croppedAreaPixels || null
                         },
                         reStockDate: cleanedEditData?.restock_date ? dayjs(cleanedEditData.restock_date) : null,
                         productionTime: cleanedEditData?.production_time || "",
@@ -814,10 +851,10 @@ export const useProductFormStore = create(
                     launchData: null,
                     releaseDate: null,
                     transformData: {
-                        scale: 1,
-                        x: 0,
-                        y: 0,
-                        rotation: 0
+                        crop: { x: 0, y: 0 },
+                        zoom: 1,
+                        rotation: 0,
+                        croppedAreaPixels: null
                     },
                     brandId: "brandId",
                     taxRatio: "6",

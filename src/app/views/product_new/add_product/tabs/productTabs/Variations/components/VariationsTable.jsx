@@ -532,6 +532,7 @@ const VariationsTable = ({ setShowVariantModal, isSynced }) => {
         if (!product_variants?.[variantIndex]?.variant_attributes) return false;
 
         return Array.isArray(product_variants[variantIndex].variant_attributes) && product_variants[variantIndex].variant_attributes.some(attribute => {
+            if (!attribute || attribute === undefined) return false;
             switch (columnType) {
                 case 'mainImage1':
                     return attribute.main_images && attribute.main_images[0];

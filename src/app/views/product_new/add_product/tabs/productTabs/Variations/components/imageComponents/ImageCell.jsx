@@ -32,9 +32,9 @@ const ImageCell = ({
     let editedImageValue;
 
     if (imageIndex !== null) {
-        imageValue = item.main_images && item.main_images[imageIndex];
+        imageValue = item?.main_images && item?.main_images[imageIndex];
         if (imageIndex === 0) {
-            editedImageValue = item.edit_main_image;
+            editedImageValue = item?.edit_main_image;
         }
     } else {
         imageValue = item[imageType];
@@ -149,8 +149,8 @@ const ImageCell = ({
 };
 
 export const BulkUploadCell = ({ item, index, combindex, onBulkImageUpload }) => {
-    const hasMainImages = item.main_images && item.main_images.some(img => img && img !== "");
-    const uploadedCount = item.main_images ? item.main_images.filter(img => img && img !== "").length : 0;
+    const hasMainImages = item?.main_images && item?.main_images.some(img => img && img !== "");
+    const uploadedCount = item?.main_images ? item?.main_images.filter(img => img && img !== "").length : 0;
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>

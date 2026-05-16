@@ -39,6 +39,19 @@ import TabContext from "@mui/lab/TabContext";
 import TabList from "@mui/lab/TabList";
 import TabPanel from "@mui/lab/TabPanel";
 import { useState } from "react";
+import ReplyIcon from "@mui/icons-material/Reply";
+import EditIcon from "@mui/icons-material/Edit";
+import MessageIcon from "@mui/icons-material/Message";
+import FlagIcon from "@mui/icons-material/Flag";
+import PersonIcon from "@mui/icons-material/Person";
+import StoreIcon from "@mui/icons-material/Store";
+import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
+import {
+  ContentPasteTwoTone as ContentPasteIcon,
+  EditNote as EditNoteIcon,
+  AssignmentOutlined as AssignmentIcon,
+  AssignmentIndOutlined as AssignmentIndIcon,
+} from "@mui/icons-material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
 import ReviewDialog from "./ReviewModal";
@@ -390,7 +403,7 @@ const Reviews = () => {
             </Typography>
           </Grid>
         </Grid>
-        <Box
+        {/* <Box
           sx={{
             p: 2,
             border: '1px solid #eee',
@@ -398,8 +411,8 @@ const Reviews = () => {
             bgcolor: '#fafafa',
             mb: 2
           }}
-        ></Box>
-        <Grid container spacing={2} my={2} px={2}>
+        ></Box> */}
+        <Grid container spacing={2} mt={2} px={2}>
           <Grid item xs={12}>
             <Box
               sx={{
@@ -551,7 +564,7 @@ const Reviews = () => {
             </Box>
           </Grid>
         </Grid>
-        <Grid container width={"100%"} m={0} pt={4} spacing={2}>
+        <Grid container width={"100%"} m={0} pt={3} spacing={2}>
           <Grid lg={12} md={12} xs={12}>
             <Box>
               <TabContext value={tab}>
@@ -565,7 +578,7 @@ const Reviews = () => {
                     <Tab label={<Box sx={{ textAlign: 'center' }}><Typography fontWeight={700} fontSize={13}>All</Typography><Typography fontSize={12}>50</Typography></Box>} value="all" />
                   </TabList>
                 </Box>
-                <TabPanel value={tab} sx={{ padding: "24px 0" }}></TabPanel>
+                {/* <TabPanel value={tab} sx={{ padding: "24px 0" }}></TabPanel> */}
               </TabContext>
             </Box>
           </Grid>
@@ -654,11 +667,11 @@ const Reviews = () => {
           <TableContainer
             component={Paper}
             sx={{
-              width: "105%",
+              width: "100%",
               overflowX: "auto"
             }}
           >
-            <Table sx={{ minWidth: 1250 }}>
+            <Table sx={{ minWidth: 1250, tableLayout: "fixed" }}>
               <TableHead
                 sx={{
                   bgcolor: '#fafafa',
@@ -669,12 +682,12 @@ const Reviews = () => {
                   '&:hover': { bgcolor: '#fafafa' },
                   verticalAlign: 'top'
                 }}>
-                  <TableCell sx={{ minWidth: 70, width: 70 }}>S.No</TableCell>
+                  <TableCell sx={{ minWidth: 50, width: 50 }}>S.No</TableCell>
                   <TableCell sx={{ minWidth: 80, width: 80 }}>Date & Time</TableCell>
                   <TableCell sx={{ minWidth: 110, width: 110 }}>User Details</TableCell>
-                  <TableCell sx={{ minWidth: 230, width: 230 }}>Item Image, Title, SKU, Product ID, Shop name</TableCell>
-                  <TableCell sx={{ minWidth: 200, width: 200 }}>Full Feedback (Full text & Images)</TableCell>
-                  <TableCell sx={{ minWidth: 200, width: 200 }} align="center">Actions</TableCell>
+                  <TableCell sx={{ minWidth: 210, width: 210 }}>Item Image, Title, SKU, Product ID, Shop name</TableCell>
+                  <TableCell sx={{ minWidth: 180, width: 180 }}>Full Feedback (Full text & Images)</TableCell>
+                  <TableCell sx={{ minWidth: 230, width: 230 }} align="center">Actions</TableCell>
                 </TableRow>
               </TableHead>
               {reviews?.length > 0 ? (
@@ -797,87 +810,132 @@ const Reviews = () => {
                         </Box>
                       </TableCell>
                       {/* Actions */}
-                      <TableCell>
-                        <Box sx={{ display: "flex", flexDirection: 'column', gap: 0.9 }}>
+                      <TableCell sx={{ alignContent: "center" }}>
+                        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.9, alignItems: "center" }}>
                           {/* Row 1 */}
-                          <Box sx={{ display: 'flex', gap: 1.0 }}>
+                          <Box sx={{ display: "flex", gap: 1 }}>
                             <Button
-                              size="large"
+                              size="small"
                               variant="contained"
-                              sx={btnStyle('#4CAF50', '#3d8b40')}
+                              startIcon={<ReplyIcon />}
                               disabled={!!localReplies[item._id]}
                               onClick={() => handleReplyOpen(item)}
+                              sx={{
+                                bgcolor: "success.light",
+                                color: "success.contrastText",
+                                "&:hover": {
+                                  bgcolor: "success.main",
+                                },
+                              }}
                             >
                               Reply
                             </Button>
+
                             <Button
-                              size="large"
+                              size="small"
                               variant="contained"
-                              sx={btnStyle('#1976D2', '#125ea5')}
+                              color="info"
+                              startIcon={<EditIcon />}
                               disabled={!localReplies[item._id]}
                               onClick={() => handleReplyOpen(item)}
                             >
                               Edit
                             </Button>
+
                             {isAdmin && (
                               <Button
-                                size="large"
-                                variant="contained"
-                                sx={btnStyle('#7B1FA2', '#5e1580')}
+                                size="small"
+                                variant="outlined"
+                                color="secondary"
+                                startIcon={<EditNoteIcon fontSize="large" />}
                                 onClick={() => handleNoteOpen(item)}
+                                sx={{
+                                  border: "2px solid",
+                                  color: "secondary.main",
+                                  "&:hover": {
+                                    borderWidth: 2
+                                  },
+                                }}
                               >
                                 Internal Note
                               </Button>
                             )}
                           </Box>
+
                           {/* Row 2 */}
-                          <Box sx={{ display: 'flex', gap: 1.0 }}>
+                          <Box sx={{ display: "flex", gap: 1 }}>
                             <Button
-                              size="large"
+                              size="small"
                               variant="contained"
-                              sx={btnStyle('#0097A7', '#007c91')}
+                              startIcon={<MessageIcon />}
                               onClick={() => handleMessageClick(item)}
+                              sx={{
+                                bgcolor: "info.light",
+                                color: "info.contrastText",
+                                "&:hover": {
+                                  bgcolor: "info.main",
+                                },
+                              }}
                             >
                               Message
                             </Button>
-                            <Button size="large" variant="contained" sx={btnStyle('#D32F2F', '#a72828')}>
+
+                            <Button
+                              size="small"
+                              variant="contained"
+                              startIcon={<FlagIcon />}
+                              sx={{
+                                bgcolor: "rgb(225, 15, 15)",
+                                color: "error.contrastText",
+                                "&:hover": {
+                                  bgcolor: "error.dark",
+                                },
+                              }}
+                            >
                               Flag
                             </Button>
+
                             <Button
-                              size="large"
+                              size="small"
                               variant="contained"
-                              sx={btnStyle('#F57C00', '#c26400')}
+                              color="secondary"
+                              startIcon={<AssignmentIndIcon />}
                               onClick={() => handleOpenNotePopup("buyer", item)}
                             >
-                              Note to buyer
+                              Note to Buyer
                             </Button>
                           </Box>
+
                           {/* Row 3 */}
-                          <Box sx={{ display: 'flex', gap: 1.2, alignItems: 'center' }}>
-                            <Button size="large" variant="contained" sx={btnStyle('#455A64', '#37474f')}>
+                          <Box sx={{ display: "flex", gap: 1.2, alignItems: "center" }}>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              startIcon={<VisibilityOffIcon />}
+                            >
                               Hide Reviews
                             </Button>
+
                             <Button
-                              size="large"
+                              size="small"
                               variant="contained"
-                              sx={btnStyle('#6D4C41', '#523931')}
+                              startIcon={<AssignmentIcon />}
                               onClick={() => handleOpenNotePopup("seller", item)}
+                              sx={{
+                                bgcolor: "primary",
+                                color: "info.contrastText",
+                                "&:hover": {
+                                  bgcolor: "info.main",
+                                },
+                              }}
                             >
                               Seller Note
                             </Button>
-                            <IconButton
-                              size="small"
-                              sx={{
-                                border: '1px solid #ddd',
-                                borderRadius: 1,
-                                bgcolor: '#f5f5f5',
-                                '&:hover': { bgcolor: '#e0e0e0' }
-                              }}
-                            >
-                              <LockOutlinedIcon fontSize="large" />
+
+                            <IconButton color="default">
+                              <LockOutlinedIcon />
                             </IconButton>
                           </Box>
-
                         </Box>
                       </TableCell>
                     </TableRow>

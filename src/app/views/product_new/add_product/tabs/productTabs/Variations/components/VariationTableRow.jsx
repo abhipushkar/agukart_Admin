@@ -197,7 +197,7 @@ const VariationTableRow = ({
         return count;
     };
 
-    const getAttributeStatus = (attr) => {
+    const getAttributeStatus = (attr = "") => {
         const variation = variationsData.find(
             v => v.name === variant.variant_name
         );
@@ -210,7 +210,7 @@ const VariationTableRow = ({
         return true;
     };
 
-    const getRowBackgroundColor = (attr) => {
+    const getRowBackgroundColor = (attr = "") => {
         const variation = variationsData.find(
             v => v.name === variant.variant_name
         );
@@ -243,7 +243,7 @@ const VariationTableRow = ({
         <>
             {itemsToShow?.map((attribute, attributeIndex) => (
                 <DraggableTableRow
-                    key={`${variantIndex}-${attributeIndex}-${attribute.attribute}`}
+                    key={`${variantIndex}-${attributeIndex}-${attribute?.attribute}`}
                     index={attributeIndex}
                     onDragStart={handleDragStart}
                     onDragOver={handleDragOver}
@@ -251,7 +251,7 @@ const VariationTableRow = ({
                     onDragEnd={handleDragEnd}
                     isDragging={draggingIndex === attributeIndex}
                     isDragOver={dragOverIndex === attributeIndex}
-                    backgroundColor={getRowBackgroundColor(attribute.attribute)}
+                    backgroundColor={getRowBackgroundColor(attribute?.attribute)}
                 >
                     {/* Drag Handle Column */}
                     {visibleColumns.drag && (
@@ -281,7 +281,7 @@ const VariationTableRow = ({
 
                     {/* Attribute Column */}
                     {visibleColumns.attribute && (
-                        <TableCell align="center" > <Typography color={getAttributeStatus(attribute.attribute) ? "inherit" : "error"}> {attribute.attribute}</Typography></TableCell>
+                        <TableCell align="center" > <Typography color={getAttributeStatus(attribute?.attribute) ? "inherit" : "error"}> {attribute?.attribute}</Typography></TableCell>
                     )}
 
                     {/* Bulk Upload Column */}
@@ -304,7 +304,7 @@ const VariationTableRow = ({
                                 index={attributeIndex}
                                 imageType="main_images"
                                 imageIndex={0}
-                                editData={attribute.edit_main_image_data || null}
+                                editData={attribute?.edit_main_image_data || null}
                                 combindex={variantIndex}
                                 onImageUpload={handleImageUpload}
                                 onImageRemove={handleImageRemove}
@@ -355,7 +355,7 @@ const VariationTableRow = ({
                                 item={attribute}
                                 index={attributeIndex}
                                 imageType="preview_image"
-                                editData={attribute.edit_preview_image_data || null}
+                                editData={attribute?.edit_preview_image_data || null}
                                 combindex={variantIndex}
                                 onImageUpload={handleImageUpload}
                                 onImageRemove={handleImageRemove}

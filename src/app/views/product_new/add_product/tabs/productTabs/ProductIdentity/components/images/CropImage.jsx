@@ -17,6 +17,7 @@ import {
 import Cropper from 'react-easy-crop';
 import { getCroppedImg } from './cropUtils';
 import { useProductFormStore } from "../../../../../../states/useAddProducts";
+// import { image } from "html2canvas/dist/types/css/types/image";
 const stripHtml = (html) => {
     const div = document.createElement("div");
     div.innerHTML = html;
@@ -44,176 +45,64 @@ const CropImage = ({
         altText,
         setAltText
     } = useProductFormStore();
-    const transformData = formData.transformData || {
-        scale: 1,
-        x: 0,
-        y: 0,
-        rotation: 0
-    };
-    console.log("Transform data", transformData);
+
     const [crop, setCrop] = useState({ x: 0, y: 0 });
+    const [zoom, setZoom] = useState(1);
+    const [rotation, setRotation] = useState(0);
     const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-    const [isCropping, setIsCropping] = useState(false);
     const [discardModalOpen, setDiscardModalOpen] = useState(false);
     const [tempImages, setTempImages] = useState([]);
     const [tempAltText, setTempAltText] = useState([]);
     // Drag and drop state
     const [dragOverIndex, setDragOverIndex] = useState(null);
     const [draggedIndex, setDraggedIndex] = useState(null);
-    const [previewDragging, setPreviewDragging] = useState(false);
 
-    const [previewDragStart, setPreviewDragStart] = useState({
-        x: 0,
-        y: 0
-    });
     const inputFileRef = useRef(null);
-
-    const handlePreviewMouseDown = (e) => {
-        e.preventDefault();
-
-        setPreviewDragging(true);
-
-        setPreviewDragStart({
-            x: e.clientX - (formData.transformData?.x || 0),
-            y: e.clientY - (formData.transformData?.y || 0)
-        });
-    };
-
-    const handlePreviewMouseMove = (e) => {
-        if (!previewDragging) return;
-
-        updateTransformData({
-            ...(formData.transformData || {}),
-            x: e.clientX - previewDragStart.x,
-            y: e.clientY - previewDragStart.y
-        });
-    };
-
-    const handlePreviewMouseUp = () => {
-        setPreviewDragging(false);
-    };
-    const handleWheel = (e) => {
-        if (selectedImageIndex !== 0) return; // sirf primary image pe
-        e.preventDefault();
-
-        const delta = e.deltaY > 0 ? -0.07 : 0.07; // scroll down = zoom out, scroll up = zoom in
-        const currentScale = formData.transformData?.scale || 1;
-        const newScale = Math.min(5, Math.max(1, currentScale + delta)); // 1x to 5x limit
-
-        updateTransformData({
-            ...(formData.transformData || {}),
-            scale: parseFloat(newScale.toFixed(1))
-        });
-    };
     const imageContainerRef = useRef(null);
     // Initialize temp state when modal opens
     useEffect(() => {
-        if (openEdit) {
-            setTempImages([...formData.images]);
-            // ✅ FIX: clean HTML from alt text
-            setTempAltText(
-                altText.map((text) => stripHtml(text || ""))
-            );
-            setSelectedImageIndex(0);
-            setIsCropping(false);
-            setCrop({ x: 0, y: 0 });
-        }
-    }, [openEdit, formData.images, altText]);
-    const updateTransformData = (newTransformData) => {
+        if (!openEdit) return;
+        setTempImages([...formData.images]);
 
-        setFormData({ transformData: newTransformData });
-    };
+        setTempAltText(
+            altText.map((text) =>
+                stripHtml(text || "")
+            )
+        );
+
+        setSelectedImageIndex(0);
+
+        const transform =
+            formData.transformData || {};
+
+        setCrop(
+            transform.crop || {
+                x: 0,
+                y: 0
+            }
+        );
+
+        setZoom(
+            transform.zoom || 1
+        );
+
+        setRotation(
+            transform.rotation || 0
+        );
+
+        setCroppedAreaPixels(
+            transform.croppedAreaPixels || null
+        );
+
+    }, [
+        openEdit
+    ]);
+
     const selectedImage = tempImages[selectedImageIndex];
     const onCropComplete = useCallback((croppedArea, croppedAreaPixels) => {
         setCroppedAreaPixels(croppedAreaPixels);
     }, []);
-    const handleCrop = async () => {
-        if (!selectedImage || !croppedAreaPixels) return;
-        try {
-            const croppedImageBlob = await getCroppedImg(
-                selectedImage.src,
-                croppedAreaPixels,
-                formData.transformData?.rotation || 0
-            );
-            const croppedDataUrl = URL.createObjectURL(croppedImageBlob);
-            const croppedFile = new File([croppedImageBlob], "cropped-image.jpg", {
-                type: 'image/jpeg'
-            });
-            const updatedImages = tempImages.map((img, index) =>
-                index === selectedImageIndex
-                    ? { ...img, src: croppedDataUrl, file: croppedFile }
-                    : img
-            );
-            setTempImages(updatedImages);
-            setIsCropping(false);
-            setCrop({ x: 0, y: 0 });
-        } catch (error) {
-            console.error('Error cropping image:', error);
-            handleOpen("error", "Error cropping image");
-        }
-    };
-
-    const generateEditedImage = async (imageSrc, transformData) => {
-        return new Promise((resolve, reject) => {
-            const image = new Image();
-            image.crossOrigin = "anonymous";
-            image.src = imageSrc;
-
-            image.onload = () => {
-                const canvas = document.createElement("canvas");
-                const ctx = canvas.getContext("2d");
-
-                canvas.width = image.width;
-                canvas.height = image.height;
-
-                ctx.save();
-
-                // center
-                ctx.translate(canvas.width / 2, canvas.height / 2);
-
-                // rotate
-                ctx.rotate((transformData.rotation || 0) * Math.PI / 180);
-
-                // scale
-                ctx.scale(
-                    transformData.scale || 1,
-                    transformData.scale || 1
-                );
-
-                // move
-                ctx.translate(
-                    transformData.x || 0,
-                    transformData.y || 0
-                );
-
-                ctx.drawImage(
-                    image,
-                    -image.width / 2,
-                    -image.height / 2
-                );
-
-                ctx.restore();
-
-                canvas.toBlob((blob) => {
-                    if (!blob) {
-                        reject(new Error("Failed to generate image"));
-                        return;
-                    }
-
-                    const file = new File(
-                        [blob],
-                        "edited-image.jpg",
-                        { type: "image/jpeg" }
-                    );
-
-                    resolve(file);
-                }, "image/jpeg");
-            };
-
-            image.onerror = reject;
-        });
-    };
 
     const handleImageUpload = (event) => {
         const files = Array.from(event.target.files);
@@ -221,13 +110,18 @@ const CropImage = ({
             handleOpen("error", "Maximum 15 images allowed");
             return;
         }
-        const newImages = files.map((file, index) => ({
-            src: URL.createObjectURL(file),
-            file: file,
-            _id: `temp-${Date.now()}-${index}`,
-            isPrimary: tempImages.length === 0 && index === 0,
-            sortOrder: tempImages.length + index + 1
-        }));
+        const newImages = files.map((file, index) => {
+            const objectUrl = URL.createObjectURL(file);
+            return ({
+                src: objectUrl,
+                originalSrc: objectUrl,
+                file: file,
+                edited_image: null,
+                _id: `temp-${Date.now()}-${index}`,
+                isPrimary: tempImages.length === 0 && index === 0,
+                sortOrder: tempImages.length + index + 1
+            })
+        });
         const updatedImages = [...tempImages, ...newImages];
         const updatedAltText = [...tempAltText, ...new Array(files.length).fill("")];
         setTempImages(updatedImages);
@@ -253,12 +147,9 @@ const CropImage = ({
             setSelectedImageIndex(Math.max(0, reorderedImages.length - 1));
         }
         if (index === 0) {
-            updateTransformData({
-                scale: 1,
-                x: 0,
-                y: 0,
-                rotation: 0
-            })
+            setZoom(1);
+            setRotation(0);
+            setCrop({ x: 0, y: 0 });
         }
     };
     // Drag and Drop Handlers
@@ -281,12 +172,9 @@ const CropImage = ({
             return;
         }
         if (draggedIndex === 0 || targetIndex === 0) {
-            updateTransformData({
-                scale: 1,
-                x: 0,
-                y: 0,
-                rotation: 0
-            });
+            setZoom(1);
+            setRotation(0);
+            setCrop({ x: 0, y: 0 });
         }
         const updatedImages = [...tempImages];
         const updatedAltText = [...tempAltText];
@@ -318,36 +206,86 @@ const CropImage = ({
         setDragOverIndex(null);
         setDraggedIndex(null);
     };
+
     const handleApplyChanges = async () => {
-        const commonAltText = tempAltText[selectedImageIndex] || "";
-        let updatedImages = [...tempImages];
+        try {
 
-        if (updatedImages[0]) {
-            const editedFile = await generateEditedImage(
-                updatedImages[0].src,
-                formData.transformData || {}
+            let updatedImages = [...tempImages];
+
+            const safeCrop = croppedAreaPixels
+                ? (() => {
+
+                    const size = Math.round(
+                        Math.min(
+                            croppedAreaPixels.width,
+                            croppedAreaPixels.height
+                        )
+                    );
+
+                    return {
+                        x: Math.round(croppedAreaPixels.x),
+                        y: Math.round(croppedAreaPixels.y),
+                        width: size,
+                        height: size
+                    };
+
+                })()
+                : null;
+
+            if (
+                selectedImage &&
+                safeCrop
+            ) {
+
+                const editedBlob = await getCroppedImg(
+                    updatedImages[0].originalSrc ||
+                    updatedImages[0].src,
+                    safeCrop,
+                    rotation
+                );
+
+                const editedFile = new File(
+                    [editedBlob],
+                    "edited-image.jpg",
+                    {
+                        type: "image/jpeg"
+                    }
+                );
+
+                const previewUrl =
+                    URL.createObjectURL(editedBlob);
+
+                updatedImages[0] = {
+                    ...updatedImages[0],
+
+                    edited_image: editedFile,
+
+                    previewSrc: previewUrl
+                };
+            }
+
+            setFormData({
+                images: updatedImages,
+
+                transformData: {
+                    crop,
+                    zoom,
+                    rotation,
+                    croppedAreaPixels: safeCrop
+                }
+            });
+
+            handleEditClose();
+
+        } catch (error) {
+
+            console.error(error);
+
+            handleOpen(
+                "error",
+                "Failed to apply changes"
             );
-
-            updatedImages[0] = {
-                ...updatedImages[0],
-                edited_image: editedFile
-            };
         }
-
-        console.log(
-            "Updated Images =>",
-            updatedImages
-        );
-
-        setFormData({
-            ...formData,
-            images: updatedImages,
-            transformData: formData.transformData
-        });
-
-        setAltText(tempImages.map(() => commonAltText));
-
-        handleEditClose();
     };
 
     const handleDiscard = () => {
@@ -358,6 +296,7 @@ const CropImage = ({
         inputFileRef.current?.click();
     };
     const canApply = tempImages.length > 0;
+
     return (
         <>
             <Dialog
@@ -523,58 +462,22 @@ const CropImage = ({
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    cursor: selectedImageIndex === 0 ? (previewDragging ? 'grabbing' : 'grab') : 'default'
                                 }}
-                                onMouseDown={selectedImageIndex === 0 ? handlePreviewMouseDown : undefined}
-                                onMouseMove={selectedImageIndex === 0 ? handlePreviewMouseMove : undefined}
-                                onMouseUp={handlePreviewMouseUp}
-                                onMouseLeave={handlePreviewMouseUp}
-                                onWheel={selectedImageIndex === 0 ? handleWheel : undefined}  // ✅ YE ADD KAR
-
                             >
                                 {selectedImage ? (
-                                    isCropping ? (
-                                        <Cropper
-                                            image={selectedImage.src}
-                                            crop={crop}
-                                            zoom={1}
-                                            aspect={1}
-                                            onCropChange={setCrop}
-                                            onCropComplete={onCropComplete}
-                                            style={{
-                                                containerStyle: {
-                                                    position: 'relative',
-                                                    height: '100%',
-                                                    width: '100%'
-                                                }
-                                            }}
-                                        />
-                                    ) : (
-                                        <>
-                                            <img
-                                                src={selectedImage.src}
-                                                draggable={false}
-                                                style={{
-                                                    width: "100%",
-                                                    height: "100%",
-                                                    objectFit: "contain",
-                                                    // ✅ Primary image pe transform apply karo
-                                                    transform: selectedImageIndex === 0
-                                                        ? `translate3d(
-        ${formData.transformData?.x || 0}px,
-        ${formData.transformData?.y || 0}px,
-        0
-      )
-      rotate(${formData.transformData?.rotation || 0}deg)
-      scale(${formData.transformData?.scale || 1})`
-                                                        : 'none',
-                                                    transformOrigin: 'center center',
-                                                    transition: 'transform 0.1s ease',
-                                                    willChange: 'transform'
-                                                }}
-                                            />
-                                        </>
-                                    )
+                                    <Cropper
+                                        key={`${openEdit}-${selectedImageIndex}-${selectedImage?.originalSrc}`}
+                                        image={selectedImage.originalSrc || selectedImage.src}
+                                        crop={crop}
+                                        zoom={zoom}
+                                        rotation={rotation}
+                                        aspect={1}
+                                        onCropChange={setCrop}
+                                        onZoomChange={setZoom}
+                                        onRotationChange={setRotation}
+                                        onCropComplete={onCropComplete}
+                                        crossOrigin="anonymous"
+                                    />
                                 ) : (
                                     <Box
                                         sx={{
@@ -602,16 +505,7 @@ const CropImage = ({
                             {/* Controls */}
                             {selectedImage && (
                                 <Box sx={{ mt: 1 }}>
-                                    {isCropping ? (
-                                        <Box sx={{ display: 'flex', gap: 1 }}>
-                                            <Button onClick={() => setIsCropping(false)} variant="outlined" size="small">
-                                                Cancel Crop
-                                            </Button>
-                                            <Button variant="contained" startIcon={<Check />} onClick={handleCrop} size="small">
-                                                Apply Crop
-                                            </Button>
-                                        </Box>
-                                    ) : (
+                                    {
                                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                                             {/* ✅ ZOOM SLIDER — sirf primary image pe */}
 
@@ -620,31 +514,25 @@ const CropImage = ({
                                                     {/* Rotate Controls */}
                                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                                         <Typography variant="body2" sx={{ minWidth: 70 }}>
-                                                            Rotate: {formData.transformData?.rotation || 0}°
+                                                            Rotate: {rotation || 0}°
                                                         </Typography>
 
                                                         <IconButton
                                                             size="small"
                                                             onClick={() =>
-                                                                updateTransformData({
-                                                                    ...(formData.transformData || {}),
-                                                                    rotation: (formData.transformData?.rotation || 0) - 90
-                                                                })
+                                                                setRotation(prev => (prev - 90 + 360) % 360)
                                                             }
                                                         >
                                                             <RotateLeft />
                                                         </IconButton>
 
                                                         <Slider
-                                                            value={formData.transformData?.rotation || 0}
+                                                            value={rotation || 0}
                                                             min={0}
                                                             max={360}
                                                             step={1}
                                                             onChange={(e, value) =>
-                                                                updateTransformData({
-                                                                    ...(formData.transformData || {}),
-                                                                    rotation: value
-                                                                })
+                                                                setRotation(value)
                                                             }
                                                             sx={{ flex: 1, mx: 1 }}
                                                             size="small"
@@ -653,10 +541,7 @@ const CropImage = ({
                                                         <IconButton
                                                             size="small"
                                                             onClick={() =>
-                                                                updateTransformData({
-                                                                    ...(formData.transformData || {}),
-                                                                    rotation: (formData.transformData?.rotation || 0) + 90
-                                                                })
+                                                                setRotation(prev => (prev + 90) % 360)
                                                             }
                                                         >
                                                             <RotateRight />
@@ -666,33 +551,27 @@ const CropImage = ({
                                                     {/* Zoom Controls */}
                                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                                         <Typography variant="body2" sx={{ minWidth: 70 }}>
-                                                            Zoom: {(formData.transformData?.scale || 1).toFixed(1)}x
+                                                            Zoom: {zoom.toFixed(1)}x
                                                         </Typography>
 
                                                         <Slider
-                                                            value={formData.transformData?.scale || 1}
+                                                            value={zoom}
                                                             min={1}
                                                             max={5}
                                                             step={0.1}
                                                             onChange={(e, value) =>
-                                                                updateTransformData({
-                                                                    ...(formData.transformData || {}),
-                                                                    scale: value
-                                                                })
+                                                                setZoom(value)
                                                             }
                                                             sx={{ flex: 1, mx: 1 }}
                                                             size="small"
                                                         />
 
                                                         <Button
-                                                            onClick={() =>
-                                                                updateTransformData({
-                                                                    scale: 1,
-                                                                    x: 0,
-                                                                    y: 0,
-                                                                    rotation: 0
-                                                                })
-                                                            }
+                                                            onClick={() => {
+                                                                setZoom(1);
+                                                                setRotation(0);
+                                                                setCrop({ x: 0, y: 0 });
+                                                            }}
                                                             size="small"
                                                             variant="outlined"
                                                             sx={{ minWidth: 'auto', px: 1 }}
@@ -705,13 +584,13 @@ const CropImage = ({
                                             {/* Action Buttons */}
 
                                         </Box>
-                                    )}
+                                    }
                                 </Box>
                             )}
                         </Grid>
                         {/* Right Sidebar - Alt Text and Actions */}
                         <Grid item xs={12} md={3} sx={{ mt: -3 }}>
-                            {selectedImage && !isCropping && (
+                            {selectedImage && (
                                 <Box>
                                     <Typography variant="subtitle2" gutterBottom>
                                         Alt Text
@@ -741,10 +620,9 @@ const CropImage = ({
                                             mt: 22
                                         }}
                                     >
-                                        <Button
+                                        {/* <Button
                                             variant="outlined"
                                             startIcon={<Crop />}
-                                            onClick={() => setIsCropping(true)}
                                             size="small"
                                             sx={{
                                                 whiteSpace: 'nowrap',
@@ -753,7 +631,7 @@ const CropImage = ({
                                             }}
                                         >
                                             Crop
-                                        </Button>
+                                        </Button> */}
 
                                         <Button
                                             variant="outlined"
