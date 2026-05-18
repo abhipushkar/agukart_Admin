@@ -240,6 +240,38 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
         alert(`${type}: ${message}`);
     };
 
+    const resolveImageSrc = (image) => {
+
+        if (!image) return "";
+
+        // priority 1
+        if (image.previewSrc) {
+            return image.previewSrc;
+        }
+
+        // priority 2
+        if (image.edited_image) {
+
+            // FILE/BLOB
+            if (
+                image.edited_image instanceof File ||
+                image.edited_image instanceof Blob
+            ) {
+                return URL.createObjectURL(
+                    image.edited_image
+                );
+            }
+
+            // STRING URL
+            if (typeof image.edited_image === "string") {
+                return image.edited_image;
+            }
+        }
+
+        // fallback
+        return image.src || "";
+    };
+
     return (
         <Box
             sx={{
@@ -608,12 +640,7 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                                         }}
                                     >
                                         <img
-                                            src={
-                                                primaryImage?.previewSrc ||
-                                                (primaryImage?.edited_image
-                                                    ? URL.createObjectURL(primaryImage.edited_image)
-                                                    : primaryImage?.src)
-                                            }
+                                            src={resolveImageSrc(primaryImage)}
                                             alt="Primary preview"
                                             draggable={false}
                                             style={{
@@ -631,19 +658,8 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                                             variant="outlined"
                                             endIcon={<OpenInNew />}
                                             onClick={() => {
-
-                                                const previewUrl =
-                                                    primaryImage?.previewSrc ||
-                                                    (
-                                                        primaryImage?.edited_image
-                                                            ? URL.createObjectURL(
-                                                                primaryImage.edited_image
-                                                            )
-                                                            : primaryImage?.src
-                                                    );
-
+                                                const previewUrl = resolveImageSrc(primaryImage);
                                                 if (!previewUrl) return;
-
                                                 window.open(previewUrl, "_blank");
 
                                             }}
