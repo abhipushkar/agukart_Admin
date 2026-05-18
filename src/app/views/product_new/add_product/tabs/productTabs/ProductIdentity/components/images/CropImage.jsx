@@ -477,6 +477,7 @@ const CropImage = ({
                                         zoom={zoom}
                                         rotation={rotation}
                                         aspect={1}
+                                        restrictPosition={false}
                                         onCropChange={setCrop}
                                         onZoomChange={setZoom}
                                         onRotationChange={setRotation}
@@ -561,7 +562,7 @@ const CropImage = ({
 
                                                         <Slider
                                                             value={zoom}
-                                                            min={1}
+                                                            min={0.5}
                                                             max={5}
                                                             step={0.1}
                                                             onChange={(e, value) =>
