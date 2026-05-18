@@ -88,6 +88,14 @@ export const getCroppedImg = async (
     croppedCanvas.width = size;
     croppedCanvas.height = size;
 
+    croppedCtx.fillStyle = "#ececec";
+    croppedCtx.fillRect(
+        0,
+        0,
+        croppedCanvas.width,
+        croppedCanvas.height
+    );
+
     croppedCtx.drawImage(
         canvas,
 
