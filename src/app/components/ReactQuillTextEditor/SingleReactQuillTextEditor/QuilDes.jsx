@@ -51,24 +51,31 @@ const QuilDes = ({ des, setDes, setErrors }) => {
   }, []);
 
   return (
-    <ReactQuill
-      style={{ height: "245px" }}
-      theme="snow"
-      onBlur={() => {
-        if (!des || des === "<p><br></p>") {
-          setErrors("Description is Required");
-        }
-      }}
-      value={des === "<p><br></p>" ? "" : des}
-      onChange={(html) => {
-        handleChange(html);
-        setErrors("");
-      }}
-      modules={modules}
-      formats={formats}
-      bounds={"#root"}
-      placeholder="Description"
-    />
+    <>
+      <style>{`
+      .ql-container { height: auto !important; overflow: hidden !important; }
+      .ql-editor { height: auto !important; min-height: 200px !important; overflow: hidden !important; }
+    `}</style>
+
+      <ReactQuill
+        style={{ height: "auto", minHeight: "245px" }}
+        theme="snow"
+        onBlur={() => {
+          if (!des || des === "<p><br></p>") {
+            setErrors("Description is Required");
+          }
+        }}
+        value={des === "<p><br></p>" ? "" : des}
+        onChange={(html) => {
+          handleChange(html);
+          setErrors("");
+        }}
+        modules={modules}
+        formats={formats}
+        bounds={"#root"}
+        placeholder="Description"
+      />
+    </>
   );
 };
 
