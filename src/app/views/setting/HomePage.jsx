@@ -57,6 +57,9 @@ const HomePage = () => {
     box4CatName: [],
     headerText: "",
     description: "",
+    meta_title: "",
+    meta_description: "",
+    meta_keywords: []
   });
   const [errors, setErrors] = useState({
     box1Title: "",
@@ -69,6 +72,9 @@ const HomePage = () => {
     box4CatName: "",
     headerText: "",
     description: "",
+    meta_title: "",
+    meta_description: "",
+    meta_keywords: ""
   });
   const [image1, setImage1] = useState(null);
   const [image2, setImage2] = useState(null);
@@ -78,7 +84,9 @@ const HomePage = () => {
   const [type1, setType1] = useState("add");
   const [allActiveCat, setAllActiveCat] = useState([]);
   const navigate = useNavigate();
-
+  const [altText1, setAltText1] = useState("");
+  const [altText2, setAltText2] = useState("");
+  const [keywordInput, setKeywordInput] = useState("");
   const [open, setOpen] = React.useState(false);
   const [type, setType] = useState("");
   const [route, setRoute] = useState(null);
@@ -160,7 +168,26 @@ const HomePage = () => {
       }));
     }
   };
+  const parseKeyword = (term) => {
+    if (Array.isArray(term)) return term.map(t => t.trim());
+    if (typeof term === "string") return term.trim().split(",").map(t => t.trim()).filter(Boolean);
+  };
 
+  const handleAddKeyword = () => {
+    const trimmed = keywordInput.trim();
+    if (trimmed && !formValues.meta_keywords.includes(trimmed)) {
+      const newKeys = parseKeyword(trimmed);
+      setFormValues((prev) => ({ ...prev, meta_keywords: [...prev.meta_keywords, ...newKeys] }));
+    }
+    setKeywordInput("");
+  };
+
+  const handleDeleteKeyword = (kwToDelete) => () => {
+    setFormValues((prev) => ({
+      ...prev,
+      meta_keywords: prev.meta_keywords.filter((k) => k !== kwToDelete)
+    }));
+  };
   const handleImageChange = (e, name) => {
     const file = e.target.files[0];
     if (name === "dealimg1") {
@@ -240,6 +267,12 @@ const HomePage = () => {
         }
         formData.append("header_text", formValues.headerText);
         formData.append("description", formValues.description);
+
+        formData.append("deal_1_alt", altText1);
+        formData.append("deal_2_alt", altText2);
+        formData.append("meta_title", formValues.meta_title);
+        formData.append("meta_description", formValues.meta_description);
+        formData.append("meta_keywords", formValues.meta_keywords.join(","));
         const res = await ApiService.postImage(apiEndpoints.addDeal, formData, auth_key);
         if (res?.status === 200) {
           navigate(ROUTE_CONSTANT.dashboard);
@@ -279,10 +312,15 @@ const HomePage = () => {
           box4CatId: resData?.box4_category?.map((option) => option?._id),
           // box4CatName: resData?.box4_category,
           headerText: resData?.header_text,
-          description: resData?.description
+          description: resData?.description,
+          meta_title: resData?.meta_title || "",
+          meta_description: resData?.meta_description || "",
+          meta_keywords: resData?.meta_keywords ? resData.meta_keywords.split(",").map(k => k.trim()) : []
         }));
         setImgUrl1(baseUrl + resData?.deal_1);
         setImgUrl2(baseUrl + resData?.deal_2);
+        setAltText1(resData?.deal_1_alt || "");
+        setAltText2(resData?.deal_2_alt || "");
         if (Object.keys(resData).length > 0) {
           setType1("update");
         } else {
@@ -414,31 +452,17 @@ const HomePage = () => {
               />
             </Stack>
 
-            <Box marginBottom={4}>
+            <Box marginBottom={4} sx={{ display: "flex", gap: "20px" }}>
               <TextField
-                fullWidth
                 value={image1?.name}
-                sx={{
-                  width: "100%",
-                  "& .MuiInputBase-root": {
-                    height: "40px",
-                  },
-                }}
+                sx={{ width: "25%", "& .MuiInputBase-root": { height: "40px" } }}
                 InputProps={{
                   startAdornment: (
-                    <InputAdornment position="start">
-                      <AttachFileIcon />
-                    </InputAdornment>
+                    <InputAdornment position="start"><AttachFileIcon /></InputAdornment>
                   ),
                   endAdornment: (
-                    <input
-                      type="file"
-                      accept="image/*"
-                      style={{ display: "none" }}
-                      id="file-input1"
-                      onChange={(event) => {
-                        handleImageChange(event, "dealimg1");
-                      }}
+                    <input type="file" accept="image/*" style={{ display: "none" }} id="file-input1"
+                      onChange={(event) => { handleImageChange(event, "dealimg1"); }}
                     />
                   ),
                   readOnly: true
@@ -446,36 +470,26 @@ const HomePage = () => {
                 placeholder="Select deal 1 image link"
                 onClick={() => document.getElementById("file-input1").click()}
               />
+              <TextField
+                label="Deal 1 Image Alt Text"
+                value={altText1}
+                onChange={(e) => setAltText1(e.target.value)}
+                sx={{ width: "75%", "& .MuiInputBase-root": { height: "40px" }, "& .MuiFormLabel-root": { top: "-7px" } }}
+              />
             </Box>
 
             {imgUrl1 && <img style={{ marginBottom: "35px" }} src={imgUrl1} width={200} alt="" />}
-
-            <Box marginBottom={4}>
+            <Box marginBottom={4} sx={{ display: "flex", gap: "20px" }}>
               <TextField
-                fullWidth
                 value={image2?.name}
-                sx={{
-                  width: "100%",
-                  "& .MuiInputBase-root": {
-                    height: "40px",
-                  },
-
-                }}
+                sx={{ width: "25%", "& .MuiInputBase-root": { height: "40px" } }}
                 InputProps={{
                   startAdornment: (
-                    <InputAdornment position="start">
-                      <AttachFileIcon />
-                    </InputAdornment>
+                    <InputAdornment position="start"><AttachFileIcon /></InputAdornment>
                   ),
                   endAdornment: (
-                    <input
-                      type="file"
-                      accept="image/*"
-                      style={{ display: "none" }}
-                      id="file-input2"
-                      onChange={(event) => {
-                        handleImageChange(event, "dealimg2");
-                      }}
+                    <input type="file" accept="image/*" style={{ display: "none" }} id="file-input2"
+                      onChange={(event) => { handleImageChange(event, "dealimg2"); }}
                     />
                   ),
                   readOnly: true
@@ -483,10 +497,14 @@ const HomePage = () => {
                 placeholder="Select deal 2 image link"
                 onClick={() => document.getElementById("file-input2").click()}
               />
+              <TextField
+                label="Deal 2 Image Alt Text"
+                value={altText2}
+                onChange={(e) => setAltText2(e.target.value)}
+                sx={{ width: "75%", "& .MuiInputBase-root": { height: "40px" }, "& .MuiFormLabel-root": { top: "-7px" } }}
+              />
             </Box>
-
             {imgUrl2 && <img style={{ marginBottom: "14px" }} src={imgUrl2} width={200} alt="" />}
-
             <h2>Featured Occassions</h2>
 
             <h4>Box 1</h4>
@@ -831,35 +849,91 @@ const HomePage = () => {
             </Box>
 
             <h2>Home Page Description</h2>
-            {/* <TextEditor name="description" value={formValues?.description} setFormValues={setFormValues}/> */}
-            <Box width={"100%"}>
-              <Box
-                sx={{
-                  width: "100%"
-                }}
-              >
+
+            <Box width={"100%"} sx={{ marginBottom: "40px" }}>
+              <Box sx={{ width: "100%" }}>
                 <Box
                   sx={{
                     height: "auto",
-                    width: "100%"
+                    width: "100%",
+                    marginBottom: "40px"
                   }}
                 >
-                  <QuillDes formValues={formValues} setFormValues={setFormValues} setErrors={setErrors} />
+                  <QuillDes
+                    formValues={formValues}
+                    setFormValues={setFormValues}
+                    setErrors={setErrors}
+                  />
                 </Box>
-                {errors.description && (
-                  <Typography
-                    sx={{
-                      fontSize: "12px",
-                      color: "#FF3D57",
-                      marginLeft: "14px",
-                      marginRight: "14px",
-                      marginTop: "3px"
-                    }}
-                  >
-                    {errors.description}
-                  </Typography>
-                )}
               </Box>
+            </Box>
+            {errors.description && (
+              <Typography
+                sx={{
+                  fontSize: "12px",
+                  color: "#FF3D57",
+                  marginLeft: "14px",
+                  marginRight: "14px",
+                  marginTop: "3px"
+                }}
+              >
+                {errors.description}
+              </Typography>
+            )}
+            <Box sx={{ display: "flex", flexDirection: "column", gap: "20px", marginBottom: "20px", marginTop: "20px" }}>
+
+              <TextField
+                name="meta_title"
+                label="Meta Title"
+                onChange={handleChange}
+                value={formValues.meta_title}
+                sx={{ width: "100%", "& .MuiInputBase-root": { height: "40px" }, "& .MuiFormLabel-root": { top: "-7px" } }}
+              />
+
+              <TextField
+                name="meta_description"
+                label="Meta Description"
+                onChange={handleChange}
+                value={formValues.meta_description}
+                multiline
+                rows={3}
+                sx={{ width: "100%" }}
+              />
+
+              <Autocomplete
+                multiple
+                freeSolo
+                options={[]}
+                value={formValues.meta_keywords}
+                inputValue={keywordInput}
+                onChange={(event, newValue) => {
+                  const parsed = newValue.reduce((acc, option) => acc.concat(parseKeyword(option)), []);
+                  setFormValues((prev) => ({ ...prev, meta_keywords: parsed }));
+                }}
+                onInputChange={(e, newInputValue) => setKeywordInput(newInputValue)}
+                onBlur={() => { if (keywordInput.trim()) handleAddKeyword(); }}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip variant="outlined" label={option} {...getTagProps({ index })} onDelete={handleDeleteKeyword(option)} size="small" />
+                  ))
+                }
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Meta Keyword"
+                    placeholder="Add Keywords"
+                    sx={{ width: "100%", "& .MuiInputBase-root": { padding: "0 11px" }, "& .MuiFormLabel-root": { top: "-7px" } }}
+                    onKeyDown={(e) => {
+                      if (e.key === " " || e.key === "Enter") { e.preventDefault(); handleAddKeyword(); }
+                      if (e.key === ",") { e.preventDefault(); handleAddKeyword(); setKeywordInput(""); }
+                      if (e.key === "Backspace" && !keywordInput) {
+                        setFormValues((prev) => ({ ...prev, meta_keywords: prev.meta_keywords.slice(0, -1) }));
+                      }
+                    }}
+                  />
+                )}
+              />
+
             </Box>
             <Button
               endIcon={loading ? <CircularProgress size={15} /> : ""}
@@ -873,9 +947,9 @@ const HomePage = () => {
             </Button>
           </form>
         </StyledContainer>
-      </MuiContainer>
+      </MuiContainer >
       <ConfirmModal open={open} handleClose={handleClose} type={type} msg={msg} />
-    </ThemeProvider>
+    </ThemeProvider >
   );
 };
 

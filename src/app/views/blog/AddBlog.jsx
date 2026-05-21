@@ -1,4 +1,4 @@
-import { Box, Button, Divider, Paper, Stack, TextField, Autocomplete } from "@mui/material";
+import { Box, Button, Divider, Paper, Stack, TextField, Autocomplete, Chip } from "@mui/material";
 import { useRef } from "react";
 import { v4 as uuidv4 } from "uuid";
 import React, { useState } from "react";
@@ -25,25 +25,31 @@ const AddBlog = () => {
     shortDes: "",
     tags: [],
     tags_id: [],
-    authorName: ""
+    authorName: "",
+    meta_title: "",
+    meta_description: "",
+    meta_keywords: []
   });
   const [images, setImages] = useState(null);
   const [imageSrc, setImageSrc] = useState(null);
   const [des, setDes] = useState("");
   const [allTags, setAllTags] = useState([]);
-
+  const [altText, setAltText] = useState("");
   const [errors, setErrors] = useState({
     title: "",
     shortDes: "",
     des: "",
     images: "",
     tags: "",
-    authorName: ""
+    authorName: "",
+    meta_title: "",
+    meta_description: "",
+    meta_keywords: ""
   });
   const auth_key = localStorage.getItem(localStorageKey.auth_key);
   const [query, setQuery] = useSearchParams();
   const queryId = query.get("id");
-
+  const [keywordInput, setKeywordInput] = useState("");
   const [open, setOpen] = React.useState(false);
   const [type, setType] = useState("");
   const [route, setRoute] = useState(null);
@@ -104,7 +110,26 @@ const AddBlog = () => {
       reader.readAsDataURL(file);
     }
   };
+  const parseKeyword = (term) => {
+    if (Array.isArray(term)) return term.map(t => t.trim());
+    if (typeof term === "string") return term.trim().split(",").map(t => t.trim()).filter(Boolean);
+  };
 
+  const handleAddKeyword = () => {
+    const trimmed = keywordInput.trim();
+    if (trimmed && !formValues.meta_keywords.includes(trimmed)) {
+      const newKeys = parseKeyword(trimmed);
+      setFormValues((prev) => ({ ...prev, meta_keywords: [...prev.meta_keywords, ...newKeys] }));
+    }
+    setKeywordInput("");
+  };
+
+  const handleDeleteKeyword = (kwToDelete) => () => {
+    setFormValues((prev) => ({
+      ...prev,
+      meta_keywords: prev.meta_keywords.filter((k) => k !== kwToDelete)
+    }));
+  };
   // const handleImageChange = (e) => {
   //   if (images.length === 9) {
   //     toast.error("Selected Images Must be 9");
@@ -141,7 +166,10 @@ const AddBlog = () => {
           short_description: formValues.shortDes,
           description: des,
           tag_id: formValues.tags_id,
-          author_name: formValues.authorName
+          author_name: formValues.authorName,
+          meta_title: formValues.meta_title,           // 👈 add
+          meta_description: formValues.meta_description, // 👈 add
+          meta_keywords: formValues.meta_keywords.join(",")
         };
         const res = await ApiService.post(apiEndpoints.addBlogs, payload, auth_key);
         if (res?.status === 200) {
@@ -152,7 +180,7 @@ const AddBlog = () => {
           if (images) {
             handleUploadImg(res?.data?.blog?._id);
           }
-          if(!queryId) {
+          if (!queryId) {
             setRoute(ROUTE_CONSTANT.blog.list);
           }
           handleOpen("success", res?.data);
@@ -168,6 +196,7 @@ const AddBlog = () => {
       const formData = new FormData();
       formData.append("_id", id);
       formData.append("file", images);
+      formData.append("image_alt", altText);  // 👈 add
       const res = await ApiService.postImage(apiEndpoints.addBlogImg, formData, auth_key);
       if (res.status === 200) {
         console.log(res);
@@ -180,6 +209,7 @@ const AddBlog = () => {
   const getBlog = async () => {
     try {
       const res = await ApiService.get(`${apiEndpoints.getBlogById}/${queryId}`, auth_key);
+
       if (res?.status === 200) {
         console.log("res-----", res?.data?.data);
         const resData = res?.data?.data;
@@ -189,10 +219,14 @@ const AddBlog = () => {
           shortDes: resData?.short_description,
           tags_id: resData?.tag_id?.map((option) => option?._id),
           tags: resData?.tag_id,
-          authorName: resData?.author_name
+          authorName: resData?.author_name,
+          meta_title: resData?.meta_title,           // 👈 add
+          meta_description: resData?.meta_description, // 👈 add
+          meta_keywords: resData?.meta_keywords ? resData.meta_keywords.split(",") : []        // 👈 add
         }));
         setDes(resData?.description);
         setImageSrc(resData?.image);
+        setAltText(resData?.image_alt || "");
       }
     } catch (error) {
       handleOpen("error", error);
@@ -550,8 +584,17 @@ const AddBlog = () => {
             <Box width={"100%"}>
               <Box
                 sx={{
-                  height: "auto", // Set your desired height
-                  width: "100%"
+                  height: "auto",
+                  width: "100%",
+                  "& .ql-container": {
+                    height: "auto !important",
+                    overflow: "hidden !important"
+                  },
+                  "& .ql-editor": {
+                    minHeight: "300px",
+                    height: "auto !important",
+                    overflow: "hidden !important"
+                  }
                 }}
               >
                 <QuillDes des={des} setDes={setDes} setErrors={setErrors} />
@@ -664,9 +707,120 @@ const AddBlog = () => {
                   }}
                 />
               </Box>
+
+
             )}
           </Box>
+          {imageSrc && (
+            <Box sx={{ width: "100%", marginTop: "10px" }}>
+              <TextField
+                name="altText"
+                label="Image Alt Text"
+                value={altText}
+                onChange={(e) => setAltText(e.target.value)}
+                sx={{
+                  width: "100%",
+                  "& .MuiInputBase-root": { height: "40px" },
+                  "& .MuiFormLabel-root": { top: "-7px" }
+                }}
+              />
+            </Box>
+          )}
+          {/* META FIELDS */}
+          <Box sx={{ display: "flex", flexDirection: "column", gap: "20px", marginTop: "20px" }}>
 
+            <TextField
+              error={!!errors.meta_title}
+              helperText={errors.meta_title}
+              name="meta_title"
+              label="Meta Title"
+              onChange={handleChange}
+              value={formValues.meta_title}
+              sx={{
+                width: "100%",
+                "& .MuiInputBase-root": { height: "40px" },
+                "& .MuiFormLabel-root": { top: "-7px" }
+              }}
+            />
+
+            <TextField
+              error={!!errors.meta_description}
+              helperText={errors.meta_description}
+              name="meta_description"
+              label="Meta Description"
+              onChange={handleChange}
+              value={formValues.meta_description}
+              multiline
+              rows={3}
+              sx={{ width: "100%" }}
+            />
+
+            {/* Meta Keyword */}
+            <Autocomplete
+              multiple
+              freeSolo
+              options={[]}
+              value={formValues.meta_keywords}
+              inputValue={keywordInput}
+              onChange={(event, newValue) => {
+                const parsed = newValue.reduce((acc, option) => {
+                  return acc.concat(parseKeyword(option));
+                }, []);
+                setFormValues((prev) => ({ ...prev, meta_keywords: parsed }));
+              }}
+              onInputChange={(e, newInputValue) => {
+                setKeywordInput(newInputValue);
+              }}
+              onBlur={() => {
+                if (keywordInput.trim()) {
+                  handleAddKeyword();
+                }
+              }}
+              renderTags={(value, getTagProps) =>
+                value.map((option, index) => (
+                  <Chip
+                    variant="outlined"
+                    label={option}
+                    {...getTagProps({ index })}
+                    onDelete={handleDeleteKeyword(option)}
+                    size="small"
+                  />
+                ))
+              }
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Meta Keyword"
+                  placeholder="Add Keywords"
+                  error={!!errors.meta_keywords}
+                  helperText={errors.meta_keywords}
+                  sx={{
+                    width: "100%",
+                    "& .MuiInputBase-root": { padding: "0 11px" },
+                    "& .MuiFormLabel-root": { top: "-7px" }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === " " || e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddKeyword();
+                    }
+                    if (e.key === ",") {
+                      e.preventDefault();
+                      handleAddKeyword();
+                      setKeywordInput("");
+                    }
+                    if (e.key === "Backspace" && !keywordInput) {
+                      setFormValues((prev) => ({
+                        ...prev,
+                        meta_keywords: prev.meta_keywords.slice(0, -1)
+                      }));
+                    }
+                  }}
+                />
+              )}
+            />
+
+          </Box>
           <Box
             sx={{
               display: "flex",

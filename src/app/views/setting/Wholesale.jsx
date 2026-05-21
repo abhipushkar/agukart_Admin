@@ -9,6 +9,7 @@ import {
   CircularProgress,
   Autocomplete
 } from "@mui/material";
+import Chip from "@mui/material/Chip";
 import Typography from "@mui/material/Typography";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import styled from "@emotion/styled";
@@ -43,7 +44,10 @@ const Wholesale = () => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState("");
   const navigate = useNavigate();
-
+  const [metaTitle, setMetaTitle] = useState("");
+  const [metaDescription, setMetaDescription] = useState("");
+  const [metaKeywords, setMetaKeywords] = useState([]);
+  const [keywordInput, setKeywordInput] = useState("");
   const [open, setOpen] = React.useState(false);
   const [type, setType] = useState("");
   const [route, setRoute] = useState(null);
@@ -73,7 +77,22 @@ const Wholesale = () => {
     setRoute(null);
     setMsg(null);
   };
+  const parseKeyword = (term) => {
+    if (Array.isArray(term)) return term.map(t => t.trim());
+    if (typeof term === "string") return term.trim().split(",").map(t => t.trim()).filter(Boolean);
+  };
 
+  const handleAddKeyword = () => {
+    const trimmed = keywordInput.trim();
+    if (trimmed && !metaKeywords.includes(trimmed)) {
+      setMetaKeywords((prev) => [...prev, ...parseKeyword(trimmed)]);
+    }
+    setKeywordInput("");
+  };
+
+  const handleDeleteKeyword = (kwToDelete) => () => {
+    setMetaKeywords((prev) => prev.filter((k) => k !== kwToDelete));
+  };
   const handleSubmit = async () => {
     if (!des) {
       setErrors("Description is required");
@@ -83,7 +102,10 @@ const Wholesale = () => {
         const payload = {
           _id: id ? id : "new",
           type: "Wholesale",
-          description: des
+          description: des,
+          meta_title: metaTitle,
+          meta_description: metaDescription,
+          meta_keywords: metaKeywords,
         };
         const res = await ApiService.post(apiEndpoints.updateSettings, payload, auth_key);
         if (res?.status === 200) {
@@ -105,6 +127,9 @@ const Wholesale = () => {
         const resData = res?.data?.data;
         setDes(resData?.description);
         setId(resData?._id);
+        setMetaTitle(resData?.meta_title || "");
+        setMetaDescription(resData?.meta_description || "");
+        setMetaKeywords(Array.isArray(resData?.meta_keywords) ? resData.meta_keywords : []);
       }
     } catch (error) {
       handleOpen("error", error);
@@ -145,7 +170,59 @@ const Wholesale = () => {
                 </Typography>
               )}
             </Box>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: "20px", marginTop: "60px" }}>
 
+              <TextField
+                label="Meta Title"
+                value={metaTitle}
+                onChange={(e) => setMetaTitle(e.target.value)}
+                sx={{ width: "100%", "& .MuiInputBase-root": { height: "40px" }, "& .MuiFormLabel-root": { top: "-7px" } }}
+              />
+
+              <TextField
+                label="Meta Description"
+                value={metaDescription}
+                onChange={(e) => setMetaDescription(e.target.value)}
+                multiline
+                rows={3}
+                sx={{ width: "100%" }}
+              />
+
+              <Autocomplete
+                multiple
+                freeSolo
+                options={[]}
+                value={metaKeywords}
+                inputValue={keywordInput}
+                onChange={(event, newValue) => {
+                  const parsed = newValue.reduce((acc, option) => acc.concat(parseKeyword(option)), []);
+                  setMetaKeywords(parsed);
+                }}
+                onInputChange={(e, newInputValue) => setKeywordInput(newInputValue)}
+                onBlur={() => { if (keywordInput.trim()) handleAddKeyword(); }}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip variant="outlined" label={option} {...getTagProps({ index })} onDelete={handleDeleteKeyword(option)} size="small" />
+                  ))
+                }
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Meta Keyword"
+                    placeholder="Add Keywords"
+                    sx={{ width: "100%", "& .MuiInputBase-root": { padding: "0 11px" }, "& .MuiFormLabel-root": { top: "-7px" } }}
+                    onKeyDown={(e) => {
+                      if (e.key === " " || e.key === "Enter") { e.preventDefault(); handleAddKeyword(); }
+                      if (e.key === ",") { e.preventDefault(); handleAddKeyword(); setKeywordInput(""); }
+                      if (e.key === "Backspace" && !keywordInput) {
+                        setMetaKeywords((prev) => prev.slice(0, -1));
+                      }
+                    }}
+                  />
+                )}
+              />
+
+            </Box>
             <Button
               endIcon={loading ? <CircularProgress size={15} /> : ""}
               disabled={loading ? true : false}

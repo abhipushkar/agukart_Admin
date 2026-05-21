@@ -52,7 +52,10 @@ const QuillDes = ({ formValues, setFormValues, setErrors }) => {
 
   return (
     <ReactQuill
-      style={{ height: "245px" }}
+      style={{
+        minHeight: "245px",
+        marginBottom: "30px"
+      }}
       theme="snow"
       onBlur={() => {
         if (!formValues.description || formValues.description === "<p><br></p>") {

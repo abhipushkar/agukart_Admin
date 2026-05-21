@@ -31,15 +31,15 @@ const Add = () => {
         catId: "",
         title: "",
         image: "",
-        validity:"",
-        description:""
+        validity: "",
+        description: ""
     });
     const [errors, setErrors] = useState({
         catId: "",
         title: "",
         image: "",
-        validity:"",
-        description:""
+        validity: "",
+        description: ""
     });
     const [loading, setLoading] = useState(false);
     const [allCategory, setAllCategory] = useState([]);
@@ -155,7 +155,7 @@ const Add = () => {
                         }
                     }
                     // if (!queryId) {
-                        setRoute(ROUTE_CONSTANT.giftCard.gift.list);
+                    setRoute(ROUTE_CONSTANT.giftCard.gift.list);
                     // }
                     handleOpen("success", res?.data);
                 }
@@ -455,84 +455,84 @@ const Add = () => {
                     </Box>
                     <Box
                         sx={{
-                        display: "flex",
-                        marginBottom: "20px",
-                        gap: "20px"
+                            display: "flex",
+                            marginBottom: "20px",
+                            gap: "20px"
                         }}
                     >
                         <Box
-                        sx={{
-                            fontSize: "14px",
-                            fontWeight: 700,
-                            wordBreak: "normal",
-                            width: "15%",
-                            textOverflow: "ellipsis",
-                            display: "flex",
-                            textWrap: "wrap"
-                        }}
-                        >
-                        Validity
-                        <span
-                            style={{ color: "red", fontSize: "15px", marginRight: "3px", marginLeft: "3px" }}
-                        >
-                            {" "}
-                            *
-                        </span>
-                        :
-                        </Box>
-                        <Box width={"100%"}>
-                        <Box
                             sx={{
-                            height: "auto",
-                            width: "100%"
+                                fontSize: "14px",
+                                fontWeight: 700,
+                                wordBreak: "normal",
+                                width: "15%",
+                                textOverflow: "ellipsis",
+                                display: "flex",
+                                textWrap: "wrap"
                             }}
                         >
-                            <FormControl fullWidth>
-                            <TextField
-                                error={Boolean(errors.validity)}
-                                helperText={errors.validity}
-                                select
+                            Validity
+                            <span
+                                style={{ color: "red", fontSize: "15px", marginRight: "3px", marginLeft: "3px" }}
+                            >
+                                {" "}
+                                *
+                            </span>
+                            :
+                        </Box>
+                        <Box width={"100%"}>
+                            <Box
                                 sx={{
-                                "& .MuiInputBase-root": {
-                                    height: "40px"
-                                },
-                                "& .MuiFormLabel-root": {
-                                    top: "-7px"
-                                }
-                                }}
-                                label="Select Validity"
-                                labelId="pib"
-                                id="pibb"
-                                value={formValues?.validity}
-                                name="validity"
-                                onChange={handleChange}
-                                InputProps={{
-                                endAdornment: formValues?.validity ? (
-                                    <InputAdornment position="end" sx={{ mr: 3 }}>
-                                    <IconButton
-                                        onClick={() => {
-                                        handleChange({ target: { name: "validity", value: "" } });
-                                        setErrors((prv) => ({
-                                            ...prv,
-                                            validity: "validity is required"
-                                        }));
-                                        }}
-                                        edge="end"
-                                    >
-                                        <ClearIcon />
-                                    </IconButton>
-                                    </InputAdornment>
-                                ) : null
+                                    height: "auto",
+                                    width: "100%"
                                 }}
                             >
-                                {[...Array(100)].map((_, index) => (
-                                <MenuItem key={index + 1} value={index + 1}>
-                                    {index + 1}
-                                </MenuItem>
-                                ))}
-                            </TextField>
-                            </FormControl>
-                        </Box>
+                                <FormControl fullWidth>
+                                    <TextField
+                                        error={Boolean(errors.validity)}
+                                        helperText={errors.validity}
+                                        select
+                                        sx={{
+                                            "& .MuiInputBase-root": {
+                                                height: "40px"
+                                            },
+                                            "& .MuiFormLabel-root": {
+                                                top: "-7px"
+                                            }
+                                        }}
+                                        label="Select Validity"
+                                        labelId="pib"
+                                        id="pibb"
+                                        value={formValues?.validity}
+                                        name="validity"
+                                        onChange={handleChange}
+                                        InputProps={{
+                                            endAdornment: formValues?.validity ? (
+                                                <InputAdornment position="end" sx={{ mr: 3 }}>
+                                                    <IconButton
+                                                        onClick={() => {
+                                                            handleChange({ target: { name: "validity", value: "" } });
+                                                            setErrors((prv) => ({
+                                                                ...prv,
+                                                                validity: "validity is required"
+                                                            }));
+                                                        }}
+                                                        edge="end"
+                                                    >
+                                                        <ClearIcon />
+                                                    </IconButton>
+                                                </InputAdornment>
+                                            ) : null
+                                        }}
+                                    >
+                                        {[...Array(100)].map((_, index) => (
+                                            <MenuItem key={index + 1} value={index + 1}>
+                                                {index + 1}
+                                            </MenuItem>
+                                        ))}
+                                    </TextField>
+                                </FormControl>
+                            </Box>
                         </Box>
                     </Box>
                     <Box
@@ -568,7 +568,7 @@ const Add = () => {
                             >
                                 <Box
                                     sx={{
-                                        height: "auto", 
+                                        height: "auto",
                                         width: "100%"
                                     }}
                                 >
@@ -576,17 +576,17 @@ const Add = () => {
                                 </Box>
                                 {/* <TextEditor name="description" value={formValues?.description} setFormValues={setFormValues}/> */}
                                 {errors.description && (
-                                <Typography
-                                    sx={{
-                                    fontSize: "12px",
-                                    color: "#FF3D57",
-                                    marginLeft: "14px",
-                                    marginRight: "14px",
-                                    marginTop: "3px"
-                                    }}
-                                >
-                                    {errors.description}
-                                </Typography>
+                                    <Typography
+                                        sx={{
+                                            fontSize: "12px",
+                                            color: "#FF3D57",
+                                            marginLeft: "14px",
+                                            marginRight: "14px",
+                                            marginTop: "3px"
+                                        }}
+                                    >
+                                        {errors.description}
+                                    </Typography>
                                 )}
                             </Box>
                         </Box>
