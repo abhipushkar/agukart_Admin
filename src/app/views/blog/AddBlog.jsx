@@ -242,7 +242,10 @@ const AddBlog = () => {
         shortDes: "",
         tags: [],
         tags_id: [],
-        authorName: ""
+        authorName: "",
+        meta_title: "",           // ✅ add
+        meta_description: "",     // ✅ add
+        meta_keywords: []         // ✅ yahi missing tha, undefined ho raha tha
       });
       setDes("");
       setImages(null);
