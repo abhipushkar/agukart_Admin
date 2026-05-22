@@ -15,8 +15,6 @@ import ConfirmModal from "app/components/ConfirmModal";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
 import { useProfileData } from "app/contexts/profileContext";
 import Chip from "@mui/material/Chip";
-
-
 const Add = () => {
     const [query, setQuery] = useSearchParams();
     const queryId = query.get("id");
@@ -52,7 +50,6 @@ const Add = () => {
     const [route, setRoute] = useState(null);
     const [msg, setMsg] = useState(null);
     console.log({ formValues })
-
     const handleImageSelect = (event) => {
         const file = event.target.files[0];
         if (file) {
@@ -72,14 +69,12 @@ const Add = () => {
             reader.readAsDataURL(file);
         }
     };
-
     const logOut = () => {
         localStorage.removeItem(localStorageKey.auth_key);
         localStorage.removeItem(localStorageKey.designation_id);
         localStorage.removeItem(localStorageKey.vendorId);
         setRoute(ROUTE_CONSTANT.login);
     };
-
     const handleOpen = (type, msg) => {
         setMsg(msg?.message);
         setOpen(true);
@@ -88,7 +83,6 @@ const Add = () => {
             logOut();
         }
     };
-
     const handleClose = () => {
         setOpen(false);
         if (route !== null) {
@@ -97,13 +91,11 @@ const Add = () => {
         setRoute(null);
         setMsg(null);
     };
-
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormValues((prev) => ({ ...prev, [name]: value }));
         setErrors((prv) => ({ ...prv, [name]: "" }));
     };
-
     const handleUploadImage = async (id, msg) => {
         try {
             const formData = new FormData();
@@ -121,12 +113,10 @@ const Add = () => {
             handleOpen("error", error);
         }
     };
-
     const parseKeyword = (term) => {
         if (Array.isArray(term)) {
             return term.map((t) => t.trim());
         }
-
         if (typeof term === "string") {
             return term
                 .trim()
@@ -134,10 +124,8 @@ const Add = () => {
                 .map((t) => t.trim())
                 .filter(Boolean);
         }
-
         return [];
     };
-
     const handleAddKeyword = () => {
         const trimmed = keywordInput.trim();
         if (trimmed && !metaKeywords.includes(trimmed)) {
@@ -145,11 +133,9 @@ const Add = () => {
         }
         setKeywordInput("");
     };
-
     const handleDeleteKeyword = (kwToDelete) => () => {
         setMetaKeywords((prev) => prev.filter((k) => k !== kwToDelete));
     };
-
     const handleAddGiftCardCategory = async () => {
         const newErrors = {};
         if (!formValues.title) newErrors.title = "Title is required";
@@ -214,13 +200,11 @@ const Add = () => {
             handleOpen("error", error?.response?.data || error);
         }
     };
-
     useEffect(() => {
         if (queryId) {
             getGiftCardCategory();
         }
     }, [queryId]);
-
     return (
         <>
             <Box sx={{ margin: "30px" }}>
@@ -453,14 +437,10 @@ const Add = () => {
                                         />
                                     </Box>
                                 )}
-
                             </Box>
                         </Box>
                     </Box>
-
-
                     <Box sx={{ display: "flex", flexDirection: "column", gap: "20px", marginTop: "20px" }}>
-
                         {/* Meta Title */}
                         <Box sx={{ display: "flex", gap: "20px" }}>
                             <Box sx={{ fontSize: "14px", fontWeight: 700, width: "15%", display: "flex", textWrap: "wrap" }}>
@@ -475,7 +455,6 @@ const Add = () => {
                                 />
                             </Box>
                         </Box>
-
                         {/* Meta Description */}
                         <Box sx={{ display: "flex", gap: "20px" }}>
                             <Box sx={{ fontSize: "14px", fontWeight: 700, width: "15%", display: "flex", textWrap: "wrap" }}>
@@ -492,7 +471,6 @@ const Add = () => {
                                 />
                             </Box>
                         </Box>
-
                         {/* Meta Keywords */}
                         <Box sx={{ display: "flex", gap: "20px" }}>
                             <Box sx={{ fontSize: "14px", fontWeight: 700, width: "15%", display: "flex", textWrap: "wrap" }}>
@@ -534,9 +512,7 @@ const Add = () => {
                                 />
                             </Box>
                         </Box>
-
                     </Box>
-
                     <Box
                         sx={{
                             display: "flex",
@@ -558,5 +534,4 @@ const Add = () => {
         </>
     );
 };
-
 export default Add;

@@ -22,7 +22,6 @@ import {
   Typography
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
-
 import { Icon } from "@mui/material";
 import Switch from "@mui/material/Switch";
 import { Breadcrumb } from "app/components";
@@ -37,7 +36,25 @@ import { toast } from "react-toastify";
 import { useEffect } from "react";
 import ConfirmModal from "app/components/ConfirmModal";
 import { useCallback } from "react";
-
+const Container = styled("div")(({ theme }) => ({
+  margin: "30px",
+  [theme.breakpoints.down("sm")]: { margin: "16px" },
+  "& .breadcrumb": {
+    marginBottom: "30px",
+    [theme.breakpoints.down("sm")]: { marginBottom: "16px" }
+  }
+}));
+const style = {
+  position: "absolute",
+  top: "50%",
+  left: "50%",
+  transform: "translate(-50%, -50%)",
+  width: "70%",
+  // height: "90%",
+  bgcolor: "background.paper",
+  boxShadow: 24,
+  p: 4
+};
 const SliderList = () => {
   const [open1, setOpen1] = React.useState(false);
   const [imagePreview, setImagePreview] = useState(null);
@@ -58,14 +75,13 @@ const SliderList = () => {
   const [msg, setMsg] = useState(null);
   const [statusData, setStatusData] = useState({});
   const navigate = useNavigate();
-
+  const [altText, setAltText] = useState("");
   const logOut = () => {
     localStorage.removeItem(localStorageKey.auth_key);
     localStorage.removeItem(localStorageKey.designation_id);
     localStorage.removeItem(localStorageKey.vendorId);
     setRoute(ROUTE_CONSTANT.login)
   };
-
   const handleOpen = (type, msg) => {
     setMsg(msg?.message);
     setOpen(true);
@@ -74,7 +90,6 @@ const SliderList = () => {
       logOut()
     }
   };
-
   const handleClose = () => {
     setOpen(false);
     if (route !== null) {
@@ -83,7 +98,6 @@ const SliderList = () => {
     setRoute(null);
     setMsg(null);
   };
-
   const handleOpen1 = () => setOpen1(true);
   const handleClose1 = () => {
     setOpen1(false);
@@ -92,28 +106,8 @@ const SliderList = () => {
     setImagePreview(null);
     setFileName("");
     setImage(null);
+    setAltText("");
   };
-  const Container = styled("div")(({ theme }) => ({
-    margin: "30px",
-    [theme.breakpoints.down("sm")]: { margin: "16px" },
-    "& .breadcrumb": {
-      marginBottom: "30px",
-      [theme.breakpoints.down("sm")]: { marginBottom: "16px" }
-    }
-  }));
-
-  const style = {
-    position: "absolute",
-    top: "50%",
-    left: "50%",
-    transform: "translate(-50%, -50%)",
-    width: "70%",
-    // height: "90%",
-    bgcolor: "background.paper",
-    boxShadow: 24,
-    p: 4
-  };
-
   const handleImageSelect = (event) => {
     const file = event.target.files[0];
     if (file) {
@@ -123,7 +117,6 @@ const SliderList = () => {
       setFileName("");
     }
   };
-
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -134,16 +127,14 @@ const SliderList = () => {
       reader.readAsDataURL(file);
     }
   };
-
   const auth_key = localStorage.getItem(localStorageKey.auth_key);
-
   const uploadImageHandler = async () => {
     try {
       setLoading(true);
       const formData = new FormData();
       formData.append("file", image);
       formData.append("_id", editImageData ? editImageData?._id : "0");
-
+      formData.append("image_alt", altText);
       const res = await ApiService.postImage(apiEndpoints.addSlider, formData, auth_key);
       console.log(res);
       if (res.status === 200) {
@@ -164,15 +155,12 @@ const SliderList = () => {
       setLoading(false);
     }
   };
-
   useEffect(() => {
     getSliderList();
   }, []);
-
   const getSliderList = async () => {
     try {
       const res = await ApiService.get(apiEndpoints.getSlider, auth_key);
-
       console.log(res);
       if (res.status === 200) {
         const myNewList = res?.data?.data?.map((e, i) => {
@@ -193,7 +181,6 @@ const SliderList = () => {
       handleOpen("error", error);
     }
   };
-
   const handleStatusChange = useCallback(async () => {
     if (statusData) {
       try {
@@ -211,7 +198,6 @@ const SliderList = () => {
       }
     }
   }, [auth_key, getSliderList, statusData]);
-
   const handleDelete = useCallback(async () => {
     if (statusData) {
       try {
@@ -226,25 +212,23 @@ const SliderList = () => {
       }
     }
   }, [auth_key, getSliderList, statusData]);
-
   const editSliderHandler = async () => {
     try {
       const res = await ApiService.get(`${apiEndpoints.editSlider}/${editSliderlId}`, auth_key);
       if (res.status === 200) {
         setImageEditData(res?.data?.data);
         setImagePreview(res?.data?.data?.image);
+        setAltText(res?.data?.data?.image_alt || "");
       }
     } catch (error) {
       handleOpen("error", error);
     }
   };
-
   useEffect(() => {
     if (editSliderlId) {
       editSliderHandler();
     }
   }, [editSliderlId]);
-
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
   };
@@ -252,7 +236,6 @@ const SliderList = () => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
-
   // const deleteSliderHandler = async (id) => {
   //   setLoading(true);
   //   try {
@@ -269,11 +252,8 @@ const SliderList = () => {
   //     setLoading(false);
   //   }
   // };
-
   const label = { inputProps: { "aria-label": "Switch demo" } };
-
   console.log({ sliderList });
-
   const handleRequestSort = (property) => {
     let newOrder;
     if (orderBy !== property) {
@@ -284,7 +264,6 @@ const SliderList = () => {
     setOrder(newOrder);
     setOrderBy(newOrder === "none" ? null : property);
   };
-
   const sortComparator = (a, b, orderBy) => {
     if (typeof a[orderBy] === "string" && typeof b[orderBy] === "string") {
       return a[orderBy].localeCompare(b[orderBy]);
@@ -297,7 +276,6 @@ const SliderList = () => {
     }
     return 0;
   };
-
   const sortedRows = orderBy
     ? [...sliderList].sort((a, b) =>
       order === "asc"
@@ -307,7 +285,6 @@ const SliderList = () => {
           : 0
     )
     : sliderList;
-
   return (
     <Container>
       <Modal
@@ -320,53 +297,83 @@ const SliderList = () => {
           <Typography sx={{ mb: 2 }} id="modal-modal-title" variant="h6" component="h2">
             Add Image
           </Typography>
-
-          <TextField
-            fullWidth
-            value={fileName}
-            sx={{
-              width: "100%",
-              mb: 2,
-              "& .MuiInputBase-root": {
-                height: "40px",
-              },
-            }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <AttachFileIcon />
-                </InputAdornment>
-              ),
-              endAdornment: (
-                <input
-                  type="file"
-                  accept="image/*"
-                  style={{ display: "none" }}
-                  id="file-input"
-                  onChange={(event) => {
-                    handleImageSelect(event);
-                    handleImageChange(event);
+          <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+            <Box sx={{ width: "50%" }}>
+              <label htmlFor="file-input">
+                <TextField
+                  fullWidth
+                  value={fileName}
+                  sx={{
+                    "& .MuiInputBase-root": {
+                      height: "40px",
+                    },
+                  }}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <AttachFileIcon />
+                      </InputAdornment>
+                    ),
+                    endAdornment: (
+                      <input
+                        type="file"
+                        accept="image/*"
+                        style={{ display: "none" }}
+                        id="file-input"
+                        onChange={(event) => {
+                          handleImageSelect(event);
+                          handleImageChange(event);
+                        }}
+                      />
+                    ),
+                    readOnly: true
+                  }}
+                  placeholder="Select file"
+                />
+              </label>
+            </Box>
+            {imagePreview && (
+              <Box sx={{ width: "50%" }}>
+                <TextField
+                  fullWidth
+                  label="Image Alt Text"
+                  value={altText}
+                  onChange={(e) => setAltText(e.target.value)}
+                  sx={{
+                    "& .MuiInputBase-root": {
+                      height: "40px",
+                    },
+                    "& .MuiFormLabel-root": {
+                      top: "-7px",
+                    }
                   }}
                 />
-              ),
-              readOnly: true
+              </Box>
+            )}
+          </Box>
+          <Stack
+            sx={{
+              height: imagePreview ? "300px" : 0,
+              width: "300px",
+              mb: "16px"
             }}
-            placeholder="Select file"
-            onClick={() => document.getElementById("file-input").click()}
-          />
-
-          <Stack sx={{ height: imagePreview ? "300px" : 0, width: "300px", mb: "16px" }}>
-            <img
-              style={{ width: "100%", height: "100%", objectFit: "contain" }}
-              src={imagePreview}
-              alt=""
-            />
+          >
+            {imagePreview && (
+              <img
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "contain"
+                }}
+                src={imagePreview}
+                alt="slider-image"
+              />
+            )}
           </Stack>
-
           <Box>
             <Button
               endIcon={loading ? <CircularProgress size={15} /> : ""}
-              disabled={loading ? true : !image ? true : false}
+              disabled={loading ? true : (!image && !editImageData) ? true : !altText.trim() ? true : false}
               sx={{ mr: "16px" }}
               variant="contained"
               color="primary"
@@ -392,7 +399,6 @@ const SliderList = () => {
           </Button> */}
         </Box>
       </Box>
-
       <Box>
         <TableContainer sx={{ paddingLeft: 2, paddingRight: 2 }} component={Paper}>
           <Table>
@@ -429,7 +435,11 @@ const SliderList = () => {
                   <TableRow key={row._id}>
                     <TableCell>{row["S.No"]}</TableCell>
                     <TableCell>
-                      <img height={40} src={row.image} alt="" />
+                      <img
+                        height={40}
+                        src={row.image}
+                        alt={row.image_alt || "slider-image"}
+                      />
                     </TableCell>
                     <TableCell>
                       <Switch
@@ -492,5 +502,4 @@ const SliderList = () => {
     </Container>
   );
 };
-
 export default SliderList;
