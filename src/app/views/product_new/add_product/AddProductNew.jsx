@@ -329,7 +329,7 @@ export default function AddProductNew() {
                 <Box sx={{ p: 3, display: 'flex', gap: 2, justifyContent: 'space-between' }}>
                     {/* Left side - Navigation buttons */}
                     <Box sx={{ display: 'flex', gap: 2 }}>
-                        <Button
+                        {/* <Button
                             variant="outlined"
                             onClick={handlePrevious}
                             disabled={currentTab === 0}
@@ -342,7 +342,7 @@ export default function AddProductNew() {
                             disabled={currentTab === tabsList.length - 1}
                         >
                             Next
-                        </Button>
+                        </Button> */}
                     </Box>
 
                     {/* Right side - Action buttons */}
