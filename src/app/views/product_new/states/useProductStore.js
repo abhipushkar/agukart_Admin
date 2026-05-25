@@ -160,11 +160,13 @@ export const useProductStore = create((set, get) => ({
             const res = await ApiService.get(url, auth_key);
 
             if (res.status === 200) {
-                console.log(res.data.data.slice(0, 11));
                 set({
                     products: res.data.data,
                     filteredProducts: res.data.data,
-                    pagination: { ...pagination, totalCount: res.data.data.length }
+                    pagination: {
+                        ...pagination,
+                        totalCount: res.data.data.length  // ✅ total items
+                    }
                 });
             }
         } catch (error) {

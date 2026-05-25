@@ -254,25 +254,42 @@ const Add = () => {
     };
 
     // Process conditions before submitting - extract only IDs
-    const processConditionsForSubmit = (conditions) => {
-        // If isAutomatic is false, don't send any conditions
-        if (!isAutomatic) {
-            return [];
+    const isValueValid = (condition) => {
+        const v = condition.value;
+        if (!v) return false;
+
+        if (typeof v === "string") return v.trim() !== "";
+
+        if (typeof v === "object") {
+            // Variant Tag
+            if (v.variantId !== undefined) {
+                return !!v.variantId && v.attributeIds?.length > 0;
+            }
+            // Attributes Tag (regular + compound)
+            if (v.attributeId !== undefined) {
+                return !!v.attributeId && (v.valueIds?.length > 0 || !!v.subAttributeId);
+            }
         }
 
-        // Filter out empty conditions and convert valid ones
-        const validConditions = conditions
-            .filter(condition => {
-                // Check if condition has all required fields and values
-                return condition.field && condition.operator && condition.value;
-            })
+        if (Array.isArray(v)) return v.length > 0;
+
+        return false;
+    };
+
+    const processConditionsForSubmit = (conditions) => {
+        if (!isAutomatic) return [];
+
+        return conditions
+            .filter(condition =>
+                condition.field &&
+                condition.operator &&
+                isValueValid(condition)   // ✅ proper check
+            )
             .map(condition => ({
                 field: condition.field,
                 operator: condition.operator,
-                value: extractValueIds(condition.value, condition.field)
+                value: condition.value    // raw as-is bhejo, backend handle karega
             }));
-
-        return validConditions;
     };
 
     // Improved findObjectsByIds function with better error handling
@@ -303,28 +320,15 @@ const Add = () => {
 
     // Improved processInitialConditions function
     const processInitialConditions = (conditions) => {
-        if (!conditions || !Array.isArray(conditions)) return [{ field: "", operator: "", value: "" }];
+        if (!conditions || !Array.isArray(conditions)) {
+            return [{ field: "", operator: "", value: "" }];
+        }
 
-        return conditions.map(condition => {
-            let value = condition.value;
-
-            // If value contains IDs, convert them to objects for display
-            if (condition.value && Array.isArray(condition.value)) {
-                const options = getValueOptions(condition.field);
-                console.log("Processing condition value:", {
-                    field: condition.field,
-                    value: condition.value,
-                    optionsLength: options?.length
-                });
-                value = findObjectsByIds(condition.value, options);
-            }
-
-            return {
-                field: condition.field || "",
-                operator: condition.operator || "",
-                value: value || ""
-            };
-        });
+        return conditions.map(condition => ({
+            field: condition.field || "",
+            operator: condition.operator || "",
+            value: condition.value ?? ""   // raw value as-is, no conversion
+        }));
     };
 
     const uniqueById = (arr) => [...new Map(arr.map(item => [item._id, item])).values()];
@@ -443,6 +447,11 @@ const Add = () => {
         const processedConditions = processConditionsForSubmit(values.conditions);
         console.log("Processed conditions:", processedConditions);
 
+        console.log("=== PAYLOAD DEBUG ===");
+        console.log("isAutomatic:", isAutomatic);
+        console.log("processedConditions:", JSON.stringify(processedConditions, null, 2));
+        console.log("conditions from values:", JSON.stringify(values.conditions, null, 2));
+
         let payload = {
             _id: queryId ? getCatData._id : "new",
             title: values.name,
@@ -463,7 +472,14 @@ const Add = () => {
         };
 
         if (isAutomatic) {
+            if (processedConditions.length === 0) {
+                handleOpen("error", { message: "Please add at least one valid condition." });
+                setLoading(false);
+                return;
+            }
             payload.conditions = processedConditions;
+        } else {
+            payload.conditions = [];
         }
 
         const variant_id = SelectedEditVariant.map((variant) => {
@@ -2142,7 +2158,11 @@ const Add = () => {
                                                                                 label="Field"
                                                                                 value={condition.field}
                                                                                 name={`conditions.${index}.field`}
-                                                                                onChange={handleChange}
+                                                                                onChange={(e) => {
+                                                                                    setFieldValue(`conditions.${index}.field`, e.target.value);
+                                                                                    setFieldValue(`conditions.${index}.operator`, "");
+                                                                                    setFieldValue(`conditions.${index}.value`, "");
+                                                                                }}
                                                                                 error={errors.conditions?.[index]?.field && touched.conditions?.[index]?.field}
                                                                                 helperText={
                                                                                     errors.conditions?.[index]?.field && touched.conditions?.[index]?.field ? (
