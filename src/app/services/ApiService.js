@@ -159,12 +159,13 @@ export const ApiService = {
     }
   },
 
-  delete: async (resource, accessToken) => {
+  delete: async (resource, accessToken, data = null) => {
     try {
       const response = await axios.delete(`${BASE_URL}/${resource}`, {
         headers: {
           Authorization: `Bearer ${accessToken}`
-        }
+        },
+        ...(data && { data })
       });
       return response;
     } catch (error) {

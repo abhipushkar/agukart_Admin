@@ -67,10 +67,47 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
         handleFieldChange('shipingTemplates', ""); // clear shippingTemplates field on vendor change 
         handleFieldChange('exchangePolicy', ""); // clear exchangePolicy field on vendor change
     };
-    const handleCategoryChange = (newValue) => {
+    const handleCategoryChange = async (newValue) => {
+        const newSubCategoryId = newValue ? newValue._id : "";
+
+        if (!newSubCategoryId) {
+            setFormData({
+                subCategory: "",
+                dynamicFields: {}
+            });
+            if (inputErrors.subCategory) {
+                setInputErrors({ subCategory: "" });
+            }
+            return;
+        }
+
+        let newFieldNames = [];
+        try {
+            const res = await ApiService.get(
+                `${apiEndpoints.GetAttributesCategories}/${newSubCategoryId}`,
+                auth_key
+            );
+            if (res.status === 200) {
+                newFieldNames = (res?.data?.attributeLists || [])
+                    .map(f => f.name);
+            }
+        } catch (error) {
+            console.error("Error fetching new category fields:", error);
+        }
+
+        const existingDynamicFields = formData.dynamicFields || {};
+        const preservedFields = {};
+
+        Object.keys(existingDynamicFields).forEach(key => {
+            const baseKey = key.split('.')[0].replace(/_instances$/, '');
+            if (newFieldNames.includes(baseKey)) {
+                preservedFields[key] = existingDynamicFields[key];
+            }
+        });
+
         setFormData({
-            subCategory: newValue ? newValue._id : "",
-            dynamicFields: {}
+            subCategory: newSubCategoryId,
+            dynamicFields: preservedFields 
         });
 
         if (inputErrors.subCategory) {
