@@ -23,6 +23,7 @@ import {
     Divider,
     Typography,
     Tooltip,
+    Alert,
     // Card,
     // CardContent
 } from "@mui/material";
@@ -48,6 +49,7 @@ import ClearIcon from "@mui/icons-material/Clear";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 
 // import { autocompleteClasses } from "@mui/material/Autocomplete";
 
@@ -133,7 +135,7 @@ const Add = () => {
 
     // New states for conditions
     const [selectedCategories, setSelectedCategories] = useState([]);
-    const [categoryScope, setCategoryScope] = useState("all"); // "all" or "specific"
+    const [categoryScope, setCategoryScope] = useState("specific"); // "all" or "specific"
     const [isAutomatic, setIsAutomatic] = useState(false);
     const [filteredVariants, setFilteredVariants] = useState([]);
     const [filteredAttributes, setFilteredAttributes] = useState([]);
@@ -2067,6 +2069,14 @@ const Add = () => {
                                                         label="Specific Categories"
                                                     />
                                                 </RadioGroup>
+
+                                                {categoryScope === "all" && (
+                                                    <Alert severity="warning" icon={<WarningAmberIcon />}>
+                                                        <Typography variant="body2" fontWeight={500}>
+                                                            Note:- Make sure you really want to check all Categories globally!
+                                                        </Typography>
+                                                    </Alert>
+                                                )}
 
                                                 {categoryScope === "specific" && (
                                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 1 }}>

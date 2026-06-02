@@ -22,7 +22,8 @@ import {
     FormLabel,
     Grid,
     Card,
-    Tooltip
+    Tooltip,
+    Alert
 } from "@mui/material";
 import Typography from "@mui/material/Typography";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
@@ -40,6 +41,8 @@ import ArrowRight from "@mui/icons-material/ArrowRight";
 import PropTypes from "prop-types";
 import CloseIcon from "@mui/icons-material/Close";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import InfoIcon from "@mui/icons-material/Info";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 
 import { autocompleteClasses } from "@mui/material/Autocomplete";
 import { TextRotateVerticalRounded } from "@mui/icons-material";
@@ -116,7 +119,7 @@ const Add = () => {
         value: "",
         // New fields for conditions
         isAutomatic: false,
-        categoryScope: "all",
+        categoryScope: "specific",
         selectedCategories: [],
         conditionType: "all",
         conditions: [{ field: "", operator: "", value: "" }],
@@ -1932,6 +1935,13 @@ const Add = () => {
                                                 />
                                             </RadioGroup>
                                         </Box>
+                                        {formValues.categoryScope === "all" && (
+                                            <Alert severity="warning" icon={<WarningAmberIcon />}>
+                                                <Typography variant="body2" fontWeight={500}>
+                                                    Note:- Make sure you really want to check all Categories globally!
+                                                </Typography>
+                                            </Alert>
+                                        )}
 
                                         {formValues.categoryScope === "specific" && (
                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>

@@ -1065,6 +1065,12 @@ const VariantModal = ({ show, handleCloseVariant }) => {
                 } else if (name === "isCheckedQuantity") {
                     setFormData(prev => ({ ...prev, quantity: "" }));
                 }
+                if (name === "isCheckedPrice" && variationsData.length === 1) {
+                    setFormValues({ ["prices"]: nameCombinations[0] ? nameCombinations[0] : variationsData[0]?.name });
+                }
+                if (name === "isCheckedQuantity" && variationsData.length === 1) {
+                    setFormValues({ ["quantities"]: nameCombinations[0] ? nameCombinations[0] : variationsData[0]?.name });
+                }
             }
         } else {
             // Direct update for prices and quantities - no image source logic
