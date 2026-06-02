@@ -160,11 +160,13 @@ export const useProductStore = create((set, get) => ({
             const res = await ApiService.get(url, auth_key);
 
             if (res.status === 200) {
-                console.log(res.data.data.slice(0, 11));
                 set({
                     products: res.data.data,
                     filteredProducts: res.data.data,
-                    pagination: { ...pagination, totalCount: res.data.data.length }
+                    pagination: {
+                        ...pagination,
+                        totalCount: res.data.data.length  // ✅ total items
+                    }
                 });
             }
         } catch (error) {
@@ -332,7 +334,7 @@ export const useProductStore = create((set, get) => ({
 
         try {
             const auth_key = localStorage.getItem(localStorageKey.auth_key);
-            const res = await ApiService.get(`${apiEndpoints.deleteProduct}/${productId}`, auth_key);
+            const res = await ApiService.delete(apiEndpoints.deleteProduct, auth_key.at, { id: [productId] });
 
             if (res.status === 200) {
                 await get().fetchProducts();
@@ -366,7 +368,12 @@ export const useProductStore = create((set, get) => ({
                 payload.status = status;
             }
 
-            const res = await ApiService.post(apiEndpoints.changeAllStatusProduct, payload, auth_key);
+            let res;
+            if (status === 'delete') {
+                res = await ApiService.delete(apiEndpoints.deleteProduct, auth_key, { _id: [...selection.productIds] });
+            } else {
+                res = await ApiService.post(apiEndpoints.changeAllStatusProduct, payload, auth_key);
+            }
 
             if (res.status === 200) {
                 await get().fetchProducts();

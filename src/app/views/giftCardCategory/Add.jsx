@@ -14,8 +14,7 @@ import { useEffect } from "react";
 import ConfirmModal from "app/components/ConfirmModal";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
 import { useProfileData } from "app/contexts/profileContext";
-
-
+import Chip from "@mui/material/Chip";
 const Add = () => {
     const [query, setQuery] = useSearchParams();
     const queryId = query.get("id");
@@ -41,13 +40,16 @@ const Add = () => {
     console.log(fileName, "fileName")
     const [image, setImage] = useState(null);
     console.log(image, "image")
-
+    const [metaTitle, setMetaTitle] = useState("");
+    const [metaDescription, setMetaDescription] = useState("");
+    const [metaKeywords, setMetaKeywords] = useState([]);
+    const [keywordInput, setKeywordInput] = useState("");
+    const [altText, setAltText] = useState("");
     const [open, setOpen] = React.useState(false);
     const [type, setType] = useState("");
     const [route, setRoute] = useState(null);
     const [msg, setMsg] = useState(null);
     console.log({ formValues })
-
     const handleImageSelect = (event) => {
         const file = event.target.files[0];
         if (file) {
@@ -67,14 +69,12 @@ const Add = () => {
             reader.readAsDataURL(file);
         }
     };
-
     const logOut = () => {
         localStorage.removeItem(localStorageKey.auth_key);
         localStorage.removeItem(localStorageKey.designation_id);
         localStorage.removeItem(localStorageKey.vendorId);
         setRoute(ROUTE_CONSTANT.login);
     };
-
     const handleOpen = (type, msg) => {
         setMsg(msg?.message);
         setOpen(true);
@@ -83,7 +83,6 @@ const Add = () => {
             logOut();
         }
     };
-
     const handleClose = () => {
         setOpen(false);
         if (route !== null) {
@@ -92,13 +91,11 @@ const Add = () => {
         setRoute(null);
         setMsg(null);
     };
-
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormValues((prev) => ({ ...prev, [name]: value }));
         setErrors((prv) => ({ ...prv, [name]: "" }));
     };
-
     const handleUploadImage = async (id, msg) => {
         try {
             const formData = new FormData();
@@ -106,6 +103,7 @@ const Add = () => {
                 image && formData.append("file", image);
             }
             formData.append("_id", id);
+            formData.append("image_alt", altText);
             const res = await ApiService.postImage(apiEndpoints.addGiftCardCategoryImage, formData, auth_key);
             if (res?.status === 200) {
                 setRoute(ROUTE_CONSTANT.giftCard.category.list);
@@ -114,6 +112,29 @@ const Add = () => {
         } catch (error) {
             handleOpen("error", error);
         }
+    };
+    const parseKeyword = (term) => {
+        if (Array.isArray(term)) {
+            return term.map((t) => t.trim());
+        }
+        if (typeof term === "string") {
+            return term
+                .trim()
+                .split(",")
+                .map((t) => t.trim())
+                .filter(Boolean);
+        }
+        return [];
+    };
+    const handleAddKeyword = () => {
+        const trimmed = keywordInput.trim();
+        if (trimmed && !metaKeywords.includes(trimmed)) {
+            setMetaKeywords((prev) => [...prev, ...parseKeyword(trimmed)]);
+        }
+        setKeywordInput("");
+    };
+    const handleDeleteKeyword = (kwToDelete) => () => {
+        setMetaKeywords((prev) => prev.filter((k) => k !== kwToDelete));
     };
     const handleAddGiftCardCategory = async () => {
         const newErrors = {};
@@ -128,7 +149,10 @@ const Add = () => {
                 const payload = {
                     _id: queryId ? queryId : "0",
                     title: formValues.title,
-                    sort_order: formValues.sort_order
+                    sort_order: formValues.sort_order,
+                    meta_title: metaTitle,
+                    meta_description: metaDescription,
+                    meta_keywords: metaKeywords,
                 };
                 setLoading(true);
                 const res = await ApiService.post(apiEndpoints.addGiftCardCategory, payload, auth_key);
@@ -142,7 +166,7 @@ const Add = () => {
                         }
                     }
                     // if (!queryId) {
-                        setRoute(ROUTE_CONSTANT.giftCard.category.list);
+                    setRoute(ROUTE_CONSTANT.giftCard.category.list);
                     // }
                     handleOpen("success", res?.data);
                 }
@@ -165,20 +189,22 @@ const Add = () => {
                     ...prev,
                     title: resData?.title,
                     image: resData?.image,
-                    sort_order: resData?.sort_order
+                    sort_order: resData?.sort_order,
                 }));
+                setMetaTitle(resData?.meta_title || "");
+                setMetaDescription(resData?.meta_description || "");
+                setMetaKeywords(Array.isArray(resData?.meta_keywords) ? resData.meta_keywords : []);
+                setAltText(resData?.image_alt || "");
             }
         } catch (error) {
             handleOpen("error", error?.response?.data || error);
         }
     };
-
     useEffect(() => {
         if (queryId) {
             getGiftCardCategory();
         }
     }, [queryId]);
-
     return (
         <>
             <Box sx={{ margin: "30px" }}>
@@ -401,6 +427,89 @@ const Add = () => {
                                         alt="Category"
                                     />
                                 )}
+                                {(imagePreview || formValues.image) && (
+                                    <Box sx={{ mt: 1 }}>
+                                        <TextField
+                                            label="Image Alt Text"
+                                            value={altText}
+                                            onChange={(e) => setAltText(e.target.value)}
+                                            sx={{ width: "100%", "& .MuiInputBase-root": { height: "40px" }, "& .MuiFormLabel-root": { top: "-7px" } }}
+                                        />
+                                    </Box>
+                                )}
+                            </Box>
+                        </Box>
+                    </Box>
+                    <Box sx={{ display: "flex", flexDirection: "column", gap: "20px", marginTop: "20px" }}>
+                        {/* Meta Title */}
+                        <Box sx={{ display: "flex", gap: "20px" }}>
+                            <Box sx={{ fontSize: "14px", fontWeight: 700, width: "15%", display: "flex", textWrap: "wrap" }}>
+                                Meta Title :
+                            </Box>
+                            <Box width={"100%"}>
+                                <TextField
+                                    label="Meta Title"
+                                    value={metaTitle}
+                                    onChange={(e) => setMetaTitle(e.target.value)}
+                                    sx={{ width: "100%", "& .MuiInputBase-root": { height: "40px" }, "& .MuiFormLabel-root": { top: "-7px" } }}
+                                />
+                            </Box>
+                        </Box>
+                        {/* Meta Description */}
+                        <Box sx={{ display: "flex", gap: "20px" }}>
+                            <Box sx={{ fontSize: "14px", fontWeight: 700, width: "15%", display: "flex", textWrap: "wrap" }}>
+                                Meta Description :
+                            </Box>
+                            <Box width={"100%"}>
+                                <TextField
+                                    label="Meta Description"
+                                    value={metaDescription}
+                                    onChange={(e) => setMetaDescription(e.target.value)}
+                                    multiline
+                                    rows={3}
+                                    sx={{ width: "100%" }}
+                                />
+                            </Box>
+                        </Box>
+                        {/* Meta Keywords */}
+                        <Box sx={{ display: "flex", gap: "20px" }}>
+                            <Box sx={{ fontSize: "14px", fontWeight: 700, width: "15%", display: "flex", textWrap: "wrap" }}>
+                                Meta Keywords :
+                            </Box>
+                            <Box width={"100%"}>
+                                <Autocomplete
+                                    multiple
+                                    freeSolo
+                                    options={[]}
+                                    value={Array.isArray(metaKeywords) ? metaKeywords : []}
+                                    inputValue={keywordInput}
+                                    onChange={(event, newValue) => {
+                                        const parsed = (newValue || []).reduce((acc, option) => acc.concat(parseKeyword(option)), []);
+                                        setMetaKeywords(parsed);
+                                    }}
+                                    onInputChange={(e, newInputValue) => setKeywordInput(newInputValue)}
+                                    onBlur={() => { if (keywordInput.trim()) handleAddKeyword(); }}
+                                    renderTags={(value, getTagProps) =>
+                                        value.map((option, index) => (
+                                            <Chip variant="outlined" label={option} {...getTagProps({ index })} onDelete={handleDeleteKeyword(option)} size="small" />
+                                        ))
+                                    }
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            label="Meta Keyword"
+                                            placeholder="Add Keywords"
+                                            sx={{ width: "100%", "& .MuiInputBase-root": { padding: "0 11px" }, "& .MuiFormLabel-root": { top: "-7px" } }}
+                                            onKeyDown={(e) => {
+                                                if (e.key === " " || e.key === "Enter") { e.preventDefault(); handleAddKeyword(); }
+                                                if (e.key === ",") { e.preventDefault(); handleAddKeyword(); setKeywordInput(""); }
+                                                if (e.key === "Backspace" && !keywordInput) {
+                                                    setMetaKeywords((prev) => prev.slice(0, -1));
+                                                }
+                                            }}
+                                        />
+                                    )}
+                                />
                             </Box>
                         </Box>
                     </Box>
@@ -425,5 +534,4 @@ const Add = () => {
         </>
     );
 };
-
 export default Add;

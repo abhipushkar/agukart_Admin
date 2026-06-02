@@ -843,6 +843,9 @@ const ProductListNew = () => {
                     rowsPerPage: parseInt(e.target.value, 10),
                     page: 0
                 })}
+                labelDisplayedRows={({ from, to, count }) =>
+                    `Page ${pagination.page + 1} of ${Math.ceil(count / pagination.rowsPerPage)}`
+                }
             />
             {/* Confirm Modal */}
             <ConfirmModal

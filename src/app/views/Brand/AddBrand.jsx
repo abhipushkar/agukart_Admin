@@ -10,7 +10,9 @@ import {
   Paper,
   Stack,
   TextField,
-  Typography
+  Typography,
+  Autocomplete,
+  Chip
 } from "@mui/material";
 import AppsIcon from "@mui/icons-material/Apps";
 import { Formik, ErrorMessage } from "formik";
@@ -41,6 +43,10 @@ const validationSchema = Yup.object({
   description: Yup.string().required("Description is required"),
   file: Yup.mixed(),
   link: Yup.string().required("Link is required"),
+  alt_text: Yup.string(),
+  meta_title: Yup.string(),
+  meta_description: Yup.string(),
+  meta_keywords: Yup.string(),
 });
 
 const AddBrand = () => {
@@ -49,7 +55,8 @@ const AddBrand = () => {
   const [imagePreview, setImagePreview] = useState(null);
   const [editBrand, setEditBrand] = useState({});
   const [loading, setLoading] = useState(false);
-
+  const [keywordInput, setKeywordInput] = useState("");
+  const [metaKeywords, setMetaKeywords] = useState([]);
   const navigate = useNavigate();
 
   const queryId = query.get("id");
@@ -100,7 +107,10 @@ const AddBrand = () => {
       _id: queryId ? editBrand._id : "new",
       title: values.name,
       description: values.description,
-      link:values.link
+      link: values.link,
+      meta_title: values.meta_title,
+      meta_description: values.meta_description,
+      meta_keywords: metaKeywords,
     };
     try {
       setLoading(true);
@@ -108,14 +118,15 @@ const AddBrand = () => {
       if (res.status === 200) {
         if (values.file) {
           if (queryId) {
-            addBrandImageHandler(values.file, editBrand._id, res?.data, resetForm);
+            addBrandImageHandler(values.file, editBrand._id, res?.data, values.alt_text);  // 👈 resetForm → values.alt_text
           } else {
-            addBrandImageHandler(values.file, res?.data?.data?._id, res?.data, resetForm);
+            addBrandImageHandler(values.file, res?.data?.data?._id, res?.data, values.alt_text);
+
           }
         } else {
           // navigate(ROUTE_CONSTANT.brand.list);
           // if(!queryId) {
-            setRoute(ROUTE_CONSTANT.brand.list);
+          setRoute(ROUTE_CONSTANT.brand.list);
           // }
           handleOpen("success", res?.data);
         }
@@ -128,10 +139,11 @@ const AddBrand = () => {
     }
   };
 
-  const addBrandImageHandler = async (image, id, msg) => {
+  const addBrandImageHandler = async (image, id, msg, altText) => {
     const formData = new FormData();
     formData.append("file", image);
     formData.append("_id", id);
+    formData.append("image_alt", altText);
     try {
       const res = await ApiService.postImage(apiEndpoints.addBrandImage, formData, auth_key);
       if (res?.status === 200) {
@@ -143,13 +155,30 @@ const AddBrand = () => {
       handleOpen("error", error?.response?.data || error);
     }
   };
+  const parseKeyword = (term) => {
+    if (Array.isArray(term)) return term.map(t => t.trim());
+    if (typeof term === "string") return term.trim().split(",").map(t => t.trim()).filter(Boolean);
+  };
 
+  const handleAddKeyword = () => {
+    const trimmed = keywordInput.trim();
+    if (trimmed && !metaKeywords.includes(trimmed)) {
+      setMetaKeywords((prev) => [...prev, ...parseKeyword(trimmed)]);
+    }
+    setKeywordInput("");
+  };
+
+  const handleDeleteKeyword = (kwToDelete) => () => {
+    setMetaKeywords((prev) => prev.filter((k) => k !== kwToDelete));
+  };
   const editBrandHandler = async () => {
     try {
       const res = await ApiService.get(`${apiEndpoints.editBrand}/${queryId}`, auth_key);
       console.log(res);
       if (res?.status === 200) {
         setEditBrand(res?.data?.data);
+
+        setMetaKeywords(res?.data?.data?.meta_keywords ? res.data.data.meta_keywords.split(",").map(k => k.trim()) : []);
       }
     } catch (error) {
       handleOpen("error", error?.response?.data || error);
@@ -201,6 +230,9 @@ const AddBrand = () => {
             description: queryId ? editBrand?.description : "",
             file: "",
             link: queryId ? editBrand?.link : "",
+            alt_text: queryId ? editBrand?.alt_text : "",
+            meta_title: queryId ? editBrand?.meta_title : "",
+            meta_description: queryId ? editBrand?.meta_description : "",
           }}
           enableReinitialize={true}
           validationSchema={validationSchema}
@@ -250,42 +282,51 @@ const AddBrand = () => {
                     )
                   }
                 />
-                <TextField
-                  fullWidth
-                  value={values.file ? values.file.name : ""}
-                  sx={{
-                    "& .MuiInputBase-root": {
-                      height: "40px",
-                    },
-                  }}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <AttachFileIcon />
-                      </InputAdornment>
-                    ),
-                    endAdornment: (
-                      <input
-                        type="file"
-                        accept="image/*"
-                        style={{ display: "none" }}
-                        id="file-input"
-                        onChange={(event) => {
-                          setFieldValue("file", event.currentTarget.files[0]);
-                          handleImageChange(event);
-                        }}
-                      />
-                    ),
-                    readOnly: true
-                  }}
-                  placeholder="Select Image"
-                  onClick={() => document.getElementById("file-input").click()}
-                  error={touched.file && Boolean(errors.file)}
-                  helperText={
-                    touched.file &&
-                    errors.file && <Typography color="error">{errors.file}</Typography>
-                  }
-                />
+                <Box sx={{ display: "flex", gap: "16px", alignItems: "flex-start" }}>
+                  <TextField
+                    value={values.file ? values.file.name : ""}
+                    sx={{
+                      width: "20%",
+                      "& .MuiInputBase-root": { height: "40px" },
+                    }}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <AttachFileIcon />
+                        </InputAdornment>
+                      ),
+                      endAdornment: (
+                        <input
+                          type="file"
+                          accept="image/*"
+                          style={{ display: "none" }}
+                          id="file-input"
+                          onChange={(event) => {
+                            setFieldValue("file", event.currentTarget.files[0]);
+                            handleImageChange(event);
+                          }}
+                        />
+                      ),
+                      readOnly: true
+                    }}
+                    placeholder="Select Image"
+                    onClick={() => document.getElementById("file-input").click()}
+                    error={touched.file && Boolean(errors.file)}
+                    helperText={touched.file && errors.file && <Typography color="error">{errors.file}</Typography>}
+                  />
+                  <TextField
+                    id="alt_text"
+                    name="alt_text"
+                    label="Image Alt Text"
+                    value={values.alt_text}
+                    onChange={handleChange}
+                    sx={{
+                      width: "80%",
+                      "& .MuiInputBase-root": { height: "40px" },
+                      "& .MuiFormLabel-root": { top: "-7px" }
+                    }}
+                  />
+                </Box>
                 <img src={imagePreview ? imagePreview : editBrand?.image} width={200} alt="" />
                 <TextField
                   id="link"
@@ -309,6 +350,62 @@ const AddBrand = () => {
                     touched.link &&
                     errors.link && <Typography color="error">{errors.link}</Typography>
                   }
+                />
+                {/* META FIELDS */}
+                <TextField
+                  id="meta_title"
+                  name="meta_title"
+                  label="Meta Title"
+                  value={values.meta_title}
+                  onChange={handleChange}
+                  sx={{
+                    "& .MuiInputBase-root": { height: "40px" },
+                    "& .MuiFormLabel-root": { top: "-7px" }
+                  }}
+                />
+
+                <TextField
+                  id="meta_description"
+                  name="meta_description"
+                  label="Meta Description"
+                  value={values.meta_description}
+                  onChange={handleChange}
+                  multiline
+                  rows={3}
+                />
+
+                <Autocomplete
+                  multiple
+                  freeSolo
+                  options={[]}
+                  value={metaKeywords}
+                  inputValue={keywordInput}
+                  onChange={(event, newValue) => {
+                    const parsed = newValue.reduce((acc, option) => acc.concat(parseKeyword(option)), []);
+                    setMetaKeywords(parsed);
+                  }}
+                  onInputChange={(e, newInputValue) => setKeywordInput(newInputValue)}
+                  onBlur={() => { if (keywordInput.trim()) handleAddKeyword(); }}
+                  renderTags={(value, getTagProps) =>
+                    value.map((option, index) => (
+                      <Chip variant="outlined" label={option} {...getTagProps({ index })} onDelete={handleDeleteKeyword(option)} size="small" />
+                    ))
+                  }
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Meta Keyword"
+                      placeholder="Add Keywords"
+                      sx={{ "& .MuiInputBase-root": { padding: "0 11px" }, "& .MuiFormLabel-root": { top: "-7px" } }}
+                      onKeyDown={(e) => {
+                        if (e.key === " " || e.key === "Enter") { e.preventDefault(); handleAddKeyword(); }
+                        if (e.key === ",") { e.preventDefault(); handleAddKeyword(); setKeywordInput(""); }
+                        if (e.key === "Backspace" && !keywordInput) {
+                          setMetaKeywords((prev) => prev.slice(0, -1));
+                        }
+                      }}
+                    />
+                  )}
                 />
                 <Box sx={{ width: "100%" }}>
                   <Button

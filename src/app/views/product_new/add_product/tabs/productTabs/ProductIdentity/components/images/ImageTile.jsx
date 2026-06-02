@@ -33,7 +33,7 @@ const ImageTile = ({ image, index, moveImage, onRemoveImage }) => {
             ref={(node) => drag(drop(node))}
             component="div"
             sx={{
-                height: "150px",
+                aspectRatio: "1/1",
                 width: "100%",
                 display: "flex",
                 justifyContent: "center",

@@ -2,6 +2,7 @@ import {
     Box, Button, Divider, Paper, Stack, TextField, Autocomplete, MenuItem, IconButton,
     FormControl, InputAdornment, FormControlLabel, Radio, RadioGroup, FormLabel, CircularProgress,
 } from "@mui/material";
+import Chip from "@mui/material/Chip";
 import React, { useState } from "react";
 import Typography from "@mui/material/Typography";
 import AppsIcon from "@mui/icons-material/Apps";
@@ -31,15 +32,15 @@ const Add = () => {
         catId: "",
         title: "",
         image: "",
-        validity:"",
-        description:""
+        validity: "",
+        description: ""
     });
     const [errors, setErrors] = useState({
         catId: "",
         title: "",
         image: "",
-        validity:"",
-        description:""
+        validity: "",
+        description: ""
     });
     const [loading, setLoading] = useState(false);
     const [allCategory, setAllCategory] = useState([]);
@@ -50,7 +51,11 @@ const Add = () => {
     console.log(fileName, "fileName")
     const [image, setImage] = useState(null);
     console.log(image, "image")
-
+    const [metaTitle, setMetaTitle] = useState("");
+    const [metaDescription, setMetaDescription] = useState("");
+    const [metaKeywords, setMetaKeywords] = useState([]);
+    const [keywordInput, setKeywordInput] = useState("");
+    const [altText, setAltText] = useState("");
     const [open, setOpen] = React.useState(false);
     const [type, setType] = useState("");
     const [route, setRoute] = useState(null);
@@ -115,6 +120,7 @@ const Add = () => {
                 image && formData.append("file", image);
             }
             formData.append("_id", id);
+            formData.append("image_alt", altText);  // 👈 add
             const res = await ApiService.postImage(apiEndpoints.addGiftCardImage, formData, auth_key);
             if (res?.status === 200) {
                 setRoute(ROUTE_CONSTANT.giftCard.gift.list);
@@ -124,6 +130,24 @@ const Add = () => {
             handleOpen("error", error);
         }
     };
+
+    const parseKeyword = (term) => {
+        if (Array.isArray(term)) return term.map(t => t.trim());
+        if (typeof term === "string") return term.trim().split(",").map(t => t.trim()).filter(Boolean);
+    };
+
+    const handleAddKeyword = () => {
+        const trimmed = keywordInput.trim();
+        if (trimmed && !metaKeywords.includes(trimmed)) {
+            setMetaKeywords((prev) => [...prev, ...parseKeyword(trimmed)]);
+        }
+        setKeywordInput("");
+    };
+
+    const handleDeleteKeyword = (kwToDelete) => () => {
+        setMetaKeywords((prev) => prev.filter((k) => k !== kwToDelete));
+    };
+
     const handleAddGiftCard = async () => {
         const newErrors = {};
         if (!formValues.catId) newErrors.catId = "Category is required";
@@ -141,7 +165,10 @@ const Add = () => {
                     category_id: formValues.catId,
                     title: formValues.title,
                     validity: formValues.validity,
-                    description: formValues.description
+                    description: formValues.description,
+                    meta_title: metaTitle,
+                    meta_description: metaDescription,
+                    meta_keywords: metaKeywords,
                 };
                 setLoading(true);
                 const res = await ApiService.post(apiEndpoints.addGiftCard, payload, auth_key);
@@ -155,7 +182,7 @@ const Add = () => {
                         }
                     }
                     // if (!queryId) {
-                        setRoute(ROUTE_CONSTANT.giftCard.gift.list);
+                    setRoute(ROUTE_CONSTANT.giftCard.gift.list);
                     // }
                     handleOpen("success", res?.data);
                 }
@@ -179,8 +206,12 @@ const Add = () => {
                     title: resData?.title,
                     image: resData?.image,
                     validity: resData?.validity,
-                    description: resData?.description
+                    description: resData?.description,
                 }));
+                setMetaTitle(resData?.meta_title || "");
+                setMetaDescription(resData?.meta_description || "");
+                setMetaKeywords(Array.isArray(resData?.meta_keywords) ? resData.meta_keywords : []);
+                setAltText(resData?.image_alt || "");
             }
         } catch (error) {
             handleOpen("error", error?.response?.data || error);
@@ -393,7 +424,126 @@ const Add = () => {
                             }}
                         >
                             Image
-                            <span style={{ color: "red", fontSize: "15px", marginRight: "3px", marginLeft: "3px" }}>
+                            <span
+                                style={{
+                                    color: "red",
+                                    fontSize: "15px",
+                                    marginRight: "3px",
+                                    marginLeft: "3px"
+                                }}
+                            >
+                                *
+                            </span>
+                            :
+                        </Box>
+
+                        <Box width={"100%"}>
+                            <Box
+                                sx={{
+                                    display: "flex",
+                                    gap: "20px",
+                                    width: "100%"
+                                }}
+                            >
+                                {/* Select Image */}
+                                <Box sx={{ width: "30%" }}>
+                                    <TextField
+                                        fullWidth
+                                        error={errors.image && true}
+                                        helperText={errors.image}
+                                        value={fileName}
+                                        sx={{
+                                            "& .MuiInputBase-root": {
+                                                height: "40px"
+                                            }
+                                        }}
+                                        InputProps={{
+                                            startAdornment: (
+                                                <InputAdornment position="start">
+                                                    <AttachFileIcon />
+                                                </InputAdornment>
+                                            ),
+                                            endAdornment: (
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    style={{ display: "none" }}
+                                                    id="file-input"
+                                                    onChange={(event) => {
+                                                        handleImageSelect(event);
+                                                        handleImageChange(event);
+                                                    }}
+                                                />
+                                            ),
+                                            readOnly: true
+                                        }}
+                                        placeholder="Select file"
+                                        onClick={() =>
+                                            document.getElementById("file-input").click()
+                                        }
+                                    />
+                                </Box>
+
+                                {/* Alt Text */}
+                                <Box sx={{ width: "70%" }}>
+                                    <TextField
+                                        fullWidth
+                                        label="Image Alt Text"
+                                        value={altText}
+                                        onChange={(e) => setAltText(e.target.value)}
+                                        sx={{
+                                            "& .MuiInputBase-root": {
+                                                height: "40px"
+                                            },
+                                            "& .MuiFormLabel-root": {
+                                                top: "-7px"
+                                            }
+                                        }}
+                                    />
+                                </Box>
+                            </Box>
+
+                            <p style={{ color: "#e94560", fontSize: "12px" }}>
+                                Image size must be 300 X 300
+                            </p>
+
+                            {(imagePreview || formValues.image) && (
+                                <img
+                                    src={imagePreview ? imagePreview : formValues.image}
+                                    alt="giftcard"
+                                    style={{
+                                        margin: "16px 0",
+                                        width: "200px",
+                                        height: "200px",
+                                        objectFit: "cover",
+                                        borderRadius: "10px"
+                                    }}
+                                />
+                            )}
+                        </Box>
+                    </Box>
+                    <Box
+                        sx={{
+                            display: "flex",
+                            marginBottom: "20px",
+                            gap: "20px"
+                        }}
+                    >
+                        <Box
+                            sx={{
+                                fontSize: "14px",
+                                fontWeight: 700,
+                                wordBreak: "normal",
+                                width: "15%",
+                                textOverflow: "ellipsis",
+                                display: "flex",
+                                textWrap: "wrap"
+                            }}
+                        >
+                            Validity
+                            <span
+                                style={{ color: "red", fontSize: "15px", marginRight: "3px", marginLeft: "3px" }}
+                            >
                                 {" "}
                                 *
                             </span>
@@ -402,137 +552,56 @@ const Add = () => {
                         <Box width={"100%"}>
                             <Box
                                 sx={{
-                                    height: "auto", // Set your desired height
+                                    height: "auto",
                                     width: "100%"
                                 }}
                             >
-                                <TextField
-                                    fullWidth
-                                    error={errors.image && true}
-                                    helperText={errors.image}
-                                    value={fileName}
-                                    sx={{
-                                        "& .MuiInputBase-root": {
-                                            height: "40px"
-                                        }
-                                    }}
-                                    InputProps={{
-                                        startAdornment: (
-                                            <InputAdornment position="start">
-                                                <AttachFileIcon />
-                                            </InputAdornment>
-                                        ),
-                                        endAdornment: (
-                                            <input
-                                                type="file"
-                                                accept="image/*"
-                                                style={{ display: "none" }}
-                                                id="file-input"
-                                                onChange={(event) => {
-                                                    handleImageSelect(event);
-                                                    handleImageChange(event);
-                                                }}
-                                            />
-                                        ),
-                                        readOnly: true
-                                    }}
-                                    placeholder="Select file"
-                                    onClick={() => document.getElementById("file-input").click()}
-                                />
-                                <p style={{ color: '#e94560', fontSize: '12px' }}>
-                                    Image size must be 290 X 160
-                                </p>
-                                {(imagePreview || formValues.image) && (
-                                    <img
-                                        style={{ margin: "16px 0" }}
-                                        src={imagePreview ? imagePreview : formValues.image}
-                                        width={200}
-                                        alt="giftcard"
-                                    />
-                                )}
-                            </Box>
-                        </Box>
-                    </Box>
-                    <Box
-                        sx={{
-                        display: "flex",
-                        marginBottom: "20px",
-                        gap: "20px"
-                        }}
-                    >
-                        <Box
-                        sx={{
-                            fontSize: "14px",
-                            fontWeight: 700,
-                            wordBreak: "normal",
-                            width: "15%",
-                            textOverflow: "ellipsis",
-                            display: "flex",
-                            textWrap: "wrap"
-                        }}
-                        >
-                        Validity
-                        <span
-                            style={{ color: "red", fontSize: "15px", marginRight: "3px", marginLeft: "3px" }}
-                        >
-                            {" "}
-                            *
-                        </span>
-                        :
-                        </Box>
-                        <Box width={"100%"}>
-                        <Box
-                            sx={{
-                            height: "auto",
-                            width: "100%"
-                            }}
-                        >
-                            <FormControl fullWidth>
-                            <TextField
-                                error={Boolean(errors.validity)}
-                                helperText={errors.validity}
-                                select
-                                sx={{
-                                "& .MuiInputBase-root": {
-                                    height: "40px"
-                                },
-                                "& .MuiFormLabel-root": {
-                                    top: "-7px"
-                                }
-                                }}
-                                label="Select Validity"
-                                labelId="pib"
-                                id="pibb"
-                                value={formValues?.validity}
-                                name="validity"
-                                onChange={handleChange}
-                                InputProps={{
-                                endAdornment: formValues?.validity ? (
-                                    <InputAdornment position="end" sx={{ mr: 3 }}>
-                                    <IconButton
-                                        onClick={() => {
-                                        handleChange({ target: { name: "validity", value: "" } });
-                                        setErrors((prv) => ({
-                                            ...prv,
-                                            validity: "validity is required"
-                                        }));
+                                <FormControl fullWidth>
+                                    <TextField
+                                        error={Boolean(errors.validity)}
+                                        helperText={errors.validity}
+                                        select
+                                        sx={{
+                                            "& .MuiInputBase-root": {
+                                                height: "40px"
+                                            },
+                                            "& .MuiFormLabel-root": {
+                                                top: "-7px"
+                                            }
                                         }}
-                                        edge="end"
+                                        label="Select Validity"
+                                        labelId="pib"
+                                        id="pibb"
+                                        value={formValues?.validity}
+                                        name="validity"
+                                        onChange={handleChange}
+                                        InputProps={{
+                                            endAdornment: formValues?.validity ? (
+                                                <InputAdornment position="end" sx={{ mr: 3 }}>
+                                                    <IconButton
+                                                        onClick={() => {
+                                                            handleChange({ target: { name: "validity", value: "" } });
+                                                            setErrors((prv) => ({
+                                                                ...prv,
+                                                                validity: "validity is required"
+                                                            }));
+                                                        }}
+                                                        edge="end"
+                                                    >
+                                                        <ClearIcon />
+                                                    </IconButton>
+                                                </InputAdornment>
+                                            ) : null
+                                        }}
                                     >
-                                        <ClearIcon />
-                                    </IconButton>
-                                    </InputAdornment>
-                                ) : null
-                                }}
-                            >
-                                {[...Array(100)].map((_, index) => (
-                                <MenuItem key={index + 1} value={index + 1}>
-                                    {index + 1}
-                                </MenuItem>
-                                ))}
-                            </TextField>
-                            </FormControl>
-                        </Box>
+                                        {[...Array(100)].map((_, index) => (
+                                            <MenuItem key={index + 1} value={index + 1}>
+                                                {index + 1}
+                                            </MenuItem>
+                                        ))}
+                                    </TextField>
+                                </FormControl>
+                            </Box>
                         </Box>
                     </Box>
                     <Box
@@ -568,7 +637,7 @@ const Add = () => {
                             >
                                 <Box
                                     sx={{
-                                        height: "auto", 
+                                        height: "auto",
                                         width: "100%"
                                     }}
                                 >
@@ -576,20 +645,94 @@ const Add = () => {
                                 </Box>
                                 {/* <TextEditor name="description" value={formValues?.description} setFormValues={setFormValues}/> */}
                                 {errors.description && (
-                                <Typography
-                                    sx={{
-                                    fontSize: "12px",
-                                    color: "#FF3D57",
-                                    marginLeft: "14px",
-                                    marginRight: "14px",
-                                    marginTop: "3px"
-                                    }}
-                                >
-                                    {errors.description}
-                                </Typography>
+                                    <Typography
+                                        sx={{
+                                            fontSize: "12px",
+                                            color: "#FF3D57",
+                                            marginLeft: "14px",
+                                            marginRight: "14px",
+                                            marginTop: "3px"
+                                        }}
+                                    >
+                                        {errors.description}
+                                    </Typography>
                                 )}
                             </Box>
                         </Box>
+                    </Box>
+                    <Box sx={{ display: "flex", flexDirection: "column", gap: "20px", marginBottom: "20px" }}>
+
+                        <Box sx={{ display: "flex", gap: "20px" }}>
+                            <Box sx={{ fontSize: "14px", fontWeight: 700, width: "15%", display: "flex", textWrap: "wrap" }}>
+                                Meta Title :
+                            </Box>
+                            <Box width={"100%"}>
+                                <TextField
+                                    label="Meta Title"
+                                    value={metaTitle}
+                                    onChange={(e) => setMetaTitle(e.target.value)}
+                                    sx={{ width: "100%", "& .MuiInputBase-root": { height: "40px" }, "& .MuiFormLabel-root": { top: "-7px" } }}
+                                />
+                            </Box>
+                        </Box>
+
+                        <Box sx={{ display: "flex", gap: "20px" }}>
+                            <Box sx={{ fontSize: "14px", fontWeight: 700, width: "15%", display: "flex", textWrap: "wrap" }}>
+                                Meta Description :
+                            </Box>
+                            <Box width={"100%"}>
+                                <TextField
+                                    label="Meta Description"
+                                    value={metaDescription}
+                                    onChange={(e) => setMetaDescription(e.target.value)}
+                                    multiline
+                                    rows={3}
+                                    sx={{ width: "100%" }}
+                                />
+                            </Box>
+                        </Box>
+
+                        <Box sx={{ display: "flex", gap: "20px" }}>
+                            <Box sx={{ fontSize: "14px", fontWeight: 700, width: "15%", display: "flex", textWrap: "wrap" }}>
+                                Meta Keywords :
+                            </Box>
+                            <Box width={"100%"}>
+                                <Autocomplete
+                                    multiple
+                                    freeSolo
+                                    options={[]}
+                                    value={metaKeywords}
+                                    inputValue={keywordInput}
+                                    onChange={(event, newValue) => {
+                                        const parsed = newValue.reduce((acc, option) => acc.concat(parseKeyword(option)), []);
+                                        setMetaKeywords(parsed);
+                                    }}
+                                    onInputChange={(e, newInputValue) => setKeywordInput(newInputValue)}
+                                    onBlur={() => { if (keywordInput.trim()) handleAddKeyword(); }}
+                                    renderTags={(value, getTagProps) =>
+                                        value.map((option, index) => (
+                                            <Chip variant="outlined" label={option} {...getTagProps({ index })} onDelete={handleDeleteKeyword(option)} size="small" />
+                                        ))
+                                    }
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            label="Meta Keyword"
+                                            placeholder="Add Keywords"
+                                            sx={{ width: "100%", "& .MuiInputBase-root": { padding: "0 11px" }, "& .MuiFormLabel-root": { top: "-7px" } }}
+                                            onKeyDown={(e) => {
+                                                if (e.key === " " || e.key === "Enter") { e.preventDefault(); handleAddKeyword(); }
+                                                if (e.key === ",") { e.preventDefault(); handleAddKeyword(); setKeywordInput(""); }
+                                                if (e.key === "Backspace" && !keywordInput) {
+                                                    setMetaKeywords((prev) => prev.slice(0, -1));
+                                                }
+                                            }}
+                                        />
+                                    )}
+                                />
+                            </Box>
+                        </Box>
+
                     </Box>
                     <Box
                         sx={{
