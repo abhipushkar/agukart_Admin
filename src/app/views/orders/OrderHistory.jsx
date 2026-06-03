@@ -134,23 +134,27 @@ const OrderHistory = () => {
       const groupShipping = group.perOrder + (group.totalQty > 1 ? (group.totalQty - 1) * group.perItem : 0);
       group.items.forEach(item => { map[item._id] = groupShipping * (item.qty / group.totalQty); });
     });
+    console.log("itemShippingMap:", map);
     return map;
   }, [vendorSubOrder]);
 
   const orderTotals = useMemo(() => {
     const vendorItems = order?.saleDetaildata?.[0]?.items || [];
     if (!vendorItems.length) return { subTotal: 0, shippingTotal: 0, itemTotal: 0, grandTotal: 0, paypalAmount: 0 };
-    const subTotal = vendorItems.reduce((a, b) => a + ((b.sub_total || 0) - (b?.couponDiscountAmount || 0)), 0);
+    const subTotal = vendorItems.reduce((a, b) => a + (b.sub_total || 0), 0);
+    const promotionalDiscount = vendorItems.reduce((a, b) => a + (b.promotional_discount || 0) * (b.qty || 0), 0);
+    const couponDiscount = vendorItems[0]?.couponDiscountAmount || 0;
     const shippingTotal = order?.saleDetaildata?.[0]?.shippingAmount || 0;
-    const itemTotal = subTotal + shippingTotal;
-    const grandTotal = itemTotal - (order?.voucher_dicount || 0);
-    const paypalAmount = grandTotal - (order?.wallet_used || 0);
+    const itemTotal = vendorItems.reduce((a, b) => a + (b.amount || 0), 0) + shippingTotal - couponDiscount;
+    const grandTotal = itemTotal;
+    // const paypalAmount = grandTotal - (order?.wallet_used || 0);
     return {
       subTotal: subTotal.toFixed(2),
       shippingTotal: shippingTotal.toFixed(2),
       itemTotal: itemTotal.toFixed(2),
       grandTotal: grandTotal.toFixed(2),
-      paypalAmount: paypalAmount > 0 ? paypalAmount.toFixed(2) : "0.00"
+      promotionalDiscount: promotionalDiscount.toFixed(2),
+      couponDiscount: couponDiscount.toFixed(2)
     };
   }, [order]);
 
@@ -406,10 +410,10 @@ const OrderHistory = () => {
           <Grid container width={"100%"} m={0} pb={2} spacing={2}>
             <Grid py={2} lg={9} md={8} xs={12}>
               <TableContainer component={Paper} sx={{ boxShadow: "0 0 3px #dbdbdb", borderRadius: "6px", overflowX: "auto", maxWidth: "100%" }}>
-                <Table sx={{ minWidth: 800, tableLayout: 'fixed', ".MuiTableCell-root": { padding: "20px", wordBreak: "break-word" } }} aria-label="simple table">
+                <Table sx={{ minWidth: 800, tableLayout: 'fixed', ".MuiTableCell-root": { padding: "10px 10px 0 0", wordBreak: "break-word" } }} aria-label="simple table">
                   <TableHead sx={{ background: "#ebebeb" }}>
                     <TableRow>
-                      <TableCell align="center" sx={{ fontSize: "16px", whiteSpace: "nowrap", width: "120px" }}>Status</TableCell>
+                      <TableCell align="center" sx={{ fontSize: "16px", whiteSpace: "nowrap", width: "120px", pl: 2 }}>Status</TableCell>
                       <TableCell align="center" sx={{ fontSize: "16px", whiteSpace: "nowrap", width: "100px" }}>Image</TableCell>
                       <TableCell align="center" sx={{ fontSize: "16px", whiteSpace: "nowrap", width: "250px", minWidth: "200px" }}>Product name</TableCell>
                       <TableCell align="center" sx={{ fontSize: "16px", whiteSpace: "nowrap", width: "150px" }}>More information</TableCell>
@@ -482,11 +486,12 @@ const OrderHistory = () => {
                             <TableCell align="start">
                               <Box>
                                 <Typography fontSize={16}>Order item ID: <Box fontSize={12} component="span">{getDisplayValue(item?._id)}</Box></Typography>
+                                <Typography fontSize={12}>Product Code: <Box fontSize={12} fontWeight={500} component="span">{getDisplayValue(item?.productData.product_code)}</Box></Typography>
                                 {sub_order_id && <Typography fontSize={12} sx={{ color: "#666", mt: 0.5 }}>Transaction Id: {item.item_id}</Typography>}
                               </Box>
                             </TableCell>
-                            <TableCell align="start"><Typography fontSize={16}>{getDisplayValue(item?.qty)}</Typography></TableCell>
-                            <TableCell align="start"><Typography fontSize={16}>${getDisplayValue(item?.original_price, "0.00")}</Typography></TableCell>
+                            <TableCell align="center"><Typography fontSize={16}>{getDisplayValue(item?.qty)}</Typography></TableCell>
+                            <TableCell align="center"><Typography fontSize={16}>${getDisplayValue(item?.original_price, "0.00")}</Typography></TableCell>
                             <TableCell align="start" sx={{ width: "180px" }}>
                               <List>
                                 <ListItem sx={{ padding: "0" }}>
@@ -497,14 +502,14 @@ const OrderHistory = () => {
                                     </Box>
                                     {item?.promotional_discount > 0 && (
                                       <Box sx={{ display: "flex", alignItems: "center", width: "100%", justifyContent: "space-between" }}>
-                                        <Typography color={"#a1a1a1"} fontSize={13} sx={{ display: "flex", alignItems: "center" }}>
+                                        <Typography color={"#32be19"} fontSize={13} sx={{ display: "flex", alignItems: "center" }}>
                                           <LocalOfferIcon sx={{ marginRight: "4px", fontSize: "18px", transform: "rotate(115deg)" }} />
-                                          {`Today Sale ${item?.promotionalOfferData?.offer_type === "percentage" ? getDisplayValue(item?.promotionalOfferData?.discount_amount) + "%" : "$" + getDisplayValue(item?.promotionalOfferData?.discount_amount)} off`}:
+                                          {`${item?.promotionData?.promotional_title} (${item?.promotionData?.offer_type === "percentage" ? getDisplayValue(item?.promotionData?.discount_amount) + "%" : "$" + getDisplayValue(item?.promotionData?.discount_amount)} off)`}:
                                         </Typography>
                                         <Box pl={2} color={"red"} fontSize={13}>- ${((item?.promotional_discount || 0) * (item?.qty || 0)).toFixed(2)}</Box>
                                       </Box>
                                     )}
-                                    {item?.couponDiscountAmount > 0 && (
+                                    {/* {item?.couponDiscountAmount > 0 && (
                                       <Box pt={1} sx={{ display: "flex", alignItems: "center", width: "100%", justifyContent: "space-between" }}>
                                         <Typography color={"#a1a1a1"} fontSize={13} sx={{ display: "flex", alignItems: "center" }}>
                                           <LocalOfferIcon sx={{ marginRight: "4px", fontSize: "18px", transform: "rotate(115deg)" }} />
@@ -512,14 +517,14 @@ const OrderHistory = () => {
                                         </Typography>
                                         <Box pl={2} color={"red"} fontSize={13}>- ${(item?.couponDiscountAmount || 0).toFixed(2)}</Box>
                                       </Box>
-                                    )}
+                                    )} */}
                                   </Box>
                                 </ListItem>
                                 <ListItem sx={{ padding: "0", marginTop: "10px" }}>
                                   <Box pb={1} sx={{ width: "100%", borderBottom: "2px solid #d9d9d9" }}>
                                     <Box sx={{ display: "flex", alignItems: "center", width: "100%", justifyContent: "space-between" }}>
                                       <Typography color={"#000"} fontSize={15}>Sub Total:</Typography>
-                                      <Box pl={2} color={"#000"} fontSize={15}>${((item?.sub_total || 0) - (item?.couponDiscountAmount || 0)).toFixed(2)}</Box>
+                                      <Box pl={2} color={"#000"} fontSize={15}>${((item?.amount || 0)).toFixed(2)}</Box>
                                     </Box>
                                     <Box pt={1} sx={{ display: "flex", alignItems: "center", width: "100%", justifyContent: "space-between" }}>
                                       <Typography color={"#000"} fontSize={15}>Shipping Total:</Typography>
@@ -534,7 +539,7 @@ const OrderHistory = () => {
                                 <ListItem sx={{ padding: "0", marginTop: "10px" }}>
                                   <Box sx={{ display: "flex", alignItems: "center", width: "100%", justifyContent: "space-between" }}>
                                     <Typography color={"#000"} fontSize={15} fontWeight={600}>Item Total:</Typography>
-                                    <Box pl={2} color={"#000"} fontSize={15} fontWeight={600}>${((item?.amount || 0) + (itemShippingMap[item._id] || 0) - (item?.couponDiscountAmount || 0)).toFixed(2)}</Box>
+                                    <Box pl={2} color={"#000"} fontSize={15} fontWeight={600}>${((item?.amount || 0) + (itemShippingMap[item._id] || 0)).toFixed(2)}</Box>
                                   </Box>
                                 </ListItem>
                               </List>
@@ -551,7 +556,7 @@ const OrderHistory = () => {
                                       <Grid item xs={12} md={6}>
                                         <Typography fontWeight={600} gutterBottom>Product Variants:</Typography>
                                         {variantData.length > 0 ? variantData.map((variantItem, idx) => (
-                                          <Box key={idx} sx={{ mb: 1 }}>
+                                          <Box key={idx} sx={{ mb: 1, display: "flex", flexDirection: "row", gap: 1, alignItems: "center" }}>
                                             <Typography fontSize={14} fontWeight={500}>{getDisplayValue(variantItem?.variant_name)}:</Typography>
                                             <Typography fontSize={14}>{getDisplayValue(variantAttributeData[idx]?.attribute_value)}</Typography>
                                           </Box>
@@ -628,16 +633,26 @@ const OrderHistory = () => {
                           <Typography color={"#000"} fontSize={15}>Sub Total:</Typography>
                           <Box pl={2} color={"#000"} fontSize={15}>${orderTotals.subTotal}</Box>
                         </Box>
+                        {orderTotals.promotionalDiscount > 0 && (<Box pt={1} sx={{ display: "flex", alignItems: "center", width: "100%", justifyContent: "space-between" }}>
+                          <Typography color={"#000"} fontSize={15}>Promotional Discount:</Typography>
+                          <Box pl={2} color={"#000"} fontSize={15}>- ${orderTotals.promotionalDiscount}</Box>
+                        </Box>
+                        )}
+                        {orderTotals.couponDiscount > 0 && (<Box pt={1} sx={{ display: "flex", alignItems: "center", width: "100%", justifyContent: "space-between" }}>
+                          <Typography color={"#000"} fontSize={15}>Coupon Discount:</Typography>
+                          <Box pl={2} color={"#000"} fontSize={15}>- ${orderTotals.couponDiscount}</Box>
+                        </Box>
+                        )}
                         <Box pt={1} sx={{ display: "flex", alignItems: "center", width: "100%", justifyContent: "space-between" }}>
                           <Typography color={"#000"} fontSize={15}>Shipping Total:</Typography>
-                          <Box pl={2} color={"#000"} fontSize={15}>${orderTotals.shippingTotal}</Box>
+                          <Box pl={2} color={"#000"} fontSize={15}>${order.saleDetaildata?.[0]?.shippingAmount}</Box>
                         </Box>
-                        {order?.voucher_dicount > 0 && (
+                        {/* {order?.voucher_dicount > 0 && (
                           <Box pt={1} sx={{ display: "flex", alignItems: "center", width: "100%", justifyContent: "space-between" }}>
                             <Typography color={"#000"} fontSize={15}>Voucher Discount:</Typography>
                             <Box pl={2} color={"#000"} fontSize={15}>- ${(order?.voucher_dicount || 0).toFixed(2)}</Box>
                           </Box>
-                        )}
+                        )} */}
                         <Box pt={1} sx={{ display: "flex", alignItems: "center", width: "100%", justifyContent: "space-between" }}>
                           <Typography color={"#000"} fontSize={15}>Tax:</Typography>
                           <Box pl={2} color={"#000"} fontSize={15}>$0</Box>
@@ -650,7 +665,7 @@ const OrderHistory = () => {
                         <Box pl={2} color={"#000"} fontSize={15} fontWeight={600}>${orderTotals.grandTotal}</Box>
                       </Box>
                     </ListItem>
-                    <ListItem sx={{ padding: "0", marginTop: "10px" }}>
+                    {/* <ListItem sx={{ padding: "0", marginTop: "10px" }}>
                       <Box pb={1} sx={{ width: "100%" }}>
                         <Box sx={{ display: "flex", alignItems: "center", width: "100%", justifyContent: "space-between" }}>
                           <Typography color={"#000"} fontSize={15}>Used Gift Card:</Typography>
@@ -661,7 +676,7 @@ const OrderHistory = () => {
                           <Box pl={2} color={"#000"} fontSize={15}>${orderTotals.paypalAmount}</Box>
                         </Box>
                       </Box>
-                    </ListItem>
+                    </ListItem> */}
                   </List>
                 </Box>
               </Box>
