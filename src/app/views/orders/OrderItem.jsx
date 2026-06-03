@@ -159,7 +159,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                 });
             }
         });
-        console.log(subOrders);
+        // console.log(subOrders);
         return subOrders;
     };
 
@@ -186,6 +186,11 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
         } catch (error) {
             console.error({ message: error });
         }
+    };
+
+    const getGrandTotal = (subOrder) => {
+        const itemTotal = subOrder.items.reduce((sum, item) => sum += item.amount, 0);
+        return itemTotal + subOrder?.items?.[0]?.shippingAmount - subOrder?.items?.[0]?.couponDiscountAmount;
     };
 
     const handleClickPopup = () => {
@@ -312,7 +317,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                         {parentSale?.order_id}
                                                     </Typography>
                                                     <Typography ml={2} sx={{ color: "#000" }}>
-                                                        ${getDisplayValue((parentSale?.subtotal + subOrder?.items?.[0]?.shippingAmount).toFixed(2))}
+                                                        ${getDisplayValue((getGrandTotal(subOrder)).toFixed(2))}
                                                     </Typography>
                                                     <Box sx={{
                                                         display: "flex",
