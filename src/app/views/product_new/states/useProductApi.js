@@ -668,10 +668,12 @@ export const useProductAPI = () => {
     const handleUploadImage = async (id) => {
         const state = useProductFormStore.getState();
         const imgArr = state.formData.images.map((e) => e.file).filter(Boolean);
+        const trimmedTitle = state.formData.productTitle.replace(/<\/?[^>]+(>|$)/g, "").replace(/&nbsp;/g, " ").trim().split(/\s+/).filter(Boolean).slice(0, 8).join(" ");
+
         const altText =
             state.altText && state.altText.length > 0
                 ? state.altText[0]
-                : state.formData.productTitle || "Product Image";
+                : trimmedTitle || "Product Image";
         console.log("HANDLE UPLOAD IMAGE RUNNING");
         console.log("FINAL ALT TEXT:", altText);
         console.log("IMAGES:", imgArr);
@@ -710,10 +712,12 @@ export const useProductAPI = () => {
     const handleUploadImage2 = async (id) => {
         const state = useProductFormStore.getState();
         const { images, deleteIconData } = state.formData;
+        const trimmedTitle = state.formData.productTitle.replace(/<\/?[^>]+(>|$)/g, "").replace(/&nbsp;/g, " ").trim().split(/\s+/).filter(Boolean).slice(0, 8).join(" ");
+
         const altText =
             state.altText && state.altText.length > 0
                 ? state.altText[0]
-                : state.formData.productTitle || "Product Image";
+                : trimmedTitle || "Product Image";
         const filterImagesData = images.filter((img) => img.file);
         const sortImagesData = images.filter((img) => !img.file);
         const newSortArray = filterImagesData.map((img) => img.file?.sortOrder);

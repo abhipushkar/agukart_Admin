@@ -283,6 +283,25 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
         return value;
     };
 
+    const getVariantImages = () => {
+        let images = [];
+        const product = saleData?.productData;
+        saleData?.variants.forEach((variant, i) => {
+            const currVariant = product.product_variants.find(pv => pv.variant_name.trim().toLowerCase() === variant.variantName.trim().toLowerCase());
+            const imageAttr = currVariant.variant_attributes.find(a => a.attribute.trim().toLowerCase() === variant.attributeName.trim().toLowerCase());
+            if (imageAttr && imageAttr.main_images.filter(Boolean).length) {
+                let currAttrImages = imageAttr.main_images.filter(Boolean);
+                if (imageAttr.edit_main_image) {
+                    currAttrImages = [imageAttr.edit_main_image, ...currAttrImages];
+                }
+                images.push(...currAttrImages);
+            }
+        });
+        return images;
+    };
+
+    const images = [...getVariantImages(), ...saleData?.productData?.image.map(img => baseUrl + img)];
+
     return (
         <>
             <Box sx={{ display: "flex", my: 3 }}>
@@ -344,7 +363,7 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                         Transaction Id: {saleData.item_id || "N/A"}
                     </Typography> */}
                     <a
-                        href={`${REACT_APP_WEB_URL}/products/${saleData?.productData?._id}`}
+                        href={`${REACT_APP_WEB_URL}/product/${saleData?.productMain?.slug}/${saleData?.productMain?.product_code}`}
                         target="_blank"
                         style={{
                             textDecoration: 'none',
@@ -513,16 +532,16 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <Button
                             onClick={goToPrevImage}
-                            sx={{ minWidth: 'auto', padding: '8px' }}
+                            sx={{ minWidth: 'auto', padding: '8px', fontSize: '25px' }}
                         >
                             ‹
                         </Button>
 
                         <Box sx={{ flex: 1, textAlign: 'center' }}>
-                            {saleData?.productData?.image?.[currentImageIndex] && (
+                            {images[currentImageIndex] && (
                                 <img
-                                    src={`${baseUrl}/${saleData.productData.image[currentImageIndex]}`}
-                                    alt={`Product ${currentImageIndex + 1}`}
+                                    src={images[currentImageIndex]}
+                                    alt={images[currentImageIndex]}
                                     style={{
                                         maxWidth: '100%',
                                         maxHeight: '500px',
@@ -534,7 +553,7 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
 
                         <Button
                             onClick={goToNextImage}
-                            sx={{ minWidth: 'auto', padding: '8px' }}
+                            sx={{ minWidth: 'auto', padding: '8px', fontSize: '25px' }}
                         >
                             ›
                         </Button>

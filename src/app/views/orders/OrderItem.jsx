@@ -159,7 +159,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                 });
             }
         });
-        // console.log(subOrders);
+        console.log(subOrders);
         return subOrders;
     };
 
@@ -199,6 +199,36 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
 
     const handleClosePopup = () => {
         setOpenMsgpopup(false);
+    };
+
+    const getOrderStatusText = (subOrder, tab, isPaymentComplete) => {
+        let statusText = "";
+
+        if (tab === "pending") {
+            statusText = isPaymentComplete ? "Payment Completed" : "Payment Pending";
+        } else if (tab === "unshipped") {
+            statusText = "Unshipped";
+        } else if (tab === "in-progress") {
+            statusText = "In Progress";
+        } else if (tab === "completed") {
+            statusText = getDeliveryStatus(subOrder?.items?.[0]?.shipments) || subOrder?.delivery_status || "";
+        } else {
+            statusText = "Cancelled";
+        }
+
+        const item = subOrder?.items?.[0];
+
+        if (subOrder?.delivery_status === "Delivered" && item?.delivered_date) {
+            statusText += ` on ${new Date(item.delivered_date).toLocaleDateString("en-GB")}`;
+        } else if (
+            (subOrder?.delivery_status === "Cancelled" ||
+                subOrder?.order_status === "cancelled") &&
+            item?.cancelled_date
+        ) {
+            statusText += ` on ${new Date(item.cancelled_date).toLocaleDateString("en-GB")}`;
+        }
+
+        return statusText;
     };
 
     return (
@@ -281,7 +311,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                     subOrder?.shop_name ||
                                     parentSale?.shop_name ||
                                     "Unknown Shop";
-
+                                const isPaymentComplete = parentSale.payment_status === "completed";
                                 return (
                                     <TableRow
                                         key={subOrderId}
@@ -594,12 +624,13 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                         {subOrder.items[0]?.refund_status}ly Refunded
                                                     </Typography>
                                                 )}
-                                                <Typography variant="h6" fontWeight={500} fontSize={15} color={tab === "pending" ? "red" : "inherit"}>
-                                                    {tab === "pending" ? "Payment Pending" : tab === "unshipped" ? "Unshipped" : tab === "in-progress" ? "In Progress" : tab === "completed" ? `${getDeliveryStatus(subOrder?.items[0]?.shipments) || subOrder.delivery_status}` : "Cancelled"} {`${subOrder.delivery_status === 'Delivered'
-                                                        ? subOrder.items[0]?.delivered_date ? "on " + new Date(subOrder.items[0]?.delivered_date).toLocaleDateString('en-GB') : ""
-                                                        : (subOrder.delivery_status === 'Cancelled' || subOrder.order_status === 'cancelled')
-                                                            ? subOrder.items[0]?.cancelled_date ? "on " + new Date(subOrder.items[0]?.cancelled_date).toLocaleDateString('en-GB') : ""
-                                                            : ""}`}
+                                                <Typography
+                                                    variant="h6"
+                                                    fontWeight={500}
+                                                    fontSize={15}
+                                                    color={tab === "pending" ? isPaymentComplete ? "rgb(0, 206, 0)" : "red" : "inherit"}
+                                                >
+                                                    {getOrderStatusText(subOrder, tab, isPaymentComplete)}
                                                 </Typography>
                                                 <Typography>Order {formatDate(parentSale?.createdAt)}</Typography>
                                                 {tab === "completed" && (
