@@ -28,11 +28,14 @@ import {
   InputAdornment,
   Dialog,
   DialogTitle,
-  DialogContent
+  DialogContent,
+  Card,
+  Avatar,
+  Divider
 } from "@mui/material";
 import React, { useCallback, useEffect } from "react";
+import { REACT_APP_WEB_URL } from 'config';
 import MoreVertIcon from "@mui/icons-material/MoreVert";
-import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import SearchIcon from "@mui/icons-material/Search";
 import Tab from "@mui/material/Tab";
 import TabContext from "@mui/lab/TabContext";
@@ -43,14 +46,15 @@ import ReplyIcon from "@mui/icons-material/Reply";
 import EditIcon from "@mui/icons-material/Edit";
 import MessageIcon from "@mui/icons-material/Message";
 import FlagIcon from "@mui/icons-material/Flag";
-import PersonIcon from "@mui/icons-material/Person";
-import StoreIcon from "@mui/icons-material/Store";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import {
   ContentPasteTwoTone as ContentPasteIcon,
   EditNote as EditNoteIcon,
   AssignmentOutlined as AssignmentIcon,
   AssignmentIndOutlined as AssignmentIndIcon,
+  Lock as LockIcon,
+  LockOpen as LockOpenIcon,
+  Visibility as VisibilityIcon
 } from "@mui/icons-material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
@@ -80,6 +84,7 @@ const Reviews = () => {
   const [sellerNotes, setSellerNotes] = useState({});
   const [openModal, setModalOpen] = useState(false);
   const [localReplies, setLocalReplies] = useState({});
+  const [action, setAction] = useState("");
   const handleModalOpen = () => setModalOpen(true);
   const handleModalClose = () => setModalOpen(false);
   const handleDateRange = (option) => {
@@ -123,9 +128,13 @@ const Reviews = () => {
   const isAdmin = Number(designation_id) === 2;
   const [localNotes, setLocalNotes] = useState({});
   const [tab, setTab] = useState("new");
+  const [tabCount, setTabCount] = useState({});
   const [open1, setOpen1] = React.useState(false);
   const [reviews, setReviews] = useState([]);
+  const [vendorList, setVendorList] = useState([]);
+  const [vendorId, setVendorId] = useState("");
   const [productList, setProductList] = useState([]);
+  const [baseUrl, setBaseUrl] = useState("");
   const [reviewIds, setReviewIds] = useState([]);
   const [isAllChecked, setIsAllChecked] = useState(false);
   const [internalNoteOpen, setInternalNoteOpen] = useState(false);
@@ -136,8 +145,14 @@ const Reviews = () => {
     deliveryStar: "",
     itemStar: ""
   });
-  const [rowsPerPage, setRowsPerPage] = useState(25);
-  const [page, setPage] = useState(0);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 25,
+    totalRecords: 0,
+    totalPages: 1,
+    hasNextPage: false,
+    hasPreviousPage: false
+  })
   const [rejectRemark, setRejectRemark] = useState("");
   const [type1, setType1] = useState("");
   const [id, setId] = useState("");
@@ -167,7 +182,7 @@ const Reviews = () => {
     setRoute(ROUTE_CONSTANT.login)
   };
   const handleOpen = (type, msg) => {
-    setMsg(msg?.message);
+    setMsg(msg?.message || msg);
     setOpen(true);
     setType(type);
     if (msg?.response?.status === 401) {
@@ -176,7 +191,7 @@ const Reviews = () => {
   };
   const handleReplyOpen = (item) => {
     setSelectedReview(item);
-    setReplyText(localReplies[item._id] || "");
+    setReplyText(item.seller_reply?.message || "");
     setReplyOpen(true);
   };
   const handleReplyClose = () => {
@@ -203,6 +218,7 @@ const Reviews = () => {
     if (route !== null) {
       navigate(route);
     }
+    setAction("");
     setRoute(null);
     setMsg(null);
   };
@@ -218,7 +234,10 @@ const Reviews = () => {
     setType1("");
   };
   const handleChangePage = (event, newPage) => {
-    setPage(newPage);
+    setPagination(prev => ({
+      ...prev,
+      page: newPage + 1
+    }));
   };
   const handleOpenNotePopup = (type, item) => {
     setNoteType(type);
@@ -236,12 +255,18 @@ const Reviews = () => {
     setSelectedNoteItem(null);
   };
   const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
+    setPagination(prev => {
+      return {
+        ...prev,
+        limit: parseInt(event.target.value, 10),
+        page: 1
+      }
+    })
   };
+
   const getProductList = useCallback(async () => {
     try {
-      const res = await ApiService.get(apiEndpoints.getAllVendorProduct, auth_key);
+      const res = await ApiService.get(`${apiEndpoints.getAllVendorProduct}` + (isAdmin ? `?vendor_id=${vendorId}` : ""), auth_key);
       console.log("product list", res?.data?.data);
       if (res?.status === 200) {
         setProductList(res?.data?.data);
@@ -249,36 +274,62 @@ const Reviews = () => {
     } catch (error) {
       handleOpen("error", error);
     }
-  }, [auth_key]);
+  }, [auth_key, vendorId]);
+
+
+  const getAllVendors = async () => {
+    if (!isAdmin) return;
+    try {
+      const res = await ApiService.get(apiEndpoints.getVendorsList, auth_key);
+      if (res.status === 200) {
+        setVendorList(res?.data?.data);
+      }
+    } catch (error) {
+
+    }
+  }
+
+
   const getReviewList = async () => {
     try {
       console.log({ filters });
-      const apiTab = tab === "completed" ? "approved" : tab;
+      const apiTab = tab;
       const res = await ApiService.get(
-        `${apiEndpoints.getRatingByType}/${apiTab}?startDate=${date.from}&endDate=${date.to}&delivery_rating=${filters.deliveryStar}&item_rating=${filters.itemStar}&product_id=${filters.productId}`,
+        `${apiEndpoints.getRatingByType}/${apiTab}?startDate=${date.from}&endDate=${date.to}&delivery_rating=${filters.deliveryStar}&item_rating=${filters.itemStar}&product_id=${filters.productId}&page=${pagination.page}&limit=${pagination.limit}`,
         auth_key
       );
       if (res?.status === 200) {
         console.log("res----", res);
         setReviews(res?.data?.ratingData);
+        setBaseUrl(res.data.imageBaseUrl);
+        setPagination(res?.data?.pagination);
+        setTabCount(res?.data?.tabCounts);
       }
     } catch (error) {
       handleOpen("error", error);
     }
   };
+
   useEffect(() => {
     getReviewList();
-  }, [tab]);
+  }, [tab, date, pagination.page, pagination.limit]);
+
   useEffect(() => {
+    getAllVendors();
+    if (isAdmin && !vendorId) return;
     getProductList();
-  }, []);
-  const changeReviewStatus = async () => {
+  }, [vendorId]);
+
+
+  const changeReviewStatus = async (status = "") => {
     try {
       const payload = {
-        status: type1,
-        reject_remark: rejectRemark,
+        status: type1 || status,
         id: id ? [id] : reviewIds
       };
+      if (type1 === "rejected") {
+        payload.reject_remark = rejectRemark;
+      }
       const res = await ApiService.post(apiEndpoints.changeRatingStatus, payload, auth_key);
       if (res?.status === 200) {
         getReviewList();
@@ -343,22 +394,14 @@ const Reviews = () => {
       setReviewIds([]);
     }
   };
+
   const handleCheckboxChange = (id) => {
     setReviewIds((prev) =>
       prev.includes(id) ? prev.filter((reviewId) => reviewId !== id) : [...prev, id]
     );
   };
-  const btnStyle = (bg, hover) => ({
-    fontSize: 12,
-    px: 2,
-    py: 0.8,
-    borderRadius: "6px",
-    textTransform: 'none',
-    fontWeight: 600,
-    boxShadow: 'none',
-    bgcolor: bg,
-    '&:hover': { bgcolor: hover, boxShadow: '0px 4px 8px rgba(0,0,0,0.1)' }
-  });
+
+
   const handleSaveNote = () => {
     if (!noteText.trim()) return;
     if (noteType === "buyer") {
@@ -374,18 +417,44 @@ const Reviews = () => {
     }
     handleCloseNotePopup();
   };
+
   function removeHTMLTags(str) {
     return str.replace(/<\/?[^>]+(>|$)/g, "");
   }
-  const sendReply = () => {
-    if (!replyText.trim()) return;
 
-    setLocalReplies((prev) => ({
-      ...prev,
-      [selectedReview._id]: replyText
-    }));
+  const sendReply = async () => {
+    if (!replyText.trim()) return;
+    try {
+      const payload = {
+        rating_id: selectedReview._id,
+        message: replyText || ""
+      };
+      const res = await ApiService.post(apiEndpoints.reviewReply, payload, auth_key);
+      if (res.status === 200) {
+        getReviewList();
+      }
+    } catch (error) {
+      console.log(error);
+    }
     handleReplyClose();
   };
+
+  const handleReviewAction = async (action) => {
+    if (!action) return;
+    try {
+      const payload = {
+        action,
+        rating_id: selectedReview._id,
+      };
+      const res = await ApiService.post(apiEndpoints.reviewAction, payload, auth_key);
+      if (res.status === 200) {
+        getReviewList();
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
   return (
     <>
       <Box
@@ -420,9 +489,29 @@ const Reviews = () => {
                 flexWrap: "wrap",
                 overflowX: "auto",
                 gap: 2,
-                alignItems: "center"
+                alignItems: "center",
+                pt: 1
               }}
             >
+
+              {isAdmin && (<Autocomplete
+                id="single-select-vendor"
+                options={vendorList}
+                getOptionLabel={(option) =>
+                  option.shopName
+                }
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Select Vendor"
+                    placeholder="Select Vendor"
+                    size="small"
+                  />
+                )}
+                sx={{ minWidth: 220 }}
+                onChange={(e, value) => setVendorId(value?._id)}
+              />)}
+
               {/* Product Autocomplete */}
               <Autocomplete
                 id="single-select-product"
@@ -570,12 +659,12 @@ const Reviews = () => {
               <TabContext value={tab}>
                 <Box>
                   <TabList onChange={handleTabChange} aria-label="review tabs" variant="scrollable" scrollButtons="auto">
-                    <Tab label={<Box sx={{ textAlign: 'center' }}><Typography fontWeight={700} fontSize={13}>NEW</Typography><Typography fontSize={12}>2</Typography></Box>} value="new" />
-                    <Tab label={<Box sx={{ textAlign: 'center' }}><Typography fontWeight={700} fontSize={13}>REPLIED</Typography><Typography fontSize={12}>5</Typography></Box>} value="replied" />
-                    <Tab label={<Box sx={{ textAlign: 'center' }}><Typography fontWeight={700} fontSize={13}>FLAGGED</Typography><Typography fontSize={12}>3</Typography></Box>} value="flagged" />
-                    <Tab label={<Box sx={{ textAlign: 'center' }}><Typography fontWeight={700} fontSize={13}>ARCHIVAL</Typography><Typography fontSize={12}>15</Typography></Box>} value="archival" />
-                    <Tab label={<Box sx={{ textAlign: 'center' }}><Typography fontWeight={700} fontSize={13}>Completed</Typography><Typography fontSize={12}>25</Typography></Box>} value="completed" />
-                    <Tab label={<Box sx={{ textAlign: 'center' }}><Typography fontWeight={700} fontSize={13}>All</Typography><Typography fontSize={12}>50</Typography></Box>} value="all" />
+                    <Tab label={<Box sx={{ textAlign: 'center' }}><Typography fontWeight={700} fontSize={13}>NEW</Typography><Typography fontSize={12}>{tabCount.new || 0}</Typography></Box>} value="new" />
+                    <Tab label={<Box sx={{ textAlign: 'center' }}><Typography fontWeight={700} fontSize={13}>REPLIED</Typography><Typography fontSize={12}>{tabCount.replied || 0}</Typography></Box>} value="replied" />
+                    <Tab label={<Box sx={{ textAlign: 'center' }}><Typography fontWeight={700} fontSize={13}>FLAGGED</Typography><Typography fontSize={12}>{tabCount.flagged || 0}</Typography></Box>} value="flagged" />
+                    <Tab label={<Box sx={{ textAlign: 'center' }}><Typography fontWeight={700} fontSize={13}>ARCHIVAL</Typography><Typography fontSize={12}>{tabCount.archival || 0}</Typography></Box>} value="archival" />
+                    <Tab label={<Box sx={{ textAlign: 'center' }}><Typography fontWeight={700} fontSize={13}>Completed</Typography><Typography fontSize={12}>{tabCount.completed || 0}</Typography></Box>} value="completed" />
+                    <Tab label={<Box sx={{ textAlign: 'center' }}><Typography fontWeight={700} fontSize={13}>All</Typography><Typography fontSize={12}>{tabCount.all || 0}</Typography></Box>} value="all" />
                   </TabList>
                 </Box>
                 {/* <TabPanel value={tab} sx={{ padding: "24px 0" }}></TabPanel> */}
@@ -635,7 +724,8 @@ const Reviews = () => {
                         >
                           <MenuItem
                             onClick={() => {
-                              reviewIds?.length > 0 && handleOpen1("approved");
+                              setType1("approved");
+                              reviewIds?.length > 0 && changeReviewStatus("approved");
                               setAnchorEl(null);
                             }}
                           >
@@ -680,266 +770,306 @@ const Reviews = () => {
               >
                 <TableRow sx={{
                   '&:hover': { bgcolor: '#fafafa' },
-                  verticalAlign: 'top'
+                  verticalAlign: 'top',
+                  '& .MuiTableCell-head': {
+                    fontSize: '14px',
+                    fontWeight: 600,
+                  },
                 }}>
                   <TableCell sx={{ minWidth: 50, width: 50 }}>S.No</TableCell>
-                  <TableCell sx={{ minWidth: 80, width: 80 }}>Date & Time</TableCell>
-                  <TableCell sx={{ minWidth: 110, width: 110 }}>User Details</TableCell>
-                  <TableCell sx={{ minWidth: 210, width: 210 }}>Item Image, Title, SKU, Product ID, Shop name</TableCell>
-                  <TableCell sx={{ minWidth: 180, width: 180 }}>Full Feedback (Full text & Images)</TableCell>
-                  <TableCell sx={{ minWidth: 230, width: 230 }} align="center">Actions</TableCell>
+                  <TableCell sx={{ minWidth: 60, width: 60 }}>Date & Time</TableCell>
+                  <TableCell sx={{ minWidth: 100, width: 100 }}>User Details</TableCell>
+                  <TableCell sx={{ minWidth: 170, width: 180 }}>Item Image, Title, SKU, Product ID, Shop name</TableCell>
+                  <TableCell sx={{ minWidth: 210, width: 210 }}>Full Feedback (Full text & Images)</TableCell>
+                  <TableCell sx={{ minWidth: 210, width: 210 }} align="center">Actions</TableCell>
                 </TableRow>
               </TableHead>
               {reviews?.length > 0 ? (
                 <TableBody>
-                  {reviews.map((item, index) => (
-                    <TableRow key={index} sx={{ verticalAlign: 'top', '& .MuiTableCell-root': { py: 1.5 } }}>
-                      {/* S.No */}
-                      <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Checkbox
-                            checked={reviewIds.includes(item._id)}
-                            onClick={() => handleCheckboxChange(item._id)}
-                          />
-                          {index + 1}
-                        </Box>
-                      </TableCell>
-                      {/* Date & Time */}
-                      <TableCell>
-                        <Typography fontSize={13}>{formatDate(item?.createdAt)}</Typography>
-                        <Typography fontSize={12} color="text.secondary">{formatTime(item?.createdAt)}</Typography>
-                      </TableCell>
-                      {/* User Details */}
-                      <TableCell>
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, minWidth: 150 }}>
-                          <Box sx={{ width: 44, height: 44, borderRadius: '50%', overflow: 'hidden', border: '1px solid #ddd' }}>
-                            <img
-                              src={item?.userImage || "/placeholder-user.png"}
-                              alt=""
-                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                            // onError={e => e.target.src = "https:via.placeholder.com/44"}
+                  {reviews.map((item, index) => {
+                    const imageLength = item?.images?.length;
+                    return (
+                      <TableRow key={index} sx={{ verticalAlign: 'top', '& .MuiTableCell-root': { py: 1.5 } }}>
+                        {/* S.No */}
+                        <TableCell>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Checkbox
+                              checked={reviewIds.includes(item._id)}
+                              onClick={() => handleCheckboxChange(item._id)}
                             />
+                            {index + 1}
                           </Box>
-                          <Typography fontSize={13} fontWeight={600}>{item?.user_name}</Typography>
-                          <Typography fontSize={12} color="text.secondary">User ID : {item?.userId || "—"}</Typography>
-                        </Box>
-                      </TableCell>
-                      {/* Item Image, Title, SKU, Product ID, Shop name */}
-                      <TableCell>
-                        <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start', minWidth: 200 }}>
-                          <Box
-                            sx={{
-                              width: 60,
-                              height: 60,
-                              overflow: 'hidden',
-                              borderRadius: 1,
-                              border: '1px solid #ddd',
-                              '& img': { transition: '0.3s' },
-                              '&:hover img': { transform: 'scale(1.1)' }
-                            }}
-                          >
-                            <img
-                              src={item?.productImage || ""}
-                              alt=""
-                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                            // onError={e => e.target.src = "https://via.placeholder.com/60"}
-                            />
+                        </TableCell>
+                        {/* Date & Time */}
+                        <TableCell>
+                          <Typography fontSize={13}>{formatDate(item?.createdAt)}</Typography>
+                          <Typography fontSize={12} color="text.secondary">{formatTime(item?.createdAt)}</Typography>
+                        </TableCell>
+                        {/* User Details */}
+                        <TableCell>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, minWidth: 150 }}>
+                            <Box sx={{ width: 44, height: 44, borderRadius: '50%', overflow: 'hidden', border: '1px solid #ddd' }}>
+                              <Avatar
+                                src={("https://api.agukart.com/uploads/profileImage/" + item?.user_image) || "user.avatar"}
+                                alt=""
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              />
+                            </Box>
+                            <Typography fontSize={13} fontWeight={600}>{item?.user_name}</Typography>
+                            <Typography fontSize={12}>ID : {item?.customer_id || "—"}</Typography>
                           </Box>
-                          <Box>
-                            <Typography
-                              fontSize={14}
-                              fontWeight={500}
+                        </TableCell>
+                        {/* Item Image, Title, SKU, Product ID, Shop name */}
+                        <TableCell>
+                          <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start', width: "100%", minWidth: 200 }}>
+                            <Box
                               sx={{
-                                maxWidth: 210,
-                                lineHeight: 1.5,
-                                display: '-webkit-box',
-                                WebkitLineClamp: 3,
-                                WebkitBoxOrient: 'vertical',
+                                width: 60,
+                                height: 60,
                                 overflow: 'hidden',
-                                textOverflow: 'ellipsis'
+                                borderRadius: 1,
+                                border: '1px solid #ddd',
+                                '& img': { transition: '0.3s' },
+                                '&:hover img': { transform: 'scale(1.1)' }
                               }}
                             >
-                              {removeHTMLTags(item?.product_name || "")}
+                              <img
+                                src={"https://api.agukart.com/uploads/product/" + (item?.productEditedImage || item?.productImage)}
+                                alt=""
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              />
+                            </Box>
+                            <Box>
+                              <Typography
+                                component={"a"}
+                                href={`${REACT_APP_WEB_URL}/product/slug/${item.productCode}`}
+                                fontSize={14}
+                                fontWeight={500}
+                                sx={{
+                                  maxWidth: 210,
+                                  lineHeight: 1.5,
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 3,
+                                  WebkitBoxOrient: 'vertical',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis'
+                                }}
+                              >
+                                {removeHTMLTags(item?.product_name || "")}
+                              </Typography>
+                              <Typography fontSize={12} color="text.secondary">SKU : {item?.productSku || "—"}</Typography>
+                              <Typography fontSize={12} color="text.secondary">Product ID : {item?.productCode || "—"}</Typography>
+                              <Typography fontSize={12} color="text.secondary">Shop Name : {item?.shopName || "—"}</Typography>
+                            </Box>
+                          </Box>
+                        </TableCell>
+                        {/* Full Feedback */}
+                        <TableCell>
+                          <Box sx={{ minWidth: 300 }}>
+                            {/* Review Rating */}
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                              <Typography fontSize={13} fontWeight={500}>Review Rating</Typography>
+                              <Rating value={item?.rating} precision={0.5} readOnly size="small" />
+                            </Box>
+
+                            <Box sx={{ display: 'flex', flexDirection: { md: 'column', lg: 'row' }, gap: 1, mb: 1 }}>
+                              {/* Images in 3×N Grid */}
+                              {item?.images?.length > 0 && (<Box sx={{ display: 'grid', gridTemplateColumns: `repeat(${imageLength <= 3 ? imageLength : 3}, 60px)`, gap: 0.5 }}>
+                                {item.images.map((img, i) => (
+                                  <Box key={i} sx={{ width: 60, height: 60, borderRadius: 1, overflow: 'hidden', border: '1px solid #ddd' }}>
+                                    <img src={baseUrl + img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                  </Box>
+                                ))}
+                              </Box>)}
+
+                              {/* Ratings */}
+                              <Box>
+                                {[
+                                  { label: 'Item Quality', value: +item?.item_rating },
+                                  { label: 'Delivery', value: +item?.delivery_rating },
+                                  { label: 'Customer Service', value: +item?.customer_service_rating },
+                                ].map(({ label, value }) => (
+                                  <Box key={label} sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.2 }}>
+                                    <Typography fontSize={11} sx={{ width: 95, flexShrink: 0, color: 'text.secondary' }}>
+                                      {label}
+                                    </Typography>
+                                    <Rating value={value} precision={0.5} readOnly size="small" sx={{ fontSize: 14 }} />
+                                  </Box>
+                                ))}
+                              </Box>
+                            </Box>
+
+                            {/* Comment */}
+                            <Typography fontSize={13} mt={0.5} fontWeight={500} sx={{ maxWidth: 280 }}>
+                              {item?.additional_comment || ""}
+                              {isAdmin && localNotes[item._id] && (
+                                <Typography fontSize={12} mt={0.5} color="purple">
+                                  <strong>Internal Note:</strong> {localNotes[item._id]}
+                                </Typography>
+                              )}
                             </Typography>
-                            <Typography fontSize={12} color="text.secondary">SKU : {item?.productSku || "—"}</Typography>
-                            <Typography fontSize={12} color="text.secondary">Product ID : {item?.product_id || "—"}</Typography>
-                            <Typography fontSize={12} color="text.secondary">Shop Name : {item?.shopName || "—"}</Typography>
+                            {item.replyShopName && (<><Divider sx={{ maxWidth: "300px" }} />
+                              <Typography variant="caption" color="GrayText">
+                                Reply by {item.replyShopName}: <strong>{item.seller_reply?.message}</strong>
+                              </Typography></>)}
                           </Box>
-                        </Box>
-                      </TableCell>
-                      {/* Full Feedback */}
-                      <TableCell>
-                        <Box sx={{ minWidth: 300 }}>
-                          {/* Review Rating */}
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                            <Typography fontSize={13} fontWeight={500}>Review Rating</Typography>
-                            <Rating value={item?.item_rating} precision={0.5} readOnly size="small" />
-                          </Box>
-                          {/* 3 Photos */}
-                          {item?.images?.length > 0 && (
-                            <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-                              {item.images.slice(0, 3).map((img, i) => (
-                                <Box key={i} sx={{ width: 60, height: 60, borderRadius: 1, overflow: 'hidden', border: '1px solid #ddd' }}>
-                                  <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                </Box>
-                              ))}
-                            </Box>
-                          )}
-                          {/* Item Quality, Delivery, Customer Service */}
-                          {[
-                            { label: 'Item Quality', value: item?.item_rating },
-                            { label: 'Delivery', value: item?.delivery_rating },
-                            { label: 'Customer Service', value: item?.customer_service_rating },
-                          ].map(({ label, value }) => (
-                            <Box key={label} sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.2 }}>
-                              <Typography fontSize={11} sx={{ width: 95, flexShrink: 0, color: 'text.secondary' }}>
-                                {label}
-                              </Typography>
-                              <Rating value={value} precision={0.5} readOnly size="small" sx={{ fontSize: 14 }} />
-                            </Box>
-                          ))}
-                          {/* Comment */}
-                          <Typography fontSize={12} color="text.secondary" mt={0.5} sx={{ maxWidth: 280 }}>
-                            {item?.additional_comment || ""}
-                            {isAdmin && localNotes[item._id] && (
-                              <Typography fontSize={12} mt={0.5} color="purple">
-                                <strong>Internal Note:</strong> {localNotes[item._id]}
-                              </Typography>
-                            )}
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                      {/* Actions */}
-                      <TableCell sx={{ alignContent: "center" }}>
-                        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.9, alignItems: "center" }}>
-                          {/* Row 1 */}
-                          <Box sx={{ display: "flex", gap: 1 }}>
-                            <Button
-                              size="small"
-                              variant="contained"
-                              startIcon={<ReplyIcon />}
-                              disabled={!!localReplies[item._id]}
-                              onClick={() => handleReplyOpen(item)}
-                              sx={{
-                                bgcolor: "success.light",
-                                color: "success.contrastText",
-                                "&:hover": {
-                                  bgcolor: "success.main",
-                                },
-                              }}
-                            >
-                              Reply
-                            </Button>
-
-                            <Button
-                              size="small"
-                              variant="contained"
-                              color="info"
-                              startIcon={<EditIcon />}
-                              disabled={!localReplies[item._id]}
-                              onClick={() => handleReplyOpen(item)}
-                            >
-                              Edit
-                            </Button>
-
-                            {isAdmin && (
+                        </TableCell>
+                        {/* Actions */}
+                        <TableCell sx={{ alignContent: "center" }}>
+                          <Box sx={{ display: "flex", flexDirection: "column", gap: 0.9, width: "100%" }}>
+                            {/* Row 1 */}
+                            <Box sx={{ display: "flex", gap: 1 }}>
                               <Button
                                 size="small"
-                                variant="outlined"
-                                color="secondary"
-                                startIcon={<EditNoteIcon fontSize="large" />}
-                                onClick={() => handleNoteOpen(item)}
+                                variant="contained"
+                                startIcon={<ReplyIcon />}
+                                disabled={!!item?.seller_reply?.message}
+                                onClick={() => handleReplyOpen(item)}
                                 sx={{
-                                  border: "2px solid",
-                                  color: "secondary.main",
+                                  bgcolor: "success.light",
+                                  color: "success.contrastText",
                                   "&:hover": {
-                                    borderWidth: 2
+                                    bgcolor: "success.main",
+                                  },
+                                  flex: 1
+                                }}
+                              >
+                                Reply
+                              </Button>
+
+                              <Button
+                                size="small"
+                                variant="contained"
+                                color="info"
+                                startIcon={<EditIcon />}
+                                disabled={!item?.seller_reply?.message}
+                                onClick={() => handleReplyOpen(item)}
+                                sx={{ flex: 1 }}
+                              >
+                                Edit
+                              </Button>
+
+                              {isAdmin && (
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  color="inherit"
+                                  startIcon={<EditNoteIcon fontSize="large" />}
+                                  onClick={() => handleNoteOpen(item)}
+                                  sx={{
+                                    border: "2px solid",
+                                    "&:hover": {
+                                      borderWidth: 2
+                                    }
+                                  }}
+                                >
+                                  Internal Note
+                                </Button>
+                              )}
+                            </Box>
+
+                            {/* Row 2 */}
+                            <Box sx={{ display: "flex", gap: 1 }}>
+                              <Button
+                                size="small"
+                                variant="contained"
+                                startIcon={<MessageIcon />}
+                                onClick={() => handleMessageClick(item)}
+                                sx={{
+                                  bgcolor: "info.light",
+                                  color: "info.contrastText",
+                                  "&:hover": {
+                                    bgcolor: "info.main",
+                                  }, flex: 1
+                                }}
+                              >
+                                Message
+                              </Button>
+
+                              <Button
+                                size="small"
+                                variant="contained"
+                                startIcon={<FlagIcon />}
+                                sx={{
+                                  bgcolor: "rgb(225, 15, 15)",
+                                  color: "error.contrastText",
+                                  "&:hover": {
+                                    bgcolor: "error.dark",
+                                  }, flex: 1
+                                }}
+                              >
+                                Flag
+                              </Button>
+
+                              <Button
+                                size="small"
+                                variant="contained"
+                                startIcon={<AssignmentIndIcon />}
+                                onClick={() => handleOpenNotePopup("buyer", item)}
+                                sx={{
+                                  bgcolor: "#f6e786",
+                                  color: "inherit",
+                                  border: "1px solid #e2d05c",
+                                  "&:hover": {
+                                    bgcolor: "#f6e786",
+                                    opacity: 0.9
                                   },
                                 }}
                               >
-                                Internal Note
+                                Note to Buyer
                               </Button>
-                            )}
+                            </Box>
+
+                            {/* Row 3 */}
+                            <Box sx={{ display: "flex", gap: 1.2, alignItems: "center" }}>
+                              <Button
+                                size="small"
+                                variant={item?.is_hidden ? "contained" : "outlined"}
+                                color={item?.is_hidden ? "inherit" : "primary"}
+                                startIcon={item?.is_hidden ? <VisibilityIcon /> : <VisibilityOffIcon />}
+                                sx={{ flex: 1, border: "1px solid", borderColor: item?.is_hidden ? "divider" : "" }}
+                                component={Card}
+                                onClick={() => {
+                                  setSelectedReview(item);
+                                  setAction(item?.is_hidden ? "unhide" : "hide");
+                                  handleOpen("", `Are you sure you want to ${item?.is_hidden ? "unhide" : "hide"} this review?`);
+                                }}
+                              >
+                                {item?.is_hidden ? "Show Review" : "Hide Review"}
+                              </Button>
+
+                              <Button
+                                size="small"
+                                variant="contained"
+                                startIcon={<AssignmentIcon />}
+                                onClick={() => handleOpenNotePopup("seller", item)}
+                                sx={{
+                                  bgcolor: "primary",
+                                  color: "info.contrastText",
+                                  "&:hover": {
+                                    bgcolor: "info.main",
+                                  }, flex: 1
+                                }}
+                              >
+                                Seller Note
+                              </Button>
+
+                              <IconButton
+                                onClick={() => {
+                                  setSelectedReview(item);
+                                  setAction(item?.is_locked ? "unlock" : "lock")
+                                  handleOpen("", `Are you sure you want to ${item?.is_locked ? "unlock" : "lock"} this review?`)
+                                }}
+                                sx={{ p: 0 }}
+                              >
+                                {item?.is_locked ? <LockIcon fontSize="large" /> : <LockOpenIcon fontSize="large" />}
+                              </IconButton>
+                            </Box>
                           </Box>
-
-                          {/* Row 2 */}
-                          <Box sx={{ display: "flex", gap: 1 }}>
-                            <Button
-                              size="small"
-                              variant="contained"
-                              startIcon={<MessageIcon />}
-                              onClick={() => handleMessageClick(item)}
-                              sx={{
-                                bgcolor: "info.light",
-                                color: "info.contrastText",
-                                "&:hover": {
-                                  bgcolor: "info.main",
-                                },
-                              }}
-                            >
-                              Message
-                            </Button>
-
-                            <Button
-                              size="small"
-                              variant="contained"
-                              startIcon={<FlagIcon />}
-                              sx={{
-                                bgcolor: "rgb(225, 15, 15)",
-                                color: "error.contrastText",
-                                "&:hover": {
-                                  bgcolor: "error.dark",
-                                },
-                              }}
-                            >
-                              Flag
-                            </Button>
-
-                            <Button
-                              size="small"
-                              variant="contained"
-                              color="secondary"
-                              startIcon={<AssignmentIndIcon />}
-                              onClick={() => handleOpenNotePopup("buyer", item)}
-                            >
-                              Note to Buyer
-                            </Button>
-                          </Box>
-
-                          {/* Row 3 */}
-                          <Box sx={{ display: "flex", gap: 1.2, alignItems: "center" }}>
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              startIcon={<VisibilityOffIcon />}
-                            >
-                              Hide Reviews
-                            </Button>
-
-                            <Button
-                              size="small"
-                              variant="contained"
-                              startIcon={<AssignmentIcon />}
-                              onClick={() => handleOpenNotePopup("seller", item)}
-                              sx={{
-                                bgcolor: "primary",
-                                color: "info.contrastText",
-                                "&:hover": {
-                                  bgcolor: "info.main",
-                                },
-                              }}
-                            >
-                              Seller Note
-                            </Button>
-
-                            <IconButton color="default">
-                              <LockOutlinedIcon />
-                            </IconButton>
-                          </Box>
-                        </Box>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               ) : (
                 <TableBody scope="row">
@@ -951,11 +1081,11 @@ const Reviews = () => {
             </Table>
           </TableContainer>
           <TablePagination
+            component={Box}
             rowsPerPageOptions={[25, 50, 75, 100]}
-            component="div"
-            count={reviews?.length}
-            rowsPerPage={rowsPerPage}
-            page={page}
+            count={pagination.totalRecords}
+            rowsPerPage={pagination.limit}
+            page={pagination.page - 1}
             onPageChange={handleChangePage}
             onRowsPerPageChange={handleChangeRowsPerPage}
           />
@@ -971,7 +1101,7 @@ const Reviews = () => {
           changeReviewStatus={changeReviewStatus}
         />
       </Box >
-      <ConfirmModal open={open} handleClose={handleClose} type={type} msg={msg} />
+      <ConfirmModal open={open} handleClose={handleClose} type={type} msg={msg} onConfirm={() => handleReviewAction(action)} />
       <Dialog open={replyOpen} onClose={handleReplyClose} maxWidth="sm" fullWidth>
         <DialogTitle>
           Reply to Review
