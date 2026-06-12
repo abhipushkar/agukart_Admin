@@ -154,6 +154,8 @@ export const apiEndpoints = {
   getProductDataById: 'get-productById',
   getUserOrderHistoryForMessages: 'getUserOrderHistory',
   getReviews: 'getReviews',
+  reviewReply: 'reply-rating',
+  reviewAction: 'rating-action',
   getFavoriteProducts: 'getFavoriteProducts',
   addBanner: 'add-banner',
   getBanner: 'get-banner',
