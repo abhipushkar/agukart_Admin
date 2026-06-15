@@ -156,6 +156,7 @@ export const apiEndpoints = {
   getReviews: 'getReviews',
   reviewReply: 'reply-rating',
   reviewAction: 'rating-action',
+  reviewNotes: 'rating-notes',
   getFavoriteProducts: 'getFavoriteProducts',
   addBanner: 'add-banner',
   getBanner: 'get-banner',

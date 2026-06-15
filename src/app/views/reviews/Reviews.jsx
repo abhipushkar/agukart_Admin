@@ -70,18 +70,26 @@ import ClearIcon from "@mui/icons-material/Clear";
 import ConfirmModal from "app/components/ConfirmModal";
 import { dashboardDateRange } from "app/data/Index";
 import CloseIcon from "@mui/icons-material/Close";
+import { useProfileData } from "app/contexts/profileContext";
+import MessagePopup from "./MessagePopup";
+
 const Reviews = () => {
+  const today = new Date();
+  const last365Days = new Date();
+  last365Days.setDate(today.getDate() - 365);
   const [date, setDate] = useState({
-    range: "Today",
-    from: new Date().toISOString().split("T")[0],
-    to: new Date().toISOString().split("T")[0]
+    range: "All",
+    from: null,
+    to: null
   });
+
+  const user = useProfileData()?.logUserData;
+  const user_id = user?._id;
+
   const [notePopupOpen, setNotePopupOpen] = useState(false);
   const [noteType, setNoteType] = useState("");
   const [noteText, setNoteText] = useState("");
   const [selectedNoteItem, setSelectedNoteItem] = useState(null);
-  const [buyerNotes, setBuyerNotes] = useState({});
-  const [sellerNotes, setSellerNotes] = useState({});
   const [openModal, setModalOpen] = useState(false);
   const [localReplies, setLocalReplies] = useState({});
   const [action, setAction] = useState("");
@@ -98,6 +106,9 @@ const Reviews = () => {
         to: today.toISOString().split("T")[0]
       });
     };
+    if (option === "All") {
+      setDate({ range: "All", from: null, to: null });
+    }
     if (option === "Today") {
       returnDate("Today", 0);
     } else if (option === "Last day") {
@@ -143,11 +154,12 @@ const Reviews = () => {
   const [filters, setFilters] = useState({
     productId: "",
     deliveryStar: "",
-    itemStar: ""
+    itemStar: "",
+    keyword: ""
   });
   const [pagination, setPagination] = useState({
     page: 1,
-    limit: 25,
+    limit: 100,
     totalRecords: 0,
     totalPages: 1,
     hasNextPage: false,
@@ -175,6 +187,8 @@ const Reviews = () => {
   const [replyOpen, setReplyOpen] = useState(false);
   const [replyText, setReplyText] = useState("");
   const [selectedReview, setSelectedReview] = useState(null);
+  const [messagePopupOpen, setMessagePopupOpen] = useState(false);
+  const [selectedMessageReview, setSelectedMessageReview] = useState(null);
   const logOut = () => {
     localStorage.removeItem(localStorageKey.auth_key);
     localStorage.removeItem(localStorageKey.designation_id);
@@ -199,19 +213,14 @@ const Reviews = () => {
     setReplyText("");
     setSelectedReview(null);
   };
-  const handleNoteOpen = (item) => {
-    setSelectedNoteReview(item);
-    setInternalNoteText("");
-    setInternalNoteOpen(true);
-  };
-  const handleNoteClose = () => {
-    setInternalNoteOpen(false);
-    setInternalNoteText("");
-    setSelectedNoteReview(null);
-  };
+
   const handleMessageClick = (item) => {
-    const fakeChatId = item._id;
-    navigate(`/pages/message?slug=${fakeChatId}`);
+    setSelectedMessageReview(item);
+    setMessagePopupOpen(true);
+  };
+  const handleMessagePopupClose = () => {
+    setMessagePopupOpen(false);
+    setSelectedMessageReview(null);
   };
   const handleClose = () => {
     setOpen(false);
@@ -242,16 +251,23 @@ const Reviews = () => {
   const handleOpenNotePopup = (type, item) => {
     setNoteType(type);
     setSelectedNoteItem(item);
+    if (type === "internal") {
+      setNoteText(item?.internal_note?.note || "");
+      setInternalNoteText(item.internal_note || "");
+      setInternalNoteOpen(true);
+      return;
+    }
     if (type === "buyer") {
-      setNoteText(buyerNotes[item._id] || "");
+      setNoteText(item?.buyer_note?.note || "");
     } else {
-      setNoteText(sellerNotes[item._id] || "");
+      setNoteText(item?.seller_note?.note || "");
     }
     setNotePopupOpen(true);
   };
   const handleCloseNotePopup = () => {
     setNotePopupOpen(false);
     setNoteText("");
+    setInternalNoteOpen(false);
     setSelectedNoteItem(null);
   };
   const handleChangeRowsPerPage = (event) => {
@@ -285,17 +301,23 @@ const Reviews = () => {
         setVendorList(res?.data?.data);
       }
     } catch (error) {
-
+      console.log("couldn't get all vendors", error);
     }
   }
 
+  const getDateRange = () => {
+    if (date.range === "All") {
+      return ""
+    }
+    else return `startDate=${date.from}&endDate=${date.to}&`
+  }
 
   const getReviewList = async () => {
     try {
       console.log({ filters });
       const apiTab = tab;
       const res = await ApiService.get(
-        `${apiEndpoints.getRatingByType}/${apiTab}?startDate=${date.from}&endDate=${date.to}&delivery_rating=${filters.deliveryStar}&item_rating=${filters.itemStar}&product_id=${filters.productId}&page=${pagination.page}&limit=${pagination.limit}`,
+        `${apiEndpoints.getRatingByType}/${apiTab}?${getDateRange()}delivery_rating=${filters.deliveryStar}&item_rating=${filters.itemStar}&product_id=${filters.productId}&search=${filters.keyword}&page=${pagination.page}&limit=${pagination.limit}`,
         auth_key
       );
       if (res?.status === 200) {
@@ -402,18 +424,21 @@ const Reviews = () => {
   };
 
 
-  const handleSaveNote = () => {
+  const handleSaveNote = async () => {
     if (!noteText.trim()) return;
-    if (noteType === "buyer") {
-      setBuyerNotes((prev) => ({
-        ...prev,
-        [selectedNoteItem._id]: noteText
-      }));
-    } else {
-      setSellerNotes((prev) => ({
-        ...prev,
-        [selectedNoteItem._id]: noteText
-      }));
+    try {
+      const type = noteType === "internal" ? "internal_note" : noteType === "buyer" ? "buyer_note" : "seller_note";
+      const payload = {
+        type,
+        note: noteText,
+        rating_id: selectedNoteItem._id
+      }
+      const res = await ApiService.post(apiEndpoints.reviewNotes, payload, auth_key);
+      if (res.status === 200) {
+        getReviewList();
+      }
+    } catch (error) {
+      console.log(error);
     }
     handleCloseNotePopup();
   };
@@ -567,7 +592,7 @@ const Reviews = () => {
                 size="small"
                 sx={{ minWidth: 180 }}
               >
-                {dashboardDateRange.map((option) => (
+                {[{ value: "All", label: "All" }, ...dashboardDateRange].map((option) => (
                   <MenuItem key={option.value} value={option.value}>
                     {option.label}
                   </MenuItem>
@@ -595,6 +620,7 @@ const Reviews = () => {
                     </InputAdornment>
                   )
                 }}
+                disabled
               >
                 {[1, 2, 3, 4, 5].map((num) => (
                   <MenuItem key={num} value={num}>{num}</MenuItem>
@@ -622,13 +648,14 @@ const Reviews = () => {
                     </InputAdornment>
                   )
                 }}
+                disabled
               >
                 {[1, 2, 3, 4, 5].map((num) => (
                   <MenuItem key={num} value={num}>{num}</MenuItem>
                 ))}
               </TextField>
               <TextField
-                label="Search product by keyword"
+                label="Search by ID, Title, Customer"
                 name="keyword"
                 value={filters?.keyword || ""}
                 onChange={(e) =>
@@ -638,7 +665,21 @@ const Reviews = () => {
                   })
                 }
                 size="small"
-                sx={{ minWidth: 250 }}
+                sx={{ minWidth: 250, pr: "0 !important" }}
+                InputProps={{
+                  endAdornment: filters?.keyword && (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={() =>
+                          handleChange({ target: { name: "keyword", value: "" } })
+                        }
+                        sx={{ p: 0 }}
+                      >
+                        <ClearIcon fontSize="small" />
+                      </IconButton>
+                    </InputAdornment>
+                  )
+                }}
               />
               {/* Search Button */}
               <Button
@@ -787,7 +828,12 @@ const Reviews = () => {
               {reviews?.length > 0 ? (
                 <TableBody>
                   {reviews.map((item, index) => {
+
                     const imageLength = item?.images?.length;
+                    const hasUserInternalNote = item?.internal_note?.length > 0 && item?.internal_note?.some(note => note?.created_by === user_id);
+                    const hasUserBuyerNote = item?.buyer_note?.length > 0 && item?.buyer_note?.some(note => note?.created_by === user_id);
+                    const hasUserSellerNote = item?.seller_note?.length > 0 && item?.seller_note?.some(note => note?.created_by === user_id);
+
                     return (
                       <TableRow key={index} sx={{ verticalAlign: 'top', '& .MuiTableCell-root': { py: 1.5 } }}>
                         {/* S.No */}
@@ -912,6 +958,11 @@ const Reviews = () => {
                               <Typography variant="caption" color="GrayText">
                                 Reply by {item.replyShopName}: <strong>{item.seller_reply?.message}</strong>
                               </Typography></>)}
+                            {item?.buyer_note?.note && (
+                              <Typography color={"GrayText"} mt={1} fontSize={13}>
+                                Note to Buyer:- <strong>{item?.buyer_note?.note}</strong>
+                              </Typography>
+                            )}
                           </Box>
                         </TableCell>
                         {/* Actions */}
@@ -921,16 +972,11 @@ const Reviews = () => {
                             <Box sx={{ display: "flex", gap: 1 }}>
                               <Button
                                 size="small"
-                                variant="contained"
+                                variant="outlined"
                                 startIcon={<ReplyIcon />}
                                 disabled={!!item?.seller_reply?.message}
                                 onClick={() => handleReplyOpen(item)}
                                 sx={{
-                                  bgcolor: "success.light",
-                                  color: "success.contrastText",
-                                  "&:hover": {
-                                    bgcolor: "success.main",
-                                  },
                                   flex: 1
                                 }}
                               >
@@ -939,7 +985,7 @@ const Reviews = () => {
 
                               <Button
                                 size="small"
-                                variant="contained"
+                                variant="outlined"
                                 color="info"
                                 startIcon={<EditIcon />}
                                 disabled={!item?.seller_reply?.message}
@@ -953,15 +999,10 @@ const Reviews = () => {
                                 <Button
                                   size="small"
                                   variant="outlined"
-                                  color="inherit"
                                   startIcon={<EditNoteIcon fontSize="large" />}
-                                  onClick={() => handleNoteOpen(item)}
-                                  sx={{
-                                    border: "2px solid",
-                                    "&:hover": {
-                                      borderWidth: 2
-                                    }
-                                  }}
+                                  onClick={() => handleOpenNotePopup("internal", item)}
+
+                                // disabled={hasUserInternalNote}
                                 >
                                   Internal Note
                                 </Button>
@@ -972,49 +1013,56 @@ const Reviews = () => {
                             <Box sx={{ display: "flex", gap: 1 }}>
                               <Button
                                 size="small"
-                                variant="contained"
+                                variant="outlined"
+                                color="info"
                                 startIcon={<MessageIcon />}
                                 onClick={() => handleMessageClick(item)}
-                                sx={{
-                                  bgcolor: "info.light",
-                                  color: "info.contrastText",
-                                  "&:hover": {
-                                    bgcolor: "info.main",
-                                  }, flex: 1
-                                }}
                               >
                                 Message
                               </Button>
 
-                              <Button
-                                size="small"
-                                variant="contained"
-                                startIcon={<FlagIcon />}
-                                sx={{
-                                  bgcolor: "rgb(225, 15, 15)",
-                                  color: "error.contrastText",
-                                  "&:hover": {
-                                    bgcolor: "error.dark",
-                                  }, flex: 1
-                                }}
-                              >
-                                Flag
-                              </Button>
+                              {item?.is_flagged ? (
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  color="error"
+                                  startIcon={<FlagIcon />}
+                                  sx={{
+                                    border: "2px solid",
+                                    "&:hover": { borderWidth: 2 },
+                                    flex: 1,
+                                  }}
+                                  onClick={() => {
+                                    setSelectedReview(item);
+                                    setAction("unflag");
+                                    handleOpen("", "Are you sure you want to Unflag this review?");
+                                  }}
+                                >
+                                  Flagged
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  // color="error"
+                                  startIcon={<FlagIcon />}
+                                  sx={{ flex: 1, }}
+                                  onClick={() => {
+                                    setSelectedReview(item);
+                                    setAction("flag");
+                                    handleOpen("", "Are you sure you want to Flag this review?");
+                                  }}
+                                >
+                                  Flag
+                                </Button>
+                              )}
 
                               <Button
                                 size="small"
-                                variant="contained"
+                                variant="outlined"
                                 startIcon={<AssignmentIndIcon />}
                                 onClick={() => handleOpenNotePopup("buyer", item)}
-                                sx={{
-                                  bgcolor: "#f6e786",
-                                  color: "inherit",
-                                  border: "1px solid #e2d05c",
-                                  "&:hover": {
-                                    bgcolor: "#f6e786",
-                                    opacity: 0.9
-                                  },
-                                }}
+                              // disabled={hasUserBuyerNote}
                               >
                                 Note to Buyer
                               </Button>
@@ -1022,34 +1070,54 @@ const Reviews = () => {
 
                             {/* Row 3 */}
                             <Box sx={{ display: "flex", gap: 1.2, alignItems: "center" }}>
-                              <Button
-                                size="small"
-                                variant={item?.is_hidden ? "contained" : "outlined"}
-                                color={item?.is_hidden ? "inherit" : "primary"}
-                                startIcon={item?.is_hidden ? <VisibilityIcon /> : <VisibilityOffIcon />}
-                                sx={{ flex: 1, border: "1px solid", borderColor: item?.is_hidden ? "divider" : "" }}
-                                component={Card}
-                                onClick={() => {
-                                  setSelectedReview(item);
-                                  setAction(item?.is_hidden ? "unhide" : "hide");
-                                  handleOpen("", `Are you sure you want to ${item?.is_hidden ? "unhide" : "hide"} this review?`);
-                                }}
-                              >
-                                {item?.is_hidden ? "Show Review" : "Hide Review"}
-                              </Button>
+                              {item?.is_hidden ? (
+                                <Button
+                                  size="small"
+                                  variant="contained"
+                                  color="inherit"
+                                  startIcon={<VisibilityIcon />}
+                                  sx={{
+                                    flex: 1,
+                                    border: "1px solid",
+                                    borderColor: "divider",
+                                  }}
+                                  component={Card}
+                                  onClick={() => {
+                                    setSelectedReview(item);
+                                    setAction("unhide");
+                                    handleOpen("", "Are you sure you want to unhide this review?");
+                                  }}
+                                >
+                                  Show Review
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  color="primary"
+                                  startIcon={<VisibilityOffIcon />}
+                                  sx={{
+                                    flex: 1,
+                                    border: "1px solid",
+                                  }}
+                                  component={Card}
+                                  onClick={() => {
+                                    setSelectedReview(item);
+                                    setAction("hide");
+                                    handleOpen("", "Are you sure you want to hide this review?");
+                                  }}
+                                >
+                                  Hide Review
+                                </Button>
+                              )}
 
                               <Button
                                 size="small"
-                                variant="contained"
+                                variant="outlined"
                                 startIcon={<AssignmentIcon />}
                                 onClick={() => handleOpenNotePopup("seller", item)}
-                                sx={{
-                                  bgcolor: "primary",
-                                  color: "info.contrastText",
-                                  "&:hover": {
-                                    bgcolor: "info.main",
-                                  }, flex: 1
-                                }}
+                                sx={{ flex: 1 }}
+                                disabled={hasUserSellerNote}
                               >
                                 Seller Note
                               </Button>
@@ -1137,7 +1205,7 @@ const Reviews = () => {
           </Box>
         </DialogContent>
       </Dialog>
-      <Dialog open={internalNoteOpen} onClose={handleNoteClose} maxWidth="sm" fullWidth>
+      <Dialog open={internalNoteOpen} onClose={handleCloseNotePopup} maxWidth="sm" fullWidth>
         <DialogTitle>
           Internal Note (Admin Only)
         </DialogTitle>
@@ -1153,30 +1221,20 @@ const Reviews = () => {
               multiline
               rows={6}
               placeholder="Write internal note..."
-              value={internalNoteText}
-              onChange={(e) => setInternalNoteText(e.target.value)}
+              value={noteText}
+              onChange={(e) => setNoteText(e.target.value)}
             />
             {/* Buttons */}
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 2 }}>
               <Button onClick={() => {
-                setLocalNotes((prev) => ({
-                  ...prev,
-                  [selectedNoteReview._id]: internalNoteText
-                }));
-                handleNoteClose();
+                handleCloseNotePopup();
               }}>
                 Cancel
               </Button>
               <Button
                 variant="contained"
-                onClick={() => {
-                  setLocalNotes((prev) => ({
-                    ...prev,
-                    [selectedNoteReview._id]: internalNoteText
-                  }));
-                  handleNoteClose();
-                }}
-                disabled={!internalNoteText.trim()}
+                onClick={handleSaveNote}
+                disabled={!noteText.trim()}
               >
                 Save Note
               </Button>
@@ -1216,6 +1274,19 @@ const Reviews = () => {
           </Box>
         </DialogContent>
       </Dialog>
+      <MessagePopup
+        openPopup={messagePopupOpen}
+        handleClosePopup={handleMessagePopupClose}
+        vendorID={selectedMessageReview?.vendor_id}
+        orderId={selectedMessageReview?.orderId}
+        userName={selectedMessageReview?.user_name}
+        vendorName={selectedMessageReview?.replyShopName || selectedMessageReview?.shopName || user?.vendor?.shop_name || user?.name}
+        shopName={selectedMessageReview?.shopName || selectedMessageReview?.replyShopName || user?.vendor?.shop_name || ""}
+        userId={selectedMessageReview?.user_id}
+        product_image={selectedMessageReview?.productEditedImage || selectedMessageReview?.productImage ? `https://api.agukart.com/uploads/product/${selectedMessageReview?.productEditedImage || selectedMessageReview?.productImage}` : ""}
+        productData={selectedMessageReview}
+        userImage={selectedMessageReview?.user_image ? `https://api.agukart.com/uploads/profileImage/${selectedMessageReview?.user_image}` : ""}
+      />
     </>
   );
 };
