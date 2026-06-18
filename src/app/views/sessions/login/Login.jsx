@@ -118,7 +118,7 @@ export default function LogIn() {
   const [type, setType] = useState("");
   const [route, setRoute] = useState(null);
   const [msg, setMsg] = useState(null);
-  console.log(msg,"----------")
+  console.log(msg, "----------")
 
   const logOut = () => {
     localStorage.removeItem(localStorageKey.auth_key);
@@ -128,7 +128,7 @@ export default function LogIn() {
   };
 
   const handleOpen = (type, msg) => {
-    console.log(type,msg,"gggggggggggg")
+    console.log(type, msg, "gggggggggggg")
     setMsg(msg?.message);
     setOpen(true);
     setType(type);
@@ -160,13 +160,14 @@ export default function LogIn() {
         localStorage.setItem(localStorageKey.designation_id, res?.data?.user?.designation_id);
         if (res?.data?.user?.designation_id === 3) {
           localStorage.setItem(localStorageKey.vendorId, res?.data?.user?._id);
+          localStorage.setItem(localStorageKey.vendorSlug, res?.data?.user?.slug || "");
         }
         // navigate(ROUTE_CONSTANT.dashboard);
         setRoute(ROUTE_CONSTANT.dashboard);
         handleOpen("success", res?.data);
       }
     } catch (error) {
-      console.log( error?.response?.data?.message,"error");
+      console.log(error?.response?.data?.message, "error");
       handleOpen("error", error?.response?.data || error);
     } finally {
       setLoading(false);

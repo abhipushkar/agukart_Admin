@@ -72,11 +72,11 @@ const List = () => {
   const [msg, setMsg] = useState(null);
   const [statusData, setStatusData] = useState({});
   const [baseUrl, setBaseUrl] = useState("");
-  const [loading,setLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [personName, setPersonName] = useState(
     JSON.parse(localStorage.getItem(localStorageKey.vendorTable)) || []
   );
-  const [loadingRows, setLoadingRows] = useState({}); 
+  const [loadingRows, setLoadingRows] = useState({});
 
   const auth_key = localStorage.getItem(localStorageKey.auth_key);
   const designation_id = localStorage.getItem(localStorageKey.designation_id)
@@ -145,7 +145,7 @@ const List = () => {
       setLoading(false);
       handleOpen("error", error);
     }
-  }, [auth_key,search]);
+  }, [auth_key, search]);
 
   useEffect(() => {
     getVendorList();
@@ -197,11 +197,11 @@ const List = () => {
   const sortComparator = (a, b, orderBy) => {
     const valueA = getNestedValue(a, orderBy);
     const valueB = getNestedValue(b, orderBy);
-  
+
     if (valueA === undefined || valueB === undefined) {
       return 0;
     }
-  
+
     if (typeof valueA === "string" && typeof valueB === "string") {
       return valueA.localeCompare(valueB);
     }
@@ -213,7 +213,7 @@ const List = () => {
     }
     return 0;
   };
-  
+
   const handleRequestSort = (property) => {
     let newOrder;
     if (orderBy !== property) {
@@ -221,23 +221,23 @@ const List = () => {
     } else {
       newOrder = order === "asc" ? "desc" : order === "desc" ? "none" : "asc";
     }
-  
+
     setOrder(newOrder);
     setOrderBy(newOrder === "none" ? null : property);
   };
-  
+
   const sortedRows = orderBy
     ? [...vendorList].sort((a, b) =>
-        order === "asc"
-          ? sortComparator(a, b, orderBy)
-          : order === "desc"
+      order === "asc"
+        ? sortComparator(a, b, orderBy)
+        : order === "desc"
           ? sortComparator(b, a, orderBy)
           : 0
-      )
+    )
     : vendorList;
 
-  const handleVendorLogin = async(vendor)=>{
-    console.log(vendor,"FGHg");
+  const handleVendorLogin = async (vendor) => {
+    console.log(vendor, "FGHg");
     setLoadingRows((prev) => ({ ...prev, [vendor._id]: true }));
     try {
       const payload = {
@@ -255,13 +255,14 @@ const List = () => {
         localStorage.setItem(localStorageKey.designation_id, res?.data?.user?.designation_id);
         if (res?.data?.user?.designation_id === 3) {
           localStorage.setItem(localStorageKey.vendorId, res?.data?.user?._id);
+          localStorage.setItem(localStorageKey.vendorSlug, res?.data?.user?.slug || "");
         }
         getProfileData()
         setRoute(ROUTE_CONSTANT.dashboard);
         handleOpen("success", res?.data);
       }
     } catch (error) {
-      console.log( error?.response?.data?.message,"error");
+      console.log(error?.response?.data?.message, "error");
       handleOpen("error", error?.response?.data || error);
     } finally {
       setLoadingRows((prev) => ({ ...prev, [vendor._id]: false }))

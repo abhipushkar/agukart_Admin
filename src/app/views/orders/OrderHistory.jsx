@@ -103,19 +103,13 @@ const OrderHistory = () => {
 
   const vendorSubOrder = order?.saleDetaildata?.[0];
 
-  // ─── Inject dummy feedbackData per item if backend doesn't send it ───────────
-  // TODO: Remove this block when backend sends real feedbackData inside each item
-  const itemsWithFeedback = useMemo(() => {
+  const itemsWithReviews = useMemo(() => {
     const items = vendorSubOrder?.items || [];
     return items.map((item, idx) => {
-      if (item?.feedbackData || item?.feedback) return item; // real data exists, use it
-      return {
-        ...item,
-        feedbackData: DUMMY_FEEDBACK_LIST[idx % DUMMY_FEEDBACK_LIST.length],
-      };
-    });
+      if (item?.reviewData && item?.is_reviewed === true) return item;
+      else return null;
+    }).filter(Boolean);
   }, [vendorSubOrder]);
-  // ─────────────────────────────────────────────────────────────────────────────
 
   const itemShippingMap = useMemo(() => {
     const items = vendorSubOrder?.items || [];
@@ -789,8 +783,8 @@ const OrderHistory = () => {
                 <Typography variant="h6" fontWeight={600}>Manage Feedback</Typography>
               </Box>
 
-              {itemsWithFeedback.length > 0 ? (
-                itemsWithFeedback.map((item) => (
+              {itemsWithReviews.length > 0 ? (
+                itemsWithReviews.map((item) => (
                   <OrderFeedbackcard
                     key={item._id}
                     item={item}
@@ -799,7 +793,7 @@ const OrderHistory = () => {
                   />
                 ))
               ) : (
-                <Typography fontSize={13} color="text.secondary">No items found</Typography>
+                <Typography fontSize={13} color="text.secondary">No items with Reviews</Typography>
               )}
             </Grid>
 
