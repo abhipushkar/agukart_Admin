@@ -720,7 +720,8 @@ export const useProductAPI = () => {
                 : trimmedTitle || "Product Image";
         const filterImagesData = images.filter((img) => img.file);
         const sortImagesData = images.filter((img) => !img.file);
-        const newSortArray = filterImagesData.map((img) => img.file?.sortOrder);
+        console.log(images, "sentImages");
+        const newSortArray = filterImagesData.map((img) => img.sortOrder);
         const sortedArray = sortImagesData.map((img) => ({
             name: img.src.split("product/")[1],
             sortOrder: img.sortOrder,
