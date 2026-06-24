@@ -116,6 +116,7 @@ export const apiEndpoints = {
   getAllVendorProduct: "getAllVendorProduct",
   changeRatingStatus: "changeRatingStatus",
   updateProductQuantity: "updateProductQuantity",
+  updateInventory: "recheck-inventory",
   addCoupon: "add-coupon",
   getCoupons: "list-coupons",
   changeStatusCoupon: "change-coupon-status",

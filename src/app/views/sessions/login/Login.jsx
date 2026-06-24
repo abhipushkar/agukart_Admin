@@ -24,6 +24,7 @@ import { styled } from "@mui/system";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import ConfirmModal from "app/components/ConfirmModal";
+import { getDashboardRoute } from "app/constant/routeHelper";
 
 function Copyright(props) {
   return (
@@ -160,10 +161,8 @@ export default function LogIn() {
         localStorage.setItem(localStorageKey.designation_id, res?.data?.user?.designation_id);
         if (res?.data?.user?.designation_id === 3) {
           localStorage.setItem(localStorageKey.vendorId, res?.data?.user?._id);
-          localStorage.setItem(localStorageKey.vendorSlug, res?.data?.user?.slug || "");
         }
-        // navigate(ROUTE_CONSTANT.dashboard);
-        setRoute(ROUTE_CONSTANT.dashboard);
+        window.location.replace(getDashboardRoute());
         handleOpen("success", res?.data);
       }
     } catch (error) {
@@ -177,7 +176,7 @@ export default function LogIn() {
   useEffect(() => {
     const authKey = localStorage.getItem(localStorageKey.auth_key);
     if (authKey) {
-      navigate(ROUTE_CONSTANT.dashboard);
+      window.location.replace(getDashboardRoute());
     }
   }, []);
 

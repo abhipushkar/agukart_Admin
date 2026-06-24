@@ -1,4 +1,6 @@
-export const ROUTE_CONSTANT = {
+import { localStorageKey } from "./localStorageKey";
+
+const BASE_ROUTES = {
     login: "/login",
     dashboard: "/dashboard",
     customers: {
@@ -185,3 +187,45 @@ export const ROUTE_CONSTANT = {
     },
     subscribeEmail: "/pages/subscribe-email"
 };
+
+
+const isVendorRoute = () => {
+    return (
+        Number(localStorage.getItem(localStorageKey.designation_id)) === 3
+    );
+};
+
+const excludedRoutes = [
+    "/login",
+    "/reset-password",
+    "/page-expired"
+];
+
+const prefixRoutes = (obj, prefix) => {
+    const result = {};
+
+    Object.entries(obj).forEach(([key, value]) => {
+        if (
+            typeof value === "object" &&
+            value !== null &&
+            !Array.isArray(value)
+        ) {
+            result[key] = prefixRoutes(value, prefix);
+        } else {
+            result[key] = typeof value === "string"
+                ? (
+                    excludedRoutes.includes(value)
+                        ? value
+                        : `${prefix}${value}`
+                )
+                : value;
+        }
+    });
+
+    return result;
+};
+
+export const ROUTE_CONSTANT = prefixRoutes(
+    BASE_ROUTES,
+    isVendorRoute() ? "/store" : ""
+);
