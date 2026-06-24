@@ -37,6 +37,7 @@ const RefundPage = () => {
     const [refundData, setRefundData] = useState(null);
     const [isCancelMode, setIsCancelMode] = useState(mode === 'cancel');
     const [isFormValid, setIsFormValid] = useState(true);
+    const [customReasons, setCustomReasons] = useState({});
 
     const [snackbar, setSnackbar] = useState({
         open: false,
@@ -75,6 +76,7 @@ const RefundPage = () => {
         'Order not received',
         'Pricing Error'
     ];
+    const CUSTOM_REASON = "__CUSTOM__";
 
     const parseNumber = (value) => {
         if (value === '' || value === undefined || value === null) return 0;
@@ -84,6 +86,22 @@ const RefundPage = () => {
     const updateItemAtIndex = (items, index, updater) =>
         items.map((item, i) => (i === index ? updater(item) : item));
 
+    const normalizeRefundData = (apiData) => {
+        const customMap = {};
+        const items = apiData.items.map(item => {
+            const isCustom = item.reason_code && !refundReasons.includes(item.reason_code);
+            if (isCustom) {
+                customMap[item.item_id] = item.reason_code;
+            }
+            return {
+                ...item,
+                reason_code: isCustom ? CUSTOM_REASON : item.reason_code,
+            };
+        });
+        setCustomReasons(customMap);
+        return { ...apiData, items, };
+    };
+
     const initializeData = useCallback(async (mode, res) => {
         try {
             const auth_key = localStorage.getItem(localStorageKey.auth_key);
@@ -92,14 +110,16 @@ const RefundPage = () => {
             setError({ "message": error })
             console.log('error fetching', error);
         }
-        const data = res.data;
+        const data = normalizeRefundData(res.data);
+
+        console.log("item", data);
         const itemsWithDerivedValues = data.items.map(item => {
             return {
                 ...item,
                 title: item.title?.replace(/<\/?[^>]+(>|$)/g, ""),
                 entered_refund_amount: 0,
                 net_refund_amount: 0,
-                reason_code: '',
+                // reason_code: '',
                 voucher_adjustment_amount: 0,
             };
         });
@@ -187,6 +207,16 @@ const RefundPage = () => {
         setRefundData(prev => {
             if (!prev) return prev;
 
+            const itemId = prev.items[index]?.item_id;
+
+            if (reason_code !== CUSTOM_REASON && itemId) {
+                setCustomReasons(current => {
+                    const updated = { ...current };
+                    delete updated[itemId];
+                    return updated;
+                });
+            }
+
             return {
                 ...prev,
                 items: updateItemAtIndex(prev.items, index, item => ({
@@ -265,12 +295,25 @@ const RefundPage = () => {
             setIsFormValid(false);
             return;
         }
-        const isValid = refundData.items.every(item => {
-            if (item.entered_refund_amount > 0 && !item.reason_code) return false;
+        const isValid = refundData.items.every((item) => {
+            if (item.entered_refund_amount > 0) {
+
+                if (!item.reason_code) {
+                    return false;
+                }
+
+                if (
+                    item.reason_code === CUSTOM_REASON &&
+                    !customReasons[item.item_id]?.trim()
+                ) {
+                    return false;
+                }
+            }
+
             return true;
         });
         setIsFormValid(isValid);
-    }, [refundData]);
+    }, [refundData, customReasons]);
 
     // Toggle cancel mode
     const toggleCancelMode = () => {
@@ -355,7 +398,17 @@ const RefundPage = () => {
 
         const payload = {
             ...refundData,
-            items: refundData.items.filter(item => parseNumber(item.entered_refund_amount) > 0)
+            items: refundData.items
+                .filter(
+                    (item) => parseNumber(item.entered_refund_amount) > 0
+                )
+                .map((item) => ({
+                    ...item,
+                    reason_code:
+                        item.reason_code === CUSTOM_REASON
+                            ? customReasons[item.item_id]?.trim()
+                            : item.reason_code,
+                })),
         };
 
         try {
@@ -526,7 +579,25 @@ const RefundPage = () => {
                                                                                 {reason_code}
                                                                             </MenuItem>
                                                                         ))}
+                                                                        <MenuItem value={CUSTOM_REASON}>
+                                                                            Other (Custom Reason)
+                                                                        </MenuItem>
                                                                     </Select>
+                                                                    {item.reason_code === CUSTOM_REASON && (
+                                                                        <TextField
+                                                                            fullWidth
+                                                                            size="small"
+                                                                            sx={{ mt: 1 }}
+                                                                            label="Custom reason"
+                                                                            value={customReasons[item.item_id] || ""}
+                                                                            onChange={(e) =>
+                                                                                setCustomReasons((prev) => ({
+                                                                                    ...prev,
+                                                                                    [item.item_id]: e.target.value,
+                                                                                }))
+                                                                            }
+                                                                        />
+                                                                    )}
                                                                 </FormControl>
                                                             )}
                                                             {isCancelMode && (
@@ -712,7 +783,7 @@ const RefundPage = () => {
                                 Order ID:
                             </Typography>
                             <Typography variant="body2" gutterBottom sx={{ color: 'rgba(20, 98, 151, 0.95)' }}>
-                                {refundData.order_id}
+                                {suborderId}
                             </Typography>
                         </Box>
                     </Box>

@@ -205,9 +205,9 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
         let statusText = "";
 
         if (tab === "pending") {
-            statusText = isPaymentComplete ? "Payment Completed" : "Payment Pending";
+            statusText = "Payment Pending";
         } else if (tab === "unshipped") {
-            statusText = "Unshipped";
+            statusText = isPaymentComplete ? "Payment Completed" : "Unshipped";
         } else if (tab === "in-progress") {
             statusText = "In Progress";
         } else if (tab === "completed") {
@@ -591,7 +591,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                     variant="h6"
                                                     fontWeight={500}
                                                     fontSize={15}
-                                                    color={tab === "pending" ? isPaymentComplete ? "rgb(0, 206, 0)" : "red" : "inherit"}
+                                                    color={tab === "pending" ? "red" : isPaymentComplete ? "rgb(0, 206, 0)" : "inherit"}
                                                 >
                                                     {getOrderStatusText(subOrder, tab, isPaymentComplete)}
                                                 </Typography>

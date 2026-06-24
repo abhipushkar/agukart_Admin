@@ -26,10 +26,13 @@ import { useEffect } from "react";
 import { useCallback } from "react";
 import StarIcon from "@mui/icons-material/Star";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
+import { Close as CloseIcon } from "@mui/icons-material";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import ConfirmModal from "app/components/ConfirmModal";
 import CompleteOrder from "./CompleteOrder";
 import OrderFeedbackcard from "./OrderFeedbackcard";
+import { Dialog, DialogTitle, IconButton, DialogActions } from "@mui/material";
+import { ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from "@mui/icons-material";
 
 // ─── Dummy feedback data — remove when backend sends real feedbackData ────────
 const DUMMY_FEEDBACK_LIST = [
@@ -81,6 +84,10 @@ const OrderHistory = () => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [openMenuIndex, setOpenMenuIndex] = useState(null);
   const [editId, setEditId] = useState(null);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [dialogImages, setDialogImages] = useState([]);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+
 
   const handleClick = (event, index) => {
     setAnchorEl(event.currentTarget);
@@ -273,6 +280,17 @@ const OrderHistory = () => {
   const handleDialogClose = () => { setOpenDialog(false); setEditId(null); };
   const handleCompleteOrderDialogOpen = () => setOpenDialog(true);
   const handleEditTracking = (id) => { setEditId(id); setOpenDialog(true); };
+
+  const handleImageDialogOpen = (images, index = 0) => {
+    setDialogImages(images);
+    setActiveImageIndex(index);
+    setReviewOpen(true);
+  };
+
+  const handleImageDialogClose = () => {
+    setReviewOpen(false);
+    setDialogImages([]);
+  }
 
   return (
     <>
@@ -570,7 +588,7 @@ const OrderHistory = () => {
                                       <Grid item xs={12} md={6}>
                                         <Typography fontWeight={600} gutterBottom>Internal Variants:</Typography>
                                         {internalVariants.map((variant, idx) => (
-                                          <Box key={variant._id || idx} sx={{ mb: 1 }}>
+                                          <Box key={variant._id || idx} sx={{ mb: 1, display: "flex", flexDirection: "row", gap: 1, }}>
                                             <Typography fontSize={14} fontWeight={500}>{getDisplayValue(variant.variantName)}:</Typography>
                                             <Typography fontSize={14}>{getDisplayValue(variant.attributeName)}</Typography>
                                           </Box>
@@ -583,7 +601,7 @@ const OrderHistory = () => {
                                         {item.customizationData.map((customItem, idx) => (
                                           <Box key={idx} sx={{ mb: 2, p: 1, bgcolor: "#f5f5f5", borderRadius: 1 }}>
                                             {Object.entries(customItem).map(([key, value]) => (
-                                              <Box key={key} sx={{ mb: 0.5 }}>
+                                              <Box key={key} sx={{ mb: 0.5, display: "flex", flexDirection: "row", gap: 1, }}>
                                                 <Typography fontSize={14} fontWeight={500}>{getDisplayValue(key)}:</Typography>
                                                 <Typography fontSize={14}>{typeof value === "object" ? `${getDisplayValue(value?.value)} ($ ${getDisplayValue(value?.price)})` : getDisplayValue(value)}</Typography>
                                               </Box>
@@ -790,6 +808,12 @@ const OrderHistory = () => {
                     item={item}
                     baseUrl={baseUrl}
                     shopName={vendorSubOrder?.shop_name}
+                    open={reviewOpen}
+                    imageDialogOpen={handleImageDialogOpen}
+                    imageDialogClose={handleImageDialogClose}
+                    setActiveImageIndex={setActiveImageIndex}
+                    activeImageIndex={activeImageIndex}
+                    dialogImages={dialogImages}
                   />
                 ))
               ) : (
