@@ -31,6 +31,7 @@ import OutlinedInput from "@mui/material/OutlinedInput";
 import ListItemText from "@mui/material/ListItemText";
 import Checkbox from "@mui/material/Checkbox";
 import { useProfileData } from "app/contexts/profileContext";
+import { getDashboardRoute } from "app/constant/routeHelper";
 
 const Container = styled("div")(({ theme }) => ({
   margin: "30px",
@@ -258,7 +259,7 @@ const List = () => {
           localStorage.setItem(localStorageKey.vendorSlug, res?.data?.user?.slug || "");
         }
         getProfileData()
-        setRoute(ROUTE_CONSTANT.dashboard);
+        window.location.replace(getDashboardRoute());
         handleOpen("success", res?.data);
       }
     } catch (error) {

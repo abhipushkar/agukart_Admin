@@ -1,10 +1,11 @@
 // Product.jsx - Complete updated code
-import { Box, Dialog, Typography } from '@mui/material';
+import { Box, Card, Dialog, Tooltip, Typography, Grid, Rating } from '@mui/material';
 import React from 'react'
 import Button from "@mui/material/Button";
 import { useState } from 'react';
 import { ApiService } from "app/services/ApiService";
 import CloseIcon from "@mui/icons-material/Close";
+import { Upgrade, Update } from '@mui/icons-material';
 import { localStorageKey } from "app/constant/localStorageKey";
 import { apiEndpoints } from "app/constant/apiEndpoints";
 import TextField from "@mui/material/TextField";
@@ -252,6 +253,18 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
         }
     };
 
+    const handleUpdateInventoryClick = async () => {
+        try {
+            const res = await ApiService.post(`${apiEndpoints.updateInventory}/${saleData._id}`, {}, auth_key);
+            if (res?.status === 200) {
+                handleOpen("success", { message: 'Quantity updated successfully' });
+                getOrderList();
+            }
+        } catch (error) {
+            handleOpen("error", { message: error.response.data.message });
+        }
+    }
+
     const handleClickOpen = () => {
         setOpenPop(true);
     };
@@ -301,54 +314,65 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
     };
 
     const images = [...getVariantImages(), ...saleData?.productData?.image.map(img => baseUrl + img)];
-
+    console.log(item);
     return (
         <>
-            <Box sx={{ display: "flex", my: 3 }}>
-                <Box
-                    sx={{
-                        cursor: "pointer",
-                        position: "relative",
-                        width: 150, height: 150, borderRadius: 2, overflow: "hidden"
-                    }}
-                    textAlign={"start"}
-                    marginRight={2}
-                >
-                    <div onClick={handleImageClick} style={{ cursor: 'pointer' }}>
-                        <img
-                            src={
-                                saleData?.productData?.image?.[0]
-                                    ? `${baseUrl}/${saleData.productData.image[0]}`
-                                    : saleData?.productMain?.image?.[0]
-                                        ? `${baseUrl}/${saleData.productMain.image[0]}`
-                                        : ''
-                            }
-                            style={{ width: "100%", height: "100%", borderRadius: 2, objectFit: "cover" }}
-                            alt="product"
-                        />
-                    </div>
+            <Tooltip
+                title={saleData.inventory_note}
+                placement='top'
+                arrow
+                disableHoverListener={saleData.inventory_status !== "out_of_stock"}
+            >
+                <Box sx={{ display: "flex", flex: 1, my: 1, py: 1, backgroundColor: `${saleData.inventory_status === "out_of_stock" ? "#f8e6e6" : undefined}` }} component={saleData.inventory_status === "out_of_stock" ? Card : undefined}>
+                    <Box
+                        sx={{
+                            cursor: "pointer",
+                            position: "relative",
+                            width: 150, height: 150, borderRadius: 2, overflow: "hidden"
+                        }}
+                        textAlign={"start"}
+                        marginRight={2}
+                    >
+                        <div onClick={handleImageClick} style={{ cursor: 'pointer' }}>
+                            <img
+                                src={
+                                    saleData?.productData?.image?.[0]
+                                        ? `${baseUrl}/${saleData.productData.image[0]}`
+                                        : saleData?.productMain?.image?.[0]
+                                            ? `${baseUrl}/${saleData.productMain.image[0]}`
+                                            : ''
+                                }
+                                style={{ width: "100%", height: "100%", borderRadius: 2, objectFit: "cover" }}
+                                alt="product"
+                            />
+                        </div>
 
-                    {stockBadge.show && (
-                        <Box
-                            component="span"
-                            sx={{
-                                position: "absolute",
-                                bottom: "0px",
-                                left: "0px",
-                                background: stockBadge.bgColor,
-                                color: "#fff",
-                                padding: "3px 9px",
-                                borderRadius: "5px",
-                                fontSize: "10px"
-                            }}
-                        >
-                            {stockBadge.text}
-                        </Box>
-                    )}
-                </Box>
-                <Box textAlign={"start"}>
+                        {stockBadge.show && (
+                            <Box
+                                component="span"
+                                sx={{
+                                    position: "absolute",
+                                    bottom: "0px",
+                                    left: "0px",
+                                    background: stockBadge.bgColor,
+                                    color: "#fff",
+                                    padding: "3px 9px",
+                                    borderRadius: "5px",
+                                    fontSize: "10px"
+                                }}
+                            >
+                                {stockBadge.text}
+                            </Box>
+                        )}
+                    </Box>
+                    <Box textAlign={"start"}
+                        sx={{
+                            flex: 1,
+                            minWidth: 0,
+                            width: "100%",
+                        }}>
 
-                    {/* <Typography
+                        {/* <Typography
                         variant="subtitle2"
                         sx={{
                             color: "secondary.main",
@@ -362,151 +386,193 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                     >
                         Transaction Id: {saleData.item_id || "N/A"}
                     </Typography> */}
-                    <a
-                        href={`${REACT_APP_WEB_URL}/product/${saleData?.productMain?.slug}/${saleData?.productMain?.product_code}`}
-                        target="_blank"
-                        style={{
-                            textDecoration: 'none',
-                            color: 'inherit',
-                            cursor: 'pointer'
-                        }} rel="noreferrer"
-                    >
-                        <Typography
-                            variant="h6"
-                            sx={{
-                                display: "-webkit-box",
-                                WebkitLineClamp: "3",
-                                WebkitBoxOrient: "vertical",
-                                textOverflow: "ellipsis",
-                                overflow: "hidden",
-                                fontWeight: "500",
-                                fontSize: "15px",
-                                maxWidth: { xs: "100%", md: "400px" },
-                                '&:hover': {
-                                    textDecoration: 'underline'
-                                }
-                            }}
+                        <a
+                            href={`${REACT_APP_WEB_URL}/product/${saleData?.productMain?.slug}/${saleData?.productMain?.product_code}`}
+                            target="_blank"
+                            style={{
+                                textDecoration: 'none',
+                                color: 'inherit',
+                                cursor: 'pointer'
+                            }} rel="noreferrer"
                         >
-                            {saleData?.productData?.product_title
-                                ? saleData.productData.product_title.replace(/<\/?[^>]+(>|$)/g, "")
-                                : saleData?.productMain?.product_title?.replace(/<\/?[^>]+(>|$)/g, "")
-                            }
-                        </Typography>
-                    </a>
-
-                    <Typography fontSize={14} sx={{ color: "#000" }}>
-                        Product SKU:{" "}
-                        <Box component="span">
-                            {getDisplayValue(saleData?.productData?.sku_code || saleData?.productMain?.sku_code)}
-                        </Box>
-                    </Typography>
-                    <Typography fontSize={14} sx={{ color: "#000" }}>
-                        Quantity:{" "}
-                        <Box component="span">
-                            {getDisplayValue(saleData?.qty)}
-                        </Box>
-                    </Typography>
-
-                    {/* Display Amazon-style variants (parent variants) */}
-                    {saleData?.isCombination === true && saleData?.variantData && saleData.variantData.length > 0 && (
-                        saleData.variantData.map((variantItem, variantIndex) => (
                             <Typography
-                                fontSize={14}
-                                sx={{ color: "#000" }}
-                                key={variantIndex}
+                                variant="h6"
+                                sx={{
+                                    display: "-webkit-box",
+                                    WebkitLineClamp: "3",
+                                    WebkitBoxOrient: "vertical",
+                                    textOverflow: "ellipsis",
+                                    overflow: "hidden",
+                                    fontWeight: "500",
+                                    fontSize: "15px",
+                                    flex: 1,
+                                    width: "100%",
+                                    maxWidth: "550px",
+                                    '&:hover': {
+                                        textDecoration: 'underline'
+                                    }
+                                }}
                             >
-                                {getDisplayValue(variantItem?.variant_name)}:{" "}
-                                <Box component="span">
-                                    {getDisplayValue(saleData?.variantAttributeData[variantIndex]?.attribute_value)}
-                                </Box>
+                                {saleData?.productData?.product_title
+                                    ? saleData.productData.product_title.replace(/<\/?[^>]+(>|$)/g, "")
+                                    : saleData?.productMain?.product_title?.replace(/<\/?[^>]+(>|$)/g, "")
+                                }
                             </Typography>
-                        ))
-                    )}
+                        </a>
 
-                    {/* Display Etsy-style internal variants (these have combination quantities) */}
-                    {saleData?.variants && saleData.variants.length > 0 && (
-                        saleData.variants.map((variant, index) => (
-                            <Typography
-                                fontSize={14}
-                                sx={{ color: "#000" }}
-                                key={variant._id || index}
-                            >
-                                {getDisplayValue(variant.variantName)}:{" "}
-                                <Box component="span">
-                                    {getDisplayValue(variant.attributeName)}
-                                </Box>
-                            </Typography>
-                        ))
-                    )}
+                        <Grid container spacing={1}>
+                            <Grid item md={6} lg={6}>
 
-                    {/* Display variant IDs if no structured variant data */}
-                    {(saleData?.variant_id && saleData.variant_id.length > 0) &&
-                        (!saleData?.variantData || saleData.variantData.length === 0) &&
-                        (!saleData?.variants || saleData.variants.length === 0) && (
-                            <Box>
                                 <Typography fontSize={14} sx={{ color: "#000" }}>
-                                    Variant IDs:{" "}
+                                    Product SKU:{" "}
                                     <Box component="span">
-                                        {saleData.variant_id.join(", ")}
+                                        {getDisplayValue(saleData?.productData?.sku_code || saleData?.productMain?.sku_code)}
                                     </Box>
                                 </Typography>
-                                {saleData?.variant_attribute_id && saleData.variant_attribute_id.length > 0 && (
-                                    <Typography fontSize={14} sx={{ color: "#000" }}>
-                                        Variant Attribute IDs:{" "}
-                                        <Box component="span">
-                                            {saleData.variant_attribute_id.join(", ")}
-                                        </Box>
-                                    </Typography>
-                                )}
-                            </Box>
-                        )}
+                                <Typography fontSize={14} sx={{ color: "#000" }}>
+                                    Quantity:{" "}
+                                    <Box component="span">
+                                        {getDisplayValue(saleData?.qty)}
+                                    </Box>
+                                </Typography>
 
-                    {/* Display customization data */}
-                    {saleData?.customize === "Yes" && saleData?.customizationData && saleData.customizationData.length > 0 && (
-                        <Box>
-                            {saleData.customizationData.map((item, index) => (
-                                <Box key={index}>
-                                    {Object.entries(item).map(([key, value]) => (
-                                        <Box key={key}>
-                                            {typeof value === 'object' ? (
+                                {/* Display Amazon-style variants (parent variants) */}
+                                {saleData?.isCombination === true && saleData?.variantData && saleData.variantData.length > 0 && (
+                                    saleData.variantData.map((variantItem, variantIndex) => (
+                                        <Typography
+                                            fontSize={14}
+                                            sx={{ color: "#000" }}
+                                            key={variantIndex}
+                                        >
+                                            {getDisplayValue(variantItem?.variant_name)}:{" "}
+                                            <Box component="span">
+                                                {getDisplayValue(saleData?.variantAttributeData[variantIndex]?.attribute_value)}
+                                            </Box>
+                                        </Typography>
+                                    ))
+                                )}
+
+                                {/* Display Etsy-style internal variants (these have combination quantities) */}
+                                {saleData?.variants && saleData.variants.length > 0 && (
+                                    saleData.variants.map((variant, index) => (
+                                        <Typography
+                                            fontSize={14}
+                                            sx={{ color: "#000" }}
+                                            key={variant._id || index}
+                                        >
+                                            {getDisplayValue(variant.variantName)}:{" "}
+                                            <Box component="span">
+                                                {getDisplayValue(variant.attributeName)}
+                                            </Box>
+                                        </Typography>
+                                    ))
+                                )}
+
+                                {/* Display variant IDs if no structured variant data */}
+                                {(saleData?.variant_id && saleData.variant_id.length > 0) &&
+                                    (!saleData?.variantData || saleData.variantData.length === 0) &&
+                                    (!saleData?.variants || saleData.variants.length === 0) && (
+                                        <Box>
+                                            <Typography fontSize={14} sx={{ color: "#000" }}>
+                                                Variant IDs:{" "}
+                                                <Box component="span">
+                                                    {saleData.variant_id.join(", ")}
+                                                </Box>
+                                            </Typography>
+                                            {saleData?.variant_attribute_id && saleData.variant_attribute_id.length > 0 && (
                                                 <Typography fontSize={14} sx={{ color: "#000" }}>
-                                                    {getDisplayValue(key)}:{` ${getDisplayValue(value?.value)}`}
-                                                </Typography>
-                                            ) : (
-                                                <Typography fontSize={14} sx={{ color: "#000" }}>
-                                                    {getDisplayValue(key)}: {getDisplayValue(value)}
+                                                    Variant Attribute IDs:{" "}
+                                                    <Box component="span">
+                                                        {saleData.variant_attribute_id.join(", ")}
+                                                    </Box>
                                                 </Typography>
                                             )}
                                         </Box>
-                                    ))}
-                                </Box>
-                            ))}
-                        </Box>
-                    )}
+                                    )}
 
-                    <Box mt={1}>
-                        <Button
-                            onClick={() => {
-                                handleClickOpen(saleData);
-                            }}
-                            sx={{
-                                padding: "4px 16px",
-                                color: "#000",
-                                background: "#fff",
-                                borderRadius: "30px",
-                                border: "1px solid #000"
-                            }}
-                            disabled={quantityOwner === 'none'}
-                        >
-                            Update quantity
-                        </Button>
-                        <Button sx={{ color: "#000" }} onClick={handleClickPopup}>
-                            <MailOutlineIcon />
-                        </Button>
+                                {/* Display customization data */}
+                                {saleData?.customize === "Yes" && saleData?.customizationData && saleData.customizationData.length > 0 && (
+                                    <Box>
+                                        {saleData.customizationData.map((item, index) => (
+                                            <Box key={index}>
+                                                {Object.entries(item).map(([key, value]) => (
+                                                    <Box key={key}>
+                                                        {typeof value === 'object' ? (
+                                                            <Typography fontSize={14} sx={{ color: "#000" }}>
+                                                                {getDisplayValue(key)}:{` ${getDisplayValue(value?.value)}`}
+                                                            </Typography>
+                                                        ) : (
+                                                            <Typography fontSize={14} sx={{ color: "#000" }}>
+                                                                {getDisplayValue(key)}: {getDisplayValue(value)}
+                                                            </Typography>
+                                                        )}
+                                                    </Box>
+                                                ))}
+                                            </Box>
+                                        ))}
+                                    </Box>
+                                )}
+                            </Grid>
+                            <Grid item md={6} lg={6}>
+                                {saleData?.ratingData && (<Tooltip
+                                    title={
+                                        <Box display="flex" flexDirection="column" gap={1} p={1} bgcolor={"#fff"} borderRadius={2}>
+                                            <Typography variant="caption" color="gray">
+                                                {saleData?.ratingData?.additional_comment}
+                                            </Typography>
+                                        </Box>
+                                    }
+                                    placement="bottom-start"
+                                    arrow
+                                    slotProps={{
+                                        tooltip: {
+                                            sx: {
+                                                bgcolor: "#dedede", borderRadius: 2,
+                                                p: 0, maxWidth: 300, boxShadow: 2,
+                                            },
+                                        },
+                                        arrow: {
+                                            sx: {
+                                                color: "#fff", "&::before": {
+                                                    boxShadow: "4px 4px 12px rgba(0, 0, 0, 0.26)",
+                                                },
+                                            }
+                                        }
+                                    }}
+                                >
+                                    <span style={{ display: "inline-flex", alignItems: "center", cursor: "pointer", paddingTop: 10 }}>
+                                        <Rating value={saleData?.ratingData?.rating} readOnly />
+                                        <Typography color="gray" sx={{ ml: 0.5, fontSize: "16px" }}> ⏷ </Typography>
+                                    </span>
+                                </Tooltip>)}
+                            </Grid>
+                        </Grid>
+                        <Box mt={1}>
+                            <Button
+                                onClick={() => {
+                                    handleClickOpen(saleData);
+                                }}
+                                sx={{
+                                    padding: "4px 16px",
+                                    color: "#000",
+                                    background: "#fff",
+                                    borderRadius: "30px",
+                                    border: "1px solid #000"
+                                }}
+                                disabled={quantityOwner === 'none'}
+                            >
+                                Update quantity
+                            </Button>
+                            <Button sx={{ color: "#000" }} onClick={handleClickPopup}>
+                                <MailOutlineIcon />
+                            </Button>
+                            {saleData?.inventory_status === "out_of_stock" && (<Button variant="outlined" color="error" sx={{ color: "red", borderRadius: "30px", }} component={Card} onClick={handleUpdateInventoryClick}>
+                                <Update /> Update Inventory
+                            </Button>)}
+                        </Box>
                     </Box>
                 </Box>
-            </Box>
-
+            </Tooltip>
             {/* Image Preview Modal */}
             <Dialog
                 open={imageModalOpen}
