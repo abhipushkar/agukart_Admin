@@ -5,7 +5,7 @@ import Button from "@mui/material/Button";
 import { useState } from 'react';
 import { ApiService } from "app/services/ApiService";
 import CloseIcon from "@mui/icons-material/Close";
-import { Upgrade, Update } from '@mui/icons-material';
+import { Update, Collections } from '@mui/icons-material';
 import { localStorageKey } from "app/constant/localStorageKey";
 import { apiEndpoints } from "app/constant/apiEndpoints";
 import TextField from "@mui/material/TextField";
@@ -302,18 +302,36 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
         saleData?.variants.forEach((variant, i) => {
             const currVariant = product.product_variants.find(pv => pv.variant_name.trim().toLowerCase() === variant.variantName.trim().toLowerCase());
             const imageAttr = currVariant.variant_attributes.find(a => a.attribute.trim().toLowerCase() === variant.attributeName.trim().toLowerCase());
-            if (imageAttr && imageAttr.main_images.filter(Boolean).length) {
-                let currAttrImages = imageAttr.main_images.filter(Boolean);
-                if (imageAttr.edit_main_image) {
-                    currAttrImages = [imageAttr.edit_main_image, ...currAttrImages];
-                }
-                images.push(...currAttrImages);
+            if (imageAttr && (imageAttr.main_images.filter(Boolean).length || imageAttr.preview_image || imageAttr.thumbnail)) {
+                const currAttrMainImage = imageAttr.edit_main_image || imageAttr.main_images.filter(Boolean)[0] || imageAttr.preview_image || `${baseUrl}/${product.image[0]}`;
+                const variant_attr_name = variant.variantName + ": " + variant.attributeName;
+                images.push({ name: variant_attr_name, image: currAttrMainImage, thumbnail: imageAttr.thumbnail });
             }
         });
         return images;
     };
 
-    const images = [...getVariantImages(), ...saleData?.productData?.image.map(img => baseUrl + img)];
+    const getCustomizationImages = () => {
+        let images = [];
+        const customization = saleData?.customizationData?.[0];
+        if (!customization || saleData?.customize !== "Yes") {
+            return [];
+        }
+        Object.entries(customization).forEach(([key, value]) => {
+            const mainImage = Array.isArray(value.main_images) ? value.main_images.find(Boolean)
+                : null;
+
+            const custImage = mainImage || value.edit_main_image || value.preview_image || `${baseUrl}/${saleData?.productData.image[0]}`;
+            images.push({
+                name: `${key}: ${value.value}`,
+                image: custImage,
+                thumbnail: value.thumbnail
+            })
+        })
+        return images;
+    };
+
+    const images = [...getVariantImages(), ...getCustomizationImages(), ...saleData?.productData?.image.map(img => { return { name: "main image", image: `${baseUrl}/${img}`, thumbnail: "" } })];
     console.log(item);
     return (
         <>
@@ -363,6 +381,22 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                             >
                                 {stockBadge.text}
                             </Box>
+                        )}
+                        {images.length > 1 && (
+                            <Typography
+                                component={Card}
+                                sx={{
+                                    position: "absolute",
+                                    bottom: "0px",
+                                    right: "0px",
+                                    padding: "3px 3px",
+                                    borderRadius: "4px",
+                                    fontSize: "12px"
+                                }}
+                                color={"primary.main"}
+                            >
+                                <Collections fontSize='10px' /> {images.length}
+                            </Typography>
                         )}
                     </Box>
                     <Box textAlign={"start"}
@@ -595,7 +629,7 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                         <CloseIcon />
                     </Button>
 
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: "300px" }}>
                         <Button
                             onClick={goToPrevImage}
                             sx={{ minWidth: 'auto', padding: '8px', fontSize: '25px' }}
@@ -603,17 +637,54 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                             ‹
                         </Button>
 
-                        <Box sx={{ flex: 1, textAlign: 'center' }}>
+                        <Box
+                            sx={{
+                                flex: 1,
+                                display: "flex",
+                                justifyContent: "center",
+                                alignItems: "center",
+                                position: "relative",
+                            }}
+                        >
                             {images[currentImageIndex] && (
-                                <img
-                                    src={images[currentImageIndex]}
-                                    alt={images[currentImageIndex]}
-                                    style={{
-                                        maxWidth: '100%',
-                                        maxHeight: '500px',
-                                        objectFit: 'contain'
-                                    }}
-                                />
+                                <>
+                                    <img
+                                        src={images[currentImageIndex].image}
+                                        alt={images[currentImageIndex].image}
+                                        style={{
+                                            maxWidth: "100%",
+                                            maxHeight: "500px",
+                                            objectFit: "contain",
+                                        }}
+                                    />
+
+                                    {images[currentImageIndex].thumbnail && (
+                                        <Box
+                                            sx={{
+                                                position: "absolute",
+                                                bottom: 12,
+                                                right: 12,
+                                                width: 64,
+                                                height: 64,
+                                                borderRadius: 1,
+                                                overflow: "hidden",
+                                                border: "2px solid #fff",
+                                                backgroundColor: "#fff",
+                                                boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+                                            }}
+                                        >
+                                            <img
+                                                src={images[currentImageIndex].thumbnail}
+                                                alt="Thumbnail"
+                                                style={{
+                                                    width: "100%",
+                                                    height: "100%",
+                                                    objectFit: "cover",
+                                                }}
+                                            />
+                                        </Box>
+                                    )}
+                                </>
                             )}
                         </Box>
 
@@ -626,7 +697,10 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                     </Box>
 
                     {saleData?.productData?.image && saleData.productData.image.length > 1 && (
-                        <Box sx={{ display: 'flex', justifyContent: 'center', marginTop: 2 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'center', marginTop: 2, gap: 5 }}>
+                            <Typography variant="body1" fontWeight={500}>
+                                {images[currentImageIndex].name}
+                            </Typography>
                             <Typography>
                                 Image {currentImageIndex + 1} of {saleData.productData.image.length}
                             </Typography>

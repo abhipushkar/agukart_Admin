@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import StarIcon from "@mui/icons-material/Star";
@@ -10,8 +10,18 @@ import EditIcon from "@mui/icons-material/Edit";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
 import { Avatar, Card, Rating } from "@mui/material";
+import {
+    Dialog,
+    DialogTitle,
+    DialogActions,
+    IconButton
+} from "@mui/material";
 
-const OrderFeedbackcard = ({ item, baseUrl, shopName }) => {
+import CloseIcon from "@mui/icons-material/Close";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+
+const OrderFeedbackcard = ({ item, baseUrl, shopName, open, imageDialogOpen, imageDialogClose, dialogImages, setActiveImageIndex, activeImageIndex }) => {
     // Use item directly as it already contains all review data
     const review = { ...item, ...item.reviewData };
 
@@ -89,6 +99,18 @@ const OrderFeedbackcard = ({ item, baseUrl, shopName }) => {
             case "pending": return "#ff9800";
             default: return "#9e9e9e";
         }
+    };
+
+    const handlePrev = () => {
+        setActiveImageIndex(prev =>
+            prev === 0 ? dialogImages.length - 1 : prev - 1
+        );
+    };
+
+    const handleNext = () => {
+        setActiveImageIndex(prev =>
+            prev === dialogImages.length - 1 ? 0 : prev + 1
+        );
     };
 
     return (
@@ -228,6 +250,7 @@ const OrderFeedbackcard = ({ item, baseUrl, shopName }) => {
                                 borderRadius: 8,
                                 border: "0.5px solid #e0e0e0"
                             }}
+                            onClick={() => { setActiveImageIndex(idx); imageDialogOpen(reviewImages); }}
                         />
                     ))}
                 </Box>
@@ -356,6 +379,277 @@ const OrderFeedbackcard = ({ item, baseUrl, shopName }) => {
 
                 </Box>
             )}
+            <Dialog
+                open={open}
+                onClose={imageDialogClose}
+                maxWidth="lg"
+                fullWidth
+                PaperProps={{
+                    sx: {
+                        width: { xs: "90vw", sm: "80vw", md: "60vw", lg: "50vw" },
+                        maxWidth: "900px",
+                        height: { xs: "80vh", sm: "85vh", md: "85vh" },
+                        maxHeight: "800px",
+                        borderRadius: 3,
+                        overflow: "hidden",
+                        position: "relative",
+                        bgcolor: "#f5f0eb",
+                        boxShadow: "0 8px 40px rgba(0,0,0,0.2)",
+                    },
+                }}
+            >
+
+                <DialogTitle>
+                    {/* Close Button - Top Right */}
+                    <IconButton
+                        onClick={imageDialogClose}
+                        sx={{
+                            position: "absolute",
+                            top: 20,
+                            right: 20,
+                            zIndex: 20,
+                            color: "rgba(255,255,255,0.8)",
+                            bgcolor: "rgba(0,0,0,0.4)",
+                            backdropFilter: "blur(8px)",
+                            transition: "all 0.2s",
+                            width: 38,
+                            height: 38,
+                            "&:hover": {
+                                bgcolor: "rgba(0,0,0,0.7)",
+                                color: "#fff",
+                                transform: "scale(1.05)",
+                            },
+                            "& .MuiSvgIcon-root": {
+                                fontSize: 20,
+                            },
+                        }}
+                    >
+                        <CloseIcon />
+                    </IconButton>
+
+                    {/* Counter - Top Left */}
+                    <Box
+                        sx={{
+                            position: "absolute",
+                            top: 20,
+                            left: 24,
+                            zIndex: 20,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1.5,
+                        }}
+                    >
+                        <Typography
+                            sx={{
+                                fontSize: 13,
+                                fontWeight: 500,
+                                color: "rgba(255,255,255,0.7)",
+                                bgcolor: "rgba(0,0,0,0.4)",
+                                backdropFilter: "blur(8px)",
+                                px: 2,
+                                py: 0.75,
+                                borderRadius: 20,
+                                letterSpacing: "0.3px",
+                            }}
+                        >
+                            {activeImageIndex + 1} of {dialogImages.length}
+                        </Typography>
+                    </Box>
+
+                </DialogTitle>
+
+                {/* Navigation Buttons */}
+                {dialogImages.length > 1 && (
+                    <>
+                        {/* Previous Button */}
+                        <IconButton
+                            onClick={handlePrev}
+                            sx={{
+                                position: "absolute",
+                                left: 24,
+                                top: "50%",
+                                transform: "translateY(-50%)",
+                                zIndex: 20,
+                                bgcolor: "rgba(92, 92, 92, 0.18)",
+                                backdropFilter: "blur(8px)",
+                                color: "#fff",
+                                width: {
+                                    xs: 40,
+                                    sm: 48,
+                                    md: 56,
+                                },
+                                height: {
+                                    xs: 40,
+                                    sm: 48,
+                                    md: 56,
+                                },
+                                transition: "all 0.25s ease",
+                                border: "1px solid rgba(255,255,255,0.15)",
+                                "&:hover": {
+                                    bgcolor: "rgba(202, 202, 202, 0.25)",
+                                    transform: "translateY(-50%) scale(1.08)",
+                                    borderColor: "rgba(255,255,255,0.3)",
+                                },
+                                "&:active": {
+                                    transform: "translateY(-50%) scale(0.95)",
+                                },
+                            }}
+                        >
+                            <ChevronLeftIcon sx={{ fontSize: { xs: 24, sm: 28, md: 32, } }} />
+                        </IconButton>
+
+                        {/* Next Button */}
+                        <IconButton
+                            onClick={handleNext}
+                            sx={{
+                                position: "absolute",
+                                right: 24,
+                                top: "50%",
+                                transform: "translateY(-50%)",
+                                zIndex: 20,
+                                bgcolor: "rgba(92, 92, 92, 0.18)",
+                                backdropFilter: "blur(8px)",
+                                color: "#fff",
+                                width: {
+                                    xs: 40,
+                                    sm: 48,
+                                    md: 56,
+                                },
+                                height: {
+                                    xs: 40,
+                                    sm: 48,
+                                    md: 56,
+                                },
+                                transition: "all 0.25s ease",
+                                border: "1px solid rgba(255,255,255,0.15)",
+                                "&:hover": {
+                                    bgcolor: "rgba(202,202,202,0.25)",
+                                    transform: "translateY(-50%) scale(1.08)",
+                                    borderColor: "rgba(255,255,255,0.3)",
+                                },
+                                "&:active": {
+                                    transform: "translateY(-50%) scale(0.95)",
+                                },
+                            }}
+                        >
+                            <ChevronRightIcon sx={{ fontSize: { xs: 24, sm: 28, md: 32, } }} />
+                        </IconButton>
+                    </>
+                )}
+
+                {/* Main Image Area */}
+                <Box
+                    sx={{
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        height: "calc(90% - 120px)",
+                        px: { xs: 2, sm: 4 },
+                        pt: { xs: 4, sm: 5 },
+                        pb: 2,
+                        position: "relative",
+                    }}
+                >
+                    <Box
+                        component="img"
+                        src={`https://api.agukart.com/uploads/ratings/${dialogImages[activeImageIndex]}`}
+                        alt={`Product image ${activeImageIndex + 1}`}
+                        sx={{
+                            maxWidth: "100%",
+                            maxHeight: "100%",
+                            width: "auto",
+                            height: "auto",
+                            objectFit: "contain",
+                            borderRadius: 2,
+                            boxShadow: "0 4px 30px rgba(0,0,0,0.3)",
+                            transition: "all 0.3s ease",
+                            userSelect: "none",
+                            WebkitUserDrag: "none",
+                        }}
+                    />
+                </Box>
+
+                {/* Thumbnail Strip - Bottom */}
+                {dialogImages.length > 1 && (
+                    <DialogActions
+                        sx={{
+                            display: "flex", justifyContent: "center"
+                        }}
+                    >
+
+                        <Box
+                            sx={{
+                                display: "flex",
+                                gap: 1.5,
+                                justifyContent: "center",
+                                alignItems: "center",
+                                px: { xs: 2, sm: 4 },
+                                py: 1,
+                                overflowX: "auto",
+                                overflowY: "hidden",
+                                "&::-webkit-scrollbar": {
+                                    height: 4,
+                                },
+                                "&::-webkit-scrollbar-thumb": {
+                                    bgcolor: "rgba(255,255,255,0.2)",
+                                    borderRadius: 10,
+                                },
+                                "&::-webkit-scrollbar-track": {
+                                    bgcolor: "transparent",
+                                },
+                                position: "relative",
+                                zIndex: 5,
+                            }}
+                        >
+                            {dialogImages.map((img, index) => (
+                                <Box
+                                    key={index}
+                                    onClick={() => setActiveImageIndex(index)}
+                                    sx={{
+                                        width: 80,
+                                        height: 80,
+                                        minWidth: 80,
+                                        flexShrink: 0,
+                                        borderRadius: 2,
+                                        overflow: "hidden",
+                                        cursor: "pointer",
+                                        position: "relative",
+                                        border: index === activeImageIndex
+                                            ? "3px solid #cb9090"
+                                            : "2px solid rgba(255,255,255,0.15)",
+                                        opacity: index === activeImageIndex ? 1 : 0.5,
+                                        transition: "all 0.1s ease",
+                                        transform: index === activeImageIndex
+                                            ? "scale(1.02)"
+                                            : "scale(1)",
+                                        "&:hover": {
+                                            opacity: 1,
+                                            transform: "scale(1.02)",
+                                            borderColor: "rgba(224, 168, 168, 0.4)",
+                                        },
+                                        "&:active": {
+                                            transform: "scale(0.98)",
+                                        },
+                                    }}
+                                >
+                                    <Box
+                                        component="img"
+                                        src={`https://api.agukart.com/uploads/ratings/${img}`}
+                                        alt={`Thumbnail ${index + 1}`}
+                                        sx={{
+                                            width: "100%",
+                                            height: "100%",
+                                            objectFit: "cover",
+                                            display: "block",
+                                        }}
+                                    />
+                                </Box>
+                            ))}
+                        </Box>
+                    </DialogActions>
+                )}
+
+            </Dialog>
         </Box>
     );
 };
