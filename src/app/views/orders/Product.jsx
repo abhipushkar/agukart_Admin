@@ -1,8 +1,8 @@
 // Product.jsx - Complete updated code
-import { Box, Card, Dialog, Tooltip, Typography, Grid, Rating } from '@mui/material';
+import { Box, Card, Dialog, Tooltip, Typography, Grid, Rating, DialogTitle, DialogContent, DialogActions, IconButton } from '@mui/material';
 import React from 'react'
 import Button from "@mui/material/Button";
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { ApiService } from "app/services/ApiService";
 import CloseIcon from "@mui/icons-material/Close";
 import { Update, Collections } from '@mui/icons-material';
@@ -14,6 +14,9 @@ import MailOutlineIcon from "@mui/icons-material/MailOutline";
 import { REACT_APP_WEB_URL } from 'config';
 import MessagePopup from './MessagePopup';
 import { useCallback } from 'react';
+import parse from 'html-react-parser'
+import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
+
 
 const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData }) => {
     const [openPopup, SetOpenPopup] = useState(false);
@@ -26,6 +29,9 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
     const [matchedCombination, setMatchedCombination] = useState(null);
     const [combinationStockId, setCombinationStockId] = useState([]);
     const [openPop, setOpenPop] = useState(false);
+    const [guideOpen, setGuideOpen] = useState(false);
+    const [currentGuide, setCurrentGuide] = useState({});
+    const transformRef = useRef(null);
 
     const popClose = () => {
         setOpenPop(false);
@@ -49,21 +55,6 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
         setCurrentImageIndex(0);
     };
 
-    const goToNextImage = () => {
-        if (saleData?.productData?.image && saleData.productData.image.length > 0) {
-            setCurrentImageIndex((prev) =>
-                prev === saleData.productData.image.length - 1 ? 0 : prev + 1
-            );
-        }
-    };
-
-    const goToPrevImage = () => {
-        if (saleData?.productData?.image && saleData.productData.image.length > 0) {
-            setCurrentImageIndex((prev) =>
-                prev === 0 ? saleData.productData.image.length - 1 : prev - 1
-            );
-        }
-    };
 
     // 1️⃣ SINGLE quantity owner resolver
     const determineQuantityOwner = useCallback(() => {
@@ -331,8 +322,52 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
         return images;
     };
 
-    const images = [...getVariantImages(), ...getCustomizationImages(), ...saleData?.productData?.image.map(img => { return { name: "main image", image: `${baseUrl}/${img}`, thumbnail: "" } })];
-    console.log(item);
+    const mainImages =
+        saleData?.productData?.image?.map((img) => ({
+            name: "main image",
+            image: `${baseUrl}/${img}`,
+            thumbnail: "",
+        })) ?? [];
+
+    const [firstMainImage, ...remainingMainImages] = mainImages;
+
+    const images = [
+        ...(firstMainImage ? [firstMainImage] : []),
+        ...getVariantImages(),
+        ...getCustomizationImages(),
+        ...remainingMainImages,
+    ];
+
+    const goToNextImage = () => {
+        if (images.length > 0) {
+            setCurrentImageIndex((prev) =>
+                prev === images.length - 1 ? 0 : prev + 1
+            );
+        }
+    };
+
+    const goToPrevImage = () => {
+        if (images.length > 0) {
+            setCurrentImageIndex((prev) =>
+                prev === 0 ? images.length - 1 : prev - 1
+            );
+        }
+    };
+
+    const variantHasGuide = (v) => saleData?.productData.product_variants.find(pv => pv.variant_name === v.variantName).guide || null;
+    const handleGuideClick = (variant) => {
+        const productVariant = saleData?.productData.product_variants.find(v => v.variant_name === variant.variantName);
+        console.log(productVariant, "pv");
+        const guide = productVariant.guide[0];
+        setCurrentGuide({
+            name: guide.guide_name,
+            file: guide.guide_file,
+            type: guide.guide_type,
+            description: guide.guide_description,
+        });
+        setGuideOpen(true);
+    };
+
     return (
         <>
             <Tooltip
@@ -458,14 +493,14 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                             <Grid item md={6} lg={6}>
 
                                 <Typography fontSize={14} sx={{ color: "#000" }}>
-                                    Product SKU:{" "}
-                                    <Box component="span">
+                                    Product SKU {"   "}:{"   "}
+                                    <Box component="span" fontWeight={500}>
                                         {getDisplayValue(saleData?.productData?.sku_code || saleData?.productMain?.sku_code)}
                                     </Box>
                                 </Typography>
                                 <Typography fontSize={14} sx={{ color: "#000" }}>
-                                    Quantity:{" "}
-                                    <Box component="span">
+                                    Quantity  {"  "}:{"   "}
+                                    <Box component="span" fontWeight={500}>
                                         {getDisplayValue(saleData?.qty)}
                                     </Box>
                                 </Typography>
@@ -478,8 +513,8 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                                             sx={{ color: "#000" }}
                                             key={variantIndex}
                                         >
-                                            {getDisplayValue(variantItem?.variant_name)}:{" "}
-                                            <Box component="span">
+                                            {getDisplayValue(variantItem?.variant_name)}{"   "}:{"   "}
+                                            <Box component="span" fontWeight={500}>
                                                 {getDisplayValue(saleData?.variantAttributeData[variantIndex]?.attribute_value)}
                                             </Box>
                                         </Typography>
@@ -491,13 +526,16 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                                     saleData.variants.map((variant, index) => (
                                         <Typography
                                             fontSize={14}
-                                            sx={{ color: "#000" }}
+                                            sx={{ color: "#000", pt: 0.5 }}
                                             key={variant._id || index}
                                         >
-                                            {getDisplayValue(variant.variantName)}:{" "}
-                                            <Box component="span">
+                                            {getDisplayValue(variant.variantName)}{variantHasGuide(variant) && variantHasGuide(variant)?.[0] && (<Typography component={"span"} color="primary.main" ml={1.5}
+                                                onClick={() => handleGuideClick(variant)} sx={{ cursor: "pointer", border: "1px solid rgb(0, 119, 255)", px: 1, borderRadius: 1 }} fontWeight={600}
+                                            >G</Typography>)}{"   "}:{"   "}
+                                            <Box component="span" ml={1} fontWeight={500}>
                                                 {getDisplayValue(variant.attributeName)}
                                             </Box>
+
                                         </Typography>
                                     ))
                                 )}
@@ -533,11 +571,11 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                                                     <Box key={key}>
                                                         {typeof value === 'object' ? (
                                                             <Typography fontSize={14} sx={{ color: "#000" }}>
-                                                                {getDisplayValue(key)}:{` ${getDisplayValue(value?.value)}`}
+                                                                {getDisplayValue(key)} {"   "} :<strong>{`   ${getDisplayValue(value?.value)}`}</strong>
                                                             </Typography>
                                                         ) : (
                                                             <Typography fontSize={14} sx={{ color: "#000" }}>
-                                                                {getDisplayValue(key)}: {getDisplayValue(value)}
+                                                                {getDisplayValue(key)}{"   "}: {"   "}<strong>{getDisplayValue(value)}</strong>
                                                             </Typography>
                                                         )}
                                                     </Box>
@@ -578,7 +616,14 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                                         <Rating value={saleData?.ratingData?.rating} readOnly />
                                         <Typography color="gray" sx={{ ml: 0.5, fontSize: "16px" }}> ⏷ </Typography>
                                     </span>
+                                    <br />
                                 </Tooltip>)}
+                                {(saleData?.refund_status || saleData.latest_refund_reason) && saleData.refunded_cash_amount > 0 && (
+                                    <Box pt={1}>
+                                        <Typography color="GrayText">
+                                            Refund Reason: <strong style={{ color: "red", wordBreak: "keep-all", overflowWrap: "normal", whiteSpace: "normal", }}>{saleData.latest_refund_reason || ""}</strong>
+                                        </Typography>
+                                    </Box>)}
                             </Grid>
                         </Grid>
                         <Box mt={1}>
@@ -696,13 +741,13 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                         </Button>
                     </Box>
 
-                    {saleData?.productData?.image && saleData.productData.image.length > 1 && (
+                    {images.length > 1 && (
                         <Box sx={{ display: 'flex', justifyContent: 'center', marginTop: 2, gap: 5 }}>
                             <Typography variant="body1" fontWeight={500}>
                                 {images[currentImageIndex].name}
                             </Typography>
                             <Typography>
-                                Image {currentImageIndex + 1} of {saleData.productData.image.length}
+                                Image {currentImageIndex + 1} of {images.length}
                             </Typography>
                         </Box>
                     )}
@@ -777,7 +822,7 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                                 {/* Show which variant is being tracked */}
                                 {quantityOwner === 'combination' && matchedCombination && (
                                     <Box sx={{ mt: 1, p: 1, bgcolor: '#f5f5f5', borderRadius: 1 }}>
-                                        <Typography fontSize={14} fontWeight="bold">
+                                        {/* <Typography fontSize={14} fontWeight="bold">
                                             Tracking Inventory For:
                                         </Typography>
                                         {saleData?.variants?.map((variant, index) => (
@@ -794,7 +839,10 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                                             <Typography fontSize={12} color="text.secondary" sx={{ mt: 1 }}>
                                                 Combination IDs: {matchedCombination.combIds.join(', ')}
                                             </Typography>
-                                        )}
+                                        )} */}
+                                        <Typography fontSize={14} color="text.secondary" sx={{ mt: 1 }}>
+                                            Qunatity Owner: {saleData?.productData?.form_values?.quantities}
+                                        </Typography>
                                     </Box>
                                 )}
 
@@ -895,6 +943,39 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                     handleClosePopup={handleClosePopup}
                 />
             }
+            {guideOpen && (
+                <Dialog open={guideOpen} onClose={() => setGuideOpen(false)} maxWidth="md" fullWidth sx={{ "& .MuiDialog-paper": { maxWidth: "90vw", maxHeight: "95vh" } }}>
+                    <DialogTitle sx={{ m: 0, py: 1, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <Typography>{currentGuide?.name} Guide</Typography>
+                        <IconButton onClick={() => setGuideOpen(false)}><CloseIcon /></IconButton>
+                    </DialogTitle>
+                    <DialogContent sx={{ p: 0, overflow: "visible" }}>
+                        {currentGuide?.description && <Box sx={{ p: 3, pb: 0 }}>{parse(currentGuide.description)}</Box>}
+                        {currentGuide?.file && currentGuide?.type === "image" && (
+                            <Box sx={{ width: "100%", height: "85vh", display: "flex", justifyContent: "center", alignItems: "center", overflow: "hidden" }}>
+                                <TransformWrapper ref={transformRef} initialScale={1} minScale={1} maxScale={5} wheel={{ step: 0.2 }} doubleClick={{ disabled: false }} pinch={{ step: 10 }} bg>
+                                    <TransformComponent wrapperStyle={{ display: "inline-block", width: "85vw", height: "fit-content", background: "#f2f2f2", "&:hover": { cursor: "grab" } }} contentStyle={{ display: "inline-block" }}>
+                                        <img src={currentGuide.file} alt="guide" style={{ maxWidth: "100%", maxHeight: "85vh", objectFit: "contain", display: "block" }} />
+                                    </TransformComponent>
+                                </TransformWrapper>
+                            </Box>
+                        )}
+                        {currentGuide?.file && currentGuide?.type === "video" && <Box sx={{ textAlign: "center", mb: 2 }}><video controls style={{ maxWidth: "100%", maxHeight: "60vh", borderRadius: "8px" }}><source src={currentGuide.file} type="video/mp4" /></video></Box>}
+                        {currentGuide?.file && currentGuide?.type === "document" && <Box sx={{ textAlign: "center", mb: 2 }}><Button variant="contained" href={currentGuide.file} target="_blank">View Guide</Button></Box>}
+                        {!currentGuide?.file && !currentGuide?.description && <Typography color="textSecondary" sx={{ textAlign: "center", py: 4 }}>No guide content available</Typography>}
+                    </DialogContent>
+                    {currentGuide?.file && currentGuide?.type === "image" && (
+                        <DialogActions sx={{ p: 2 }}>
+                            <Box sx={{ display: "flex", gap: 1 }}>
+                                <Button onClick={() => transformRef.current?.zoomIn()} variant="outlined">Zoom +</Button>
+                                <Button onClick={() => transformRef.current?.zoomOut()} variant="outlined">Zoom -</Button>
+                                <Button onClick={() => transformRef.current?.resetTransform()} variant="outlined">Reset</Button>
+                                <Button onClick={() => setGuideOpen(false)} variant="outlined">Close</Button>
+                            </Box>
+                        </DialogActions>
+                    )}
+                </Dialog>
+            )}
         </>
     )
 }

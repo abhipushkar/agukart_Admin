@@ -19,11 +19,14 @@ import {
     Alert,
     CircularProgress,
     Snackbar,
+    Tooltip,
+    Card, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Slider
 } from '@mui/material';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useCallback } from 'react';
 import { ApiService } from 'app/services/ApiService';
 import { localStorageKey } from 'app/constant/localStorageKey';
+import { ConfirmModal } from 'app/components';
 
 const RefundPage = () => {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -38,6 +41,15 @@ const RefundPage = () => {
     const [isCancelMode, setIsCancelMode] = useState(mode === 'cancel');
     const [isFormValid, setIsFormValid] = useState(true);
     const [customReasons, setCustomReasons] = useState({});
+    const [open, setOpen] = useState(false);
+    const [walletRefundAmount, setWalletRefundAmount] = useState('');
+    const [sourceRefundAmount, setSourceRefundAmount] = useState('');
+    const [refundDialogOpen, setRefundDialogOpen] = useState(false);
+    const [refundTo, setRefundTo] = useState("");
+    const [validationErrors, setValidationErrors] = useState({
+        wallet: false,
+        source: false
+    });
 
     const [snackbar, setSnackbar] = useState({
         open: false,
@@ -78,6 +90,12 @@ const RefundPage = () => {
     ];
     const CUSTOM_REASON = "__CUSTOM__";
 
+    const refundOptions = [
+        { value: "paypal", label: "PayPal Source Account" },
+        { value: "wallet", label: "Gift Card Wallet" },
+        { value: "split", label: "Split Amount" },
+    ];
+
     const parseNumber = (value) => {
         if (value === '' || value === undefined || value === null) return 0;
         const num = parseFloat(value);
@@ -96,6 +114,7 @@ const RefundPage = () => {
             return {
                 ...item,
                 reason_code: isCustom ? CUSTOM_REASON : item.reason_code,
+                coupon_adjustment_amount: 0,
             };
         });
         setCustomReasons(customMap);
@@ -111,7 +130,7 @@ const RefundPage = () => {
             console.log('error fetching', error);
         }
         const data = normalizeRefundData(res.data);
-
+        setRefundTo('');
         console.log("item", data);
         const itemsWithDerivedValues = data.items.map(item => {
             return {
@@ -119,8 +138,9 @@ const RefundPage = () => {
                 title: item.title?.replace(/<\/?[^>]+(>|$)/g, ""),
                 entered_refund_amount: 0,
                 net_refund_amount: 0,
-                // reason_code: '',
+                reason_code: '',
                 voucher_adjustment_amount: 0,
+                coupon_adjustment_amount: 0,
             };
         });
 
@@ -138,14 +158,20 @@ const RefundPage = () => {
                 ...initialRefundData,
                 items: initialRefundData.items.map(item => {
                     const maxRefundable = item.amount - parseNumber(item.refunded_cash_amount);
+                    const voucherAmount = item.voucher_discount || 0;
+                    const couponAmount = data.coupon?.amount || 0;
+
                     return {
                         ...item,
                         entered_refund_amount: maxRefundable,
-                        net_refund_amount: maxRefundable,
-                        reason_code: 'Buyer Cancelled'
+                        net_refund_amount: maxRefundable - voucherAmount - couponAmount,
+                        reason_code: 'Buyer Cancelled',
+                        voucher_adjustment_amount: voucherAmount, // Full voucher refund
+                        coupon_adjustment_amount: couponAmount, // Full coupon refund
                     };
                 }),
-                shipping_refund: shippingRefund
+                shipping_refund: shippingRefund,
+                entered_shipping_refund: shippingRefund,
             };
         }
         console.log("initial", initialRefundData);
@@ -169,13 +195,11 @@ const RefundPage = () => {
                 items: updateItemAtIndex(prev.items, index, item => ({
                     ...item,
                     entered_refund_amount: value,
-                    net_refund_amount: value,
                 }))
             };
         });
     };
 
-    // Handle item refund blur - calculate derived values when user leaves field
     const handleItemRefundBlur = (index) => {
         setRefundData(prev => {
             if (!prev) return prev;
@@ -183,15 +207,20 @@ const RefundPage = () => {
             const items = updateItemAtIndex(prev.items, index, item => {
                 const validValue = parseNumber(item.entered_refund_amount);
                 const maxAllowed = item.amount - item.refunded_cash_amount;
+                const voucherAmount = parseNumber(item.voucher_adjustment_amount);
+                const couponAmount = parseNumber(item.coupon_adjustment_amount);
+
+                // Ensure refund amount is at least voucher + coupon
                 const clampedValue = Math.min(validValue, maxAllowed);
-                const updatedItem = {
-                    ...item,
-                    entered_refund_amount: clampedValue,
-                    net_refund_amount: clampedValue
-                };
+                const finalValue = Math.max(clampedValue, voucherAmount + couponAmount);
+
+                // Calculate net refund after adjustments
+                const netRefund = finalValue - voucherAmount - couponAmount;
 
                 return {
-                    ...updatedItem,
+                    ...item,
+                    entered_refund_amount: finalValue,
+                    net_refund_amount: netRefund, // This is the actual net refund
                 };
             });
 
@@ -275,11 +304,22 @@ const RefundPage = () => {
 
             const items = updateItemAtIndex(prev.items, index, item => {
                 const validValue = parseNumber(item.voucher_adjustment_amount);
-                const maxAllowed = item.refunded_voucher_amount
-                if (item.voucher_adjustment_amount > maxAllowed) return item;
+                const refundAmount = parseNumber(item.entered_refund_amount);
+                const couponAmount = parseNumber(item.coupon_adjustment_amount);
+                const maxAllowed = Math.min(
+                    item.voucher_discount - item.refunded_voucher_amount,
+                    refundAmount - couponAmount // Can't exceed refund after coupon
+                );
+                const clampedValue = Math.min(validValue, maxAllowed);
+                const finalVoucher = Math.max(0, clampedValue);
+
+                // Recalculate net refund
+                const netRefund = refundAmount - finalVoucher - couponAmount;
+
                 return {
                     ...item,
-                    voucher_adjustment_amount: validValue
+                    voucher_adjustment_amount: finalVoucher,
+                    net_refund_amount: netRefund,
                 };
             });
             return {
@@ -289,31 +329,95 @@ const RefundPage = () => {
         });
     };
 
+    // Handle coupon adjustment change
+    const handleCouponChange = (index, value) => {
+        setRefundData(prev => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                items: updateItemAtIndex(prev.items, index, item => ({
+                    ...item,
+                    coupon_adjustment_amount: value,
+                }))
+            };
+        });
+    };
+
+    // Handle coupon adjustment blur - validate and clamp
+    const handleCouponChangeBlur = (index) => {
+        setRefundData(prev => {
+            if (!prev) return prev;
+
+            const items = updateItemAtIndex(prev.items, index, item => {
+                const validValue = parseNumber(item.coupon_adjustment_amount);
+                const refundAmount = parseNumber(item.entered_refund_amount);
+                const voucherAmount = parseNumber(item.voucher_adjustment_amount);
+                const maxAllowed = Math.min(
+                    refundData.coupon?.amount || 0,
+                    refundAmount - voucherAmount // Can't exceed net refund after voucher
+                );
+                const clampedValue = Math.min(validValue, maxAllowed);
+                const finalCoupon = Math.max(0, clampedValue);
+
+                // Recalculate net refund
+                const netRefund = refundAmount - voucherAmount - finalCoupon;
+
+                return {
+                    ...item,
+                    coupon_adjustment_amount: finalCoupon,
+                    net_refund_amount: netRefund,
+                };
+            });
+            return {
+                ...prev,
+                items
+            };
+        });
+    };
 
     useEffect(() => {
         if (!refundData) {
             setIsFormValid(false);
             return;
         }
-        const isValid = refundData.items.every((item) => {
-            if (item.entered_refund_amount > 0) {
 
+        let isValid = true;
+
+        // In cancel mode, always valid (all fields are pre-filled)
+        if (isCancelMode) {
+            setIsFormValid(true);
+            return;
+        }
+
+        refundData.items.every((item) => {
+            if (parseNumber(item.entered_refund_amount) > 0) {
                 if (!item.reason_code) {
+                    isValid = false;
                     return false;
                 }
 
-                if (
-                    item.reason_code === CUSTOM_REASON &&
-                    !customReasons[item.item_id]?.trim()
-                ) {
+                if (item.reason_code === CUSTOM_REASON && !customReasons[item.item_id]?.trim()) {
+                    isValid = false;
                     return false;
                 }
             }
 
+            // Check for negative net refund (voucher + coupon > refund)
+            const refundAmount = parseNumber(item.entered_refund_amount);
+            const voucherAmount = parseNumber(item.voucher_adjustment_amount);
+            const couponAmount = parseNumber(item.coupon_adjustment_amount);
+            const netRefund = refundAmount - voucherAmount - couponAmount;
+
+            if (netRefund < 0) {
+                isValid = false;
+                return false;
+            }
+
             return true;
         });
+
         setIsFormValid(isValid);
-    }, [refundData, customReasons]);
+    }, [refundData, customReasons, isCancelMode]);
 
     // Toggle cancel mode
     const toggleCancelMode = () => {
@@ -327,26 +431,51 @@ const RefundPage = () => {
         setSearchParams(newParams);
 
         if (newCancelMode) {
+            // CANCEL MODE - calculate full refunds
+            const shippingRefund = refundData.shipping.paid - refundData.shipping.refunded;
+
             const newItems = refundData.items.map(item => {
                 const maxRefundable = item.amount - parseNumber(item.refunded_cash_amount);
+                const voucherAmount = item.voucher_discount || 0;
+                const couponAmount = refundData.coupon?.amount || 0;
+
+                // In cancel mode, refund everything and adjust all amounts
                 return {
                     ...item,
                     entered_refund_amount: maxRefundable,
-                    net_refund_amount: maxRefundable,
-                    reason_code: 'Buyer Cancelled'
+                    net_refund_amount: maxRefundable - voucherAmount - couponAmount,
+                    reason_code: 'Buyer Cancelled',
+                    voucher_adjustment_amount: voucherAmount, // Full voucher refund
+                    coupon_adjustment_amount: couponAmount, // Full coupon refund
                 };
-
             });
 
             setRefundData({
                 ...refundData,
                 items: newItems,
+                shipping_refund: shippingRefund,
+                entered_shipping_refund: shippingRefund,
             });
         } else {
-            // REFUND MODE → reset
+            // REFUND MODE → reset everything to 0
+            const resetItems = refundData.items.map(item => ({
+                ...item,
+                entered_refund_amount: 0,
+                net_refund_amount: 0,
+                reason_code: '',
+                voucher_adjustment_amount: 0,
+                coupon_adjustment_amount: 0,
+            }));
+
+            setRefundData({
+                ...refundData,
+                items: resetItems,
+                shipping_refund: 0,
+                entered_shipping_refund: 0,
+                note_to_yourself: '',
+            });
+
             setIsFormValid(false);
-            initializeData("refund");
-            setIsFormValid(true);
         }
     };
 
@@ -357,32 +486,143 @@ const RefundPage = () => {
                 refundAmount: 0,
                 orderAmount: 0,
                 beforeRefunded: 0,
-                enteredOrderRefund: 0
+                enteredOrderRefund: 0,
+                totalVoucherAdjustment: 0,
+                totalCouponAdjustment: 0, // Add this
+                hasNegativeNetRefund: false
             };
         }
 
         let orderAmount = 0;
+        let hasNegativeNetRefund = false;
         const enteredOrderRefund = refundData.items.reduce((sum, item) => {
-            orderAmount = item.amount + orderAmount;
+            orderAmount = orderAmount + item.amount - (item.voucher_discount || 0);
             return sum + (typeof item.entered_refund_amount === 'number' ? item.entered_refund_amount : 0);
         }, 0);
 
-        const refundAmount = enteredOrderRefund + refundData.shipping_refund;
-        const beforeRefunded = refundData.items.reduce((sum, item) => {
-            const refunded_cash_amount = typeof item.refunded_cash_amount === 'number' ? item.refunded_cash_amount : 0;
-            return sum + refunded_cash_amount + refundData.shipping.refunded;
+        // Calculate total voucher and coupon adjustments
+        const totalVoucherAdjustment = refundData.items.reduce((sum, item) => {
+            return sum + (typeof item.voucher_adjustment_amount === 'number' ? item.voucher_adjustment_amount : 0);
         }, 0);
 
-        orderAmount = orderAmount + refundData.shipping.paid;
+        const totalCouponAdjustment = refundData.items.reduce((sum, item) => {
+            return sum + (typeof item.coupon_adjustment_amount === 'number' ? item.coupon_adjustment_amount : 0);
+        }, 0);
+
+        // Check for negatives
+        refundData.items.forEach(item => {
+            const refundAmount = parseNumber(item.entered_refund_amount);
+            const voucherAmount = parseNumber(item.voucher_adjustment_amount);
+            const couponAmount = parseNumber(item.coupon_adjustment_amount);
+            const netRefund = refundAmount - voucherAmount - couponAmount;
+
+            if (netRefund < 0) {
+                hasNegativeNetRefund = true;
+            }
+        });
+
+        const refundAmount = enteredOrderRefund + refundData.shipping_refund - totalVoucherAdjustment - totalCouponAdjustment;
+        const beforeRefunded = refundData.items.reduce((sum, item) => {
+            const refunded_cash_amount = typeof item.refunded_cash_amount === 'number' ? item.refunded_cash_amount : 0;
+            return sum + refunded_cash_amount;
+        }, 0) + refundData.shipping.refunded;
+
+        orderAmount = orderAmount + refundData.shipping.paid - (refundData.coupon?.amount || 0);
 
         return {
             refundAmount,
             beforeRefunded,
             orderAmount,
-            enteredOrderRefund
+            enteredOrderRefund,
+            totalVoucherAdjustment,
+            totalCouponAdjustment,
+            hasNegativeNetRefund
         };
     };
     const totals = calculateTotals();
+
+    const handleRefundDialogClose = () => {
+        setRefundDialogOpen(false);
+        setWalletRefundAmount('');
+        setSourceRefundAmount('');
+        setValidationErrors({ wallet: false, source: false });
+        setSliderValue(100);
+    };
+
+    // Add this state for slider value (percentage for PayPal)
+    const [sliderValue, setSliderValue] = useState(100); // 100% to PayPal, 0% to Wallet
+
+    // Add useEffect to sync slider with input fields
+    useEffect(() => {
+        if (refundTo === 'split' && refundData) {
+            const total = totals.refundAmount;
+            const paypalPercent = parseNumber(sourceRefundAmount) / total * 100;
+            if (!isNaN(paypalPercent) && isFinite(paypalPercent)) {
+                setSliderValue(Math.round(paypalPercent));
+            }
+        }
+    }, [sourceRefundAmount, refundTo, refundData]);
+
+    // Add this function to handle slider change
+    const handleSliderChange = (event, newValue) => {
+        setSliderValue(newValue);
+        const total = totals.refundAmount;
+        const paypalAmount = (newValue / 100) * total;
+        const walletAmount = total - paypalAmount;
+
+        setSourceRefundAmount(paypalAmount.toFixed(2));
+        setWalletRefundAmount(walletAmount.toFixed(2));
+
+        // Validate the new amounts
+        validateSplitAmounts(walletAmount.toFixed(2), paypalAmount.toFixed(2));
+    };
+
+    const validateSplitAmounts = (wallet, source) => {
+        const walletNum = parseNumber(wallet);
+        const sourceNum = parseNumber(source);
+        const total = walletNum + sourceNum;
+        const targetTotal = totals.refundAmount;
+
+        const errors = {
+            wallet: walletNum < 0 || walletNum > targetTotal || (walletNum > 0 && sourceNum > 0 && total !== targetTotal),
+            source: sourceNum < 0 || sourceNum > targetTotal || (walletNum > 0 && sourceNum > 0 && total !== targetTotal)
+        };
+
+        setValidationErrors(errors);
+        return !errors.wallet && !errors.source;
+    };
+    const handleRefundDialogConfirm = () => {
+        if (refundTo === 'split') {
+            const walletNum = parseNumber(walletRefundAmount);
+            const sourceNum = parseNumber(sourceRefundAmount);
+            const total = walletNum + sourceNum;
+            const targetTotal = totals.refundAmount;
+
+            if (walletNum < 0 || sourceNum < 0) {
+                showSnackbar('Amounts cannot be negative', 'error');
+                return;
+            }
+
+            if (walletNum > targetTotal || sourceNum > targetTotal) {
+                showSnackbar('Individual amounts cannot exceed total refund amount', 'error');
+                return;
+            }
+
+            if (total !== targetTotal) {
+                showSnackbar(`Total split amounts (${total.toFixed(2)}) must equal refund amount (${targetTotal.toFixed(2)})`, 'error');
+                return;
+            }
+
+            // Set the split amounts in refundData or process as needed
+            // Add your logic here to handle the split refund
+
+            handleRefundDialogClose();
+            setOpen(true);
+        } else {
+            handleRefundDialogClose();
+            setOpen(true);
+        }
+    };
 
     // Handle cancel
     const handleCancel = () => {
@@ -392,7 +632,11 @@ const RefundPage = () => {
     // Handle form submission
     const handleSubmit = async () => {
         if (!isFormValid) {
-            showSnackbar('Please fix validation errors before submitting', 'warning');
+            if (totals.hasNegativeNetRefund) {
+                showSnackbar('Adjustments cannot exceed refund amount for any item', 'error');
+            } else {
+                showSnackbar('Please fix validation errors before submitting', 'warning');
+            }
             return;
         }
 
@@ -402,13 +646,25 @@ const RefundPage = () => {
                 .filter(
                     (item) => parseNumber(item.entered_refund_amount) > 0
                 )
-                .map((item) => ({
-                    ...item,
-                    reason_code:
-                        item.reason_code === CUSTOM_REASON
-                            ? customReasons[item.item_id]?.trim()
-                            : item.reason_code,
-                })),
+                .map((item) => {
+                    const refundAmount = parseNumber(item.entered_refund_amount);
+                    const voucherAmount = parseNumber(item.voucher_adjustment_amount);
+                    const couponAmount = parseNumber(item.coupon_adjustment_amount);
+                    const netRefund = refundAmount - voucherAmount - couponAmount;
+
+                    return {
+                        ...item,
+                        reason_code:
+                            item.reason_code === CUSTOM_REASON
+                                ? customReasons[item.item_id]?.trim()
+                                : item.reason_code,
+                        coupon_amount: couponAmount,
+                        // Ensure net_refund_amount is properly calculated
+                        net_refund_amount: netRefund,
+                        // Also update entered_refund_amount to be the net amount
+                        entered_refund_amount: netRefund,
+                    };
+                }),
         };
 
         try {
@@ -429,7 +685,7 @@ const RefundPage = () => {
             initializeData(isCancelMode ? "cancel" : "refund");
         } catch (error) {
             console.log({ 'error message': error });
-            showSnackbar('Failed to submit refund. Please try again.', 'error');
+            showSnackbar(error.response.data.message, 'error');
             initializeData(isCancelMode ? "cancel" : "refund");
         }
 
@@ -616,7 +872,53 @@ const RefundPage = () => {
                                                             color: Number(item.refunded_cash_amount) > 0 ? "error.main" : "inherit",
                                                         }}
                                                     >
-                                                        ${Number(item.refunded_cash_amount ?? 0).toFixed(2)}
+                                                        <Tooltip title={
+                                                            <Box>
+                                                                <Table sx={{
+                                                                    tableLayout: "auto",
+                                                                    width: "max-content",
+                                                                    "& th, & td": {
+                                                                        whiteSpace: "nowrap",
+                                                                    },
+                                                                }}
+                                                                >
+                                                                    <TableHead>
+                                                                        <TableRow>
+                                                                            <TableCell>Date</TableCell>
+                                                                            <TableCell>Reason</TableCell>
+                                                                            <TableCell>Amount</TableCell>
+                                                                        </TableRow>
+                                                                    </TableHead>
+                                                                    <TableBody>
+                                                                        {item.history?.length > 0 && item?.history?.map(h => (
+                                                                            <TableRow>
+                                                                                <TableCell sx={{ pr: 3 }}>{new Date(h.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", }) || ""}</TableCell>
+                                                                                <TableCell sx={{ pr: 3 }}>{h.reason_code || ""}</TableCell>
+                                                                                <TableCell align='right' sx={{ color: 'error.main' }}>{h.entered_refund_amount}</TableCell>
+                                                                            </TableRow>
+
+                                                                        ))}
+                                                                    </TableBody>
+                                                                </Table>
+                                                            </Box>}
+                                                            disableHoverListener={Number(item.refunded_cash_amount) <= 0}
+                                                            placement="bottom"
+                                                            slotProps={{
+                                                                tooltip: {
+                                                                    component: Card,
+                                                                    sx: {
+                                                                        border: "1px Solid #dfdfdf",
+                                                                        bgcolor: "#fff",
+                                                                        maxWidth: "none",
+                                                                        boxShadow: "0 2px 5px #0000002b"
+                                                                    },
+                                                                }
+                                                            }}
+                                                        >
+                                                            <span style={{ cursor: "pointer" }}>
+                                                                ${Number(item.refunded_cash_amount ?? 0).toFixed(2)}
+                                                            </span>
+                                                        </Tooltip>
                                                     </TableCell>
 
                                                     <TableCell align="right">
@@ -634,11 +936,53 @@ const RefundPage = () => {
                                                             disabled={isCancelMode}
                                                             sx={{ width: 120 }}
                                                         />
+                                                        {isCancelMode && (
+                                                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                                                                Net refund: ${item.net_refund_amount?.toFixed(2) || '0.00'}
+                                                            </Typography>
+                                                        )}
                                                     </TableCell>
                                                 </TableRow>
 
-                                                {/* Voucher Discount Row (Conditional) - EXACT label from screenshot */}
-                                                {item.refunded_voucher_amount > 0 && (
+                                                {/* Coupon Discount Row */}
+                                                {refundData.coupon?.amount > 0 && (
+                                                    <TableRow>
+                                                        <TableCell>
+                                                            <Typography variant="body2" sx={{ fontWeight: 500, ml: 2 }}>
+                                                                Coupon Discount
+                                                            </Typography>
+                                                        </TableCell>
+                                                        <TableCell align="right">
+                                                            <Typography variant="body2">
+                                                                -${refundData.coupon.amount.toFixed(2)}
+                                                            </Typography>
+                                                        </TableCell>
+                                                        <TableCell align="right">
+                                                            <Typography variant="body2" color="orange">
+                                                                -${item.refunded_coupon_amount.toFixed(2)}
+                                                            </Typography>
+                                                        </TableCell>
+                                                        <TableCell align="right">
+                                                            <TextField
+                                                                type="number"
+                                                                size="small"
+                                                                value={isCancelMode ? formatDisplayValue(refundData.coupon.amount) : formatDisplayValue(item.coupon_adjustment_amount)}
+                                                                onChange={(e) => handleCouponChange(index, e.target.value)}
+                                                                onBlur={() => handleCouponChangeBlur(index)}
+                                                                InputProps={{
+                                                                    startAdornment: (
+                                                                        <InputAdornment position="start">-{currencySymbols[refundData.currency] || refundData.currency}</InputAdornment>
+                                                                    ),
+                                                                }}
+                                                                disabled={isCancelMode}
+                                                                sx={{ width: 120 }}
+                                                            />
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )}
+
+                                                {/* Voucher Discount Row (Conditional) */}
+                                                {item.voucher_discount > 0 && (
                                                     <TableRow>
                                                         <TableCell>
                                                             <Typography variant="body2" sx={{ fontWeight: 500, ml: 2 }}>
@@ -646,8 +990,8 @@ const RefundPage = () => {
                                                             </Typography>
                                                         </TableCell>
                                                         <TableCell align="right">
-                                                            <Typography variant="body2" color="violet">
-                                                                -${item.refunded_voucher_amount.toFixed(2)}
+                                                            <Typography variant="body2">
+                                                                -${item.voucher_discount.toFixed(2)}
                                                             </Typography>
                                                         </TableCell>
                                                         <TableCell align="right">
@@ -659,18 +1003,17 @@ const RefundPage = () => {
                                                             <TextField
                                                                 type="number"
                                                                 size="small"
-                                                                value={formatDisplayValue(item.voucher_adjustment_amount)}
-                                                                onChange={(e) => handleVoucherChange(e.target.value)}
-                                                                onBlur={handleVoucherChangeBlur}
+                                                                value={isCancelMode ? formatDisplayValue(item.voucher_discount) : formatDisplayValue(item.voucher_adjustment_amount)}
+                                                                onChange={(e) => handleVoucherChange(index, e.target.value)}
+                                                                onBlur={() => handleVoucherChangeBlur(index)}
                                                                 InputProps={{
                                                                     startAdornment: (
-                                                                        <InputAdornment position="start">{currencySymbols[refundData.currency] || refundData.currency}</InputAdornment>
+                                                                        <InputAdornment position="start">-{currencySymbols[refundData.currency] || refundData.currency}</InputAdornment>
                                                                     ),
                                                                 }}
                                                                 disabled={isCancelMode}
                                                                 sx={{ width: 120 }}
                                                             />
-
                                                         </TableCell>
                                                     </TableRow>
                                                 )}
@@ -688,14 +1031,61 @@ const RefundPage = () => {
                                         <TableCell align="right">
                                             ${refundData.shipping.paid.toFixed(2)}
                                         </TableCell>
-                                        <TableCell align="right">
-                                            ${refundData.shipping.refunded.toFixed(2)}
+                                        <TableCell align="right" sx={{
+                                            color: Number(refundData.shipping.refunded) > 0 ? "error.main" : "inherit",
+                                        }}
+                                        >
+                                            <Tooltip title={
+                                                <Box>
+                                                    <Table
+                                                        sx={{
+                                                            tableLayout: "auto",
+                                                            width: "max-content",
+                                                            "& th, & td": {
+                                                                whiteSpace: "nowrap",
+                                                            },
+                                                        }}>
+                                                        <TableHead>
+                                                            <TableRow>
+                                                                <TableCell>Date</TableCell>
+                                                                <TableCell>Reason</TableCell>
+                                                                <TableCell>Amount</TableCell>
+                                                            </TableRow>
+                                                        </TableHead>
+                                                        <TableBody>
+                                                            {refundData?.shipping?.history?.length > 0 && refundData.shipping?.history?.map(h => (
+                                                                <TableRow>
+                                                                    <TableCell sx={{ pr: 3 }}>{new Date(h.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", }) || ""}</TableCell>
+                                                                    <TableCell sx={{ pr: 3 }}>{h.reason_code || ""}</TableCell>
+                                                                    <TableCell align='right' sx={{ color: 'error.main' }}>{h.entered_refund_amount}</TableCell>
+                                                                </TableRow>
+
+                                                            ))}
+                                                        </TableBody>
+                                                    </Table>
+                                                </Box>}
+                                                disableHoverListener={Number(refundData.shipping.refunded) <= 0}
+                                                placement="bottom"
+                                                slotProps={{
+                                                    tooltip: {
+                                                        component: Card,
+                                                        sx: {
+                                                            border: "1px Solid #dfdfdf",
+                                                            bgcolor: "#fff",
+                                                            maxWidth: "none",
+                                                            boxShadow: "0 2px 5px #0000002b"
+                                                        },
+                                                    }
+                                                }}
+                                            >
+                                                <span style={{ cursor: "pointer" }}>${refundData.shipping.refunded.toFixed(2)}</span>
+                                            </Tooltip>
                                         </TableCell>
                                         <TableCell align="right">
                                             <TextField
                                                 type="number"
                                                 size="small"
-                                                value={formatDisplayValue(refundData.entered_shipping_refund)}
+                                                value={isCancelMode ? formatDisplayValue(refundData.shipping.paid - refundData.shipping.refunded) : formatDisplayValue(refundData.entered_shipping_refund)}
                                                 onChange={(e) => handleShippingRefundChange(e.target.value)}
                                                 onBlur={() => handleShippingRefundBlur()}
                                                 InputProps={{
@@ -815,12 +1205,26 @@ const RefundPage = () => {
                             </Typography>
                         </Box>
 
-                        {/* Voucher Adjustment (Conditional) - EXACT label from screenshot */}
-                        {refundData.isVoucherApplied && (
+                        {/* Coupon Adjustment (Conditional) */}
+                        {totals.totalCouponAdjustment > 0 && (
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', p: 1 }}>
-                                <Typography variant="body2">Agukart Voucher Adjustment</Typography>
                                 <Typography variant="body2">
-                                    -${refundData.voucher_adjustment_amount}
+                                    Coupon Adjustment
+                                </Typography>
+                                <Typography variant="body2" sx={{ color: 'orange' }}>
+                                    -${totals.totalCouponAdjustment.toFixed(2)}
+                                </Typography>
+                            </Box>
+                        )}
+
+                        {/* Voucher Adjustment (Conditional) - EXACT label from screenshot */}
+                        {totals.totalVoucherAdjustment > 0 && (
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', p: 1 }}>
+                                <Typography variant="body2">
+                                    Agukart Voucher Adjustment
+                                </Typography>
+                                <Typography variant="body2" sx={{ color: 'violet' }}>
+                                    -${totals.totalVoucherAdjustment.toFixed(2)}
                                 </Typography>
                             </Box>
                         )}
@@ -843,6 +1247,24 @@ const RefundPage = () => {
                         </Box>
                     </Box>
 
+                    {!(!isFormValid || submitting || totals.enteredOrderRefund === 0) && (
+                        <Box mt={3}>
+                            <TextField
+                                select
+                                fullWidth
+                                label="Refund To"
+                                value={refundTo}
+                                onChange={(e) => setRefundTo(e.target.value)}
+                            >
+                                {refundOptions.map((option) => (
+                                    <MenuItem key={option.value} value={option.value}>
+                                        {option.label}
+                                    </MenuItem>
+                                ))}
+                            </TextField>
+                        </Box>
+                    )}
+
                     {/* Action Buttons - EXACT text from screenshot */}
                     <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
                         <Button
@@ -855,14 +1277,29 @@ const RefundPage = () => {
                         <Button
                             variant="contained"
                             fullWidth
-                            onClick={handleSubmit}
-                            disabled={!isFormValid || submitting || totals.enteredOrderRefund === 0}
+                            onClick={() => {
+                                if (refundTo === 'split') {
+                                    setSourceRefundAmount(totals.refundAmount.toFixed(2));
+                                    setWalletRefundAmount('0.00');
+                                    setSliderValue(100);
+                                    setRefundDialogOpen(true);
+                                } else {
+                                    setOpen(true);
+                                }
+                            }}
+                            disabled={!isFormValid || submitting || totals.enteredOrderRefund === 0 || !refundTo || totals.hasNegativeNetRefund}
                         >
-                            {submitting ? 'submitting' : 'Submit refund'}
+                            {submitting ? 'Submitting...' : 'Submit refund'}
                         </Button>
                     </Box>
 
-                    {!isFormValid && (
+                    {totals.hasNegativeNetRefund && (
+                        <Alert severity="error" sx={{ mt: 2 }}>
+                            Voucher adjustment cannot exceed refund amount for any item
+                        </Alert>
+                    )}
+
+                    {!isFormValid && !totals.hasNegativeNetRefund && (
                         <Alert severity="warning" sx={{ mt: 2 }}>
                             Please add reason for refund before submitting!
                         </Alert>
@@ -880,6 +1317,139 @@ const RefundPage = () => {
                     {snackbar.message}
                 </Alert>
             </Snackbar>
+            <ConfirmModal
+                open={open}
+                handleClose={() => setOpen(false)}
+                type={"warning"}
+                msg={`Are you sure you want to refund $${totals.refundAmount.toFixed(2)} to ${refundTo === 'wallet' ? 'Gift Card Wallet' : refundTo === 'paypal' ? 'PayPal Source Account' : 'Gift Card Wallet and Paypal'}?`}
+                onConfirm={handleSubmit}
+            />
+            <Dialog
+                open={refundDialogOpen}
+                onClose={handleRefundDialogClose}
+                maxWidth="sm"
+                fullWidth
+            >
+                <DialogTitle sx={{ fontWeight: 600 }}>
+                    {refundTo === 'split' ? 'Split Refund Amount' : 'Confirm Refund'}
+                </DialogTitle>
+                <DialogContent>
+                    {refundTo === 'split' ? (
+                        <Box sx={{ mt: 2 }}>
+                            <Typography variant="body2" color="text.secondary" gutterBottom>
+                                Total refund amount: <strong>${totals.refundAmount.toFixed(2)}</strong>
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                Please split the total amount between Gift Card Wallet and PayPal Source
+                            </Typography>
+
+                            <TextField
+                                fullWidth
+                                label="Gift Card Wallet Amount"
+                                type="number"
+                                value={walletRefundAmount}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    setWalletRefundAmount(val);
+                                    if (sourceRefundAmount) {
+                                        validateSplitAmounts(val, sourceRefundAmount);
+                                    }
+                                }}
+                                onBlur={() => {
+                                    if (walletRefundAmount && sourceRefundAmount) {
+                                        validateSplitAmounts(walletRefundAmount, sourceRefundAmount);
+                                    }
+                                }}
+                                error={validationErrors.wallet}
+                                helperText={validationErrors.wallet &&
+                                    `Amount must be between 0 and ${totals.refundAmount.toFixed(2)} and total must equal ${totals.refundAmount.toFixed(2)}`
+                                }
+                                InputProps={{
+                                    startAdornment: (
+                                        <InputAdornment position="start">{currencySymbols[refundData?.currency] || '$'}</InputAdornment>
+                                    ),
+                                }}
+                                sx={{ mb: 2 }}
+                            />
+
+                            <TextField
+                                fullWidth
+                                label="PayPal Source Amount"
+                                type="number"
+                                value={sourceRefundAmount}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    setSourceRefundAmount(val);
+                                    if (walletRefundAmount) {
+                                        validateSplitAmounts(walletRefundAmount, val);
+                                    }
+                                }}
+                                onBlur={() => {
+                                    if (walletRefundAmount && sourceRefundAmount) {
+                                        validateSplitAmounts(walletRefundAmount, sourceRefundAmount);
+                                    }
+                                }}
+                                error={validationErrors.source}
+                                helperText={validationErrors.source &&
+                                    `Amount must be between 0 and ${totals.refundAmount.toFixed(2)} and total must equal ${totals.refundAmount.toFixed(2)}`
+                                }
+                                InputProps={{
+                                    startAdornment: (
+                                        <InputAdornment position="start">{currencySymbols[refundData?.currency] || '$'}</InputAdornment>
+                                    ),
+                                }}
+                            />
+                            {/* Add this Box with slider after the TextFields */}
+                            <Box sx={{ mt: 3, mb: 2 }}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                    <Typography variant="caption" color="text.secondary">
+                                        Gift Card Wallet: ${walletRefundAmount || '0.00'}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                        PayPal: ${sourceRefundAmount || '0.00'}
+                                    </Typography>
+                                </Box>
+                                {/* slider to add split values easily */}
+                                <Slider
+                                    value={sliderValue}
+                                    onChange={handleSliderChange}
+                                    aria-label="Refund split slider"
+                                    marks={[{ value: 50, label: '' }]}
+                                />
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center', mt: 0.5 }}>
+                                    Slide to adjust split between Gift Card Wallet and PayPal
+                                </Typography>
+                            </Box>
+                        </Box>
+                    ) : (
+                        <DialogContentText>
+                            Are you sure you want to refund <strong>${totals.refundAmount.toFixed(2)}</strong> to{' '}
+                            {refundTo === 'wallet' ? 'Gift Card Wallet' : 'PayPal Source Account'}?
+                        </DialogContentText>
+                    )}
+                </DialogContent>
+                <DialogActions sx={{ p: 2, gap: 1 }}>
+                    <Button onClick={handleRefundDialogClose} color="inherit">
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={handleRefundDialogConfirm}
+                        color="primary"
+                        variant="contained"
+                        disabled={
+                            refundTo === 'split' &&
+                            (validationErrors.wallet ||
+                                validationErrors.source ||
+                                !walletRefundAmount ||
+                                !sourceRefundAmount ||
+                                parseNumber(walletRefundAmount) + parseNumber(sourceRefundAmount) !== totals.refundAmount)
+                        }
+                    >
+                        Confirm
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
         </Box>
     );
 };

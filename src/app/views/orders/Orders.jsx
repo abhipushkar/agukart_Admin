@@ -57,6 +57,8 @@ const DEFAULT_PAGE = 1;
 
 const Orders = () => {
   const auth_key = localStorage.getItem(localStorageKey.auth_key);
+  const isAdmin = localStorage.getItem(localStorageKey.designation_id) === '2';
+
   const [orders, setOrders] = useState([]);
   const [baseUrl, setBaseUrl] = useState("");
   const [date, setDate] = useState({
@@ -931,6 +933,7 @@ const Orders = () => {
                               <OrderItem
                                 key={i}
                                 items={items}
+                                isAdmin={isAdmin}
                                 getOrderList={getOrderList}
                                 setProductData={setProductData}
                                 setOpenPop={setOpenPop}
