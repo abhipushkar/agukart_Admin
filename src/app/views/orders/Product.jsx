@@ -311,13 +311,14 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
         Object.entries(customization).forEach(([key, value]) => {
             const mainImage = Array.isArray(value.main_images) ? value.main_images.find(Boolean)
                 : null;
-
-            const custImage = mainImage || value.edit_main_image || value.preview_image || `${baseUrl}/${saleData?.productData.image[0]}`;
-            images.push({
-                name: `${key}: ${value.value}`,
-                image: custImage,
-                thumbnail: value.thumbnail
-            })
+            if (mainImage || value.edit_main_image || value.preview_image || value.thumbnail) {
+                const custImage = mainImage || value.edit_main_image || value.preview_image || `${baseUrl}/${saleData?.productData.image[0]}`;
+                images.push({
+                    name: `${key}: ${value.value}`,
+                    image: custImage,
+                    thumbnail: value.thumbnail
+                })
+            }
         })
         return images;
     };
@@ -568,7 +569,7 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                                         {saleData.customizationData.map((item, index) => (
                                             <Box key={index}>
                                                 {Object.entries(item).map(([key, value]) => (
-                                                    <Box key={key}>
+                                                    <Box key={key} mt={0.5}>
                                                         {typeof value === 'object' ? (
                                                             <Typography fontSize={14} sx={{ color: "#000" }}>
                                                                 {getDisplayValue(key)} {"   "} :<strong>{`   ${getDisplayValue(value?.value)}`}</strong>
