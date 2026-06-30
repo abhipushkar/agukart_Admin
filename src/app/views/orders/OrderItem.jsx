@@ -27,7 +27,7 @@ import PushPinIcon from '@mui/icons-material/PushPin';
 import { ApiService } from 'app/services/ApiService';
 import { localStorageKey } from 'app/constant/localStorageKey';
 
-const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2, handleOpen, setOrderIds, anchorEl, setAnchorEl, anchorEl1, setAnchorEl1, anchorEl3, setAnchorEl3, openMenuIndex, setOpenMenuIndex, openMenuIndex1, setOpenMenuIndex1, baseUrl, orderIds, handleCloseOption, handleCloseOption1, updateOrder, onSelectAllForDate, isDateGroupFullySelected, selectedSubOrders, setSelectedSubOrders }) => {
+const OrderItem = ({ items, tab, isAdmin, getOrderList, openMenuIndex2, setOpenMenuIndex2, handleOpen, setOrderIds, anchorEl, setAnchorEl, anchorEl1, setAnchorEl1, anchorEl3, setAnchorEl3, openMenuIndex, setOpenMenuIndex, openMenuIndex1, setOpenMenuIndex1, baseUrl, orderIds, handleCloseOption, handleCloseOption1, updateOrder, onSelectAllForDate, isDateGroupFullySelected, selectedSubOrders, setSelectedSubOrders }) => {
 
     const navigate = useNavigate();
     const [open, setOpen] = useState(false);
@@ -882,7 +882,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                                     Update Status
                                                                 </MenuItem>
                                                             )}
-                                                            <MenuItem
+                                                            {isAdmin && (<MenuItem
                                                                 onClick={() => {
                                                                     handleCloseOption();
                                                                     navigate(
@@ -891,8 +891,8 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                                 }}
                                                             >
                                                                 Cancel
-                                                            </MenuItem>
-                                                            <MenuItem
+                                                            </MenuItem>)}
+                                                            {isAdmin && (<MenuItem
                                                                 onClick={() => {
                                                                     handleCloseOption();
                                                                     navigate(
@@ -901,7 +901,7 @@ const OrderItem = ({ items, tab, getOrderList, openMenuIndex2, setOpenMenuIndex2
                                                                 }}
                                                             >
                                                                 Refund
-                                                            </MenuItem>
+                                                            </MenuItem>)}
                                                             <MenuItem
                                                                 onClick={() => {
                                                                     handleCloseOption();

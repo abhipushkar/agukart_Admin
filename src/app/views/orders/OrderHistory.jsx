@@ -17,7 +17,7 @@ import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { localStorageKey } from "app/constant/localStorageKey";
 import { ROUTE_CONSTANT } from "app/constant/routeContanst";
 import { ApiService } from "app/services/ApiService";
@@ -31,37 +31,9 @@ import MoreVertIcon from "@mui/icons-material/MoreVert";
 import ConfirmModal from "app/components/ConfirmModal";
 import CompleteOrder from "./CompleteOrder";
 import OrderFeedbackcard from "./OrderFeedbackcard";
-import { Dialog, DialogTitle, IconButton, DialogActions } from "@mui/material";
+import { Dialog, DialogTitle, IconButton, DialogActions, Tooltip } from "@mui/material";
 import { ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from "@mui/icons-material";
 
-// ─── Dummy feedback data — remove when backend sends real feedbackData ────────
-const DUMMY_FEEDBACK_LIST = [
-  {
-    rating: 5,
-    comment: "Beautiful ring! Great craftsmanship and fits very comfortably. I'm wearing it on a finger. Looks very elegant. Going to buy a few more in diff colors!",
-    date: "2023-07-10T00:00:00.000Z",
-    images: [
-      "https://picsum.photos/seed/r1/52/52",
-      "https://picsum.photos/seed/r2/52/52",
-      "https://picsum.photos/seed/r3/52/52",
-      "https://picsum.photos/seed/r4/52/52",
-    ],
-    vendor_response: "Thank you so much! So happy you loved it.",
-    vendor_response_date: "2023-11-24T00:00:00.000Z",
-  },
-  {
-    rating: 4,
-    comment: "Great quality product. Very happy with my purchase. Would definitely recommend!",
-    date: "2023-08-15T00:00:00.000Z",
-    images: [
-      "https://picsum.photos/seed/r5/52/52",
-      "https://picsum.photos/seed/r6/52/52",
-    ],
-    vendor_response: "",
-    vendor_response_date: "",
-  },
-];
-// ─────────────────────────────────────────────────────────────────────────────
 
 const OrderHistory = () => {
   const auth_key = localStorage.getItem(localStorageKey.auth_key);
@@ -142,12 +114,13 @@ const OrderHistory = () => {
   const orderTotals = useMemo(() => {
     const vendorItems = order?.saleDetaildata?.[0]?.items || [];
     if (!vendorItems.length) return { subTotal: 0, shippingTotal: 0, itemTotal: 0, grandTotal: 0, paypalAmount: 0 };
-    const subTotal = vendorItems.reduce((a, b) => a + (b.sub_total || 0), 0);
+    const subTotal = vendorItems.reduce((a, b) => a + (b.original_price * b.qty || 0), 0);
     const promotionalDiscount = vendorItems.reduce((a, b) => a + (b.promotional_discount || 0) * (b.qty || 0), 0);
     const couponDiscount = vendorItems[0]?.couponDiscountAmount || 0;
     const shippingTotal = order?.saleDetaildata?.[0]?.shippingAmount || 0;
     const itemTotal = vendorItems.reduce((a, b) => a + (b.amount || 0), 0) + shippingTotal - couponDiscount;
     const grandTotal = itemTotal;
+    const voucherDiscount = vendorItems.reduce((a, b) => a + (b.voucherDiscountAmount || 0), 0);
     // const paypalAmount = grandTotal - (order?.wallet_used || 0);
     return {
       subTotal: subTotal.toFixed(2),
@@ -155,7 +128,8 @@ const OrderHistory = () => {
       itemTotal: itemTotal.toFixed(2),
       grandTotal: grandTotal.toFixed(2),
       promotionalDiscount: promotionalDiscount.toFixed(2),
-      couponDiscount: couponDiscount.toFixed(2)
+      couponDiscount: couponDiscount.toFixed(2),
+      voucherDiscount: voucherDiscount.toFixed(2),
     };
   }, [order]);
 
@@ -647,12 +621,12 @@ const OrderHistory = () => {
                         </Box>
                         {orderTotals.promotionalDiscount > 0 && (<Box pt={1} sx={{ display: "flex", alignItems: "center", width: "100%", justifyContent: "space-between" }}>
                           <Typography color={"#000"} fontSize={15}>Promotional Discount:</Typography>
-                          <Box pl={2} color={"#000"} fontSize={15}>- ${orderTotals.promotionalDiscount}</Box>
+                          <Box pl={2} color={"red"} fontSize={15}>- ${orderTotals.promotionalDiscount}</Box>
                         </Box>
                         )}
                         {orderTotals.couponDiscount > 0 && (<Box pt={1} sx={{ display: "flex", alignItems: "center", width: "100%", justifyContent: "space-between" }}>
-                          <Typography color={"#000"} fontSize={15}>Coupon Discount:</Typography>
-                          <Box pl={2} color={"#000"} fontSize={15}>- ${orderTotals.couponDiscount}</Box>
+                          <Typography color={"#000"} fontSize={15}>Coupon Discount <span style={{ color: "green" }}>({subOrder?.items[0].couponData.coupon_data.coupon_code})</span>:</Typography>
+                          <Box pl={2} color={"red"} fontSize={15}>- ${orderTotals.couponDiscount}</Box>
                         </Box>
                         )}
                         <Box pt={1} sx={{ display: "flex", alignItems: "center", width: "100%", justifyContent: "space-between" }}>
@@ -673,8 +647,20 @@ const OrderHistory = () => {
                     </ListItem>
                     <ListItem sx={{ padding: "0", marginTop: "10px" }}>
                       <Box sx={{ display: "flex", alignItems: "center", width: "100%", justifyContent: "space-between" }}>
+                        <Typography color={"#000"} fontSize={15} fontWeight={500}>Total:</Typography>
+                        <Box pl={2} color={"#000"} fontSize={15} fontWeight={500}>${orderTotals.grandTotal}</Box>
+                      </Box>
+                    </ListItem>
+                    <ListItem sx={{ padding: "0", marginTop: "10px" }}>
+                      <Box pt={1} sx={{ display: "flex", alignItems: "center", width: "100%", justifyContent: "space-between" }}>
+                        <Typography color={"#000"} fontSize={15}>Admin Discount:</Typography>
+                        <Box pl={2} color={"red"} fontSize={15}>-${orderTotals.voucherDiscount}</Box>
+                      </Box>
+                    </ListItem>
+                    <ListItem sx={{ padding: "0", marginTop: "10px" }}>
+                      <Box sx={{ display: "flex", alignItems: "center", width: "100%", justifyContent: "space-between" }}>
                         <Typography color={"#000"} fontSize={15} fontWeight={600}>Grand Total:</Typography>
-                        <Box pl={2} color={"#000"} fontSize={15} fontWeight={600}>${orderTotals.grandTotal}</Box>
+                        <Box pl={2} color={"#000"} fontSize={15} fontWeight={600}>${orderTotals.grandTotal - orderTotals.voucherDiscount}</Box>
                       </Box>
                     </ListItem>
                     {/* <ListItem sx={{ padding: "0", marginTop: "10px" }}>
