@@ -31,12 +31,13 @@ import MoreVertIcon from "@mui/icons-material/MoreVert";
 import ConfirmModal from "app/components/ConfirmModal";
 import CompleteOrder from "./CompleteOrder";
 import OrderFeedbackcard from "./OrderFeedbackcard";
-import { Dialog, DialogTitle, IconButton, DialogActions, Tooltip } from "@mui/material";
+import { Dialog, DialogTitle, IconButton, DialogActions, Tooltip, Card } from "@mui/material";
 import { ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from "@mui/icons-material";
 
 
 const OrderHistory = () => {
   const auth_key = localStorage.getItem(localStorageKey.auth_key);
+  const isAdmin = localStorage.getItem(localStorageKey.designation_id) === '2';
   const [order, setOrder] = useState({ saleDetaildata: [] });
   const [expandedRows, setExpandedRows] = useState({});
   const [baseUrl, setBaseUrl] = useState("");
@@ -59,6 +60,7 @@ const OrderHistory = () => {
   const [reviewOpen, setReviewOpen] = useState(false);
   const [dialogImages, setDialogImages] = useState([]);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [showDifferences, setShowDifferences] = useState(false);
 
 
   const handleClick = (event, index) => {
@@ -126,12 +128,32 @@ const OrderHistory = () => {
       subTotal: subTotal.toFixed(2),
       shippingTotal: shippingTotal.toFixed(2),
       itemTotal: itemTotal.toFixed(2),
-      grandTotal: grandTotal.toFixed(2),
+      suborderTotal: grandTotal.toFixed(2),
       promotionalDiscount: promotionalDiscount.toFixed(2),
       couponDiscount: couponDiscount.toFixed(2),
       voucherDiscount: voucherDiscount.toFixed(2),
+      grandTotal: (grandTotal - voucherDiscount).toFixed(2)
     };
   }, [order]);
+
+  const RefundTotals = useMemo(() => {
+    const items = subOrder?.items || [];
+    if (!items.length) return { itemsRefund: 0, shippingRefund: 0, voucherRefund: 0, couponRefund: 0, totalRefund: 0 };
+    const itemsRefund = items.reduce((a, b) => a + (showDifferences ? b.amount - b.refunded_cash_amount : b.refunded_cash_amount), 0);
+    const shippingRefund = showDifferences ? subOrder?.shippingAmount - subOrder?.shipping_refunded_amount : subOrder?.shipping_refunded_amount || 0;
+    const voucherRefund = showDifferences ? orderTotals.voucherDiscount - subOrder?.voucher_refunded_amount : subOrder?.voucher_refunded_amount || 0;
+    const couponRefund = showDifferences ? orderTotals.couponDiscount - subOrder?.coupon_refunded_amount : subOrder?.coupon_refunded_amount || 0;
+    const totalRefund = itemsRefund + shippingRefund - voucherRefund - couponRefund;
+
+    return {
+      itemsRefund: itemsRefund.toFixed(2),
+      shippingRefund: shippingRefund.toFixed(2),
+      voucherRefund: voucherRefund.toFixed(2) * (showDifferences ? 1 : -1),
+      couponRefund: couponRefund.toFixed(2) * (showDifferences ? 1 : -1),
+      totalRefund: totalRefund.toFixed(2)
+    };
+
+  }, [subOrder, showDifferences]);
 
   const shippingName = useMemo(() => {
     if (!order?.saleDetaildata?.[0]?.shippingName) return "...";
@@ -187,7 +209,21 @@ const OrderHistory = () => {
       if (!sales_id && !sub_order_id) { console.error("No order IDs provided"); return; }
       const res = await ApiService.post(apiEndpoints.getOrderHistory, payload, auth_key);
       if (res?.status === 200) {
-        setOrder(res?.data?.orderHistory || { saleDetaildata: [] });
+        const orderHistory = res?.data?.orderHistory;
+        const refundHistory = orderHistory?.saleDetaildata[0]?.refundHistory.flatMap(refund => refund.refundItems) || [];
+        if (refundHistory.length > 0) {
+          orderHistory.saleDetaildata[0].items = orderHistory.saleDetaildata[0].items.map(item => {
+            const itemRefunds = refundHistory.filter(refund => refund.item_id === item.item_id);
+
+            return {
+              ...item,
+              refundHistory: itemRefunds || []
+            }
+          });
+          // console.log("item:", orderHistory?.saleDetaildata[0]?.items);
+          orderHistory.saleDetaildata[0].refundHistory = refundHistory.filter(refund => refund.item_id === null) || [];
+        }
+        setOrder(orderHistory || { saleDetaildata: [] });
         const subOrderData = res?.data?.orderHistory?.saleDetaildata[0];
         setSubOrder({ ...subOrderData, parentSale: res?.data?.orderHistory });
         if (subOrderData.items[0]?.shipments) setShipments(subOrderData.items[0]?.shipments);
@@ -292,13 +328,21 @@ const OrderHistory = () => {
         {/* ── Action Buttons ── */}
         <Grid container width={"100%"} m={0} pt={2} spacing={2} alignItems={"center"}>
           <Grid lg={12} md={12} xs={12}>
-            <Box sx={{ display: { lg: "flex", md: "flex", xs: "block" }, justifyContent: "end" }}>
+            <Box sx={{ display: { lg: "flex", md: "flex", xs: "block" }, justifyContent: "space-between" }}>
+              <Box display="flex" alignItems="center" gap={2}>
+                {subOrder?.refund_status !== 'none' && (<Typography variant="" color={'red'} fontSize={18} fontWeight={500}>
+                  Refund Status : <span>{subOrder?.refund_status}ly refunded</span>
+                </Typography>)}
+              </Box>
               <List sx={{ display: { lg: "flex", md: "flex", xs: "block" }, alignItems: "center" }}>
-                {["Print packing slip", "Refund Order", "Request a Review", "Message to buyer"].map((label) => (
+                {["Print packing slip", ...(isAdmin && order?.payment_status === 'completed' ? ["Refund Order"] : []), "Request a Review", "Message to buyer"].map((label) => (
                   <ListItem key={label} sx={{ paddingLeft: "0", width: "auto", display: "inline-block" }}>
                     <Button
                       sx={{ fontWeight: "600", background: "#fff", border: "1px solid #000", borderRadius: "30px", padding: "5px 16px", color: "#000", fontSize: "11px" }}
-                      onClick={label === "Print packing slip" ? () => window.open(`${ROUTE_CONSTANT.orders.orderSlip}?sales_id=${sales_id}&sub_order_id=${sub_order_id}`, '_blank') : undefined}
+                      onClick={() => {
+                        if (label === "Print packing slip") window.open(`${ROUTE_CONSTANT.orders.orderSlip}?sales_id=${sales_id}&sub_order_id=${sub_order_id}`, '_blank');
+                        if (label === "Refund Order") window.open(`${ROUTE_CONSTANT.orders.orderRefund}?subOrder=${sub_order_id}&mode=refund`, '_blank');
+                      }}
                     >
                       {label}
                     </Button>
@@ -421,6 +465,14 @@ const OrderHistory = () => {
                       const variantIds = item?.variant_id || [];
                       const variantAttributeIds = item?.variant_attribute_id || [];
                       const internalVariants = item?.variants || [];
+                      const latestRefund =
+                        item.refundHistory?.length > 0
+                          ? item.refundHistory.reduce((latest, current) =>
+                            new Date(current.createdAt) > new Date(latest.createdAt)
+                              ? current
+                              : latest
+                          )
+                          : null;
 
                       return (
                         <React.Fragment key={`${vendorSubOrder._id}-${item._id}`}>
@@ -529,6 +581,18 @@ const OrderHistory = () => {
                                   </Box>
                                 </ListItem>
                               </List>
+                              {item.refundHistory?.length > 0 && (<Box sx={{ borderTop: "1px solid #e0e0e0", py: 1 }}>
+                                <Typography>
+                                  Item refunded amount
+                                  <span style={{ cursor: "pointer", color: "red", fontWeight: 600, marginLeft: "5px" }}>
+                                    ${Number(item.refunded_cash_amount ?? 0).toFixed(2)}
+                                  </span>
+                                </Typography>
+
+                                <Typography variant="body1" color="initial" mt={1}>
+                                  Reason: <span style={{ color: "red", fontWeight: 500 }}>{latestRefund?.reason_code}</span>
+                                </Typography>
+                              </Box>)}
                             </TableCell>
                           </TableRow>
 
@@ -607,7 +671,7 @@ const OrderHistory = () => {
 
             {/* Sales Proceeds */}
             <Grid py={2} lg={3} md={4} xs={12} sx={{ paddingLeft: { lg: "20px", md: "20px" } }}>
-              <Box p={2} border={"1px solid #000"}>
+              <Box p={2} border={"1px solid #ddd"} component={Card} elevation={20}>
                 <Typography variant="h6" fontWeight={600}>Sales Proceeds</Typography>
                 <Typography color={"#000"}>Billing country/region: {getDisplayValue(order?.country, "US")}</Typography>
                 <Typography color={"#000"}>Payment methods: {getDisplayValue(order?.payment_method, "Standard")}</Typography>
@@ -625,7 +689,7 @@ const OrderHistory = () => {
                         </Box>
                         )}
                         {orderTotals.couponDiscount > 0 && (<Box pt={1} sx={{ display: "flex", alignItems: "center", width: "100%", justifyContent: "space-between" }}>
-                          <Typography color={"#000"} fontSize={15}>Coupon Discount <span style={{ color: "green" }}>({subOrder?.items[0].couponData.coupon_data.coupon_code})</span>:</Typography>
+                          <Typography color={"#000"} fontSize={15}>Coupon Discount <span style={{ color: "green" }}>({subOrder?.items[0].couponData?.coupon_data?.coupon_code || subOrder?.items[0].couponData?.coupon_code})</span>:</Typography>
                           <Box pl={2} color={"red"} fontSize={15}>- ${orderTotals.couponDiscount}</Box>
                         </Box>
                         )}
@@ -648,35 +712,76 @@ const OrderHistory = () => {
                     <ListItem sx={{ padding: "0", marginTop: "10px" }}>
                       <Box sx={{ display: "flex", alignItems: "center", width: "100%", justifyContent: "space-between" }}>
                         <Typography color={"#000"} fontSize={15} fontWeight={500}>Total:</Typography>
-                        <Box pl={2} color={"#000"} fontSize={15} fontWeight={500}>${orderTotals.grandTotal}</Box>
+                        <Box pl={2} color={"#000"} fontSize={15} fontWeight={500}>${orderTotals.suborderTotal}</Box>
                       </Box>
                     </ListItem>
-                    <ListItem sx={{ padding: "0", marginTop: "10px" }}>
+                    {!!order?.voucher_id && (<ListItem sx={{ padding: "0", marginTop: "10px" }}>
                       <Box pt={1} sx={{ display: "flex", alignItems: "center", width: "100%", justifyContent: "space-between" }}>
-                        <Typography color={"#000"} fontSize={15}>Admin Discount:</Typography>
+                        <Typography color={"#000"} fontSize={15}>Admin Discount <Typography component={isAdmin ? Link : "span"} to={isAdmin ? `/pages/add-voucher?id=${order?.voucher_id}` : undefined} color="green">({order?.voucher_code})</Typography>:</Typography>
                         <Box pl={2} color={"red"} fontSize={15}>-${orderTotals.voucherDiscount}</Box>
                       </Box>
-                    </ListItem>
+                    </ListItem>)}
                     <ListItem sx={{ padding: "0", marginTop: "10px" }}>
                       <Box sx={{ display: "flex", alignItems: "center", width: "100%", justifyContent: "space-between" }}>
                         <Typography color={"#000"} fontSize={15} fontWeight={600}>Grand Total:</Typography>
-                        <Box pl={2} color={"#000"} fontSize={15} fontWeight={600}>${orderTotals.grandTotal - orderTotals.voucherDiscount}</Box>
+                        <Box pl={2} color={"#000"} fontSize={15} fontWeight={600}>${orderTotals.grandTotal}</Box>
                       </Box>
                     </ListItem>
-                    {/* <ListItem sx={{ padding: "0", marginTop: "10px" }}>
+                    {order?.payment_status === 'completed' && (<ListItem sx={{ padding: "0", marginTop: "10px", borderTop: '1px solid #ddd', pt: 1 }}>
                       <Box pb={1} sx={{ width: "100%" }}>
-                        <Box sx={{ display: "flex", alignItems: "center", width: "100%", justifyContent: "space-between" }}>
+                        {subOrder?.suborder_wallet_used > 0 && (<Box sx={{ display: "flex", alignItems: "center", width: "100%", justifyContent: "space-between" }}>
                           <Typography color={"#000"} fontSize={15}>Used Gift Card:</Typography>
-                          <Box pl={2} color={"#000"} fontSize={15}>${(order?.wallet_used || 0).toFixed(2)}</Box>
-                        </Box>
-                        <Box pt={1} sx={{ display: "flex", alignItems: "center", width: "100%", justifyContent: "space-between" }}>
+                          <Box pl={2} color={"#000"} fontSize={15}>${(subOrder?.suborder_wallet_used || 0).toFixed(2)}</Box>
+                        </Box>)}
+                        {order?.payment_status !== 'wallet' && (<Box pt={1} sx={{ display: "flex", alignItems: "center", width: "100%", justifyContent: "space-between" }}>
                           <Typography color={"#000"} fontSize={15}>Pay By PayPal:</Typography>
-                          <Box pl={2} color={"#000"} fontSize={15}>${orderTotals.paypalAmount}</Box>
-                        </Box>
+                          <Box pl={2} color={"#000"} fontSize={15}>${(orderTotals.grandTotal - subOrder?.suborder_wallet_used).toFixed(2)}</Box>
+                        </Box>)}
                       </Box>
-                    </ListItem> */}
+                    </ListItem>)}
                   </List>
                 </Box>
+                {subOrder?.refund_status !== 'none' && (<Box>
+                  <Box fontSize={18} borderTop={2} borderColor={"divider"} mt={1} pt={1} fontWeight={600} display="flex" alignItems="center" justifyContent="space-between">
+                    Refunds
+                    <Button ml={'auto'} variant="contained" size="small" color={showDifferences ? "inherit" : "primary"}
+                      onClick={() => setShowDifferences(!showDifferences)}>
+                      Show {!showDifferences ? "Differences" : "Refunds"}
+                    </Button>
+                  </Box>
+                  <List>
+                    <ListItem sx={{ px: 0 }}>
+                      <Box display="flex" alignItems="center" width="100%">
+                        Items {showDifferences ? "Difference:" : "Total Refund:"}
+                        <Typography variant="body1" color="initial" ml="auto">{RefundTotals.itemsRefund} $</Typography>
+                      </Box>
+                    </ListItem>
+                    <ListItem sx={{ px: 0 }}>
+                      <Box display="flex" alignItems="center" width="100%">
+                        Coupon {showDifferences ? "Difference:" : "Adjustment:"}
+                        <Typography variant="body1" color={showDifferences ? "initial" : "warning.main"} ml="auto">{RefundTotals.couponRefund.toFixed(2)} $</Typography>
+                      </Box>
+                    </ListItem>
+                    <ListItem sx={{ px: 0 }}>
+                      <Box display="flex" alignItems="center" width="100%">
+                        Voucher {showDifferences ? "Difference:" : "Adjustment:"}
+                        <Typography variant="body1" color={showDifferences ? "initial" : "violet"} ml="auto">{RefundTotals.voucherRefund.toFixed(2)} $</Typography>
+                      </Box>
+                    </ListItem>
+                    <ListItem sx={{ px: 0 }}>
+                      <Box display="flex" alignItems="center" width="100%">
+                        Shipping {showDifferences ? "Difference:" : "Refund:"}
+                        <Typography variant="body1" color="initial" ml="auto">{RefundTotals.shippingRefund} $</Typography>
+                      </Box>
+                    </ListItem>
+                    <ListItem sx={{ px: 0 }}>
+                      <Box display="flex" alignItems="center" width="100%">
+                        {showDifferences ? "Remaining Amount:" : "Total Refund:"}
+                        <Typography variant="body1" color="initial" ml="auto">{RefundTotals.totalRefund} $</Typography>
+                      </Box>
+                    </ListItem>
+                  </List>
+                </Box>)}
               </Box>
             </Grid>
           </Grid>

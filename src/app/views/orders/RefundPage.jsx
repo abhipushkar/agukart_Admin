@@ -141,8 +141,6 @@ const RefundPage = () => {
                 entered_refund_amount: 0,
                 net_refund_amount: 0,
                 reason_code: '',
-                voucher_adjustment_amount: 0,
-                coupon_adjustment_amount: 0,
             };
         });
 
@@ -311,10 +309,11 @@ const RefundPage = () => {
             if (!prev) return prev;
             const num = parseNumber(prev.entered_voucher_refund);
             const maxAllowed = prev.voucher?.paid - prev.voucher?.refunded || 0;
+            const clampedValue = Math.min(num, maxAllowed);
             return {
                 ...prev,
-                entered_voucher_refund: Math.min(num, maxAllowed),
-                voucher_refund: Math.min(num, maxAllowed),
+                entered_voucher_refund: clampedValue,
+                voucher_refund: clampedValue,
             };
         });
     };
@@ -335,10 +334,11 @@ const RefundPage = () => {
             if (!prev) return prev;
             const num = parseNumber(prev.entered_coupon_refund);
             const maxAllowed = prev.coupon?.paid - prev.coupon?.refunded || 0;
+            const clampedValue = Math.min(num, maxAllowed);
             return {
                 ...prev,
-                entered_coupon_refund: Math.min(num, maxAllowed),
-                coupon_refund: Math.min(num, maxAllowed),
+                entered_coupon_refund: clampedValue,
+                coupon_refund: clampedValue,
             };
         });
     };
@@ -351,13 +351,15 @@ const RefundPage = () => {
 
         let isValid = true;
 
-        // In cancel mode, always valid (all fields are pre-filled)
+        // In cancel mode, always valid
         if (isCancelMode) {
             setIsFormValid(true);
             return;
         }
 
+        // Check each item
         refundData.items.every((item) => {
+            // If item has refund amount, check reason
             if (parseNumber(item.entered_refund_amount) > 0) {
                 if (!item.reason_code) {
                     isValid = false;
@@ -384,6 +386,16 @@ const RefundPage = () => {
             return true;
         });
 
+        // Also check if voucher_refund exceeds available voucher
+        if (refundData.voucher_refund > (refundData.voucher?.paid - refundData.voucher?.refunded || 0)) {
+            isValid = false;
+        }
+
+        // Check if coupon_refund exceeds available coupon
+        if (refundData.coupon_refund > (refundData.coupon?.paid - refundData.coupon?.refunded || 0)) {
+            isValid = false;
+        }
+
         setIsFormValid(isValid);
     }, [refundData, customReasons, isCancelMode]);
 
@@ -401,20 +413,18 @@ const RefundPage = () => {
         if (newCancelMode) {
             // CANCEL MODE - calculate full refunds
             const shippingRefund = refundData.shipping.paid - refundData.shipping.refunded;
+            const voucherRefund = refundData.voucher?.paid - refundData.voucher?.refunded || 0;
+            const couponRefund = refundData.coupon?.paid - refundData.coupon?.refunded || 0;
 
             const newItems = refundData.items.map(item => {
                 const maxRefundable = item.amount - parseNumber(item.refunded_cash_amount);
-                const voucherAmount = item.voucher_discount || 0;
-                const couponAmount = refundData.coupon?.amount || 0;
-
-                // In cancel mode, refund everything and adjust all amounts
                 return {
                     ...item,
                     entered_refund_amount: maxRefundable,
-                    net_refund_amount: maxRefundable - voucherAmount - couponAmount,
+                    net_refund_amount: maxRefundable,
                     reason_code: 'Buyer Cancelled',
-                    voucher_adjustment_amount: voucherAmount, // Full voucher refund
-                    coupon_adjustment_amount: couponAmount, // Full coupon refund
+                    voucher_adjustment_amount: 0,
+                    coupon_adjustment_amount: 0,
                 };
             });
 
@@ -423,6 +433,10 @@ const RefundPage = () => {
                 items: newItems,
                 shipping_refund: shippingRefund,
                 entered_shipping_refund: shippingRefund,
+                voucher_refund: voucherRefund,
+                entered_voucher_refund: voucherRefund,
+                coupon_refund: couponRefund,
+                entered_coupon_refund: couponRefund,
             });
         } else {
             // REFUND MODE → reset everything to 0
@@ -440,6 +454,10 @@ const RefundPage = () => {
                 items: resetItems,
                 shipping_refund: 0,
                 entered_shipping_refund: 0,
+                voucher_refund: 0,
+                entered_voucher_refund: 0,
+                coupon_refund: 0,
+                entered_coupon_refund: 0,
                 note_to_yourself: '',
             });
 
@@ -455,43 +473,54 @@ const RefundPage = () => {
                 orderAmount: 0,
                 beforeRefunded: 0,
                 enteredOrderRefund: 0,
+                totalVoucherAdjustment: 0,
+                totalCouponAdjustment: 0,
                 hasNegativeNetRefund: false
             };
         }
 
         let orderAmount = 0;
         let hasNegativeNetRefund = false;
+
+        // Calculate item totals
         const enteredOrderRefund = refundData.items.reduce((sum, item) => {
             orderAmount = orderAmount + item.amount;
             return sum + (typeof item.entered_refund_amount === 'number' ? item.entered_refund_amount : 0);
         }, 0);
 
-        // Check for negatives
-        refundData.items.forEach(item => {
-            const refundAmount = parseNumber(item.entered_refund_amount);
-            const voucherAmount = parseNumber(item.voucher_adjustment_amount);
-            const couponAmount = parseNumber(item.coupon_adjustment_amount);
-            const netRefund = refundAmount - voucherAmount - couponAmount;
+        // Calculate adjustments
+        const totalVoucherAdjustment = refundData.items.reduce((sum, item) => {
+            return sum + (typeof item.voucher_adjustment_amount === 'number' ? item.voucher_adjustment_amount : 0);
+        }, 0);
 
-            if (netRefund < 0) {
-                hasNegativeNetRefund = true;
-            }
-        });
+        const totalCouponAdjustment = refundData.items.reduce((sum, item) => {
+            return sum + (typeof item.coupon_adjustment_amount === 'number' ? item.coupon_adjustment_amount : 0);
+        }, 0);
 
-        const refundAmount = enteredOrderRefund + refundData.shipping_refund - refundData.voucher_refund - refundData.coupon_refund;
+        // Final refund amount: items + shipping - voucher_refund - coupon_refund
+        const refundAmount = enteredOrderRefund +
+            refundData.shipping_refund -
+            refundData.voucher_refund -
+            refundData.coupon_refund;
 
         const beforeRefunded = refundData.items.reduce((sum, item) => {
             const refunded_cash_amount = typeof item.refunded_cash_amount === 'number' ? item.refunded_cash_amount : 0;
             return sum + refunded_cash_amount;
         }, 0) + refundData.shipping.refunded;
 
-        orderAmount = orderAmount + refundData.shipping.paid - (refundData.voucher?.paid || 0) - (refundData.coupon?.paid || 0);
+        orderAmount = orderAmount + refundData.shipping.paid;
+
+        if (refundAmount < 0) {
+            hasNegativeNetRefund = true;
+        }
 
         return {
             refundAmount,
             beforeRefunded,
             orderAmount,
             enteredOrderRefund,
+            totalVoucherAdjustment,
+            totalCouponAdjustment,
             hasNegativeNetRefund
         };
     };
@@ -849,7 +878,7 @@ const RefundPage = () => {
                                                                     </TableHead>
                                                                     <TableBody>
                                                                         {item.history?.length > 0 && item?.history?.map(h => (
-                                                                            <TableRow>
+                                                                            <TableRow key={h.createdAt}>
                                                                                 <TableCell sx={{ pr: 3 }}>{new Date(h.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", }) || ""}</TableCell>
                                                                                 <TableCell sx={{ pr: 3 }}>{h.reason_code || ""}</TableCell>
                                                                                 <TableCell align='right' sx={{ color: 'error.main' }}>{h.entered_refund_amount}</TableCell>
@@ -905,6 +934,161 @@ const RefundPage = () => {
                                             </React.Fragment>
                                         );
                                     })}
+
+                                    {/* VOUCHER ROW */}
+                                    {refundData.voucher?.paid > 0 && (
+                                        <TableRow>
+                                            <TableCell sx={{ pl: 1 }}>
+                                                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                                    Voucher
+                                                </Typography>
+                                            </TableCell>
+                                            <TableCell align="right">
+                                                ${refundData.voucher.paid.toFixed(2)}
+                                            </TableCell>
+                                            <TableCell align="right" sx={{
+                                                color: Number(refundData.voucher.refunded) > 0 ? "violet" : "inherit",
+                                            }}>
+                                                <Tooltip title={
+                                                    <Box>
+                                                        <Table sx={{
+                                                            tableLayout: "auto",
+                                                            width: "max-content",
+                                                            "& th, & td": {
+                                                                whiteSpace: "nowrap",
+                                                            },
+                                                        }}>
+                                                            <TableHead>
+                                                                <TableRow>
+                                                                    <TableCell>Date</TableCell>
+                                                                    <TableCell>Reason</TableCell>
+                                                                    <TableCell>Amount</TableCell>
+                                                                </TableRow>
+                                                            </TableHead>
+                                                            <TableBody>
+                                                                {refundData?.voucher?.history?.length > 0 && refundData.voucher?.history?.map(h => (
+                                                                    <TableRow key={h.createdAt}>
+                                                                        <TableCell sx={{ pr: 3 }}>{new Date(h.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", }) || ""}</TableCell>
+                                                                        <TableCell sx={{ pr: 3 }}>{h.reason_code || ""}</TableCell>
+                                                                        <TableCell align='right' sx={{ color: 'error.main' }}>{h.entered_refund_amount}</TableCell>
+                                                                    </TableRow>
+                                                                ))}
+                                                            </TableBody>
+                                                        </Table>
+                                                    </Box>}
+                                                    disableHoverListener={Number(refundData.voucher.refunded) <= 0}
+                                                    placement="bottom"
+                                                    slotProps={{
+                                                        tooltip: {
+                                                            component: Card,
+                                                            sx: {
+                                                                border: "1px Solid #dfdfdf",
+                                                                bgcolor: "#fff",
+                                                                maxWidth: "none",
+                                                                boxShadow: "0 2px 5px #0000002b"
+                                                            },
+                                                        }
+                                                    }}
+                                                >
+                                                    <span style={{ cursor: "pointer" }}>${refundData.voucher.refunded.toFixed(2)}</span>
+                                                </Tooltip>
+                                            </TableCell>
+                                            <TableCell align="right">
+                                                <TextField
+                                                    type="number"
+                                                    size="small"
+                                                    value={isCancelMode ? formatDisplayValue(refundData.voucher.paid - refundData.voucher.refunded) : formatDisplayValue(refundData.entered_voucher_refund)}
+                                                    onChange={(e) => handleVoucherRefundChange(e.target.value)}
+                                                    onBlur={() => handleVoucherRefundBlur()}
+                                                    InputProps={{
+                                                        startAdornment: (
+                                                            <InputAdornment position="start">-{currencySymbols[refundData.currency] || refundData.currency}</InputAdornment>
+                                                        ),
+                                                    }}
+                                                    disabled={isCancelMode}
+                                                    sx={{ width: 120 }}
+                                                />
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+
+                                    {/* COUPON ROW */}
+                                    {refundData.coupon?.paid > 0 && (
+                                        <TableRow>
+                                            <TableCell sx={{ pl: 1 }}>
+                                                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                                    Coupon
+                                                </Typography>
+                                            </TableCell>
+                                            <TableCell align="right">
+                                                ${refundData.coupon.paid.toFixed(2)}
+                                            </TableCell>
+                                            <TableCell align="right" sx={{
+                                                color: Number(refundData.coupon.refunded) > 0 ? "orange" : "inherit",
+                                            }}>
+                                                <Tooltip title={
+                                                    <Box>
+                                                        <Table sx={{
+                                                            tableLayout: "auto",
+                                                            width: "max-content",
+                                                            "& th, & td": {
+                                                                whiteSpace: "nowrap",
+                                                            },
+                                                        }}>
+                                                            <TableHead>
+                                                                <TableRow>
+                                                                    <TableCell>Date</TableCell>
+                                                                    <TableCell>Reason</TableCell>
+                                                                    <TableCell>Amount</TableCell>
+                                                                </TableRow>
+                                                            </TableHead>
+                                                            <TableBody>
+                                                                {refundData?.coupon?.history?.length > 0 && refundData.coupon?.history?.map(h => (
+                                                                    <TableRow key={h.createdAt}>
+                                                                        <TableCell sx={{ pr: 3 }}>{new Date(h.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", }) || ""}</TableCell>
+                                                                        <TableCell sx={{ pr: 3 }}>{h.reason_code || ""}</TableCell>
+                                                                        <TableCell align='right' sx={{ color: 'error.main' }}>{h.entered_refund_amount}</TableCell>
+                                                                    </TableRow>
+                                                                ))}
+                                                            </TableBody>
+                                                        </Table>
+                                                    </Box>}
+                                                    disableHoverListener={Number(refundData.coupon.refunded) <= 0}
+                                                    placement="bottom"
+                                                    slotProps={{
+                                                        tooltip: {
+                                                            component: Card,
+                                                            sx: {
+                                                                border: "1px Solid #dfdfdf",
+                                                                bgcolor: "#fff",
+                                                                maxWidth: "none",
+                                                                boxShadow: "0 2px 5px #0000002b"
+                                                            },
+                                                        }
+                                                    }}
+                                                >
+                                                    <span style={{ cursor: "pointer" }}>${refundData.coupon.refunded.toFixed(2)}</span>
+                                                </Tooltip>
+                                            </TableCell>
+                                            <TableCell align="right">
+                                                <TextField
+                                                    type="number"
+                                                    size="small"
+                                                    value={isCancelMode ? formatDisplayValue(refundData.coupon.paid - refundData.coupon.refunded) : formatDisplayValue(refundData.entered_coupon_refund)}
+                                                    onChange={(e) => handleCouponRefundChange(e.target.value)}
+                                                    onBlur={() => handleCouponRefundBlur()}
+                                                    InputProps={{
+                                                        startAdornment: (
+                                                            <InputAdornment position="start">-{currencySymbols[refundData.currency] || refundData.currency}</InputAdornment>
+                                                        ),
+                                                    }}
+                                                    disabled={isCancelMode}
+                                                    sx={{ width: 120 }}
+                                                />
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+
                                     {/* SHIPPING ROW */}
                                     <TableRow>
                                         <TableCell sx={{ pl: 1 }}>
@@ -938,7 +1122,7 @@ const RefundPage = () => {
                                                         </TableHead>
                                                         <TableBody>
                                                             {refundData?.shipping?.history?.length > 0 && refundData.shipping?.history?.map(h => (
-                                                                <TableRow>
+                                                                <TableRow key={h.createdAt}>
                                                                     <TableCell sx={{ pr: 3 }}>{new Date(h.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", }) || ""}</TableCell>
                                                                     <TableCell sx={{ pr: 3 }}>{h.reason_code || ""}</TableCell>
                                                                     <TableCell align='right' sx={{ color: 'error.main' }}>{h.entered_refund_amount}</TableCell>
@@ -982,160 +1166,6 @@ const RefundPage = () => {
                                             />
                                         </TableCell>
                                     </TableRow>
-
-                                    {/* VOUCHER ROW */}
-                                    {refundData.voucher?.paid > 0 && (
-                                        <TableRow>
-                                            <TableCell sx={{ pl: 1 }}>
-                                                <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                                                    Voucher
-                                                </Typography>
-                                            </TableCell>
-                                            <TableCell align="right">
-                                                ${refundData.voucher.paid.toFixed(2)}
-                                            </TableCell>
-                                            <TableCell align="right" sx={{
-                                                color: Number(refundData.voucher.refunded) > 0 ? "error.main" : "inherit",
-                                            }}>
-                                                <Tooltip title={
-                                                    <Box>
-                                                        <Table sx={{
-                                                            tableLayout: "auto",
-                                                            width: "max-content",
-                                                            "& th, & td": {
-                                                                whiteSpace: "nowrap",
-                                                            },
-                                                        }}>
-                                                            <TableHead>
-                                                                <TableRow>
-                                                                    <TableCell>Date</TableCell>
-                                                                    <TableCell>Reason</TableCell>
-                                                                    <TableCell>Amount</TableCell>
-                                                                </TableRow>
-                                                            </TableHead>
-                                                            <TableBody>
-                                                                {refundData?.voucher?.history?.length > 0 && refundData.voucher?.history?.map(h => (
-                                                                    <TableRow>
-                                                                        <TableCell sx={{ pr: 3 }}>{new Date(h.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", }) || ""}</TableCell>
-                                                                        <TableCell sx={{ pr: 3 }}>{h.reason_code || ""}</TableCell>
-                                                                        <TableCell align='right' sx={{ color: 'error.main' }}>{h.entered_refund_amount}</TableCell>
-                                                                    </TableRow>
-                                                                ))}
-                                                            </TableBody>
-                                                        </Table>
-                                                    </Box>}
-                                                    disableHoverListener={Number(refundData.voucher.refunded) <= 0}
-                                                    placement="bottom"
-                                                    slotProps={{
-                                                        tooltip: {
-                                                            component: Card,
-                                                            sx: {
-                                                                border: "1px Solid #dfdfdf",
-                                                                bgcolor: "#fff",
-                                                                maxWidth: "none",
-                                                                boxShadow: "0 2px 5px #0000002b"
-                                                            },
-                                                        }
-                                                    }}
-                                                >
-                                                    <span style={{ cursor: "pointer" }}>${refundData.voucher.refunded.toFixed(2)}</span>
-                                                </Tooltip>
-                                            </TableCell>
-                                            <TableCell align="right">
-                                                <TextField
-                                                    type="number"
-                                                    size="small"
-                                                    value={isCancelMode ? formatDisplayValue(refundData.voucher.paid - refundData.voucher.refunded) : formatDisplayValue(refundData.entered_voucher_refund)}
-                                                    onChange={(e) => handleVoucherRefundChange(e.target.value)}
-                                                    onBlur={() => handleVoucherRefundBlur()}
-                                                    InputProps={{
-                                                        startAdornment: (
-                                                            <InputAdornment position="start">{currencySymbols[refundData.currency] || refundData.currency}</InputAdornment>
-                                                        ),
-                                                    }}
-                                                    disabled={isCancelMode}
-                                                    sx={{ width: 120 }}
-                                                />
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
-
-                                    {/* COUPON ROW */}
-                                    {refundData.coupon?.paid > 0 && (
-                                        <TableRow>
-                                            <TableCell sx={{ pl: 1 }}>
-                                                <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                                                    Coupon
-                                                </Typography>
-                                            </TableCell>
-                                            <TableCell align="right">
-                                                ${refundData.coupon.paid.toFixed(2)}
-                                            </TableCell>
-                                            <TableCell align="right" sx={{
-                                                color: Number(refundData.coupon.refunded) > 0 ? "error.main" : "inherit",
-                                            }}>
-                                                <Tooltip title={
-                                                    <Box>
-                                                        <Table sx={{
-                                                            tableLayout: "auto",
-                                                            width: "max-content",
-                                                            "& th, & td": {
-                                                                whiteSpace: "nowrap",
-                                                            },
-                                                        }}>
-                                                            <TableHead>
-                                                                <TableRow>
-                                                                    <TableCell>Date</TableCell>
-                                                                    <TableCell>Reason</TableCell>
-                                                                    <TableCell>Amount</TableCell>
-                                                                </TableRow>
-                                                            </TableHead>
-                                                            <TableBody>
-                                                                {refundData?.coupon?.history?.length > 0 && refundData.coupon?.history?.map(h => (
-                                                                    <TableRow>
-                                                                        <TableCell sx={{ pr: 3 }}>{new Date(h.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", }) || ""}</TableCell>
-                                                                        <TableCell sx={{ pr: 3 }}>{h.reason_code || ""}</TableCell>
-                                                                        <TableCell align='right' sx={{ color: 'error.main' }}>{h.entered_refund_amount}</TableCell>
-                                                                    </TableRow>
-                                                                ))}
-                                                            </TableBody>
-                                                        </Table>
-                                                    </Box>}
-                                                    disableHoverListener={Number(refundData.coupon.refunded) <= 0}
-                                                    placement="bottom"
-                                                    slotProps={{
-                                                        tooltip: {
-                                                            component: Card,
-                                                            sx: {
-                                                                border: "1px Solid #dfdfdf",
-                                                                bgcolor: "#fff",
-                                                                maxWidth: "none",
-                                                                boxShadow: "0 2px 5px #0000002b"
-                                                            },
-                                                        }
-                                                    }}
-                                                >
-                                                    <span style={{ cursor: "pointer" }}>${refundData.coupon.refunded.toFixed(2)}</span>
-                                                </Tooltip>
-                                            </TableCell>
-                                            <TableCell align="right">
-                                                <TextField
-                                                    type="number"
-                                                    size="small"
-                                                    value={isCancelMode ? formatDisplayValue(refundData.coupon.paid - refundData.coupon.refunded) : formatDisplayValue(refundData.entered_coupon_refund)}
-                                                    onChange={(e) => handleCouponRefundChange(e.target.value)}
-                                                    onBlur={() => handleCouponRefundBlur()}
-                                                    InputProps={{
-                                                        startAdornment: (
-                                                            <InputAdornment position="start">{currencySymbols[refundData.currency] || refundData.currency}</InputAdornment>
-                                                        ),
-                                                    }}
-                                                    disabled={isCancelMode}
-                                                    sx={{ width: 120 }}
-                                                />
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
 
                                     <TableRow>
                                         <TableCell sx={{ pl: 1 }}>
@@ -1244,7 +1274,7 @@ const RefundPage = () => {
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', p: 1 }}>
                                 <Typography variant="body2">Voucher refund</Typography>
                                 <Typography variant="body2" sx={{ color: 'violet' }}>
-                                    ${refundData.voucher_refund.toFixed(2)}
+                                    -${refundData.voucher_refund.toFixed(2)}
                                 </Typography>
                             </Box>
                         )}
@@ -1253,7 +1283,7 @@ const RefundPage = () => {
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', p: 1 }}>
                                 <Typography variant="body2">Coupon refund</Typography>
                                 <Typography variant="body2" sx={{ color: 'orange' }}>
-                                    ${refundData.coupon_refund.toFixed(2)}
+                                    -${refundData.coupon_refund.toFixed(2)}
                                 </Typography>
                             </Box>
                         )}
@@ -1270,23 +1300,22 @@ const RefundPage = () => {
                         </Box>
                     </Box>
 
-                    {!(!isFormValid || submitting || totals.enteredOrderRefund === 0) && (
-                        <Box mt={3}>
-                            <TextField
-                                select
-                                fullWidth
-                                label="Refund To"
-                                value={refundTo}
-                                onChange={(e) => setRefundTo(e.target.value)}
-                            >
-                                {refundOptions.map((option) => (
-                                    <MenuItem key={option.value} value={option.value}>
-                                        {option.label}
-                                    </MenuItem>
-                                ))}
-                            </TextField>
-                        </Box>
-                    )}
+                    <Box mt={3}>
+                        <TextField
+                            select
+                            fullWidth
+                            label="Refund To"
+                            value={refundTo}
+                            onChange={(e) => setRefundTo(e.target.value)}
+                            disabled={(!isFormValid || submitting || totals.refundAmount.toFixed(2) === 0)}
+                        >
+                            {refundOptions.map((option) => (
+                                <MenuItem key={option.value} value={option.value}>
+                                    {option.label}
+                                </MenuItem>
+                            ))}
+                        </TextField>
+                    </Box>
 
                     {/* Action Buttons - EXACT text from screenshot */}
                     <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
@@ -1310,7 +1339,7 @@ const RefundPage = () => {
                                     setOpen(true);
                                 }
                             }}
-                            disabled={!isFormValid || submitting || totals.enteredOrderRefund === 0 || !refundTo || totals.hasNegativeNetRefund}
+                            disabled={!isFormValid || submitting || totals.refundAmount === 0 || !refundTo || totals.hasNegativeNetRefund}
                         >
                             {submitting ? 'Submitting...' : 'Submit refund'}
                         </Button>
@@ -1318,7 +1347,7 @@ const RefundPage = () => {
 
                     {totals.hasNegativeNetRefund && (
                         <Alert severity="error" sx={{ mt: 2 }}>
-                            Voucher adjustment cannot exceed refund amount for any item
+                            Voucher or Coupon adjustment cannot exceed refund amount for any item
                         </Alert>
                     )}
 

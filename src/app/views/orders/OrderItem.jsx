@@ -882,7 +882,7 @@ const OrderItem = ({ items, tab, isAdmin, getOrderList, openMenuIndex2, setOpenM
                                                                     Update Status
                                                                 </MenuItem>
                                                             )}
-                                                            {isAdmin && (<MenuItem
+                                                            {isAdmin && isPaymentComplete && (<MenuItem
                                                                 onClick={() => {
                                                                     handleCloseOption();
                                                                     navigate(
@@ -892,7 +892,7 @@ const OrderItem = ({ items, tab, isAdmin, getOrderList, openMenuIndex2, setOpenM
                                                             >
                                                                 Cancel
                                                             </MenuItem>)}
-                                                            {isAdmin && (<MenuItem
+                                                            {isAdmin && isPaymentComplete && (<MenuItem
                                                                 onClick={() => {
                                                                     handleCloseOption();
                                                                     navigate(
