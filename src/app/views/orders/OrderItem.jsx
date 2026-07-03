@@ -189,9 +189,15 @@ const OrderItem = ({ items, tab, isAdmin, getOrderList, openMenuIndex2, setOpenM
     };
 
     const getGrandTotal = (subOrder) => {
-        const itemTotal = subOrder.items.reduce((sum, item) => sum += item.amount, 0);
+        const itemTotal = subOrder.items.reduce((sum, item) => sum += (item.amount - item.voucherDiscountAmount), 0);
         return itemTotal + subOrder?.items?.[0]?.shippingAmount - subOrder?.items?.[0]?.couponDiscountAmount;
     };
+
+    const getTotalRefundAmount = (subOrder) => {
+        if (subOrder.items[0].refund_status === 'none') return 0;
+        const totalRefund = subOrder.items.reduce((a, b) => a + (b.refunded_cash_amount - (b.voucher_refunded_amount || 0) - (b.coupon_refunded_amount || 0)), subOrder?.items[0]?.shippingAmount);
+        return totalRefund;
+    }
 
     const handleClickPopup = () => {
         setOpenMsgpopup(true);
@@ -348,6 +354,7 @@ const OrderItem = ({ items, tab, isAdmin, getOrderList, openMenuIndex2, setOpenM
                                                     </Typography>
                                                     <Typography ml={2} sx={{ color: "#000" }}>
                                                         ${(getGrandTotal(subOrder)).toFixed(2)}
+                                                        {subOrder?.items[0].refund_status !== 'none' && (<Typography component='span' color="red" ml={2}>Refund Amount: ${getTotalRefundAmount(subOrder).toFixed(2)}</Typography>)}
                                                     </Typography>
                                                     <Box sx={{
                                                         display: "flex",

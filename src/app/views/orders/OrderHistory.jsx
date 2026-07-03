@@ -41,7 +41,7 @@ const OrderHistory = () => {
   const [order, setOrder] = useState({ saleDetaildata: [] });
   const [expandedRows, setExpandedRows] = useState({});
   const [baseUrl, setBaseUrl] = useState("");
-  const [query] = useSearchParams();
+  const [query, setQuery] = useSearchParams();
   const sales_id = query.get("sales_id");
   const sub_order_id = query.get("sub_order_id");
   const navigate = useNavigate();
@@ -117,7 +117,7 @@ const OrderHistory = () => {
     const vendorItems = order?.saleDetaildata?.[0]?.items || [];
     if (!vendorItems.length) return { subTotal: 0, shippingTotal: 0, itemTotal: 0, grandTotal: 0, paypalAmount: 0 };
     const subTotal = vendorItems.reduce((a, b) => a + (b.original_price * b.qty || 0), 0);
-    const promotionalDiscount = vendorItems.reduce((a, b) => a + (b.promotional_discount || 0) * (b.qty || 0), 0);
+    const promotionalDiscount = vendorItems.reduce((a, b) => a + (b.promotional_discount || 0), 0);
     const couponDiscount = vendorItems[0]?.couponDiscountAmount || 0;
     const shippingTotal = order?.saleDetaildata?.[0]?.shippingAmount || 0;
     const itemTotal = vendorItems.reduce((a, b) => a + (b.amount || 0), 0) + shippingTotal - couponDiscount;
@@ -340,7 +340,7 @@ const OrderHistory = () => {
                     <Button
                       sx={{ fontWeight: "600", background: "#fff", border: "1px solid #000", borderRadius: "30px", padding: "5px 16px", color: "#000", fontSize: "11px" }}
                       onClick={() => {
-                        if (label === "Print packing slip") window.open(`${ROUTE_CONSTANT.orders.orderSlip}?sales_id=${sales_id}&sub_order_id=${sub_order_id}`, '_blank');
+                        if (label === "Print packing slip") window.open(`${ROUTE_CONSTANT.orders.orderSlip}?sales_id=${sales_id}&id=${sub_order_id}`, '_blank');
                         if (label === "Refund Order") window.open(`${ROUTE_CONSTANT.orders.orderRefund}?subOrder=${sub_order_id}&mode=refund`, '_blank');
                       }}
                     >
@@ -544,7 +544,7 @@ const OrderHistory = () => {
                                           <LocalOfferIcon sx={{ marginRight: "4px", fontSize: "18px", transform: "rotate(115deg)" }} />
                                           {`${item?.promotionData?.promotional_title} (${item?.promotionData?.offer_type === "percentage" ? getDisplayValue(item?.promotionData?.discount_amount) + "%" : "$" + getDisplayValue(item?.promotionData?.discount_amount)} off)`}:
                                         </Typography>
-                                        <Box pl={2} color={"red"} fontSize={13}>- ${((item?.promotional_discount || 0) * (item?.qty || 0)).toFixed(2)}</Box>
+                                        <Box pl={2} color={"red"} fontSize={13}>- ${(item?.promotional_discount || 0).toFixed(2)}</Box>
                                       </Box>
                                     )}
                                     {/* {item?.couponDiscountAmount > 0 && (

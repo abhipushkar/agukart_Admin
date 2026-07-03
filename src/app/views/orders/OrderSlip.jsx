@@ -23,10 +23,16 @@ const OrderSlip = () => {
   const contentRef = useRef();
   const auth_key = localStorage.getItem(localStorageKey.auth_key);
   const reactToPrintFn = useReactToPrint({ contentRef });
-  const [query] = useSearchParams();
-  const sales_id = query.get("sales_id");
-  const sub_order_id = query.get("sub_order_id");
-  console.log({ sales_id, sub_order_id }, "Order slip IDs");
+  const [query, setQuery] = useSearchParams();
+  const selectedInvoices = query.getAll("invoice").map(item => {
+    const [sales_id, sub_order_id] = item.split(":");
+
+    return {
+      sales_id,
+      sub_order_id,
+    };
+  });
+
   const [invoice, setInvoice] = useState([]);
   const [baseUrl, setBaseUrl] = useState("");
   console.log({ invoice });
@@ -79,17 +85,13 @@ const OrderSlip = () => {
 
   const getOrderDetailForSlip = useCallback(async () => {
     try {
-      const payload = {
-        sales_id: sales_id,
-        sub_order_id: sub_order_id
-      };
 
-      if (!sales_id && !sub_order_id) {
+      if (!selectedInvoices.length) {
         console.error("No order IDs provided for order slip");
         return;
       }
 
-      const res = await ApiService.post(apiEndpoints.getOrderInvoice, payload, auth_key);
+      const res = await ApiService.post(apiEndpoints.getOrderInvoice, { selectedInvoices }, auth_key);
       if (res?.status === 200) {
         console.log(res);
         setInvoice(res?.data?.data || []);
@@ -98,45 +100,21 @@ const OrderSlip = () => {
     } catch (error) {
       console.log("error", error);
     }
-  }, [auth_key, sales_id, sub_order_id])
+  }, [auth_key, selectedInvoices])
 
   useEffect(() => {
-    if (sales_id || sub_order_id) {
+    if (selectedInvoices.length) {
       getOrderDetailForSlip();
     }
-  }, [getOrderDetailForSlip, sales_id, sub_order_id])
+  }, [])
 
-  const getVendorItems = (items) => {
-    if (!items?.saleDetails) return [];
-
-    if (sub_order_id) {
-      return items.saleDetails.filter(item =>
-        item.sub_order_id === sub_order_id ||
-        item.saleDetailData?._id === sub_order_id ||
-        item.saleDetailData?.[0]?._id === sub_order_id
-      );
-    }
-
-    return items.saleDetails;
-  };
+  const getVendorItems = (items) => items.saleDetails;
 
   const getVendorData = (items) => {
     if (!items?.saleDetails?.length) return {};
     console.log(items)
-    if (sub_order_id) {
-      const vendorItem = items.saleDetails.find(item =>
-        item.sub_order_id === sub_order_id ||
-        item.saleDetailData?._id === sub_order_id ||
-        item.saleDetailData?.[0]?._id === sub_order_id
-      );
 
-      return vendorItem?.saleDetailData?.vendorData ||
-        vendorItem?.vendorData ||
-        items?.vendorData ||
-        {};
-    }
-
-    return items.saleDetails[0]?.saleDetailData?.vendorData ||
+    return items.saleDetails[0]?.vendorData ||
       items.saleDetails[0]?.vendorData ||
       items?.vendorData ||
       {};
@@ -146,15 +124,55 @@ const OrderSlip = () => {
     const vendorItems = getVendorItems(items);
 
     const subtotal = vendorItems.reduce((sum, item) => sum + (item?.sub_total || 0), 0);
-    const shippingTotal = vendorItems.reduce((sum, item) => sum + (item?.shippingAmount || 0), 0);
-    const itemTotal = vendorItems.reduce((sum, item) => sum + (item?.amount || 0), 0);
+    // const shippingTotal = vendorItems.reduce((sum, item) => sum + (item?.shippingAmount || 0), 0);
+    // const itemTotal = vendorItems.reduce((sum, item) => sum + (item?.amount || 0), 0);
 
+
+    if (!vendorItems.length) return { subTotal: 0, shippingTotal: 0, itemTotal: 0, grandTotal: 0, paypalAmount: 0 };
+    const subTotal = vendorItems.reduce((a, b) => a + (b.original_price * b.qty || 0), 0);
+    const promotionalDiscount = vendorItems.reduce((a, b) => a + (b.promotional_discount || 0), 0);
+    const couponDiscount = vendorItems[0]?.couponDiscountAmount || 0;
+    const shippingTotal = vendorItems[0]?.shippingAmount || 0;
+    const itemTotal = vendorItems.reduce((a, b) => a + (b.amount || 0), 0) + shippingTotal - couponDiscount;
+    const grandTotal = itemTotal;
+    const voucherDiscount = vendorItems.reduce((a, b) => a + (b.voucherDiscountAmount || 0), 0);
+    // const paypalAmount = grandTotal - (order?.wallet_used || 0);
     return {
-      subtotal,
-      shippingTotal,
-      itemTotal
+      subtotal: subTotal.toFixed(2),
+      shippingTotal: shippingTotal.toFixed(2),
+      itemTotal: itemTotal.toFixed(2),
+      suborderTotal: grandTotal.toFixed(2),
+      promotionalDiscount: promotionalDiscount.toFixed(2),
+      couponDiscount: couponDiscount.toFixed(2),
+      voucherDiscount: voucherDiscount.toFixed(2),
+      grandTotal: (grandTotal - voucherDiscount).toFixed(2)
     };
+
+    // return {
+    //   subtotal,
+    //   shippingTotal,
+    //   itemTotal
+    // };
   };
+  const itemShippingMap = (items) => {
+    const map = {};
+    const groups = {};
+    items.forEach(item => {
+      const d = item.deliveryData;
+      if (!d?.shippingId) return;
+      if (!groups[d.shippingId]) {
+        groups[d.shippingId] = { perOrder: Number(d.perOrder || 0), perItem: Number(d.perItem || 0), totalQty: 0, items: [] };
+      }
+      groups[d.shippingId].totalQty += Number(item.qty || 0);
+      groups[d.shippingId].items.push(item);
+    });
+    Object.values(groups).forEach(group => {
+      const groupShipping = group.perOrder + (group.totalQty > 1 ? (group.totalQty - 1) * group.perItem : 0);
+      group.items.forEach(item => { map[item._id] = groupShipping * (item.qty / group.totalQty); });
+    });
+    console.log("itemShippingMap:", map);
+    return map;
+  }
 
   return (
     <>
@@ -177,6 +195,17 @@ const OrderSlip = () => {
               -webkit-print-color-adjust: exact;
               print-color-adjust: exact;
             }
+               .invoice-page {
+    break-after: page;
+    page-break-after: always;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .invoice-page:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
           }
         `}
       </style>
@@ -196,21 +225,17 @@ const OrderSlip = () => {
           const vendorData = getVendorData(items);
           const vendorItems = getVendorItems(items);
           const vendorTotals = calculateVendorTotals(items);
+          const shippingMap = itemShippingMap(vendorItems)
 
           return (
             <Box
               key={index}
+              className="invoice-page"
               sx={{
-                width: '100%',
-                maxWidth: '1200px',
-                margin: '0 auto',
+                width: "100%",
+                maxWidth: "1200px",
+                margin: "0 auto",
                 mb: 3,
-                pageBreakAfter: "always",
-                '@media print': {
-                  pageBreakAfter: 'always',
-                  margin: '0 auto',
-                  width: '100%',
-                }
               }}
             >
               <Box sx={{ borderBottom: "2px dashed #000", padding: "8px 0" }}>
@@ -261,9 +286,9 @@ const OrderSlip = () => {
                   </Grid>
                   <Grid item xs={12} md={6}>
                     <Typography component="h5" sx={{ fontSize: '1.25rem', fontWeight: 500 }}>
-                      {sub_order_id && (
+                      {(
                         <span style={{ fontSize: "16px", color: "#666" }}>
-                          Reciept Id: #{sub_order_id || "N/A"}
+                          Reciept Id: #{items?.sub_order_id}
                         </span>
                       )}
                     </Typography>
@@ -292,10 +317,10 @@ const OrderSlip = () => {
                             </TableCell>
                             <TableCell sx={{ border: '1px solid #dee2e6', padding: '4px', fontSize: "12px" }}>{items?.name}</TableCell>
                           </TableRow>
-                          {sub_order_id && (
+                          {(
                             <TableRow>
                               <TableCell sx={{ border: '1px solid #dee2e6', padding: '4px', width: '40%', whiteSpace: 'nowrap', fontSize: "12px" }}>Store :</TableCell>
-                              <TableCell sx={{ border: '1px solid #dee2e6', padding: '4px', fontSize: "12px" }}>{vendorData?.shop_name || vendorData?.name || "N/A"}</TableCell>
+                              <TableCell sx={{ border: '1px solid #dee2e6', padding: '4px', fontSize: "12px" }}>{items?.shop_name || "N/A"}</TableCell>
                             </TableRow>
                           )}
                         </TableBody>
@@ -307,7 +332,7 @@ const OrderSlip = () => {
 
               <Typography component="h6" sx={{ fontSize: '1rem', fontWeight: 500, my: 2 }}>
                 Thank you for buying from{" "}
-                <span style={{ color: "#d32f2f" }}>{vendorData?.name || "N/A"}</span> on{" "}
+                <span style={{ color: "#d32f2f" }}>{items?.shop_name || "N/A"}</span> on{" "}
                 <span style={{ color: "#d32f2f" }}>Agukart</span> Marketplace
               </Typography>
 
@@ -327,7 +352,7 @@ const OrderSlip = () => {
                       {vendorItems.length > 0 ? (
                         vendorItems.map((item, i) => (
                           <TableRow key={i}>
-                            <TableCell sx={{ border: '1px solid #dee2e6', padding: '4px', fontSize: "12px" }}>{item?.qty}</TableCell>
+                            <TableCell align="center" sx={{ border: '1px solid #dee2e6', padding: '4px', fontSize: "12px" }}>{item?.qty}</TableCell>
                             <TableCell sx={{
                               textAlign: "center",
                               border: '1px solid #dee2e6',
@@ -372,7 +397,7 @@ const OrderSlip = () => {
                                   <TableBody>
                                     <TableRow>
                                       <TableCell sx={{ width: "30%", padding: "2px 0", border: 'none', fontSize: "12px" }}>Order Item ID :</TableCell>
-                                      <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "12px" }}>{item?._id?.slice(-8) || "N/A"}</TableCell>
+                                      <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "12px" }}>{item?.item_id || "N/A"}</TableCell>
                                     </TableRow>
                                     <TableRow>
                                       <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "12px" }}>SKU :</TableCell>
@@ -397,28 +422,24 @@ const OrderSlip = () => {
                                         ))}
                                       </>
                                     )}
-                                    {/* {item?.variant_id && item.variant_id.length > 0 &&
-                                      !item?.variantData?.length &&
-                                      !item?.variants?.length && (
-                                        <TableRow>
-                                          <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "12px" }}>Variant IDs :</TableCell>
-                                          <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "12px" }}>
-                                            {item.variant_id.join(", ")}
-                                          </TableCell>
-                                        </TableRow>
-                                      )} */}
                                     {item?.customize === "Yes" && (
-                                      <TableRow>
-                                        <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "12px" }}>Customization :</TableCell>
-                                        <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "12px" }}>Yes</TableCell>
-                                      </TableRow>
+                                      item.customizationData.map((customItem, idx) => (
+                                        <TableRow>
+                                          {Object.entries(customItem).map(([key, value]) => (
+                                            <>
+                                              <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "11px" }}>{key}:</TableCell>
+                                              <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "12px" }}>{typeof value === "object" ? `${value?.value} ($ ${value?.price})` : value}</TableCell>
+                                            </>
+                                          ))}
+                                        </TableRow>
+                                      ))
                                     )}
                                   </TableBody>
                                 </Table>
                               </Box>
                             </TableCell>
                             <TableCell sx={{ border: '1px solid #dee2e6', padding: '4px', fontSize: "12px" }}>
-                              $ {item?.productData?.sale_price?.toFixed(2) || "0.00"}
+                              $ {item?.original_price.toFixed(2) || "0.00"}
                             </TableCell>
                             <TableCell sx={{ border: '1px solid #dee2e6', padding: '4px' }}>
                               <Box>
@@ -426,11 +447,11 @@ const OrderSlip = () => {
                                   <TableBody>
                                     <TableRow>
                                       <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "11px", textAlign: "left" }}>Item Subtotal</TableCell>
-                                      <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "11px", textAlign: "right" }}>$ {item?.amount?.toFixed(2) || "0.00"}</TableCell>
+                                      <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "11px", textAlign: "right" }}>$ {item?.original_price.toFixed(2) * item?.qty || "0.00"}</TableCell>
                                     </TableRow>
                                     <TableRow>
                                       <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "11px", textAlign: "left" }}>Shipping total</TableCell>
-                                      <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "11px", textAlign: "right" }}>$ {(item?.shippingAmount || 0).toFixed(2)}</TableCell>
+                                      <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "11px", textAlign: "right" }}>$ {(shippingMap[item._id] || 0).toFixed(2)}</TableCell>
                                     </TableRow>
                                     <TableRow>
                                       <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "11px", textAlign: "left" }}>Tax</TableCell>
@@ -439,18 +460,18 @@ const OrderSlip = () => {
                                     {item?.promotional_discount > 0 && (
                                       <TableRow>
                                         <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "11px", textAlign: "left" }}>Promotion :</TableCell>
-                                        <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "11px", textAlign: "right" }}>-US$ {(item?.promotional_discount || 0).toFixed(2)}</TableCell>
+                                        <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "11px", textAlign: "right" }}>-$ {(item?.promotional_discount || 0).toFixed(2)}</TableCell>
                                       </TableRow>
                                     )}
-                                    {item?.couponDiscountAmount > 0 && (
+                                    {/* {item?.couponDiscountAmount > 0 && (
                                       <TableRow>
                                         <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "11px", textAlign: "left" }}>Coupon :</TableCell>
-                                        <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "11px", textAlign: "right" }}>-US$ {(item?.couponDiscountAmount || 0).toFixed(2)}</TableCell>
+                                        <TableCell sx={{ padding: "2px 0", border: 'none', fontSize: "11px", textAlign: "right" }}>-$ {(item?.couponDiscountAmount || 0).toFixed(2)}</TableCell>
                                       </TableRow>
-                                    )}
+                                    )} */}
                                     <TableRow>
                                       <TableCell sx={{ padding: "2px 0", fontWeight: "bold", fontSize: "11px", textAlign: "left", borderBottom: "none" }}>Item total</TableCell>
-                                      <TableCell sx={{ padding: "2px 0", fontWeight: "bold", fontSize: "11px", textAlign: "right", borderBottom: "none" }}>$ {((item?.amount || 0) + (item?.shippingAmount || 0) - (item?.couponDiscountAmount || 0)).toFixed(2)}</TableCell>
+                                      <TableCell sx={{ padding: "2px 0", fontWeight: "bold", fontSize: "11px", textAlign: "right", borderBottom: "none" }}>$ {((item?.amount || 0) + (shippingMap[item._id] || 0)).toFixed(2)}</TableCell>
                                     </TableRow>
                                   </TableBody>
                                 </Table>
@@ -475,16 +496,26 @@ const OrderSlip = () => {
                   <TableBody>
                     <TableRow>
                       <TableCell sx={{ padding: "4px 8px" }}>Subtotal :</TableCell>
-                      <TableCell sx={{ padding: "4px 8px", textAlign: "right" }}>$ {vendorTotals.subtotal.toFixed(2)}</TableCell>
+                      <TableCell sx={{ padding: "4px 8px", textAlign: "right" }}>$ {vendorTotals.subtotal}</TableCell>
                     </TableRow>
-                    <TableRow>
+                    {vendorTotals.promotionalDiscount > 0 && (<TableRow>
                       <TableCell sx={{ padding: "4px 8px" }}>Shipping Total :</TableCell>
-                      <TableCell sx={{ padding: "4px 8px", textAlign: "right" }}>$ {vendorTotals.shippingTotal.toFixed(2)}</TableCell>
+                      <TableCell sx={{ padding: "4px 8px", textAlign: "right" }}>-$ {vendorTotals.promotionalDiscount}</TableCell>
+                    </TableRow>)}
+                    <TableRow>
+                      <TableCell sx={{ padding: "4px 8px" }}>Shop Offer :</TableCell>
+                      <TableCell sx={{ padding: "4px 8px", textAlign: "right" }}>$ {vendorTotals.shippingTotal}</TableCell>
                     </TableRow>
-                    {items?.voucher_dicount > 0 && (
+                    {vendorTotals.couponDiscount > 0 && (
                       <TableRow>
-                        <TableCell sx={{ padding: "4px 8px" }}>Voucher Discount :</TableCell>
-                        <TableCell sx={{ padding: "4px 8px", textAlign: "right" }}>-US$ {(items?.voucher_dicount || 0).toFixed(2)}</TableCell>
+                        <TableCell sx={{ padding: "4px 8px" }}>Shop Coupon Discount :</TableCell>
+                        <TableCell sx={{ padding: "4px 8px", textAlign: "right" }}>-$ {vendorTotals.couponDiscount}</TableCell>
+                      </TableRow>
+                    )}
+                    {vendorTotals.voucherDiscount > 0 && (
+                      <TableRow>
+                        <TableCell sx={{ padding: "4px 8px" }}>Agukart Voucher Discount :</TableCell>
+                        <TableCell sx={{ padding: "4px 8px", textAlign: "right" }}>-$ {vendorTotals.voucherDiscount}</TableCell>
                       </TableRow>
                     )}
                     <TableRow>
@@ -493,9 +524,9 @@ const OrderSlip = () => {
                     </TableRow>
                     <TableRow sx={{ borderTop: "2px solid #000" }}>
                       <TableCell sx={{ padding: "8px", fontWeight: "bold" }}>Grand total :</TableCell>
-                      <TableCell sx={{ padding: "8px", fontWeight: "bold", textAlign: "right" }}>$ {(vendorTotals.subtotal - (items?.voucher_dicount || 0)).toFixed(2)}</TableCell>
+                      <TableCell sx={{ padding: "8px", fontWeight: "bold", textAlign: "right" }}>$ {vendorTotals.grandTotal}</TableCell>
                     </TableRow>
-                    {items?.wallet_used > 0 && (
+                    {/* {items?.wallet_used > 0 && (
                       <TableRow>
                         <TableCell sx={{ padding: "4px 8px" }}>Used Gift Card :</TableCell>
                         <TableCell sx={{ padding: "4px 8px", textAlign: "right" }}>-US$ {(items?.wallet_used || 0).toFixed(2)}</TableCell>
@@ -506,7 +537,7 @@ const OrderSlip = () => {
                         <TableCell sx={{ padding: "4px 8px" }}>Pay By PayPal :</TableCell>
                         <TableCell sx={{ padding: "4px 8px", textAlign: "right" }}>$ {(vendorTotals.subtotal - (items?.voucher_dicount || 0) - (items?.wallet_used || 0)).toFixed(2)}</TableCell>
                       </TableRow>
-                    )}
+                    )} */}
                   </TableBody>
                 </Box>
               </Box>

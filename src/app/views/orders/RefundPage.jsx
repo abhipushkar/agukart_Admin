@@ -508,7 +508,7 @@ const RefundPage = () => {
             return sum + refunded_cash_amount;
         }, 0) + refundData.shipping.refunded;
 
-        orderAmount = orderAmount + refundData.shipping.paid;
+        orderAmount = orderAmount + refundData.shipping.paid - (refundData.voucher.paid || 0) - (refundData.coupon.paid || 0);
 
         if (refundAmount < 0) {
             hasNegativeNetRefund = true;
@@ -944,7 +944,7 @@ const RefundPage = () => {
                                                 </Typography>
                                             </TableCell>
                                             <TableCell align="right">
-                                                ${refundData.voucher.paid.toFixed(2)}
+                                                -${refundData.voucher.paid.toFixed(2)}
                                             </TableCell>
                                             <TableCell align="right" sx={{
                                                 color: Number(refundData.voucher.refunded) > 0 ? "violet" : "inherit",
@@ -1021,7 +1021,7 @@ const RefundPage = () => {
                                                 </Typography>
                                             </TableCell>
                                             <TableCell align="right">
-                                                ${refundData.coupon.paid.toFixed(2)}
+                                                -${refundData.coupon.paid.toFixed(2)}
                                             </TableCell>
                                             <TableCell align="right" sx={{
                                                 color: Number(refundData.coupon.refunded) > 0 ? "orange" : "inherit",
