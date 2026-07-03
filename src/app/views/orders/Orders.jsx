@@ -426,9 +426,13 @@ const Orders = () => {
 
   const handleOrderSlip = async () => {
     if (orderIds.length > 0) {
-      const queryParams = orderIds.map(id => `id=${id}`).join('&');
-      const url = `${ROUTE_CONSTANT.orders.orderSlip}?${queryParams}`;
-      window.open(url, '_blank');
+      const queryParams = selectedSubOrders
+        .map(so => `invoice=${encodeURIComponent(`${so.sale_id}:${so.sub_order_id}`)}`).join("&");
+
+      window.open(
+        `${ROUTE_CONSTANT.orders.orderSlip}?${queryParams}`,
+        "_blank"
+      );
     }
   };
 

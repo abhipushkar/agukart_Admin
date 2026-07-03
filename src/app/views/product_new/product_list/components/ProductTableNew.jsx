@@ -31,6 +31,8 @@ import { ROUTE_CONSTANT } from 'app/constant/routeContanst';
 import { toast } from 'react-toastify';
 import { useProductStore } from "../../states/useProductStore";
 import debounce from 'lodash.debounce';
+import parse from "html-react-parser";
+
 const getCurrentScrollPosition = () => {
     if (typeof window === 'undefined' || typeof document === 'undefined') return 0;
     let maxScrollTop = Math.max(
@@ -366,11 +368,11 @@ const ProductRow = ({ product, index }) => {
         }
     };
     const capitalizeFirstLetter = (str) => {
-        if (!str) return str;
+        if (!str || typeof str !== 'string') return str;
         return str.charAt(0).toUpperCase() + str.slice(1);
     };
     const getProductTitle = () => {
-        return product.product_title?.replace(/<\/?[^>]+(>|$)/g, "") || '';
+        return parse(product.product_title || '');
     };
     const navigateWithListContext = (url) => {
         persistListViewContext({
@@ -792,11 +794,11 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
         }
     };
     const capitalizeFirstLetter = (str) => {
-        if (!str) return str;
+        if (!str || typeof str !== 'string') return str;
         return str.charAt(0).toUpperCase() + str.slice(1);
     };
     const getProductTitle = () => {
-        return capitalizeFirstLetter(variation.product_title?.replace(/<\/?[^>]+(>|$)/g, "") || '');
+        return capitalizeFirstLetter(parse(variation.product_title || ''));
     };
     const navigateWithListContext = (url) => {
         persistListViewContext({
