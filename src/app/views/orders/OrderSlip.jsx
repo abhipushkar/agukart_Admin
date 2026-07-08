@@ -499,11 +499,11 @@ const OrderSlip = () => {
                       <TableCell sx={{ padding: "4px 8px", textAlign: "right" }}>$ {vendorTotals.subtotal}</TableCell>
                     </TableRow>
                     {vendorTotals.promotionalDiscount > 0 && (<TableRow>
-                      <TableCell sx={{ padding: "4px 8px" }}>Shipping Total :</TableCell>
+                      <TableCell sx={{ padding: "4px 8px" }}>Shop Offer :</TableCell>
                       <TableCell sx={{ padding: "4px 8px", textAlign: "right" }}>-$ {vendorTotals.promotionalDiscount}</TableCell>
                     </TableRow>)}
                     <TableRow>
-                      <TableCell sx={{ padding: "4px 8px" }}>Shop Offer :</TableCell>
+                      <TableCell sx={{ padding: "4px 8px" }}>Shipping Total :</TableCell>
                       <TableCell sx={{ padding: "4px 8px", textAlign: "right" }}>$ {vendorTotals.shippingTotal}</TableCell>
                     </TableRow>
                     {vendorTotals.couponDiscount > 0 && (

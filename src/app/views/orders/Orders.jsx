@@ -86,6 +86,7 @@ const Orders = () => {
   const [stock, setStock] = useState(0);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
   const [isSearched, setIsSearched] = useState(false);
   const [selectedSubOrders, setSelectedSubOrders] = useState([]);
   const [openDialog, setOpenDialog] = useState(false);
@@ -580,8 +581,8 @@ const Orders = () => {
                         <InputBase
                           placeholder="Search all orders..."
                           inputProps={{ "aria-label": "search" }}
-                          value={search}
-                          onChange={(e) => { setSearch(e.target.value) }}
+                          value={searchInput}
+                          onChange={(e) => { setSearchInput(e.target.value) }}
                           sx={{
                             paddingLeft: "15px",
                             height: "35px",
@@ -605,7 +606,7 @@ const Orders = () => {
                               background: "#363636"
                             }
                           }}
-                          onClick={getOrderList}
+                          onClick={() => { setSearch(searchInput) }}
                         >
                           {" "}
                           <SearchIcon />
