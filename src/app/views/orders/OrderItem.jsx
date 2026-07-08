@@ -189,8 +189,8 @@ const OrderItem = ({ items, tab, isAdmin, getOrderList, openMenuIndex2, setOpenM
     };
 
     const getGrandTotal = (subOrder) => {
-        const itemTotal = subOrder.items.reduce((sum, item) => sum += (item.amount - item.voucherDiscountAmount), 0);
-        return itemTotal + subOrder?.items?.[0]?.shippingAmount - subOrder?.items?.[0]?.couponDiscountAmount;
+        const itemTotal = subOrder.items.reduce((sum, item) => sum += (item.amount - (item.voucherDiscountAmount || 0)), 0);
+        return itemTotal + subOrder?.items?.[0]?.shippingAmount - (subOrder?.items?.[0]?.couponDiscountAmount || 0);
     };
 
     const getTotalRefundAmount = (subOrder) => {
@@ -603,7 +603,7 @@ const OrderItem = ({ items, tab, isAdmin, getOrderList, openMenuIndex2, setOpenM
                                                     {getOrderStatusText(subOrder, tab, isPaymentComplete)}
                                                 </Typography>
                                                 <Typography>Order {formatDate(parentSale?.createdAt)}</Typography>
-                                                {tab === "completed" && (
+                                                {(tab === "completed" || subOrder.items[0]?.shipments?.length > 0) && (
                                                     subOrder.items[0]?.shipments?.map((shipment) => {
                                                         return (
                                                             <Box
