@@ -73,15 +73,26 @@ function InboxWrapper() {
   const role = searchParams.get("role");
 
   return (
-    <Box>
+    <Box sx={{
+      height: "100%",
+      display: "flex",
+      flexDirection: "column",
+      overflow: "hidden",
+    }}>
       {!slug ? (
-        <div>
+        <Box sx={{ flex: 1, overflow: "auto" }}>
           <ChatListAdmin />
-        </div>
+        </Box>
       ) : (
-        <div>
+        <Box sx={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          height: "100%",
+        }}>
           <ChatBox slug={slug} role={role} />
-        </div>
+        </Box>
       )}
     </Box>
   );
@@ -94,13 +105,13 @@ function ComposeWrapper() {
 
   return (
     <Box>
-       {!slug ? (
+      {!slug ? (
         <div>
           <ComposeChatAdminList />
         </div>
       ) : (
         <div>
-          <ComposeChatBoxAdmin slug={slug} role={role}/>
+          <ComposeChatBoxAdmin slug={slug} role={role} />
         </div>
       )}
     </Box>

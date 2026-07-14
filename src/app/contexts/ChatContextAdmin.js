@@ -1,5 +1,5 @@
 import React, { createContext, useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { db } from "../../firebase/Firebase";
 
 import { collection, doc, getDoc, onSnapshot, orderBy, query, updateDoc } from "firebase/firestore";
@@ -7,6 +7,7 @@ import { useProfileData } from "./profileContext";
 import { apiEndpoints } from "app/constant/apiEndpoints";
 import { localStorageKey } from "app/constant/localStorageKey";
 import { ApiService } from "app/services/ApiService";
+import { ROUTE_CONSTANT } from "app/constant/routeContanst";
 export const ChatContext = createContext();
 
 export const ChatProvider = ({ children }) => {
@@ -18,6 +19,8 @@ export const ChatProvider = ({ children }) => {
     const [showCount, setShowCount] = useState(0);
 
     const { logUserData } = useProfileData();
+
+    const navigate = useNavigate();
 
     const { pathname } = useLocation();
 
@@ -44,7 +47,7 @@ export const ChatProvider = ({ children }) => {
                 const userIds = newMessages?.map((chat) => chat?.user);
                 getUsersDetails(userIds);
                 let matchingDocument = newMessages;
-                if (pathname === "/pages/message/pin") {
+                if (pathname === ROUTE_CONSTANT.messageRoute.pin) {
                     const filterPinned = matchingDocument.filter((doc) => {
                         return doc.pinnedMsgAdmin === logUserData?._id && doc?.isTempDelete2 !== logUserData?._id;
                     });
@@ -54,7 +57,7 @@ export const ChatProvider = ({ children }) => {
 
 
                 console.log({ matchingDocument });
-                if (pathname === "/pages/message") {
+                if (pathname === ROUTE_CONSTANT.message) {
                     const isDeletefilterData = matchingDocument.filter(
                         (item) => item?.isTempDelete2 !== logUserData?._id
                     );
@@ -62,7 +65,7 @@ export const ChatProvider = ({ children }) => {
                     return;
                 }
 
-                if (pathname === "/pages/message/inbox") {
+                if (pathname === ROUTE_CONSTANT.messageRoute.inbox) {
                     const isDeletefilterData = matchingDocument.filter(
                         (item) => item?.isTempDelete2 !== logUserData?._id
                     );
@@ -73,7 +76,7 @@ export const ChatProvider = ({ children }) => {
                     setChats(filteredData);
                     return;
                 }
-                if (pathname === "/pages/message/unread") {
+                if (pathname === ROUTE_CONSTANT.messageRoute.unread) {
                     const filteredData = matchingDocument?.filter((item) =>
                         item.text.some(
                             (msg) => msg.messageSenderId !== logUserData?._id && msg?.isNotification === false
@@ -83,7 +86,7 @@ export const ChatProvider = ({ children }) => {
                     return;
                 }
 
-                if (pathname === "/pages/message/trash") {
+                if (pathname === ROUTE_CONSTANT.messageRoute.trash) {
                     const isDeletefilterData = matchingDocument.filter(
                         (item) => item.isTempDelete2 === logUserData?._id
                     );
@@ -100,7 +103,7 @@ export const ChatProvider = ({ children }) => {
                     ...doc.data()
                 }));
 
-                if (pathname === "/pages/message/compose/message") {
+                if (pathname === ROUTE_CONSTANT.messageRoute.composeMessage) {
                     setComposeChats(newMessages);
                 }
             });
@@ -116,6 +119,7 @@ export const ChatProvider = ({ children }) => {
                     ...doc.data()
                 }));
 
+
                 const userIds = newMessages?.map((chat) => chat?.user);
                 getUsersDetails(userIds);
 
@@ -124,7 +128,7 @@ export const ChatProvider = ({ children }) => {
                 });
 
 
-                if (pathname === "/pages/message/pin") {
+                if (pathname === ROUTE_CONSTANT.messageRoute.pin) {
                     const filterPinned = matchingDocument.filter((doc) => {
                         return doc.pinnedMsgAdmin === logUserData?._id && doc?.isTempDelete2 !== logUserData?._id;
                     });
@@ -134,15 +138,16 @@ export const ChatProvider = ({ children }) => {
 
 
                 console.log({ matchingDocument });
-                if (pathname === "/pages/message") {
+                if (pathname === ROUTE_CONSTANT.message) {
                     const isDeletefilterData = matchingDocument.filter(
                         (item) => item?.isTempDelete2 !== logUserData?._id
                     );
+                    console.log("here is docs", { matchingDocument, isDeletefilterData });
                     setChats(isDeletefilterData);
                     return;
                 }
 
-                if (pathname === "/pages/message/inbox") {
+                if (pathname === ROUTE_CONSTANT.messageRoute.inbox) {
                     const isDeletefilterData = matchingDocument.filter(
                         (item) => item?.isTempDelete2 !== logUserData?._id
                     );
@@ -154,7 +159,7 @@ export const ChatProvider = ({ children }) => {
                     return;
                 }
 
-                if (pathname === "/pages/message/sent") {
+                if (pathname === ROUTE_CONSTANT.messageRoute.sent) {
                     const isDeletefilterData = matchingDocument.filter(
                         (item) => item?.isTempDelete2 !== logUserData?._id
                     );
@@ -170,7 +175,7 @@ export const ChatProvider = ({ children }) => {
 
                 // console.log("uuuuuuuuuuuuuuuu")
 
-                if (pathname === "/pages/message/unread") {
+                if (pathname === ROUTE_CONSTANT.messageRoute.unread) {
                     const filteredData = matchingDocument?.filter((item) =>
                         item.text.some(
                             (msg) => msg.messageSenderId !== logUserData?._id && msg?.isNotification === false
@@ -180,7 +185,7 @@ export const ChatProvider = ({ children }) => {
                     return;
                 }
 
-                if (pathname === "/pages/message/trash") {
+                if (pathname === ROUTE_CONSTANT.messageRoute.trash) {
                     const isDeletefilterData = matchingDocument.filter(
                         (item) => item.isTempDelete2 === logUserData?._id
                     );
@@ -197,12 +202,12 @@ export const ChatProvider = ({ children }) => {
                     ...doc.data()
                 }));
 
-                if (pathname === "/pages/message/etsy") {
+                if (pathname === ROUTE_CONSTANT.messageRoute.fromEtsy) {
                     const filterData = newMessages.filter((item) => item.type === "allvendors");
                     setChats(filterData);
                 }
 
-                if (pathname === "/pages/message/compose/message") {
+                if (pathname === ROUTE_CONSTANT.messageRoute.composeMessage) {
                     const filtered = newMessages.filter((doc) => {
                         if (doc.type !== "allusers") return false;
 
@@ -319,7 +324,7 @@ export const ChatProvider = ({ children }) => {
 
     useEffect(() => {
 
-        if (pathname === "/pages/message/pin") {
+        if (pathname === ROUTE_CONSTANT.messageRoute.pin) {
             return
         }
         if (chats.length > 0) {
@@ -340,6 +345,7 @@ export const ChatProvider = ({ children }) => {
                 const docSnap = await getDoc(docRef);
 
                 if (docSnap.exists()) {
+                    navigate(ROUTE_CONSTANT.message);
                     const myDoc = docSnap.data();
                     const updateArr = myDoc.text.map((msg) => {
                         if (msg.messageSenderId !== logUserData?._id) {

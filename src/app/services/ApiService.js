@@ -71,9 +71,13 @@ export const ApiService = {
       throw error;
     }
   },
-  postImage: async (url, data, accessToken) => {
+  postImage: async (url, data, accessToken, commonRoute = false) => {
     try {
-      const res = await axios.post(`${BASE_URL}/${url}`, data, {
+      let base_url = BASE_URL;
+      if (commonRoute) {
+        base_url = base_url.replace('/admin', '');
+      }
+      const res = await axios.post(`${base_url}/${url}`, data, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "multipart/form-data"

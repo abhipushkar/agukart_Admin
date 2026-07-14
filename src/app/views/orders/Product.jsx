@@ -19,7 +19,7 @@ import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 
 
 const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData }) => {
-    const [openPopup, SetOpenPopup] = useState(false);
+
     const [imageModalOpen, setImageModalOpen] = useState(false);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
@@ -38,13 +38,6 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
         setNewStock(stock);
     };
 
-    const handleClickPopup = () => {
-        SetOpenPopup(true);
-    };
-
-    const handleClosePopup = () => {
-        SetOpenPopup(false);
-    };
 
     const handleImageClick = () => {
         setImageModalOpen(true);
@@ -643,10 +636,7 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                             >
                                 Update quantity
                             </Button>
-                            <Button sx={{ color: "#000" }} onClick={handleClickPopup}>
-                                <MailOutlineIcon />
-                            </Button>
-                            {saleData?.inventory_status === "out_of_stock" && (<Button variant="outlined" color="error" sx={{ color: "red", borderRadius: "30px", }} component={Card} onClick={handleUpdateInventoryClick}>
+                            {saleData?.inventory_status === "out_of_stock" && (<Button variant="outlined" color="error" sx={{ color: "red", borderRadius: "30px", ml: 1 }} component={Card} onClick={handleUpdateInventoryClick}>
                                 <Update /> Update Inventory
                             </Button>)}
                         </Box>
@@ -927,23 +917,6 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                     </Box>
                 )}
             </Dialog>
-            {
-                openPopup && <MessagePopup
-                    openPopup={openPopup}
-                    vendorID={vendorData?.vendor_id || saleData?.vendor_id}
-                    orderId={item?.order_id}
-                    product_image={saleData?.productData?.image?.[0]
-                        ? `${baseUrl}/${saleData.productData.image[0]}`
-                        : `${baseUrl}/${saleData?.productMain?.image[0]}`
-                    }
-                    productData={saleData}
-                    userName={item?.userName}
-                    vendorName={vendorData?.vendor_name || saleData?.vendor_name}
-                    userId={item?.user_idnumer}
-                    userImage={item?.user_image}
-                    handleClosePopup={handleClosePopup}
-                />
-            }
             {guideOpen && (
                 <Dialog open={guideOpen} onClose={() => setGuideOpen(false)} maxWidth="md" fullWidth sx={{ "& .MuiDialog-paper": { maxWidth: "90vw", maxHeight: "95vh" } }}>
                     <DialogTitle sx={{ m: 0, py: 1, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
