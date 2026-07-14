@@ -20,6 +20,7 @@ import {
   TableRow
 } from "@mui/material";
 import { REACT_APP_BASE_URL } from "config";
+import { ROUTE_CONSTANT } from "app/constant/routeContanst";
 
 const ChatListAdmin = () => {
   const { logUserData } = useProfileData();
@@ -295,8 +296,8 @@ const ChatListAdmin = () => {
                             component="a"
                             href={
                               chat?.type === "allvendors"
-                                ? `${REACT_APP_BASE_URL}pages/message?slug=${chat.id}&role=admin`
-                                : `${REACT_APP_BASE_URL}pages/message?slug=${chat.id}`
+                                ? `${ROUTE_CONSTANT.message}?slug=${chat.id}&role=admin`
+                                : `${ROUTE_CONSTANT.message}?slug=${chat.id}`
                             }
                             sx={{
                               display: "flex",

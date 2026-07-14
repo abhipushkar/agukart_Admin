@@ -209,6 +209,9 @@ const Message = () => {
           return doc?.user === matchingDocument[0]?.user && doc?.receiverId === matchingDocument[0]?.receiverId && doc?.id !== slug;
         }))
         const userData = await getUserDetails(matchingDocument[0]?.user);
+        if (!pathname.includes('compose')) {
+          userData.shop_name = matchingDocument[0]?.shopName;
+        }
         setUserData(userData);
         setProductData(matchingDocument[0]?.productData)
         setProducts(matchingDocument[0]?.products || [])
@@ -335,8 +338,21 @@ const Message = () => {
             </Button>
           </Box>
         </Box>
-        <Grid container border={"1px solid #b6b6b6"} width={"100%"} m={0} mb={4} spacing={2}>
-          <Grid lg={2} md={3} xs={12} borderRight={"1px solid #b6b6b6"} sx={{ position: "sticky", top: 0, alignSelf: "flex-start", height: "100vh" }}>
+        <Grid container border={"1px solid #b6b6b6"} width={"100%"} m={0} mb={4} spacing={0}>
+          <Grid
+            item
+            lg={2}
+            md={3}
+            xs={12}
+            borderRight={"1px solid #b6b6b6"}
+            sx={{
+              position: "sticky",
+              top: 0,
+              alignSelf: "flex-start",
+              height: "100vh",
+              overflow: "hidden",
+            }}
+          >
             <Box
               p={2}
               sx={{
@@ -550,16 +566,33 @@ const Message = () => {
               </TextField>
             </Box>
           </Grid>
-          <Grid lg={!slug || pathname === "/pages/message/compose/message" || role ? 10 : 7} md={!slug || pathname === "/pages/message/compose/message" || role ? 10 : 6} xs={12}>
-            <Box>
+          <Grid
+            item
+            lg={!slug || pathname === "/pages/message/compose/message" || role ? 10 : 7}
+            md={!slug || pathname === "/pages/message/compose/message" || role ? 9 : 6}
+            xs={12}
+            sx={{
+              height: "100vh", // Add fixed height
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <Box sx={{
+              display: "flex",
+              flexDirection: "column",
+              height: "100%", // Change from height: "100%" to take full height
+              overflow: "hidden",
+              flex: 1, // Add this
+            }}>
               {
                 pathname !== "/pages/message/compose" && pathname !== "/pages/message/compose/message" && pathname !== "/pages/message/etsy" && (
-                  <Box p={2} borderBottom={"1px solid #b6b6b6"}
+                  <Box
+                    p={1}
+                    borderBottom={"1px solid #b6b6b6"}
                     sx={{
                       background: "#f6f9fc",
-                      position: "sticky",
-                      top: 0,
-                      zIndex: 10,
+                      flexShrink: 0, // Keep toolbar fixed
                     }}
                   >
                     <Box sx={{ display: "flex", alignItems: "center" }}>
@@ -816,14 +849,32 @@ const Message = () => {
                   </Box>
                 )
               }
-              <Box>
+              <Box sx={{
+                flex: 1,
+                overflow: "hidden",
+                width: "100%",
+                minHeight: 0,
+                display: "flex",
+                flexDirection: "column",
+              }}>
                 <Outlet />
               </Box>
             </Box>
           </Grid>
           {slug && pathname !== "/pages/message/compose/message" && !role && (
-            <Grid lg={3} md={3} xs={12}>
-              <Box p={3} sx={{ border: "1px solid #b6b6b6", height: "100%" }}>
+            <Grid
+              item
+              lg={3}
+              md={3}
+              xs={12}
+              sx={{
+                overflow: "auto",
+                maxHeight: "100vh",
+                position: "sticky",
+                top: 0,
+              }}
+            >
+              <Box p={3} sx={{ border: '2px solid #ddd', minHeight: "100%" }}>
                 <Typography
                   component="div"
                   pb={2}
@@ -870,6 +921,18 @@ const Message = () => {
                     : (Object.keys(productData || {}).length > 0 ? [productData] : []);
                   return productsToRender.length > 0 && (
                     <Box mt={2}>
+                      <Typography
+                        component="div"
+                        sx={{
+                          fontSize: "14px",
+                          fontWeight: "500",
+                          color: "#000",
+                          display: "flex",
+                          alignItems: "center",
+                        }}
+                      >
+                        Store : {userData.shop_name || "-"}
+                      </Typography>
                       <Typography
                         component="div"
                         sx={{
@@ -951,6 +1014,23 @@ const Message = () => {
                                     {variant?.variant_name}:{" "}
                                     <Typography component="span" fontWeight={400}>
                                       {item?.variantAttributeData?.[index]?.attribute_value || "N/A"}
+                                    </Typography>
+                                  </Typography>
+                                ))}
+                              </>
+                            )}
+                            {item?.variants && item?.variants?.length > 0 && (
+                              <>
+                                {item?.variants?.map((variant, index) => (
+                                  <Typography
+                                    fontSize={14}
+                                    fontWeight={500}
+                                    color={"#000"}
+                                    key={`variant-${itemIndex}-${index}`}
+                                  >
+                                    {variant?.variantName}:{" "}
+                                    <Typography component="span" fontWeight={400}>
+                                      {variant?.attributeName}
                                     </Typography>
                                   </Typography>
                                 ))}

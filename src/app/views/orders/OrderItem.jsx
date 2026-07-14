@@ -26,6 +26,7 @@ import UpdateStatus from './UpdateStatus';
 import PushPinIcon from '@mui/icons-material/PushPin';
 import { ApiService } from 'app/services/ApiService';
 import { localStorageKey } from 'app/constant/localStorageKey';
+import MessagePopup from './MessagePopup';
 
 const OrderItem = ({ items, tab, isAdmin, getOrderList, openMenuIndex2, setOpenMenuIndex2, handleOpen, setOrderIds, anchorEl, setAnchorEl, anchorEl1, setAnchorEl1, anchorEl3, setAnchorEl3, openMenuIndex, setOpenMenuIndex, openMenuIndex1, setOpenMenuIndex1, baseUrl, orderIds, handleCloseOption, handleCloseOption1, updateOrder, onSelectAllForDate, isDateGroupFullySelected, selectedSubOrders, setSelectedSubOrders }) => {
 
@@ -36,6 +37,7 @@ const OrderItem = ({ items, tab, isAdmin, getOrderList, openMenuIndex2, setOpenM
     const [updateStatusOrder, setUpdateStatusOrder] = useState(null);
     const [openMsgPopup, setOpenMsgpopup] = useState(false);
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
+    const [selectedChatSubOrder, setSelectedChatSubOrder] = useState(null);
     // Handle checkbox change for SUB-ORDER IDs
     const handleCheckboxChange = (subOrderId, subOrder) => {
         setOrderIds((prev) =>
@@ -199,8 +201,12 @@ const OrderItem = ({ items, tab, isAdmin, getOrderList, openMenuIndex2, setOpenM
         return totalRefund;
     }
 
-    const handleClickPopup = () => {
-        setOpenMsgpopup(true);
+    const handleClickPopup = (subOrder, parentSale, shopName) => {
+        setSelectedChatSubOrder({
+            subOrder,
+            parentSale,
+            shopName,
+        });
     };
 
     const handleClosePopup = () => {
@@ -751,7 +757,7 @@ const OrderItem = ({ items, tab, isAdmin, getOrderList, openMenuIndex2, setOpenM
                                                         >
                                                             <LocalShippingIcon />
                                                         </Button>
-                                                        <Button sx={{ color: "#000" }} onClick={handleClickPopup}>
+                                                        <Button sx={{ color: "#000" }} onClick={() => handleClickPopup(subOrder, parentSale, shopName)}>
                                                             <MailOutlineIcon />
                                                         </Button>
                                                     </ListItem>
@@ -929,23 +935,24 @@ const OrderItem = ({ items, tab, isAdmin, getOrderList, openMenuIndex2, setOpenM
                     </Table>
                 </TableContainer>
             </Grid>
-            {/* {
-                openMsgPopup && <MessagePopup
-                    openMsgPopup={openMsgPopup}
-                    vendorID={vendorData?.vendor_id || saleData?.vendor_id}
-                    orderId={item?.order_id}
-                    product_image={saleData?.productData?.image?.[0]
-                        ? `${baseUrl}/${saleData.productData.image[0]}`
-                        : `${baseUrl}/${saleData?.productMain?.image[0]}`
+            {selectedChatSubOrder && (
+                <MessagePopup
+                    openPopup={true}
+                    vendorID={selectedChatSubOrder.subOrder?.vendor_id}
+                    orderId={selectedChatSubOrder.subOrder?.order_id}
+                    userName={
+                        selectedChatSubOrder.parentSale?.userName ||
+                        selectedChatSubOrder.parentSale?.receiver_name
                     }
-                    productData={saleData}
-                    userName={item?.userName}
-                    vendorName={vendorData?.vendor_name || saleData?.vendor_name}
-                    userId={item?.user_idnumer}
-                    userImage={item?.user_image}
-                    handleClosePopup={handleClosePopup}
+                    vendorName={selectedChatSubOrder.subOrder?.vendor_name}
+                    shopName={selectedChatSubOrder.shopName}
+                    userId={selectedChatSubOrder.parentSale?.user_idnumer}
+                    userImage={selectedChatSubOrder.parentSale?.user_image}
+                    subOrderId={selectedChatSubOrder.subOrder?.sub_order_id}
+                    subOrderProducts={selectedChatSubOrder.subOrder?.items || []}
+                    handleClosePopup={() => setSelectedChatSubOrder(null)}
                 />
-            } */}
+            )}
         </>
     )
 }

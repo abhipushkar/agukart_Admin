@@ -11,11 +11,19 @@ import {
     TextField,
     Tooltip,
     Typography,
+    IconButton,
+    Paper,
+    Avatar,
+    Card,
+    Stack,
+    useTheme,
+    useMediaQuery,
 } from "@mui/material";
 import React, { useEffect, useRef, useState } from "react";
-import WallpaperIcon from "@mui/icons-material/Wallpaper";
+import { styled } from '@mui/material/styles';
 import CloseIcon from "@mui/icons-material/Close";
-import ArrowCircleUpIcon from "@mui/icons-material/ArrowCircleUp";
+import SendIcon from "@mui/icons-material/Send";
+import AttachFileIcon from "@mui/icons-material/AttachFile";
 import {
     addDoc,
     collection,
@@ -28,6 +36,151 @@ import {
 } from "firebase/firestore";
 import { db, storage } from "../../../../src/firebase/Firebase";
 import { ref, getDownloadURL, uploadBytesResumable } from "firebase/storage";
+import { uploadChatFiles } from "app/utils/uploadChatFiles";
+import { localStorageKey } from "app/constant/localStorageKey";
+import Lightbox from "yet-another-react-lightbox";
+import "yet-another-react-lightbox/styles.css";
+import Video from "yet-another-react-lightbox/plugins/video";
+
+// Styled Components
+const MessageContainer = styled(Box)(({ theme }) => ({
+    display: "flex",
+    flexDirection: "column",
+    flex: 1,
+    height: "100%",
+    overflow: "hidden",
+    backgroundColor: "#fafafa",
+    minHeight: 0,
+}));
+
+const MessagesWrapper = styled(Box)(({ theme }) => ({
+    flex: 1,
+    overflowY: "auto",
+    overflowX: "hidden",
+    padding: theme.spacing(2),
+    minHeight: 0,
+    maxHeight: "100%",
+    [theme.breakpoints.down("sm")]: {
+        padding: theme.spacing(1),
+    },
+    "&::-webkit-scrollbar": {
+        width: "6px",
+    },
+    "&::-webkit-scrollbar-track": {
+        background: "#f1f1f1",
+        borderRadius: "10px",
+    },
+    "&::-webkit-scrollbar-thumb": {
+        background: "#c1c1c1",
+        borderRadius: "10px",
+        "&:hover": {
+            background: "#a8a8a8",
+        },
+    },
+}));
+
+const MessageBubble = styled(Paper)(({ theme, isOwn, images, video }) => ({
+    padding: theme.spacing(1.5),
+    maxWidth: video ? '70%' : images > 1 ? "60%" : images === 1 ? "30%" : "80%",
+    minHeight: video ? '70%' : undefined,
+    minWidth: "60px",
+    borderRadius: isOwn ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
+    backgroundColor: isOwn ? '#fff' : "#ddd",
+    boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
+    wordWrap: "break-word",
+    whiteSpace: "pre-wrap",
+    transition: "all 0.2s ease",
+    [theme.breakpoints.down("sm")]: {
+        maxWidth: "90%",
+        padding: theme.spacing(1),
+    },
+}));
+
+const InputContainer = styled(Paper)(({ theme }) => ({
+    padding: theme.spacing(2),
+    backgroundColor: "#ffffff",
+    borderTop: "1px solid #e8eaed",
+    boxShadow: "0 -2px 10px rgba(0,0,0,0.05)",
+    flexShrink: 0,
+    [theme.breakpoints.down("sm")]: {
+        padding: theme.spacing(1.5),
+    },
+}));
+
+const StyledTextField = styled(TextField)(({ theme }) => ({
+    "& .MuiOutlinedInput-root": {
+        borderRadius: "24px",
+        backgroundColor: "#f8f9fa",
+        "& fieldset": {
+            borderColor: "transparent",
+        },
+        "&:hover fieldset": {
+            borderColor: theme.palette.primary.main,
+        },
+        "&.Mui-focused fieldset": {
+            borderColor: theme.palette.primary.main,
+        },
+        "& textarea": {
+            padding: "12px 16px",
+            fontSize: "14px",
+            lineHeight: "1.5",
+        },
+    },
+}));
+
+const ImagePreviewContainer = styled(Box)(({ theme }) => ({
+    display: "flex",
+    gap: theme.spacing(1),
+    flexWrap: "wrap",
+    marginBottom: theme.spacing(1),
+}));
+
+const ImagePreview = styled(Box)(({ theme }) => ({
+    position: "relative",
+    width: "60px",
+    height: "60px",
+    borderRadius: "8px",
+    overflow: "hidden",
+    border: "2px solid #e8eaed",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#f5f5f5",
+}));
+
+const RemoveImageButton = styled(IconButton)(({ theme }) => ({
+    position: "absolute",
+    top: -6,
+    right: -6,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    color: "#fff",
+    padding: "2px",
+    width: "20px",
+    height: "20px",
+    zIndex: 10,
+    "&:hover": {
+        backgroundColor: "rgba(0,0,0,0.8)",
+    },
+    "& .MuiSvgIcon-root": {
+        fontSize: "14px",
+    },
+}));
+
+const DateDivider = styled(Typography)(({ theme }) => ({
+    textAlign: "center",
+    color: theme.palette.text.secondary,
+    fontSize: "12px",
+    padding: theme.spacing(1, 0),
+    flex: 1,
+    display: 'flex',
+    justifyContent: 'center'
+}));
+
+const TimeStamp = styled(Typography)(({ theme }) => ({
+    fontSize: "10px",
+    color: theme.palette.text.secondary,
+    marginTop: "4px",
+}));
 
 const MessagePopup = ({
     handleClosePopup,
@@ -42,15 +195,86 @@ const MessagePopup = ({
     productData,
     userImage
 }) => {
+    const theme = useTheme();
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState("");
     const [imagePreviews, setImagePreviews] = useState([]);
     const [files, setFiles] = useState([]);
+    const [isSending, setIsSending] = useState(false);
+    const [uploadError, setUploadError] = useState(null);
     const fileInputRef = useRef(null);
+    const messagesEndRef = useRef(null);
     const senderId = vendorID;
     const receiverId = userId;
+    const token = localStorage.getItem(localStorageKey.auth_key);
     const chatProductId = productData?.product_id || productData?.productId || null;
     const chatOrderId = productData?.orderId || orderId || null;
+
+    const [lightboxState, setLightboxState] = useState({
+        open: false,
+        index: 0,
+        slides: [],
+    });
+
+    const handleMediaClick = (mediaItems, index) => {
+        const slides = mediaItems.map(item => {
+            if (item.type === 'video') {
+                return {
+                    type: 'video',
+                    sources: [{ src: item.url, type: 'video/mp4' }],
+                };
+            }
+            return {
+                src: item.url,
+            };
+        });
+
+        setLightboxState({
+            open: true,
+            index: index,
+            slides: slides,
+        });
+    };
+
+    const handleLightboxClose = () => {
+        setLightboxState({ ...lightboxState, open: false });
+    };
+
+    const getMediaItems = (msg) => {
+        const items = [];
+        if (msg?.imageUrls?.length > 0) {
+            msg.imageUrls.forEach(url => {
+                items.push({ type: 'image', url });
+            });
+        }
+        if (msg?.attachments?.length > 0) {
+            msg.attachments.forEach(attachment => {
+                if (attachment.type === 'image' || attachment.type === 'video') {
+                    items.push({ type: attachment.type, url: attachment.url });
+                }
+            });
+        }
+        return items;
+    };
+
+    useEffect(() => {
+        if (messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+        }
+    }, [messages]);
+
+    const detectLink = (text) => {
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        return text.split(urlRegex).map((part, index) =>
+            urlRegex.test(part) ? (
+                <a key={index} href={part} target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "underline", fontWeight: 500 }}>
+                    {part}
+                </a>
+            ) : (
+                part
+            )
+        );
+    };
 
     const removeHTMLTags = (str = "") => {
         return str.replace(/<\/?[^>]+(>|$)/g, "");
@@ -60,8 +284,9 @@ const MessagePopup = ({
         const productTitle = removeHTMLTags(productData?.product_name || "").trim();
         const comment = (productData?.additional_comment || "").trim();
 
-        return `Hi ${userName || "there"}, we noticed your review${productTitle ? ` for "${productTitle.slice(15)}"` : ""}. You gave our product a rating of ${productData.rating}/5
-        \n${comment ? ` You mentioned: "${comment}".` : ""}\n We would love to help and make this right for you. Please let us know how we can assist further.`;
+        return `Hi ${userName || "there"}, we noticed your review${productTitle ? ` for "${productTitle.slice(0, 15)}"` : ""}. You gave our product a rating of ${productData?.rating || 0}/5
+${comment ? ` You mentioned: "${comment}".` : ""}
+We would love to help and make this right for you. Please let us know how we can assist further.`;
     };
 
     const roomProductData = {
@@ -72,19 +297,6 @@ const MessagePopup = ({
         price: productData?.productSku || productData?.productCode
             ? `${productData?.productSku ? `SKU: ${productData.productSku}` : ""}${productData?.productSku && productData?.productCode ? " | " : ""}${productData?.productCode ? `Code: ${productData.productCode}` : ""}`
             : "",
-    };
-
-    const detectLink = (text) => {
-        const urlRegex = /(https?:\/\/[^\s]+)/g;
-        return text.split(urlRegex).map((part, index) =>
-            urlRegex.test(part) ? (
-                <a key={index} href={part} target="_blank" rel="noopener noreferrer" style={{ color: "blue", textDecoration: "underline" }}>
-                    {part}
-                </a>
-            ) : (
-                part
-            )
-        );
     };
 
     useEffect(() => {
@@ -115,14 +327,10 @@ const MessagePopup = ({
                 return;
             }
             matchingDocument.forEach((data) => {
-                // console.log("qwwwwwsssssswwwwwwwdata", data);
-
                 const filterArr = data?.text?.filter((msg) => {
                     return msg.permanentDeleteUser !== senderId;
                 });
-
                 setMessages(filterArr);
-                // setUserIdData(data?.user);
             });
         });
 
@@ -144,22 +352,89 @@ const MessagePopup = ({
         }
     }, [openPopup, messages.length]);
 
-    const uploadImagesToFirebase = async () => {
-        const uploadPromises = files.map(async (file) => {
-            const storageRef = ref(storage, `chatImages/${file.name}`);
-            const uploadTask = uploadBytesResumable(storageRef, file);
+    const handleFileChange = (e) => {
+        const selectedFiles = Array.from(e.target.files);
+        setUploadError(null);
 
-            await uploadTask;
-            return getDownloadURL(uploadTask.snapshot.ref);
+        const validFiles = selectedFiles.filter(file => {
+            const isValidType = file.type.startsWith('image/') ||
+                file.type.startsWith('video/') ||
+                file.type === 'application/pdf';
+            const isValidSize = file.size <= 25 * 1024 * 1024;
+
+            if (!isValidType) {
+                setUploadError(`Invalid file type: ${file.type}`);
+                return false;
+            }
+            if (!isValidSize) {
+                setUploadError(`File too large: ${file.name}`);
+                return false;
+            }
+            return true;
         });
 
-        return Promise.all(uploadPromises);
+        const hasImages = validFiles.some(f => f.type.startsWith('image/'));
+        const hasNonImages = validFiles.some(f => !f.type.startsWith('image/'));
+
+        if (hasImages && hasNonImages) {
+            setUploadError("Cannot send images and other file types together. Please send separately.");
+            e.target.value = "";
+            return;
+        }
+
+        const existingNonImages = files.filter(f => !f.type.startsWith('image/'));
+        const newNonImages = validFiles.filter(f => !f.type.startsWith('image/'));
+
+        if (existingNonImages.length > 0 && newNonImages.length > 0) {
+            setUploadError("Only one video or PDF allowed");
+            e.target.value = "";
+            return;
+        }
+
+        const existingImages = files.filter(f => f.type.startsWith('image/'));
+        const newImages = validFiles.filter(f => f.type.startsWith('image/'));
+
+        if (existingImages.length + newImages.length > 10) {
+            setUploadError("Maximum 10 images allowed");
+            e.target.value = "";
+            return;
+        }
+
+        const updatedFiles = [...files, ...validFiles];
+        const previews = updatedFiles.map((file) => URL.createObjectURL(file));
+
+        setFiles(updatedFiles);
+        setImagePreviews(previews);
+        e.target.value = "";
     };
 
+    useEffect(() => {
+        return () => {
+            imagePreviews.forEach(preview => {
+                URL.revokeObjectURL(preview);
+            });
+        };
+    }, []);
+
+    const handleRemoveImage = (index) => {
+        setImagePreviews((prev) => prev.filter((_, i) => i !== index));
+        setFiles((prev) => prev.filter((_, i) => i !== index));
+    };
+
+    const handleClearPreview = () => {
+        setImagePreviews([]);
+        setFiles([]);
+        if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+        }
+    };
 
     const sendMessage = async () => {
-        let imageUrls = [];
-        if (input.trim() || files.length > 0) {
+        if ((!input.trim() && files.length === 0) || isSending) return;
+        setIsSending(true);
+        let uploadedFiles = [];
+
+        try {
             const querySnapshot = await getDocs(collection(db, "chatRooms"));
             const documents = querySnapshot.docs.map((doc) => {
                 const docId = doc.id;
@@ -179,27 +454,36 @@ const MessagePopup = ({
                 );
             });
 
-            // Upload image if there is a file selected
             if (files.length > 0) {
-                imageUrls = await uploadImagesToFirebase();
-                handleClearPreview(); // Clear preview and file after upload
+                try {
+                    const uploadResult = await uploadChatFiles({
+                        files: files,
+                        token: token,
+                        addToast: (msg) => console.log(msg),
+                    });
+                    uploadedFiles = uploadResult;
+                    handleClearPreview();
+                } catch (uploadError) {
+                    console.error("File upload failed:", uploadError);
+                    setIsSending(false);
+                    return;
+                }
             }
 
             if (matchingDocument) {
                 const existingText = matchingDocument.data.text || [];
-                const lastText =
-                    existingText.length > 0
-                        ? existingText[existingText.length - 1]
-                        : null;
+                const lastText = existingText.length > 0 ? existingText[existingText.length - 1] : null;
                 const updatedText = [
                     ...existingText,
                     {
                         senderType: "vendor",
-                        text: input,
-                        createdAt: new Date(),
+                        text: input.trim(),
+                        createdAt: {
+                            seconds: Math.floor(Date.now() / 1000),
+                        },
                         messageSenderId: senderId,
                         isNotification: false,
-                        imageUrls: imageUrls,
+                        attachments: uploadedFiles,
                         productId: lastText?.productId || chatProductId,
                     },
                 ];
@@ -212,26 +496,28 @@ const MessagePopup = ({
                     {
                         senderType: "vendor",
                         text: "",
-                        createdAt: new Date(),
+                        createdAt: {
+                            seconds: Math.floor(Date.now() / 1000),
+                        },
                         messageSenderId: senderId,
                         isNotification: true,
                         imageUrls: [],
                         productId: chatProductId,
                         productData: {
-                            productTitle: productData?.product_name,
-                            price: productData?.rating
-                                ? `Rating: ${productData.rating}/5`
-                                : "",
-                            imageUrl: product_image,
+                            productTitle: productData?.product_name || "",
+                            price: productData?.rating ? `Rating: ${productData.rating}/5` : "",
+                            imageUrl: product_image || "",
                         },
                     },
                     {
                         senderType: "vendor",
-                        text: input,
-                        createdAt: new Date(),
+                        text: input.trim(),
+                        createdAt: {
+                            seconds: Math.floor(Date.now() / 1000),
+                        },
                         messageSenderId: senderId,
                         isNotification: false,
-                        imageUrls: imageUrls,
+                        attachments: uploadedFiles,
                         productId: chatProductId,
                     },
                 ];
@@ -251,26 +537,17 @@ const MessagePopup = ({
                 });
             }
             setInput("");
+        } catch (error) {
+            console.error("Error sending message:", error);
+        } finally {
+            setIsSending(false);
         }
     };
 
-    const handleFileChange = (e) => {
-        const selectedFiles = Array.from(e.target.files);
-        const previews = selectedFiles.map((file) => URL.createObjectURL(file));
-        setImagePreviews(previews);
-        setFiles(selectedFiles);
-    };
-
-    const handleRemoveImage = (index) => {
-        setImagePreviews((prev) => prev.filter((_, i) => i !== index));
-        setFiles((prev) => prev.filter((_, i) => i !== index));
-    };
-
-    const handleClearPreview = () => {
-        setImagePreviews([]);
-        setFiles([]);
-        if (fileInputRef.current) {
-            fileInputRef.current.value = "";
+    const handleKeyPress = (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
         }
     };
 
@@ -279,601 +556,608 @@ const MessagePopup = ({
         return date?.toLocaleDateString();
     };
 
+    const formatTime = (timestamp) => {
+        const date = new Date(timestamp?.seconds * 1000);
+        return date?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    };
+
+    const groupMessagesByDate = () => {
+        const groups = {};
+        messages.forEach((msg) => {
+            const date = formatDate(msg?.createdAt);
+            if (!groups[date]) {
+                groups[date] = [];
+            }
+            groups[date].push(msg);
+        });
+        return groups;
+    };
+
+    const messageGroups = groupMessagesByDate();
+
     return (
         <Dialog
             open={openPopup}
             aria-labelledby="alert-dialog-title"
             aria-describedby="alert-dialog-description"
+            maxWidth="sm"
+            fullWidth
             sx={{
-                ".MuiPaper-root": {
-                    maxWidth: "600px",
-                    position: { lg: "fixed", md: "fixed" },
-                    bottom: { lg: "30px", md: "30px" },
-                    right: { lg: "30px", md: "30px" },
-                    margin: { lg: "0px", md: "0px" },
+                "& .MuiDialog-paper": {
+                    height: "600px",
+                    maxHeight: "80vh",
+                    maxWidth: "500px",
+                    margin: "auto",
+                    borderRadius: "12px",
+                    position: "relative",
+                    display: "flex",
+                    flexDirection: "column",
                 },
-                ".MuiDialogContent-root": {
-                    overflowY: "scroll",
-                    "&::-webkit-scrollbar": {
-                        width: "8px",
-                    },
-                    "&::-webkit-scrollbar-thumb": {
-                        backgroundColor: "#d23f57",
-                        borderRadius: "10px",
-                    },
-                    "&::-webkit-scrollbar-track": {
-                        backgroundColor: "#f0f0f0",
-                    },
+                "& .MuiDialogContent-root": {
+                    padding: 0,
+                    overflow: "hidden",
+                    flex: 1,
+                    display: "flex",
+                    flexDirection: "column",
                 },
             }}
         >
-            <DialogContent sx={{ padding: "0" }}>
-                <Box
-                    sx={{
-                        overflow: "hidden",
-                        display: "flex",
-                        flex: "1 1 auto",
-                        flexDirection: "column",
-                        background: "#fff",
+            <DialogContent sx={{ padding: "0", height: "100%", overflow: "hidden", display: "flex", flexDirection: "column", flex: 1 }}>
+                <Lightbox
+                    open={lightboxState.open}
+                    close={handleLightboxClose}
+                    slides={lightboxState.slides}
+                    plugins={[Video]}
+                    index={lightboxState.index}
+                    styles={{
+                        container: { backgroundColor: "rgba(0, 0, 0, 0.9)" },
                     }}
-                >
-                    <Typography
-                        p={2}
-                        component="div"
+                    controller={{
+                        closeOnBackdropClick: true,
+                    }}
+                    carousel={{
+                        finite: true,
+                        preload: 1,
+                    }}
+                    video={{
+                        autoPlay: false,
+                        controls: true,
+                    }}
+                />
+
+                <MessageContainer>
+                    {/* Header */}
+                    <Box
                         sx={{
                             position: "relative",
                             width: "100%",
-                            boxShadow: "0 0 3px #878787",
+                            boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
                             background: "#fff",
+                            p: 2,
+                            flexShrink: 0,
+                            zIndex: 1,
                         }}
                     >
-                        <Box sx={{ display: "flex", alignItems: "center" }}>
-                            <Typography component="div">
-                                <img
-                                    src={userImage ? `${userImage}` : "https://i.etsystatic.com/isla/24ec0e/34844512/isla_75x75.34844512_ke6bg9xj.jpg?version=0"}
-                                    style={{
-                                        borderRadius: "4px",
-                                        width: "40px",
-                                        height: "40px",
-                                        objectFit: "cover",
-                                    }}
-                                    alt=""
-                                />
-                            </Typography>
-                            <Typography component="div" ml={1}>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                            <Avatar
+                                src={userImage || "https://i.etsystatic.com/isla/24ec0e/34844512/isla_75x75.34844512_ke6bg9xj.jpg?version=0"}
+                                sx={{ width: 40, height: 40 }}
+                            />
+                            <Box sx={{ flex: 1, minWidth: 0 }}>
                                 <Typography variant="h6" fontWeight={500} fontSize={16}>
-                                    {userName}
+                                    {userName || "User"}
                                 </Typography>
-                                <Typography sx={{ color: "#000" }}>
+                                <Typography variant="caption" color="text.secondary">
                                     Typically responds within 24 hours
                                 </Typography>
-                            </Typography>
-                        </Box>
-                    </Typography>
-                    <Typography
-                        p={3}
-                        component="div"
-                        sx={{
-                            overflowY: "scroll",
-                            minHeight: "100%",
-                            height: "300px",
-                            display: "flex",
-                            flex: "1 1 auto",
-                            flexDirection: "column-reverse",
-                        }}
-                    >
-                        <List>
-                            {messages?.map((msg, index) => {
-                                const currentMessageDate = formatDate(msg?.createdAt);
-                                const prevMessageDate =
-                                    index > 0
-                                        ? formatDate(messages?.[index - 1]?.createdAt)
-                                        : null;
-
-                                const showDate = currentMessageDate !== prevMessageDate;
-
-                                return (
-                                    <ListItem
-                                        key={msg?.id}
-                                        sx={{
-                                            margin: "24px 0",
-                                            padding: "0",
-                                            display: "block",
-                                            width: "auto",
-                                            textAlign:
-                                                msg.messageSenderId === senderId ? "right" : "left",
-                                        }}
-                                    >
-                                        {showDate && (
-                                            <Typography
-                                                fontSize={13}
-                                                color={"gray"}
-                                                textAlign={"center"}
-                                                pb={1}
-                                            >
-                                                {currentMessageDate}
-                                            </Typography>
-                                        )}
-
-                                        <Box
-                                            sx={{
-                                                display: "flex",
-                                                justifyContent:
-                                                    msg.messageSenderId === senderId
-                                                        ? "flex-end"
-                                                        : "flex-start",
-                                            }}
-                                        >
-                                            {msg.messageSenderId !== senderId && (
-                                                <Typography component="span" mr={2}>
-                                                    <img
-                                                        src="https://i.etsystatic.com/site-assets/images/avatars/default_avatar.png?width=75"
-                                                        style={{
-                                                            borderRadius: "50%",
-                                                            height: "40px",
-                                                            width: "40px",
-                                                            objectFit: "cover",
-                                                            border: "2px solid #b6b6b6",
-                                                        }}
-                                                        alt=""
-                                                    />
-                                                </Typography>
-                                            )}
-                                            <div>
-                                                <div>
-                                                    {msg?.imageUrls?.length > 0 &&
-                                                        msg.imageUrls.map((imageUrl, index) => (
-                                                            <Typography
-                                                                key={index}
-                                                                p={2}
-                                                                component="div"
-                                                                sx={{
-                                                                    background:
-                                                                        msg.messageSenderId === senderId
-                                                                            ? "#e9e9e9"
-                                                                            : "#fff",
-                                                                    boxShadow: "0 0 3px #000",
-                                                                    border: "2px solid black",
-                                                                    borderRadius: "6px",
-                                                                    maxWidth: "340px",
-                                                                    minWidth: "75px",
-                                                                    textAlign: "center",
-                                                                    mb: 1,
-                                                                }}
-                                                            >
-                                                                <img
-                                                                    src={imageUrl}
-                                                                    alt="sent"
-                                                                    style={{
-                                                                        maxWidth: "100%",
-                                                                        height: "150px",
-                                                                        width: "100%",
-                                                                        objectFit: "cover",
-                                                                        borderRadius: "6px",
-                                                                    }}
-                                                                />
-                                                            </Typography>
-                                                        ))}
-                                                    {
-                                                        msg.text && (
-                                                            <Typography
-                                                                p={2}
-                                                                component="div"
-                                                                sx={{
-                                                                    background: msg.senderType === "user" ? "#fff" : "#e9e9e9",
-                                                                    boxShadow: "0 0 3px #000",
-                                                                    border: "1px solid #ccc",
-                                                                    borderRadius: "6px",
-                                                                    maxWidth: "340px",
-                                                                    minWidth: "75px",
-                                                                    textAlign: "initial",
-                                                                    mt: 1,
-                                                                }}
-                                                            >
-                                                                <Typography
-                                                                    sx={{
-                                                                        wordWrap: "break-word",
-                                                                        whiteSpace: "pre-line",
-                                                                    }}
-                                                                >
-                                                                    {detectLink(msg.text || "")}
-                                                                </Typography>
-                                                                {msg?.productLink && (
-                                                                    <Typography
-                                                                        sx={{ wordWrap: "break-word", marginTop: "15px" }}
-                                                                    >
-                                                                        <a
-                                                                            href={msg.productLink}
-                                                                            target="_blank"
-                                                                            rel="noopener noreferrer"
-                                                                            style={{ color: "blue", textDecoration: "underline" }}
-                                                                        >
-                                                                            {msg.productLink}
-                                                                        </a>
-                                                                    </Typography>
-                                                                )}
-                                                                {msg?.shopLink && (
-                                                                    <Typography
-                                                                        sx={{ wordWrap: "break-word", marginTop: "15px" }}
-                                                                    >
-                                                                        <a
-                                                                            href={msg.shopLink}
-                                                                            target="_blank"
-                                                                            rel="noopener noreferrer"
-                                                                            style={{ color: "blue", textDecoration: "underline" }}
-                                                                        >
-                                                                            {msg.shopLink}
-                                                                        </a>
-                                                                    </Typography>
-                                                                )}
-                                                            </Typography>
-                                                        )
-                                                    }
-                                                </div>
-                                                <div>
-                                                    <Typography
-                                                        fontSize={11}
-                                                        color={"gray"}
-                                                        // textAlign={"center"}
-                                                        pb={1}
-                                                    >
-                                                        {new Date(
-                                                            msg?.createdAt?.seconds * 1000
-                                                        ).toLocaleTimeString()}{" "}
-                                                        {/* Format time */}
-                                                    </Typography>
-                                                </div>
-                                                {Object.keys(msg?.productData || {}).length > 0 && (
-                                                    <Box
-                                                        sx={{
-                                                            display: "flex",
-                                                            alignItems: "center",
-                                                            gap: 2,
-                                                            p: 1.5,
-                                                            borderRadius: 2,
-                                                            border: "1px solid #e0e0e0",
-                                                            backgroundColor: "#f9f9f9",
-                                                            width: "100%",
-                                                        }}
-                                                    >
-                                                        <img
-                                                            src={msg?.productData?.imageUrl}
-                                                            alt="Product"
-                                                            width={100}
-                                                            height={100}
-                                                            style={{ borderRadius: 8, objectFit: "cover" }}
-                                                        />
-                                                        <Box
-                                                            sx={{
-                                                                display: "flex",
-                                                                flexDirection: "column",
-                                                                textAlign: "left",
-                                                                width: "300px",
-                                                            }}
-                                                        >
-                                                            <Box
-                                                                sx={{
-                                                                    display: "flex",
-                                                                    flexDirection: "column",
-                                                                    flexGrow: 1,
-                                                                }}
-                                                            >
-                                                                <Typography
-                                                                    sx={{
-                                                                        fontSize: 14,
-                                                                        fontWeight: 600,
-                                                                        color: "#333",
-                                                                        lineClamp: 2,
-                                                                    }}
-                                                                >
-                                                                    {removeHTMLTags(msg?.productData?.productTitle || "")}
-                                                                </Typography>
-                                                                <Typography
-                                                                    sx={{ fontSize: 13, color: "gray" }}
-                                                                >
-                                                                    {msg?.productData?.price}
-                                                                </Typography>
-                                                            </Box>
-                                                            <Box>
-                                                                <Button
-                                                                    variant="contained"
-                                                                    size="small"
-                                                                    sx={{
-                                                                        backgroundColor: "black",
-                                                                        color: "white",
-                                                                        textTransform: "none",
-                                                                        fontSize: 12,
-                                                                        fontWeight: "bold",
-                                                                        "&:hover": { background: "black" },
-                                                                    }}
-                                                                    onClick={() => {
-                                                                        const url = `${msg.productLink}`
-                                                                        window.open(url, "_blank");
-                                                                    }
-                                                                    }
-                                                                >
-                                                                    Buy It Now
-                                                                </Button>
-                                                            </Box>
-                                                        </Box>
-                                                    </Box>
-                                                )}
-                                                {Object.keys(msg?.shopData || {}).length > 0 && (
-                                                    <Box
-                                                        sx={{
-                                                            display: "flex",
-                                                            alignItems: "center",
-                                                            gap: 2,
-                                                            p: 1.5,
-                                                            borderRadius: 2,
-                                                            border: "1px solid #e0e0e0",
-                                                            backgroundColor: "#f9f9f9",
-                                                            width: "100%",
-                                                        }}
-                                                    >
-                                                        <img
-                                                            src={msg?.shopData?.imageUrl}
-                                                            alt="Shop"
-                                                            width={100}
-                                                            height={100}
-                                                            style={{ borderRadius: 8, objectFit: "cover" }}
-                                                        />
-                                                        <Box
-                                                            sx={{
-                                                                display: "flex",
-                                                                flexDirection: "column",
-                                                                textAlign: "left",
-                                                                marginBottom: "53px",
-                                                                gap: "7px"
-                                                            }}
-                                                        >
-                                                            <Box
-                                                                sx={{
-                                                                    display: "flex",
-                                                                    flexDirection: "column",
-                                                                    flexGrow: 1,
-                                                                }}
-                                                            >
-                                                                <Typography
-                                                                    sx={{
-                                                                        fontSize: 14,
-                                                                        fontWeight: 600,
-                                                                        color: "#333",
-                                                                        lineClamp: 2,
-                                                                    }}
-                                                                >
-                                                                    {msg?.shopData?.shopName || ""}
-                                                                </Typography>
-                                                            </Box>
-                                                            <Box>
-                                                                <Button
-                                                                    variant="contained"
-                                                                    size="small"
-                                                                    sx={{
-                                                                        backgroundColor: "black",
-                                                                        color: "white",
-                                                                        textTransform: "none",
-                                                                        fontSize: 12,
-                                                                        fontWeight: "bold",
-                                                                        "&:hover": { background: "black" },
-                                                                    }}
-                                                                    onClick={() => {
-                                                                        const url = `${msg.shopLink}`
-                                                                        window.open(url, "_blank");
-                                                                    }
-                                                                    }
-                                                                >
-                                                                    Visit Now
-                                                                </Button>
-                                                            </Box>
-                                                        </Box>
-                                                    </Box>
-                                                )}
-                                            </div>
-                                            {msg.messageSenderId === senderId && (
-                                                <Typography component="span" ml={2}>
-                                                    <img
-                                                        src="https://i.etsystatic.com/icm/0ff82a/701770387/icm_150x150.701770387_gvl90sgooigcowk8wcw0.png?version=0"
-                                                        style={{
-                                                            borderRadius: "50%",
-                                                            height: "40px",
-                                                            width: "40px",
-                                                            objectFit: "cover",
-                                                            border: "2px solid #b6b6b6",
-                                                        }}
-                                                        alt=""
-                                                    />
-                                                </Typography>
-                                            )}
-                                        </Box>
-                                    </ListItem>
-                                );
-                            })}
-                        </List>
-                    </Typography>
-                    <Box
-                        sx={{
-                            boxShadow: "0 -10px 18px -10px #0e0e0e2e",
-                            background: "#fff",
-                        }}
-                        p={2}
-                    >
-                        <Typography component="div" display={"flex"} alignItems={"center"}>
-                            <Typography component="span" mr={2}>
-                                <svg
-                                    width="36"
-                                    height="37"
-                                    viewBox="0 0 36 37"
-                                    fill="none"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    aria-hidden="true"
-                                    focusable="false"
-                                >
-                                    <path
-                                        d="M18.24 7.37659C21.615 5.26159 26.205 5.95159 29.175 8.90659C32.76 12.4916 32.76 18.2816 29.175 21.8666L25.935 25.1066"
-                                        fill="#4D6BC6"
-                                    ></path>
-                                    <path
-                                        d="M26.7449 25.9015L25.1249 24.2815L28.3649 21.0415C31.4849 17.9215 31.4849 12.8365 28.3649 9.70152C25.7549 7.09152 21.7499 6.52152 18.8549 8.33652L17.6399 6.40152C21.4349 4.01652 26.6249 4.73652 29.9849 8.09652C34.0049 12.1165 34.0049 18.6565 29.9849 22.6765L26.7449 25.9165V25.9015Z"
-                                        fill="#222222"
-                                    ></path>
-                                    <path
-                                        d="M30.0601 19.1965L26.4601 15.5965L19.7701 8.90652C16.1851 5.32152 10.3951 5.32152 6.81009 8.90652C3.22509 12.4915 3.22509 18.2815 6.81009 21.8665L11.4301 26.4865L14.6701 29.7265C15.5701 30.6265 17.0101 30.6265 17.9101 29.7265C18.8101 28.8265 18.8101 27.3865 17.9101 26.4865L16.6201 25.1965L19.5301 28.1065C20.4301 29.0065 21.8701 29.0065 22.7701 28.1065C23.6701 27.2065 23.6701 25.7665 22.7701 24.8665L23.5801 25.6765C24.4801 26.5765 25.9201 26.5765 26.8201 25.6765C27.7201 24.7765 27.7201 23.3365 26.8201 22.4365L23.1751 18.7915L26.8201 22.4365C27.7201 23.3365 29.1601 23.3365 30.0601 22.4365C30.9601 21.5365 30.9601 20.0965 30.0601 19.1965Z"
-                                        fill="#D7E6F5"
-                                    ></path>
-                                    <path
-                                        d="M12.495 29.1414L6.015 22.6614C1.995 18.6414 1.995 12.1014 6.015 8.08141C10.035 4.06141 16.575 4.06141 20.595 8.08141L27.285 14.7714L25.665 16.3914L18.975 9.70141C15.855 6.58141 10.77 6.58141 7.635 9.70141C4.515 12.8214 4.515 17.9064 7.635 21.0414L14.115 27.5214L12.495 29.1414Z"
-                                        fill="#222222"
-                                    ></path>
-                                    <path
-                                        d="M16.2901 31.5266C15.4051 31.5266 14.5351 31.1966 13.8601 30.5216L10.6201 27.2816L12.2401 25.6616L15.4801 28.9016C15.9301 29.3516 16.6501 29.3516 17.1001 28.9016C17.5501 28.4516 17.5501 27.7316 17.1001 27.2816L13.8601 24.0416L15.4801 22.4216L18.7201 25.6616C20.0551 26.9966 20.0551 29.1866 18.7201 30.5216C18.0451 31.1966 17.1751 31.5266 16.2901 31.5266Z"
-                                        fill="#222222"
-                                    ></path>
-                                    <path
-                                        d="M21.1501 29.9064C20.2651 29.9064 19.3951 29.5764 18.7201 28.9014L13.8601 24.0414L15.4801 22.4214L20.3401 27.2814C20.7901 27.7314 21.5101 27.7314 21.9601 27.2814C22.4101 26.8314 22.4101 26.1114 21.9601 25.6614L17.1001 20.8014L18.7201 19.1814L23.5801 24.0414C24.9151 25.3764 24.9151 27.5664 23.5801 28.9014C22.9051 29.5764 22.0351 29.9064 21.1501 29.9064Z"
-                                        fill="#222222"
-                                    ></path>
-                                    <path
-                                        d="M25.2001 27.4915C24.2851 27.4915 23.4151 27.1315 22.7701 26.4865L17.1001 20.8165L18.7201 19.1965L24.3901 24.8665C24.8401 25.3165 25.5601 25.3165 26.0101 24.8665C26.4601 24.4165 26.4601 23.6965 26.0101 23.2465L20.3401 17.5765L21.9601 15.9565L27.6301 21.6265C28.9651 22.9615 28.9651 25.1515 27.6301 26.4865C26.9851 27.1315 26.1151 27.4915 25.2001 27.4915Z"
-                                        fill="#222222"
-                                    ></path>
-                                    <path
-                                        d="M28.4401 24.2516C27.5251 24.2516 26.6551 23.8916 26.0101 23.2466L20.3401 17.5766L21.9601 15.9566L27.6301 21.6266C28.0651 22.0616 28.8151 22.0616 29.2501 21.6266C29.4751 21.4166 29.5801 21.1166 29.5801 20.8166C29.5801 20.5166 29.4601 20.2166 29.2501 20.0066L23.5801 14.3366L25.2001 12.7166L30.8701 18.3866C31.5151 19.0316 31.8751 19.9016 31.8751 20.8166C31.8751 21.7316 31.5151 22.6016 30.8701 23.2466C30.2251 23.8916 29.3551 24.2516 28.4401 24.2516Z"
-                                        fill="#222222"
-                                    ></path>
-                                    <path
-                                        d="M24.2851 10.2415L17.2651 15.1615C15.9601 16.0765 14.1751 15.7615 13.2601 14.4565C12.3601 13.1665 12.6601 11.3815 13.9501 10.4665C15.4801 9.38647 17.4601 7.93147 18.0901 7.54147C21.4651 5.42647 26.2201 5.95147 29.1751 8.90647"
-                                        fill="#4D6BC6"
-                                    ></path>
-                                    <path
-                                        d="M14.6101 11.3815L16.0351 10.3615C16.7701 9.83645 17.5201 9.31145 18.0601 8.92145C18.3301 8.72645 18.5551 8.57645 18.7051 8.48645C19.2001 8.17145 19.7251 7.96145 20.2801 7.78145C23.0251 6.88145 26.2651 7.57145 28.3801 9.70145L30.0001 8.08145C26.8801 4.96145 21.8701 4.21145 18.0751 6.22145C17.8801 6.32645 17.6851 6.43145 17.4901 6.55145C17.1601 6.76145 16.5151 7.21145 15.7651 7.75145C15.4351 7.99145 15.0751 8.24645 14.7151 8.50145L13.2901 9.52145C11.4901 10.7965 11.0551 13.3015 12.3301 15.1015C12.9451 15.9865 13.8751 16.5715 14.9251 16.7515C15.1651 16.7965 15.3901 16.8115 15.6301 16.8115C16.4551 16.8115 17.2501 16.5565 17.9251 16.0765L22.3051 13.0165L24.2101 11.6815L22.5601 10.0315L20.6551 11.3665L16.6051 14.2015C16.2301 14.4715 15.7651 14.5615 15.3151 14.4865C14.8651 14.4115 14.4601 14.1565 14.2051 13.7815C13.6651 13.0015 13.8451 11.9215 14.6251 11.3815H14.6101Z"
-                                        fill="#222222"
-                                    ></path>
-                                </svg>
-                            </Typography>
-                            <Typography fontSize={14} color={"#000"}>
-                                Have a question? Just message us — we’re here to help!
-                            </Typography>
-                        </Typography>
-                        <Box mt={2} sx={{ position: "relative" }}>
-                            {/* Image Preview */}
-                            {imagePreviews.length > 0 && (
-                                <Box sx={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                                    {imagePreviews.map((preview, index) => (
-                                        <Box
-                                            key={index}
-                                            sx={{
-                                                position: "relative",
-                                                width: "55px",
-                                                height: "55px",
-                                            }}
-                                        >
-                                            <img
-                                                src={preview}
-                                                alt={`preview-${index}`}
-                                                style={{
-                                                    width: "100%",
-                                                    height: "100%",
-                                                    objectFit: "cover",
-                                                }}
-                                            />
-                                            <Button
-                                                onClick={() => handleRemoveImage(index)}
-                                                sx={{
-                                                    position: "absolute",
-                                                    top: "0",
-                                                    left: "0",
-                                                    fontSize: "11px",
-                                                    color: "white",
-                                                }}
-                                            >
-                                                X
-                                            </Button>
-                                        </Box>
-                                    ))}
-                                </Box>
-                            )}
-                            <Typography component="div" sx={{ position: "relative" }}>
-                                <TextareaAutosize
-                                    value={input}
-                                    onChange={(e) => setInput(e.target.value)}
-                                    placeholder="Type your reply"
-                                    minRows={4}
-                                    maxRows={10}
-                                    style={{
-                                        width: "100%",
-                                        border: "1px solid gray",
-                                        borderRadius: "4px",
-                                        padding: "8px",
-                                        fontSize: "16px",
-                                        fontFamily: "inherit",
-                                        outline: "none",
-                                        resize: "vertical",
-                                    }}
-                                />
-                                <input
-                                    type="file"
-                                    style={{ display: "none" }}
-                                    ref={fileInputRef}
-                                    onChange={handleFileChange}
-                                    accept="image/*"
-                                    multiple
-                                />
-                                <Tooltip title="Upload image" arrow placement="left">
-                                    <Button
-                                        onClick={() => fileInputRef.current.click()}
-                                        sx={{
-                                            position: "absolute",
-                                            top: "10px",
-                                            right: "10px",
-                                            display: "flex",
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                            height: "40px",
-                                            width: "40px",
-                                            borderRadius: "50%",
-                                            background: "#ffff",
-                                            transition: "all 500ms",
-                                            "&:hover": { boxShadow: "0 0 3px #000" },
-                                        }}
-                                    >
-                                        <label htmlFor="upload-file">
-                                            <WallpaperIcon />
-                                        </label>
-                                    </Button>
-                                </Tooltip>
-                                <Typography
-                                    component="span"
-                                    sx={{ position: "absolute", top: "46px", right: "6px" }}
-                                >
-                                    <Button
-                                        onClick={sendMessage}
-                                        sx={{
-                                            background: "none !important",
-                                            color: "#fff",
-                                            border: "none",
-                                        }}
-                                    >
-                                        <ArrowCircleUpIcon
-                                            sx={{ color: "#000", fontSize: "30px" }}
-                                        />
-                                    </Button>
-                                </Typography>
-                            </Typography>
+                            </Box>
+                            <IconButton onClick={handleClosePopup} size="small" disabled={isSending}>
+                                <CloseIcon />
+                            </IconButton>
                         </Box>
                     </Box>
-                </Box>
+
+                    {/* Messages Area */}
+                    <MessagesWrapper bgcolor={'#efefef'}>
+                        <List sx={{ p: 0 }}>
+                            {Object.keys(messageGroups).map((date) => (
+                                <React.Fragment key={date}>
+                                    <DateDivider variant="caption">
+                                        {date === formatDate(new Date()) ? "Today" : date}
+                                    </DateDivider>
+                                    {messageGroups[date].map((msg, index) => {
+                                        const isOwn = msg.messageSenderId === senderId;
+
+                                        return (
+                                            <ListItem
+                                                key={`${date}-${index}`}
+                                                sx={{
+                                                    display: "flex",
+                                                    justifyContent: isOwn ? "flex-end" : "flex-start",
+                                                    padding: "4px 0",
+                                                    border: "none",
+                                                }}
+                                            >
+                                                <Box
+                                                    sx={{
+                                                        display: "flex",
+                                                        alignItems: "flex-end",
+                                                        maxWidth: "100%",
+                                                        gap: 1,
+                                                    }}
+                                                >
+                                                    {!isOwn && (
+                                                        <Avatar
+                                                            src={userImage || "https://i.etsystatic.com/site-assets/images/avatars/default_avatar.png?width=75"}
+                                                            sx={{ width: 32, height: 32, flexShrink: 0 }}
+                                                        />
+                                                    )}
+
+                                                    <Box sx={{ display: "flex", flexDirection: "column", alignItems: isOwn ? "flex-end" : "flex-start", maxWidth: "100%" }}>
+                                                        {(msg.text || msg?.imageUrls?.length > 0 || msg?.attachments?.length > 0) && (
+                                                            <MessageBubble elevation={0} isOwn={isOwn} images={msg?.attachments?.length} video={msg?.attachments?.length > 0 && msg?.attachments[0]?.type === "video"}>
+                                                                {/* Images from old format */}
+                                                                {msg?.imageUrls?.length > 0 && (
+                                                                    <Box
+                                                                        sx={{
+                                                                            display: "grid",
+                                                                            gridTemplateColumns: msg.imageUrls.length === 1 ? '1fr' : 'repeat(2, 1fr)',
+                                                                            gap: 0.5,
+                                                                            maxWidth: "100%",
+                                                                            mb: msg.text ? 1 : 0,
+                                                                        }}
+                                                                    >
+                                                                        {msg.imageUrls.slice(0, 4).map((imageUrl, imgIndex) => {
+                                                                            const isLast = imgIndex === 3 && msg.imageUrls.length > 4;
+                                                                            const remainingCount = msg.imageUrls.length - 4;
+
+                                                                            return (
+                                                                                <Box
+                                                                                    key={imgIndex}
+                                                                                    sx={{
+                                                                                        position: 'relative',
+                                                                                        aspectRatio: '1',
+                                                                                        borderRadius: msg.imageUrls.length === 1 ? '8px' : '4px',
+                                                                                        overflow: 'hidden',
+                                                                                        cursor: 'pointer',
+                                                                                        gridColumn: msg.imageUrls.length === 1 ? '1 / -1' : 'auto',
+                                                                                        ...(msg.imageUrls.length === 3 && imgIndex === 0 && {
+                                                                                            gridRow: '1 / 3',
+                                                                                        }),
+                                                                                    }}
+                                                                                    onClick={() => {
+                                                                                        const mediaItems = getMediaItems(msg);
+                                                                                        const imageIndex = mediaItems.findIndex(item => item.url === imageUrl);
+                                                                                        handleMediaClick(mediaItems, imageIndex);
+                                                                                    }}
+                                                                                >
+                                                                                    <img
+                                                                                        src={imageUrl}
+                                                                                        alt={`message-image-${imgIndex}`}
+                                                                                        style={{
+                                                                                            width: "100%",
+                                                                                            height: "100%",
+                                                                                            objectFit: "cover",
+                                                                                        }}
+                                                                                    />
+                                                                                    {isLast && (
+                                                                                        <Box
+                                                                                            sx={{
+                                                                                                position: 'absolute',
+                                                                                                top: 0,
+                                                                                                left: 0,
+                                                                                                right: 0,
+                                                                                                bottom: 0,
+                                                                                                backgroundColor: 'rgba(0,0,0,0.5)',
+                                                                                                display: 'flex',
+                                                                                                alignItems: 'center',
+                                                                                                justifyContent: 'center',
+                                                                                                color: '#fff',
+                                                                                                fontSize: '24px',
+                                                                                                fontWeight: 'bold',
+                                                                                                cursor: 'pointer',
+                                                                                            }}
+                                                                                            onClick={() => {
+                                                                                                const mediaItems = getMediaItems(msg);
+                                                                                                const imageIndex = mediaItems.findIndex(item => item.url === imageUrl);
+                                                                                                handleMediaClick(mediaItems, imageIndex);
+                                                                                            }}
+                                                                                        >
+                                                                                            +{remainingCount}
+                                                                                        </Box>
+                                                                                    )}
+                                                                                </Box>
+                                                                            );
+                                                                        })}
+                                                                    </Box>
+                                                                )}
+
+                                                                {/* New Attachments - Images */}
+                                                                {msg?.attachments?.filter(a => a.type === 'image').length > 0 && (
+                                                                    <Box
+                                                                        sx={{
+                                                                            display: "grid",
+                                                                            gridTemplateColumns: msg.attachments.filter(a => a.type === 'image').length === 1 ? '1fr' : 'repeat(2, 1fr)',
+                                                                            gap: 0.5,
+                                                                            maxWidth: "100%",
+                                                                            mb: msg.text ? 1 : 0,
+                                                                        }}
+                                                                    >
+                                                                        {msg.attachments.filter(a => a.type === 'image').slice(0, 4).map((attachment, index) => {
+                                                                            const imageAttachments = msg.attachments.filter(a => a.type === 'image');
+                                                                            const imageIndex = imageAttachments.indexOf(attachment);
+                                                                            const isLast = imageIndex === 3 && imageAttachments.length > 4;
+                                                                            const remainingCount = imageAttachments.length - 4;
+
+                                                                            return (
+                                                                                <Box
+                                                                                    key={index}
+                                                                                    sx={{
+                                                                                        position: 'relative',
+                                                                                        aspectRatio: '1',
+                                                                                        borderRadius: imageAttachments.length === 1 ? '8px' : '4px',
+                                                                                        overflow: 'hidden',
+                                                                                        cursor: 'pointer',
+                                                                                        gridColumn: imageAttachments.length === 1 ? '1 / -1' : 'auto',
+                                                                                        ...(imageAttachments.length === 3 && imageIndex === 0 && {
+                                                                                            gridRow: '1 / 3',
+                                                                                        }),
+                                                                                    }}
+                                                                                    onClick={() => {
+                                                                                        const mediaItems = getMediaItems(msg);
+                                                                                        const imageIndex = mediaItems.findIndex(item => item.url === attachment.url);
+                                                                                        handleMediaClick(mediaItems, imageIndex);
+                                                                                    }}
+                                                                                >
+                                                                                    <img
+                                                                                        src={attachment.url}
+                                                                                        alt={`attachment-${index}`}
+                                                                                        style={{
+                                                                                            width: "100%",
+                                                                                            height: "100%",
+                                                                                            objectFit: "cover",
+                                                                                        }}
+                                                                                    />
+                                                                                    {isLast && (
+                                                                                        <Box
+                                                                                            sx={{
+                                                                                                position: 'absolute',
+                                                                                                top: 0,
+                                                                                                left: 0,
+                                                                                                right: 0,
+                                                                                                bottom: 0,
+                                                                                                backgroundColor: 'rgba(0,0,0,0.5)',
+                                                                                                display: 'flex',
+                                                                                                alignItems: 'center',
+                                                                                                justifyContent: 'center',
+                                                                                                color: '#fff',
+                                                                                                fontSize: '24px',
+                                                                                                fontWeight: 'bold',
+                                                                                                cursor: 'pointer',
+                                                                                            }}
+                                                                                            onClick={() => {
+                                                                                                const mediaItems = getMediaItems(msg);
+                                                                                                const imageIndex = mediaItems.findIndex(item => item.url === attachment.url);
+                                                                                                handleMediaClick(mediaItems, imageIndex);
+                                                                                            }}
+                                                                                        >
+                                                                                            +{remainingCount}
+                                                                                        </Box>
+                                                                                    )}
+                                                                                </Box>
+                                                                            );
+                                                                        })}
+                                                                    </Box>
+                                                                )}
+
+                                                                {/* Videos */}
+                                                                {msg?.attachments?.filter(a => a.type === 'video').map((attachment, index) => (
+                                                                    <Box
+                                                                        key={`video-${index}`}
+                                                                        sx={{
+                                                                            maxWidth: "300px",
+                                                                            maxHeight: "300px",
+                                                                            borderRadius: "8px",
+                                                                            overflow: "hidden",
+                                                                            cursor: 'pointer',
+                                                                            mb: 0.5,
+                                                                        }}
+                                                                        onClick={() => {
+                                                                            const mediaItems = getMediaItems(msg);
+                                                                            const videoIndex = mediaItems.findIndex(item => item.url === attachment.url);
+                                                                            handleMediaClick(mediaItems, videoIndex);
+                                                                        }}
+                                                                    >
+                                                                        <video
+                                                                            controls
+                                                                            style={{
+                                                                                width: "100%",
+                                                                                height: "100%",
+                                                                            }}
+                                                                        >
+                                                                            <source src={attachment.url} />
+                                                                            Your browser does not support the video tag.
+                                                                        </video>
+                                                                    </Box>
+                                                                ))}
+
+                                                                {/* PDFs */}
+                                                                {msg?.attachments?.filter(a => a.type === 'pdf').map((attachment, index) => (
+                                                                    <Box
+                                                                        key={`pdf-${index}`}
+                                                                        sx={{
+                                                                            maxWidth: "280px",
+                                                                            borderRadius: "8px",
+                                                                            overflow: "hidden",
+                                                                            border: "1px solid #e8eaed",
+                                                                            p: 1,
+                                                                            backgroundColor: isOwn ? "rgba(255,255,255,0.1)" : "#fff",
+                                                                            mb: 0.5,
+                                                                        }}
+                                                                    >
+                                                                        <a
+                                                                            href={attachment.url}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            style={{
+                                                                                textDecoration: "none",
+                                                                                color: "inherit",
+                                                                                display: "flex",
+                                                                                alignItems: "center",
+                                                                                gap: "8px",
+                                                                            }}
+                                                                        >
+                                                                            <span>📄</span>
+                                                                            <Typography sx={{
+                                                                                fontSize: "13px",
+                                                                                wordBreak: "break-all",
+                                                                                color: isOwn ? "#fff" : "inherit",
+                                                                            }}>
+                                                                                {attachment.fileName || "PDF Document"}
+                                                                            </Typography>
+                                                                        </a>
+                                                                    </Box>
+                                                                ))}
+
+                                                                {/* Text Message */}
+                                                                {msg.text && (
+                                                                    <Typography
+                                                                        sx={{
+                                                                            fontSize: "15px",
+                                                                            wordWrap: "break-word",
+                                                                            whiteSpace: "pre-wrap",
+                                                                            width: 'fit-content',
+                                                                            maxWidth: "100%",
+                                                                            textAlign: "initial",
+                                                                        }}
+                                                                    >
+                                                                        {detectLink(msg.text || "")}
+                                                                    </Typography>
+                                                                )}
+                                                            </MessageBubble>
+                                                        )}
+
+                                                        {/* Product Card */}
+                                                        {Object.keys(msg?.productData || {}).length > 0 && (
+                                                            <Card
+                                                                elevation={1}
+                                                                sx={{
+                                                                    p: 1.5,
+                                                                    borderRadius: "12px",
+                                                                    border: "1px solid #e8eaed",
+                                                                    backgroundColor: "#fff",
+                                                                    maxWidth: "280px",
+                                                                    mt: 0.5,
+                                                                }}
+                                                            >
+                                                                <Stack direction="row" spacing={1.5}>
+                                                                    <img
+                                                                        src={msg?.productData?.imageUrl}
+                                                                        alt="Product"
+                                                                        style={{
+                                                                            width: 100,
+                                                                            height: 100,
+                                                                            borderRadius: "8px",
+                                                                            objectFit: "cover",
+                                                                        }}
+                                                                    />
+                                                                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                                                                        <Typography
+                                                                            sx={{
+                                                                                fontSize: "13px",
+                                                                                fontWeight: 600,
+                                                                                display: "-webkit-box",
+                                                                                WebkitLineClamp: 2,
+                                                                                WebkitBoxOrient: "vertical",
+                                                                                overflow: "hidden",
+                                                                            }}
+                                                                        >
+                                                                            {removeHTMLTags(msg?.productData?.productTitle || "")}
+                                                                        </Typography>
+                                                                        <Typography sx={{ fontSize: "14px", color: theme.palette.primary.main, fontWeight: 600 }}>
+                                                                            {msg?.productData?.price}
+                                                                        </Typography>
+                                                                        <Button
+                                                                            variant="contained"
+                                                                            size="small"
+                                                                            sx={{
+                                                                                mt: 0.5,
+                                                                                backgroundColor: 'black',
+                                                                                color: 'white',
+                                                                                textTransform: "none",
+                                                                                fontSize: "11px",
+                                                                                "&:hover": {
+                                                                                    backgroundColor: theme.palette.primary.dark,
+                                                                                },
+                                                                            }}
+                                                                            onClick={() => {
+                                                                                window.open(msg.productLink, "_blank");
+                                                                            }}
+                                                                        >
+                                                                            Buy It Now
+                                                                        </Button>
+                                                                    </Box>
+                                                                </Stack>
+                                                            </Card>
+                                                        )}
+
+                                                        <TimeStamp variant="caption">
+                                                            {formatTime(msg?.createdAt)}
+                                                        </TimeStamp>
+                                                    </Box>
+
+                                                    {isOwn && (
+                                                        <Avatar
+                                                            src="https://i.etsystatic.com/icm/0ff82a/701770387/icm_150x150.701770387_gvl90sgooigcowk8wcw0.png?version=0"
+                                                            sx={{ width: 32, height: 32, flexShrink: 0 }}
+                                                        />
+                                                    )}
+                                                </Box>
+                                            </ListItem>
+                                        );
+                                    })}
+                                </React.Fragment>
+                            ))}
+                            <div ref={messagesEndRef} />
+                        </List>
+                    </MessagesWrapper>
+
+                    {/* Input Area */}
+                    <InputContainer elevation={0}>
+                        {/* Image Previews */}
+                        {imagePreviews.length > 0 && (
+                            <ImagePreviewContainer>
+                                {uploadError && (
+                                    <Typography
+                                        sx={{
+                                            color: 'error.main',
+                                            fontSize: '12px',
+                                            width: '100%',
+                                            mb: 1,
+                                        }}
+                                    >
+                                        {uploadError}
+                                    </Typography>
+                                )}
+
+                                {files.length > 0 && (
+                                    <Typography
+                                        sx={{
+                                            color: 'text.secondary',
+                                            fontSize: '11px',
+                                            width: '100%',
+                                            mb: 1,
+                                        }}
+                                    >
+                                        {files.some(f => f.type.startsWith('video/')) && 'Max video size: 25MB'}
+                                        {files.some(f => f.type === 'application/pdf') && 'Max PDF size: 25MB'}
+                                        {files.some(f => f.type.startsWith('image/')) && `Max 10 images`}
+                                    </Typography>
+                                )}
+
+                                {imagePreviews.map((preview, index) => {
+                                    const file = files[index];
+                                    const isVideo = file?.type?.startsWith('video/');
+                                    const isPdf = file?.type === 'application/pdf';
+                                    const isImage = file?.type?.startsWith('image/');
+
+                                    return (
+                                        <ImagePreview key={index} sx={{ position: 'relative' }}>
+                                            {isVideo ? (
+                                                <span style={{ fontSize: "24px" }}>🎬</span>
+                                            ) : isPdf ? (
+                                                <span style={{ fontSize: "24px" }}>📄</span>
+                                            ) : isImage ? (
+                                                <img
+                                                    src={preview}
+                                                    alt={`preview-${index}`}
+                                                    style={{
+                                                        width: "100%",
+                                                        height: "100%",
+                                                        objectFit: "cover",
+                                                    }}
+                                                />
+                                            ) : null}
+                                            <RemoveImageButton
+                                                size="small"
+                                                onClick={() => handleRemoveImage(index)}
+                                                sx={{ zIndex: 10 }}
+                                            >
+                                                <CloseIcon />
+                                            </RemoveImageButton>
+                                        </ImagePreview>
+                                    );
+                                })}
+                            </ImagePreviewContainer>
+                        )}
+
+                        <Box sx={{ display: "flex", alignItems: "flex-end", gap: 1 }}>
+                            <StyledTextField
+                                value={input}
+                                onChange={(e) => setInput(e.target.value)}
+                                placeholder="Type a message..."
+                                multiline
+                                minRows={1}
+                                maxRows={4}
+                                variant="outlined"
+                                fullWidth
+                                onKeyPress={handleKeyPress}
+                                disabled={isSending}
+                            />
+
+                            <Box sx={{ display: "flex", gap: 0.5, flexShrink: 0 }}>
+                                <Tooltip title="Attach Image or Video or PDF" arrow>
+                                    <IconButton
+                                        onClick={() => fileInputRef.current?.click()}
+                                        disabled={isSending}
+                                        sx={{
+                                            backgroundColor: "transparent",
+                                            color: theme.palette.text.secondary,
+                                            "&:hover": {
+                                                backgroundColor: "rgba(0,0,0,0.04)",
+                                            },
+                                        }}
+                                    >
+                                        <AttachFileIcon />
+                                    </IconButton>
+                                </Tooltip>
+
+                                <Tooltip title="Send" arrow>
+                                    <IconButton
+                                        onClick={sendMessage}
+                                        disabled={(!input.trim() && files.length === 0) || isSending}
+                                        sx={{
+                                            backgroundColor: (!input.trim() && files.length === 0) || isSending
+                                                ? "rgba(0,0,0,0.12)"
+                                                : theme.palette.primary.main,
+                                            color: (!input.trim() && files.length === 0) || isSending
+                                                ? "rgba(0,0,0,0.26)"
+                                                : "#fff",
+                                            "&:hover": {
+                                                backgroundColor: (!input.trim() && files.length === 0) || isSending
+                                                    ? "rgba(0,0,0,0.12)"
+                                                    : theme.palette.primary.dark,
+                                            },
+                                            transition: "all 0.2s ease",
+                                        }}
+                                    >
+                                        <SendIcon />
+                                    </IconButton>
+                                </Tooltip>
+                            </Box>
+                        </Box>
+
+                        <input
+                            type="file"
+                            style={{ display: "none" }}
+                            ref={fileInputRef}
+                            onChange={handleFileChange}
+                            accept="image/*,video/*,.pdf"
+                            multiple
+                        />
+                    </InputContainer>
+                </MessageContainer>
             </DialogContent>
-            <Button
-                onClick={handleClosePopup}
-                sx={{
-                    position: "absolute",
-                    top: { lg: "30px", md: "30px", xs: "10px" },
-                    right: { lg: "30px", md: "30px", xs: "10px" },
-                }}
-            >
-                <CloseIcon />
-            </Button>
         </Dialog>
     );
 };
