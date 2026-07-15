@@ -66,7 +66,7 @@ const MessagesWrapper = styled(Box)(({ theme }) => ({
 
 const MessageBubble = styled(Paper)(({ theme, isOwn, images, video }) => ({
   padding: theme.spacing(1.5),
-  maxWidth: video ? '70%' : images > 1 ? "50%" : images === 1 ? "30%" : "80%",
+  maxWidth: video ? '70%' : images > 1 ? "50%" : images === 1 ? "30%" : "100%",
   minHeight: video ? '70%' : undefined,
   minWidth: video ? 'fit-content' : '60px',
   borderRadius: isOwn ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
@@ -74,6 +74,7 @@ const MessageBubble = styled(Paper)(({ theme, isOwn, images, video }) => ({
   boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
   wordWrap: "break-word",
   whiteSpace: "pre-wrap",
+  marginTop: '8px',
   transition: "all 0.2s ease",
   [theme.breakpoints.down("sm")]: {
     maxWidth: "90%",
@@ -92,24 +93,28 @@ const InputContainer = styled(Paper)(({ theme }) => ({
   },
 }));
 
-const StyledTextField = styled(TextField)(({ theme }) => ({
-  "& .MuiOutlinedInput-root": {
-    borderRadius: "24px",
-    backgroundColor: "#f8f9fa",
-    "& fieldset": {
-      borderColor: "transparent",
-    },
-    "&:hover fieldset": {
-      borderColor: theme.palette.primary.main,
-    },
-    "&.Mui-focused fieldset": {
-      borderColor: theme.palette.primary.main,
-    },
-    "& textarea": {
-      padding: "12px 16px",
-      fontSize: "14px",
-      lineHeight: "1.5",
-    },
+const StyledTextArea = styled('textarea')(({ theme }) => ({
+  width: '100%',
+  padding: '12px 16px',
+  fontSize: '14px',
+  lineHeight: '1.5',
+  borderRadius: '24px',
+  backgroundColor: '#f8f9fa',
+  border: '1px solid #222',
+  resize: 'vertical',
+  minHeight: '52px',
+  maxHeight: '400px',
+  outline: 'none',
+  fontFamily: 'inherit',
+  '&:focus': {
+    border: `2px solid ${theme.palette.primary.main}`
+  },
+  '&:hover': {
+    borderColor: theme.palette.primary.main,
+  },
+  [theme.breakpoints.down('sm')]: {
+    fontSize: '13px',
+    padding: '10px 12px',
   },
 }));
 
@@ -179,6 +184,7 @@ const ChatBox = ({ slug, role }) => {
   const [userData, setUserData] = useState({});
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const textareaRef = useRef(null);
   const senderId = logUserData?._id;
   const token = localStorage.getItem(localStorageKey.auth_key);
   const { getUserDetails } = useChat();
@@ -211,6 +217,18 @@ const ChatBox = ({ slug, role }) => {
 
   const handleLightboxClose = () => {
     setLightboxState({ ...lightboxState, open: false });
+  };
+
+  const handleTextareaInput = (e) => {
+    const textarea = e.target;
+    // Reset height to auto to get the correct scrollHeight
+    textarea.style.height = 'auto';
+    // Set height based on scrollHeight
+    const newHeight = Math.max(textarea.scrollHeight, 52); // 56px = min height
+    textarea.style.height = newHeight + 'px';
+
+    // Update input value
+    setInput(e.target.value);
   };
 
   const getMediaItems = (msg) => {
@@ -447,6 +465,11 @@ const ChatBox = ({ slug, role }) => {
   };
 
   const handleRemoveAllNotification = async (venderID) => {
+    if (!slug || !token) return;
+    if (typeof document !== "undefined" && document.visibilityState !== "visible") {
+      return;
+    }
+
     const querySnapshot = await getDocs(
       collection(db, role === "admin" ? "composeChat" : "chatRooms")
     );
@@ -455,10 +478,11 @@ const ChatBox = ({ slug, role }) => {
       const docId = doc.id;
       const docData = doc.data();
       const receiverId = docData.receiverId;
+
       return {
         id: docId,
         data: docData,
-        receiverId: receiverId
+        receiverId: receiverId,
       };
     });
 
@@ -472,20 +496,29 @@ const ChatBox = ({ slug, role }) => {
     }
 
     const existingText = matchingDocument.data.text || [];
+
     const updatedText = existingText.map((item) => {
-      if (item.messageSenderId !== senderId) {
+      // Only update if it's not the user's own message
+      // AND if the message is not already marked as read
+      if (item.messageSenderId !== senderId && item.senderType === 'user') {
+        // Only set to true if it's currently false (unread)
+        // This prevents overwriting a user's "mark as unread" action
         return {
           ...item,
-          isNotification: true
+          isNotification: true,
         };
       }
       return item;
     });
 
     await updateDoc(
-      doc(db, role === "admin" ? "composeChat" : "chatRooms", matchingDocument.id),
+      doc(
+        db,
+        role === "admin" ? "composeChat" : "chatRooms",
+        matchingDocument.id
+      ),
       {
-        text: updatedText
+        text: updatedText,
       }
     );
   };
@@ -571,7 +604,7 @@ const ChatBox = ({ slug, role }) => {
                 {date === formatDate(new Date()) ? "Today" : date}
               </DateDivider>
               {messageGroups[date].map((msg, index) => {
-                const isOwn = msg.messageSenderId === senderId;
+                const isOwn = msg.senderType === "vendor" || msg.senderType === 'admin';
 
                 return (
                   <ListItem
@@ -619,7 +652,7 @@ const ChatBox = ({ slug, role }) => {
                           flex: "1 1 auto", // Allow growth
                         }}
                       >
-                        {(msg.text || msg?.imageUrls?.length > 0 || msg?.attachments?.length > 0) && (
+                        {(msg?.imageUrls?.length > 0 || msg?.attachments?.length > 0) && (
                           <MessageBubble elevation={0} isOwn={isOwn} images={msg?.attachments?.length} video={msg?.attachments?.some(att => att.type === 'video')}>
                             {/* Images from old format */}
                             {msg?.imageUrls?.length > 0 && (
@@ -844,85 +877,86 @@ const ChatBox = ({ slug, role }) => {
                                 </a>
                               </Box>
                             ))}
-
-                            {/* Text Message */}
-                            {msg.text && (
-                              <Typography
-                                sx={{
-                                  fontSize: "15px",
-                                  wordWrap: "break-word",
-                                  whiteSpace: "pre-wrap",
-                                  width: 'fit-content',
-                                  maxWidth: "100%",
-                                  textAlign: "initial",
-                                }}
-                              >
-                                {detectLink(msg.text || "")}
-                              </Typography>
-                            )}
-
-                            {/* Shop Card */}
-                            {Object.keys(msg?.shopData || {}).length > 0 && (
-                              <Paper
-                                elevation={0}
-                                sx={{
-                                  p: 1.5,
-                                  borderRadius: "12px",
-                                  border: "1px solid #e8eaed",
-                                  backgroundColor: "#fff",
-                                  maxWidth: "280px",
-                                  mt: 0.5,
-                                }}
-                              >
-                                <Stack direction="row" spacing={1.5} alignItems="center">
-                                  <img
-                                    src={msg?.shopData?.imageUrl}
-                                    alt="Shop"
-                                    style={{
-                                      width: 60,
-                                      height: 60,
-                                      borderRadius: "8px",
-                                      objectFit: "cover",
-                                    }}
-                                  />
-                                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                                    <Typography
-                                      sx={{
-                                        fontSize: "13px",
-                                        fontWeight: 600,
-                                        display: "-webkit-box",
-                                        WebkitLineClamp: 2,
-                                        WebkitBoxOrient: "vertical",
-                                        overflow: "hidden",
-                                      }}
-                                    >
-                                      {parse(msg?.shopData?.shopName || "")}
-                                    </Typography>
-                                    <Button
-                                      variant="contained"
-                                      size="small"
-                                      sx={{
-                                        mt: 0.5,
-                                        backgroundColor: theme.palette.primary.main,
-                                        textTransform: "none",
-                                        fontSize: "11px",
-                                        "&:hover": {
-                                          backgroundColor: theme.palette.primary.dark,
-                                        },
-                                      }}
-                                      onClick={() => {
-                                        window.open(msg.shopLink, "_blank");
-                                      }}
-                                    >
-                                      Visit Shop
-                                    </Button>
-                                  </Box>
-                                </Stack>
-                              </Paper>
-                            )}
                           </MessageBubble>
                         )}
 
+                        {/* Text Message */}
+                        {msg.text && (
+                          <MessageBubble elevation={0} isOwn={isOwn}>
+                            <Typography
+                              sx={{
+                                fontSize: "15px",
+                                wordWrap: "break-word",
+                                whiteSpace: "pre-wrap",
+                                width: 'fit-content',
+                                maxWidth: "100%",
+                                textAlign: "initial",
+                              }}
+                            >
+                              {detectLink(msg.text || "")}
+                            </Typography>
+                          </ MessageBubble>
+                        )}
+
+                        {/* Shop Card */}
+                        {Object.keys(msg?.shopData || {}).length > 0 && (
+                          <Paper
+                            elevation={0}
+                            sx={{
+                              p: 1.5,
+                              borderRadius: "12px",
+                              border: "1px solid #e8eaed",
+                              backgroundColor: "#fff",
+                              maxWidth: "280px",
+                              mt: 0.5,
+                            }}
+                          >
+                            <Stack direction="row" spacing={1.5} alignItems="center">
+                              <img
+                                src={msg?.shopData?.imageUrl}
+                                alt="Shop"
+                                style={{
+                                  width: 60,
+                                  height: 60,
+                                  borderRadius: "8px",
+                                  objectFit: "cover",
+                                }}
+                              />
+                              <Box sx={{ flex: 1, minWidth: 0 }}>
+                                <Typography
+                                  sx={{
+                                    fontSize: "13px",
+                                    fontWeight: 600,
+                                    display: "-webkit-box",
+                                    WebkitLineClamp: 2,
+                                    WebkitBoxOrient: "vertical",
+                                    overflow: "hidden",
+                                  }}
+                                >
+                                  {parse(msg?.shopData?.shopName || "")}
+                                </Typography>
+                                <Button
+                                  variant="contained"
+                                  size="small"
+                                  sx={{
+                                    mt: 0.5,
+                                    backgroundColor: theme.palette.primary.main,
+                                    textTransform: "none",
+                                    fontSize: "11px",
+                                    "&:hover": {
+                                      backgroundColor: theme.palette.primary.dark,
+                                    },
+                                  }}
+                                  onClick={() => {
+                                    window.open(msg.shopLink, "_blank");
+                                  }}
+                                >
+                                  Visit Shop
+                                </Button>
+                              </Box>
+                            </Stack>
+                          </Paper>
+                        )}
                         {/* Product Card */}
                         {Object.keys(msg?.productData || {}).length > 0 && (
                           <Card
@@ -1080,17 +1114,18 @@ const ChatBox = ({ slug, role }) => {
 
 
           <Box sx={{ display: "flex", alignItems: "flex-end", gap: 1 }}>
-            <StyledTextField
+            <StyledTextArea
+              ref={textareaRef}
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={handleTextareaInput}
               placeholder="Type a message..."
-              multiline
-              minRows={1}
-              maxRows={4}
-              variant="outlined"
-              fullWidth
-              onKeyPress={handleKeyPress}
+              rows={1}
               disabled={isSending}
+              style={{
+                minHeight: '56px',
+                maxHeight: '300px',
+                overflow: 'auto',
+              }}
             />
 
             <Box sx={{ display: "flex", gap: 0.5, flexShrink: 0 }}>

@@ -107,24 +107,29 @@ const InputContainer = styled(Paper)(({ theme }) => ({
   },
 }));
 
-const StyledTextField = styled(TextField)(({ theme }) => ({
-  "& .MuiOutlinedInput-root": {
-    borderRadius: "24px",
-    backgroundColor: "#f8f9fa",
-    "& fieldset": {
-      borderColor: "transparent",
-    },
-    "&:hover fieldset": {
-      borderColor: theme.palette.primary.main,
-    },
-    "&.Mui-focused fieldset": {
-      borderColor: theme.palette.primary.main,
-    },
-    "& textarea": {
-      padding: "12px 16px",
-      fontSize: "14px",
-      lineHeight: "1.5",
-    },
+const StyledTextArea = styled('textarea')(({ theme }) => ({
+  width: '100%',
+  padding: '12px 16px',
+  fontSize: '14px',
+  lineHeight: '1.5',
+  borderRadius: '24px',
+  backgroundColor: '#f8f9fa',
+  border: '1px solid #222',
+  resize: 'vertical',
+  minHeight: '52px',
+  maxHeight: '400px',
+  outline: 'none',
+  fontFamily: 'inherit',
+  '&:focus': {
+    border: `2px solid ${theme.palette.primary.main}`
+  },
+  '&:hover': {
+    borderColor: theme.palette.primary.main,
+  },
+
+  [theme.breakpoints.down('sm')]: {
+    fontSize: '13px',
+    padding: '10px 12px',
   },
 }));
 
@@ -205,6 +210,20 @@ const MessagePopup = ({
     index: 0,
     slides: [],
   });
+
+
+  const textareaRef = useRef(null);
+  const handleTextareaInput = (e) => {
+    const textarea = e.target;
+    // Reset height to auto to get the correct scrollHeight
+    textarea.style.height = 'auto';
+    // Set height based on scrollHeight
+    const newHeight = Math.max(textarea.scrollHeight, 52); // 56px = min height
+    textarea.style.height = newHeight + 'px';
+
+    // Update input value
+    setInput(e.target.value);
+  };
 
   const handleMediaClick = (mediaItems, index) => {
     const slides = mediaItems.map(item => {
@@ -534,6 +553,12 @@ const MessagePopup = ({
           flexDirection: "column",
         },
       }}
+      PaperProps={{
+        sx: {
+          minWidth: { md: '50vw' },
+          minHeight: { md: '90vh', lg: '90vh' }
+        }
+      }}
     >
       <DialogContent sx={{ padding: "0", height: "100%", overflow: "hidden", display: "flex", flexDirection: "column", flex: 1 }}>
         <Lightbox
@@ -573,7 +598,7 @@ const MessagePopup = ({
           >
             <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
               <Avatar
-                src={userDetailForChat?.image || "https://i.etsystatic.com/isla/24ec0e/34844512/isla_75x75.34844512_ke6bg9xj.jpg?version=0"}
+                src={userDetailForChat?.image || "user.avatar"}
                 sx={{ width: 40, height: 40 }}
               />
               <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -1025,17 +1050,19 @@ const MessagePopup = ({
             )}
 
             <Box sx={{ display: "flex", alignItems: "flex-end", gap: 1 }}>
-              <StyledTextField
+
+              <StyledTextArea
+                ref={textareaRef}
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={handleTextareaInput}
                 placeholder="Type a message..."
-                multiline
-                minRows={1}
-                maxRows={4}
-                variant="outlined"
-                fullWidth
-                onKeyPress={handleKeyPress}
+                rows={1}
                 disabled={isSending}
+                style={{
+                  minHeight: '56px',
+                  maxHeight: '300px',
+                  overflow: 'auto',
+                }}
               />
 
               <Box sx={{ display: "flex", gap: 0.5, flexShrink: 0 }}>

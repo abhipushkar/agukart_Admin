@@ -601,6 +601,12 @@ We would love to help and make this right for you. Please let us know how we can
                     flexDirection: "column",
                 },
             }}
+            PaperProps={{
+                sx: {
+                    minWidth: { md: '50vw' },
+                    minHeight: { md: '90vh', lg: '90vh' }
+                }
+            }}
         >
             <DialogContent sx={{ padding: "0", height: "100%", overflow: "hidden", display: "flex", flexDirection: "column", flex: 1 }}>
                 <Lightbox
