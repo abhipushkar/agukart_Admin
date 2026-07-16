@@ -341,27 +341,76 @@ export const ChatProvider = ({ children }) => {
     const markAsUnreadHandler = () => {
         checkMessage.map(async (docId) => {
             try {
-                const docRef = doc(db, "chatRooms", docId);
+                const docRef = doc(
+                    db,
+                    pathname === "/messages/etsy" ? "composeChat" : "chatRooms",
+                    docId,
+                );
                 const docSnap = await getDoc(docRef);
 
                 if (docSnap.exists()) {
-                    navigate(ROUTE_CONSTANT.message);
+                    navigate(ROUTE_CONSTANT.messages);
                     const myDoc = docSnap.data();
-                    const updateArr = myDoc.text.map((msg) => {
-                        if (msg.messageSenderId !== logUserData?._id) {
-                            return { ...msg, isNotification: false };
+                    const existingText = myDoc.text || [];
+
+                    // For admin: find user messages (not admin)
+                    const isUser = (msg) => msg.senderType === "user";
+                    const isAdmin = (msg) => msg.senderType === "admin";
+
+                    // Find the last batch of user messages
+                    let lastBatchIndex = -1;
+                    for (let i = existingText.length - 1; i >= 0; i--) {
+                        if (isUser(existingText[i])) {
+                            if (lastBatchIndex === -1) {
+                                lastBatchIndex = i;
+                            }
+                        } else {
+                            // Stop when we hit admin's own message
+                            if (lastBatchIndex !== -1) break;
+                        }
+                    }
+
+                    if (lastBatchIndex === -1) {
+                        setCheckMessage([]);
+                        return;
+                    }
+
+                    // Find the start of the batch
+                    let batchStart = lastBatchIndex;
+                    for (let i = lastBatchIndex - 1; i >= 0; i--) {
+                        if (isUser(existingText[i])) {
+                            batchStart = i;
+                        } else {
+                            break;
+                        }
+                    }
+
+                    // Update only the last batch of user messages
+                    const updateArr = existingText.map((msg, index) => {
+                        if (index >= batchStart && isUser(msg)) {
+                            return {
+                                ...msg,
+                                isNotification: false
+                            };
                         }
                         return msg;
                     });
 
-                    await updateDoc(doc(db, "chatRooms", docId), {
-                        text: updateArr
-                    });
+                    await updateDoc(
+                        doc(
+                            db,
+                            pathname === "/messages/etsy" ? "composeChat" : "chatRooms",
+                            docId,
+                        ),
+                        {
+                            text: updateArr,
+                        },
+                    );
                 }
                 setCheckMessage([]);
             } catch (error) {
                 console.error("Error getting document:", error);
-                throw error; // Handle the error as needed
+                throw error;
             }
         });
     };

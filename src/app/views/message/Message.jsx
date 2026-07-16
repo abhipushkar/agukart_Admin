@@ -205,9 +205,11 @@ const Message = () => {
         setUserId(matchingDocument[0]?.user);
         setVendorId(matchingDocument[0]?.receiverId);
         setPrivateNoteExists(matchingDocument[0]?.privateNote);
-        setMessageHistory(newMessages?.filter((doc) => {
+        const chats = newMessages?.filter((doc) => {
           return doc?.user === matchingDocument[0]?.user && doc?.receiverId === matchingDocument[0]?.receiverId && doc?.id !== slug;
-        }))
+        })?.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+        setMessageHistory(chats)
+        console.log(chats, "chats");
         const userData = await getUserDetails(matchingDocument[0]?.user);
         if (!pathname.includes('compose')) {
           userData.shop_name = matchingDocument[0]?.shopName;
@@ -234,9 +236,11 @@ const Message = () => {
         const baseUrl = res?.data?.base_url;
         const salesWithBaseUrl = res?.data?.sales?.map(sale => ({
           ...sale,
-          base_url: baseUrl
+          base_url: baseUrl,
+          sub_order_id: sale.saleDetaildata[0].sub_order_id
         })) || [];
         setOrderHistory(salesWithBaseUrl);
+        console.log(salesWithBaseUrl, "sale")
       }
     } catch (error) {
       console.log("error", error?.response?.data || error);
@@ -871,10 +875,25 @@ const Message = () => {
                 overflow: "auto",
                 maxHeight: "100vh",
                 position: "sticky",
+                border: '2px solid #ddd',
                 top: 0,
+                "&::-webkit-scrollbar": {
+                  width: "6px",
+                },
+                "&::-webkit-scrollbar-track": {
+                  background: "#f1f1f1",
+                  borderRadius: "10px",
+                },
+                "&::-webkit-scrollbar-thumb": {
+                  background: "#c1c1c1",
+                  borderRadius: "10px",
+                  "&:hover": {
+                    background: "#a8a8a8",
+                  },
+                },
               }}
             >
-              <Box p={3} sx={{ border: '2px solid #ddd', minHeight: "100%" }}>
+              <Box p={3} sx={{ minHeight: "100%", }}>
                 <Typography
                   component="div"
                   pb={2}
@@ -943,7 +962,7 @@ const Message = () => {
                           alignItems: "center",
                         }}
                       >
-                        SubOrder Id : {`#${suborderid || "-"}`}
+                        Sub Order Id : {`#${suborderid || "-"}`}
                       </Typography>
                       <Typography fontSize={16} fontWeight={600} pb={1}>
                         Items:
@@ -1079,7 +1098,7 @@ const Message = () => {
                             window.open(url, "_blank", "noopener,noreferrer");
                           }} sx={{ borderRadius: 2, boxShadow: "none", border: "1px solid #ddd", cursor: "pointer" }}>
                             <CardContent>
-                              <Typography fontWeight={600}>{message?.orderId ? `Help with order #${message?.orderId}` : `${removeHtmlTags(firstMessage?.productData?.productTitle || "")}`}</Typography>
+                              <Typography fontWeight={600}>{message?.orderId ? `Help with order #${message?.subOrderId || message?.orderId}` : `${removeHtmlTags(firstMessage?.productData?.productTitle || "")}`}</Typography>
                               <Typography fontSize="small" color="gray">{currentMessageDate}</Typography>
                               <Typography>{firstMessage?.text || "No message available"}</Typography>
                             </CardContent>
@@ -1104,7 +1123,7 @@ const Message = () => {
                         <List>
                           {orderHistory.map((order) => (
                             <Box key={order.id} sx={{ mb: 2 }}>
-                              <Typography fontWeight={500}>Order #{order.order_id}</Typography>
+                              <Typography fontWeight={500}>Order #{order.sub_order_id}</Typography>
                               {/* <Typography color="green">{order.status}</Typography> */}
                               {order.saleDetaildata.map((product, index) => (
                                 <Box key={index} sx={{ display: "flex", mt: 1 }}>

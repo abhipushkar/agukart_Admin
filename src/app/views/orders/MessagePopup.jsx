@@ -111,7 +111,7 @@ const StyledTextField = styled(TextField)(({ theme }) => ({
     borderRadius: "24px",
     backgroundColor: "#f8f9fa",
     "& fieldset": {
-      borderColor: "transparent",
+      borderColor: '#222',
     },
     "&:hover fieldset": {
       borderColor: theme.palette.primary.main,
@@ -508,12 +508,6 @@ const MessagePopup = ({
     }
   };
 
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  };
 
   const formatDate = (timestamp) => {
     const date = new Date(timestamp?.seconds * 1000);
@@ -669,246 +663,250 @@ const MessagePopup = ({
 
                           <Box sx={{ display: "flex", flexDirection: "column", alignItems: isOwn ? "flex-end" : "flex-start", maxWidth: "100%" }}>
                             {(msg.text || msg?.imageUrls?.length > 0 || msg?.attachments?.length > 0) && (
-                              <MessageBubble elevation={0} isOwn={isOwn} images={msg?.attachments?.length} video={msg?.attachments?.length > 0 && msg?.attachments[0]?.type === "video"}>
-                                {/* Images from old format */}
-                                {msg?.imageUrls?.length > 0 && (
-                                  <Box
-                                    sx={{
-                                      display: "grid",
-                                      gridTemplateColumns: msg.imageUrls.length === 1 ? '1fr' : 'repeat(2, 1fr)',
-                                      gap: 0.5,
-                                      maxWidth: "100%",
-                                      mb: msg.text ? 1 : 0,
-                                    }}
-                                  >
-                                    {msg.imageUrls.slice(0, 4).map((imageUrl, imgIndex) => {
-                                      const isLast = imgIndex === 3 && msg.imageUrls.length > 4;
-                                      const remainingCount = msg.imageUrls.length - 4;
-
-                                      return (
-                                        <Box
-                                          key={imgIndex}
-                                          sx={{
-                                            position: 'relative',
-                                            aspectRatio: '1',
-                                            borderRadius: msg.imageUrls.length === 1 ? '8px' : '4px',
-                                            overflow: 'hidden',
-                                            cursor: 'pointer',
-                                            gridColumn: msg.imageUrls.length === 1 ? '1 / -1' : 'auto',
-                                            ...(msg.imageUrls.length === 3 && imgIndex === 0 && {
-                                              gridRow: '1 / 3',
-                                            }),
-                                          }}
-                                          onClick={() => {
-                                            const mediaItems = getMediaItems(msg);
-                                            const imageIndex = mediaItems.findIndex(item => item.url === imageUrl);
-                                            handleMediaClick(mediaItems, imageIndex);
-                                          }}
-                                        >
-                                          <img
-                                            src={imageUrl}
-                                            alt={`message-image-${imgIndex}`}
-                                            style={{
-                                              width: "100%",
-                                              height: "100%",
-                                              objectFit: "cover",
-                                            }}
-                                          />
-                                          {isLast && (
-                                            <Box
-                                              sx={{
-                                                position: 'absolute',
-                                                top: 0,
-                                                left: 0,
-                                                right: 0,
-                                                bottom: 0,
-                                                backgroundColor: 'rgba(0,0,0,0.5)',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                color: '#fff',
-                                                fontSize: '24px',
-                                                fontWeight: 'bold',
-                                                cursor: 'pointer',
-                                              }}
-                                              onClick={() => {
-                                                const mediaItems = getMediaItems(msg);
-                                                const imageIndex = mediaItems.findIndex(item => item.url === imageUrl);
-                                                handleMediaClick(mediaItems, imageIndex);
-                                              }}
-                                            >
-                                              +{remainingCount}
-                                            </Box>
-                                          )}
-                                        </Box>
-                                      );
-                                    })}
-                                  </Box>
-                                )}
-
-                                {/* New Attachments - Images */}
-                                {msg?.attachments?.filter(a => a.type === 'image').length > 0 && (
-                                  <Box
-                                    sx={{
-                                      display: "grid",
-                                      gridTemplateColumns: msg.attachments.filter(a => a.type === 'image').length === 1 ? '1fr' : 'repeat(2, 1fr)',
-                                      gap: 0.5,
-                                      maxWidth: "100%",
-                                      mb: msg.text ? 1 : 0,
-                                    }}
-                                  >
-                                    {msg.attachments.filter(a => a.type === 'image').slice(0, 4).map((attachment, index) => {
-                                      const imageAttachments = msg.attachments.filter(a => a.type === 'image');
-                                      const imageIndex = imageAttachments.indexOf(attachment);
-                                      const isLast = imageIndex === 3 && imageAttachments.length > 4;
-                                      const remainingCount = imageAttachments.length - 4;
-
-                                      return (
-                                        <Box
-                                          key={index}
-                                          sx={{
-                                            position: 'relative',
-                                            aspectRatio: '1',
-                                            borderRadius: imageAttachments.length === 1 ? '8px' : '4px',
-                                            overflow: 'hidden',
-                                            cursor: 'pointer',
-                                            gridColumn: imageAttachments.length === 1 ? '1 / -1' : 'auto',
-                                            ...(imageAttachments.length === 3 && imageIndex === 0 && {
-                                              gridRow: '1 / 3',
-                                            }),
-                                          }}
-                                          onClick={() => {
-                                            const mediaItems = getMediaItems(msg);
-                                            const imageIndex = mediaItems.findIndex(item => item.url === attachment.url);
-                                            handleMediaClick(mediaItems, imageIndex);
-                                          }}
-                                        >
-                                          <img
-                                            src={attachment.url}
-                                            alt={`attachment-${index}`}
-                                            style={{
-                                              width: "100%",
-                                              height: "100%",
-                                              objectFit: "cover",
-                                            }}
-                                          />
-                                          {isLast && (
-                                            <Box
-                                              sx={{
-                                                position: 'absolute',
-                                                top: 0,
-                                                left: 0,
-                                                right: 0,
-                                                bottom: 0,
-                                                backgroundColor: 'rgba(0,0,0,0.5)',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                color: '#fff',
-                                                fontSize: '24px',
-                                                fontWeight: 'bold',
-                                                cursor: 'pointer',
-                                              }}
-                                              onClick={() => {
-                                                const mediaItems = getMediaItems(msg);
-                                                const imageIndex = mediaItems.findIndex(item => item.url === attachment.url);
-                                                handleMediaClick(mediaItems, imageIndex);
-                                              }}
-                                            >
-                                              +{remainingCount}
-                                            </Box>
-                                          )}
-                                        </Box>
-                                      );
-                                    })}
-                                  </Box>
-                                )}
-
-                                {/* Videos */}
-                                {msg?.attachments?.filter(a => a.type === 'video').map((attachment, index) => (
-                                  <Box
-                                    key={`video-${index}`}
-                                    sx={{
-                                      maxWidth: "300px",
-                                      maxHeight: "300px",
-                                      borderRadius: "8px",
-                                      overflow: "hidden",
-                                      cursor: 'pointer',
-                                      mb: 0.5,
-                                    }}
-                                    onClick={() => {
-                                      const mediaItems = getMediaItems(msg);
-                                      const videoIndex = mediaItems.findIndex(item => item.url === attachment.url);
-                                      handleMediaClick(mediaItems, videoIndex);
-                                    }}
-                                  >
-                                    <video
-                                      controls
-                                      style={{
-                                        width: "100%",
-                                        height: "100%",
+                              <>
+                                <MessageBubble elevation={0} isOwn={isOwn} images={msg?.attachments?.length} video={msg?.attachments?.length > 0 && msg?.attachments[0]?.type === "video"}>
+                                  {/* Images from old format */}
+                                  {msg?.imageUrls?.length > 0 && (
+                                    <Box
+                                      sx={{
+                                        display: "grid",
+                                        gridTemplateColumns: msg.imageUrls.length === 1 ? '1fr' : 'repeat(2, 1fr)',
+                                        gap: 0.5,
+                                        maxWidth: "100%",
+                                        mb: msg.text ? 1 : 0,
                                       }}
                                     >
-                                      <source src={attachment.url} />
-                                      Your browser does not support the video tag.
-                                    </video>
-                                  </Box>
-                                ))}
+                                      {msg.imageUrls.slice(0, 4).map((imageUrl, imgIndex) => {
+                                        const isLast = imgIndex === 3 && msg.imageUrls.length > 4;
+                                        const remainingCount = msg.imageUrls.length - 4;
 
-                                {/* PDFs */}
-                                {msg?.attachments?.filter(a => a.type === 'pdf').map((attachment, index) => (
-                                  <Box
-                                    key={`pdf-${index}`}
-                                    sx={{
-                                      maxWidth: "280px",
-                                      borderRadius: "8px",
-                                      overflow: "hidden",
-                                      border: "1px solid #e8eaed",
-                                      p: 1,
-                                      backgroundColor: isOwn ? "rgba(255,255,255,0.1)" : "#fff",
-                                      mb: 0.5,
-                                    }}
-                                  >
-                                    <a
-                                      href={attachment.url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      style={{
-                                        textDecoration: "none",
-                                        color: "inherit",
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: "8px",
+                                        return (
+                                          <Box
+                                            key={imgIndex}
+                                            sx={{
+                                              position: 'relative',
+                                              aspectRatio: '1',
+                                              borderRadius: msg.imageUrls.length === 1 ? '8px' : '4px',
+                                              overflow: 'hidden',
+                                              cursor: 'pointer',
+                                              gridColumn: msg.imageUrls.length === 1 ? '1 / -1' : 'auto',
+                                              ...(msg.imageUrls.length === 3 && imgIndex === 0 && {
+                                                gridRow: '1 / 3',
+                                              }),
+                                            }}
+                                            onClick={() => {
+                                              const mediaItems = getMediaItems(msg);
+                                              const imageIndex = mediaItems.findIndex(item => item.url === imageUrl);
+                                              handleMediaClick(mediaItems, imageIndex);
+                                            }}
+                                          >
+                                            <img
+                                              src={imageUrl}
+                                              alt={`message-image-${imgIndex}`}
+                                              style={{
+                                                width: "100%",
+                                                height: "100%",
+                                                objectFit: "cover",
+                                              }}
+                                            />
+                                            {isLast && (
+                                              <Box
+                                                sx={{
+                                                  position: 'absolute',
+                                                  top: 0,
+                                                  left: 0,
+                                                  right: 0,
+                                                  bottom: 0,
+                                                  backgroundColor: 'rgba(0,0,0,0.5)',
+                                                  display: 'flex',
+                                                  alignItems: 'center',
+                                                  justifyContent: 'center',
+                                                  color: '#fff',
+                                                  fontSize: '24px',
+                                                  fontWeight: 'bold',
+                                                  cursor: 'pointer',
+                                                }}
+                                                onClick={() => {
+                                                  const mediaItems = getMediaItems(msg);
+                                                  const imageIndex = mediaItems.findIndex(item => item.url === imageUrl);
+                                                  handleMediaClick(mediaItems, imageIndex);
+                                                }}
+                                              >
+                                                +{remainingCount}
+                                              </Box>
+                                            )}
+                                          </Box>
+                                        );
+                                      })}
+                                    </Box>
+                                  )}
+
+                                  {/* New Attachments - Images */}
+                                  {msg?.attachments?.filter(a => a.type === 'image').length > 0 && (
+                                    <Box
+                                      sx={{
+                                        display: "grid",
+                                        gridTemplateColumns: msg.attachments.filter(a => a.type === 'image').length === 1 ? '1fr' : 'repeat(2, 1fr)',
+                                        gap: 0.5,
+                                        maxWidth: "100%",
+                                        mb: msg.text ? 1 : 0,
                                       }}
                                     >
-                                      <span>📄</span>
-                                      <Typography sx={{
-                                        fontSize: "13px",
-                                        wordBreak: "break-all",
-                                        color: isOwn ? "#fff" : "inherit",
-                                      }}>
-                                        {attachment.fileName || "PDF Document"}
-                                      </Typography>
-                                    </a>
-                                  </Box>
-                                ))}
+                                      {msg.attachments.filter(a => a.type === 'image').slice(0, 4).map((attachment, index) => {
+                                        const imageAttachments = msg.attachments.filter(a => a.type === 'image');
+                                        const imageIndex = imageAttachments.indexOf(attachment);
+                                        const isLast = imageIndex === 3 && imageAttachments.length > 4;
+                                        const remainingCount = imageAttachments.length - 4;
 
-                                {/* Text Message */}
-                                {msg.text && (
-                                  <Typography
-                                    sx={{
-                                      fontSize: "15px",
-                                      wordWrap: "break-word",
-                                      whiteSpace: "pre-wrap",
-                                      width: 'fit-content',
-                                      maxWidth: "100%",
-                                      textAlign: "initial",
-                                    }}
-                                  >
-                                    {detectLink(msg.text || "")}
-                                  </Typography>
-                                )}
-                              </MessageBubble>
+                                        return (
+                                          <Box
+                                            key={index}
+                                            sx={{
+                                              position: 'relative',
+                                              aspectRatio: '1',
+                                              borderRadius: imageAttachments.length === 1 ? '8px' : '4px',
+                                              overflow: 'hidden',
+                                              cursor: 'pointer',
+                                              gridColumn: imageAttachments.length === 1 ? '1 / -1' : 'auto',
+                                              ...(imageAttachments.length === 3 && imageIndex === 0 && {
+                                                gridRow: '1 / 3',
+                                              }),
+                                            }}
+                                            onClick={() => {
+                                              const mediaItems = getMediaItems(msg);
+                                              const imageIndex = mediaItems.findIndex(item => item.url === attachment.url);
+                                              handleMediaClick(mediaItems, imageIndex);
+                                            }}
+                                          >
+                                            <img
+                                              src={attachment.url}
+                                              alt={`attachment-${index}`}
+                                              style={{
+                                                width: "100%",
+                                                height: "100%",
+                                                objectFit: "cover",
+                                              }}
+                                            />
+                                            {isLast && (
+                                              <Box
+                                                sx={{
+                                                  position: 'absolute',
+                                                  top: 0,
+                                                  left: 0,
+                                                  right: 0,
+                                                  bottom: 0,
+                                                  backgroundColor: 'rgba(0,0,0,0.5)',
+                                                  display: 'flex',
+                                                  alignItems: 'center',
+                                                  justifyContent: 'center',
+                                                  color: '#fff',
+                                                  fontSize: '24px',
+                                                  fontWeight: 'bold',
+                                                  cursor: 'pointer',
+                                                }}
+                                                onClick={() => {
+                                                  const mediaItems = getMediaItems(msg);
+                                                  const imageIndex = mediaItems.findIndex(item => item.url === attachment.url);
+                                                  handleMediaClick(mediaItems, imageIndex);
+                                                }}
+                                              >
+                                                +{remainingCount}
+                                              </Box>
+                                            )}
+                                          </Box>
+                                        );
+                                      })}
+                                    </Box>
+                                  )}
+
+                                  {/* Videos */}
+                                  {msg?.attachments?.filter(a => a.type === 'video').map((attachment, index) => (
+                                    <Box
+                                      key={`video-${index}`}
+                                      sx={{
+                                        maxWidth: "300px",
+                                        maxHeight: "300px",
+                                        borderRadius: "8px",
+                                        overflow: "hidden",
+                                        cursor: 'pointer',
+                                        mb: 0.5,
+                                      }}
+                                      onClick={() => {
+                                        const mediaItems = getMediaItems(msg);
+                                        const videoIndex = mediaItems.findIndex(item => item.url === attachment.url);
+                                        handleMediaClick(mediaItems, videoIndex);
+                                      }}
+                                    >
+                                      <video
+                                        controls
+                                        style={{
+                                          width: "100%",
+                                          height: "100%",
+                                        }}
+                                      >
+                                        <source src={attachment.url} />
+                                        Your browser does not support the video tag.
+                                      </video>
+                                    </Box>
+                                  ))}
+
+                                  {/* PDFs */}
+                                  {msg?.attachments?.filter(a => a.type === 'pdf').map((attachment, index) => (
+                                    <Box
+                                      key={`pdf-${index}`}
+                                      sx={{
+                                        maxWidth: "280px",
+                                        borderRadius: "8px",
+                                        overflow: "hidden",
+                                        border: "1px solid #e8eaed",
+                                        p: 1,
+                                        backgroundColor: isOwn ? "rgba(255,255,255,0.1)" : "#fff",
+                                        mb: 0.5,
+                                      }}
+                                    >
+                                      <a
+                                        href={attachment.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{
+                                          textDecoration: "none",
+                                          color: "inherit",
+                                          display: "flex",
+                                          alignItems: "center",
+                                          gap: "8px",
+                                        }}
+                                      >
+                                        <span>📄</span>
+                                        <Typography sx={{
+                                          fontSize: "13px",
+                                          wordBreak: "break-all",
+                                          color: isOwn ? "#fff" : "inherit",
+                                        }}>
+                                          {attachment.fileName || "PDF Document"}
+                                        </Typography>
+                                      </a>
+                                    </Box>
+                                  ))}
+                                </MessageBubble>
+                                <MessageBubble elevation={0} isOwn={isOwn} images={msg?.attachments?.length} video={msg?.attachments?.length > 0 && msg?.attachments[0]?.type === "video"}>
+
+                                  {/* Text Message */}
+                                  {msg.text && (
+                                    <Typography
+                                      sx={{
+                                        fontSize: "15px",
+                                        wordWrap: "break-word",
+                                        whiteSpace: "pre-wrap",
+                                        width: 'fit-content',
+                                        maxWidth: "100%",
+                                        textAlign: "initial",
+                                      }}
+                                    >
+                                      {detectLink(msg.text || "")}
+                                    </Typography>
+                                  )}
+                                </MessageBubble>
+                              </>
                             )}
 
                             {/* Product Card */}
@@ -1075,7 +1073,6 @@ const MessagePopup = ({
                 maxRows={4}
                 variant="outlined"
                 fullWidth
-                onKeyPress={handleKeyPress}
                 disabled={isSending}
               />
 
