@@ -479,6 +479,8 @@ const MessagePopup = ({
           isDeleted: false,
           currentTime: new Date(),
           userName: userDetailForChat?.name || "User",
+          userEmail: userDetailForChat?.email || "",
+          customerId: userDetailForChat?.id_number || "",
           vendorName: "Admin",
           productId: null,
           orderId: null,

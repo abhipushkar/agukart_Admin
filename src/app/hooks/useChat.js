@@ -19,7 +19,16 @@ const useChat = () => {
         searchHandler,
         searchText,
         setSearchText,
-        getUserDetails
+        getUserDetails,
+        page,
+        setPage,
+        rowsPerPage,
+        setRowsPerPage,
+        totalCount,
+        setTotalCount,
+        handleChangePage,
+        handleChangeRowsPerPage,
+        isLoading,
     } = useContext(ChatContext);
 
 
@@ -41,7 +50,16 @@ const useChat = () => {
         searchText,
         setSearchText,
         searchHandler,
-        getUserDetails
+        getUserDetails,
+        page,
+        setPage,
+        rowsPerPage,
+        setRowsPerPage,
+        totalCount,
+        setTotalCount,
+        handleChangePage,
+        handleChangeRowsPerPage,
+        isLoading,
     };
 };
 

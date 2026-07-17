@@ -299,7 +299,8 @@ const Message = () => {
           sx={{
             display: { lg: "flex", md: "flex", xs: "block" },
             alignItems: "center",
-            textAlign: "center"
+            textAlign: "center",
+            justifyContent: 'space-between',
           }}
         >
           <Typography variant="h5" fontWeight={600}>
@@ -307,8 +308,6 @@ const Message = () => {
           </Typography>
           <Box
             sx={{
-              marginLeft: { lg: "25px", md: "25px", xs: "0" },
-              marginTop: { lg: "0", md: "0", xs: "12px" },
               height: "40px",
               padding: "12px",
               display: "flex",

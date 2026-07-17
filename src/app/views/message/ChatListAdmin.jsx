@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Box, Button, Checkbox, Grid, Typography } from "@mui/material";
+import { Box, Button, Checkbox, Grid, TablePagination, Typography } from "@mui/material";
 import { collection, getDocs, onSnapshot, orderBy, query } from "firebase/firestore";
 import { db } from "../../../../src/firebase/Firebase";
 import { useProfileData } from "app/contexts/profileContext";
@@ -30,7 +30,17 @@ const ChatListAdmin = () => {
 
   const [notificationNumber, setNotificationNumber] = useState("");
 
-  const { chats, userDetails, handleCheckboxChange, checkMessage, pinnedMessageHadler } = useChat();
+  const { chats, userDetails, handleCheckboxChange, checkMessage, pinnedMessageHadler,
+    page,
+    setPage,
+    rowsPerPage,
+    setRowsPerPage,
+    totalCount,
+    setTotalCount,
+    handleChangePage,
+    handleChangeRowsPerPage,
+    isLoading,
+  } = useChat();
   console.log({ chats }, "dgrghhrr")
 
   const designation_id = localStorage.getItem(localStorageKey.designation_id);
@@ -98,7 +108,12 @@ const ChatListAdmin = () => {
 
   console.log(designation_id, "this oscojjjjjjjjjjjjjj");
   return (
-    <Box p={3}>
+    <Box sx={{
+      display: 'flex',
+      flexDirection: 'column',
+      height: '100%',
+      pl: 3, pb: 2
+    }}>
       {chats?.length < 1 ? (
         <Typography p={3} component="div" sx={{ textAlign: "center" }}>
           <Typography component="div">
@@ -261,14 +276,21 @@ const ChatListAdmin = () => {
         </Typography>
       ) : (
         <>
-          <TableContainer component={Paper} sx={{ boxShadow: "none" }}>
+          <TableContainer component={Paper} sx={{
+            boxShadow: "none",
+            flex: 1,
+            overflow: 'auto',
+          }}>
             <Table sx={{ minWidth: "100%", width: "max-content" }}>
               <TableBody>
                 {chats.map((chat) => {
                   const user = findUserDetails(chat?.user);
                   const lastMessage = chat?.text?.[chat?.text?.length - 1];
                   const isNotification = chat?.text?.filter(
-                    (data) => data.messageSenderId !== receiverId && data.isNotification == false
+                    (data) =>
+                      data.messageSenderId !== receiverId &&
+                      data.isNotification == false &&
+                      data.senderType === "user" // Only user messages
                   );
 
                   return (
@@ -445,6 +467,17 @@ const ChatListAdmin = () => {
             </Table>
           </TableContainer>
         </>
+      )}
+      {pathname !== ROUTE_CONSTANT.message.fromEtsy && pathname !== ROUTE_CONSTANT.message.compose && pathname !== ROUTE_CONSTANT.message.composeMessage && (
+        <TablePagination
+          component="div"
+          count={totalCount}
+          page={page}
+          onPageChange={handleChangePage}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+          rowsPerPageOptions={[25, 50, 100, 200]}
+        />
       )}
     </Box>
   );

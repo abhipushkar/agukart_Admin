@@ -498,11 +498,11 @@ const ChatBox = ({ slug, role }) => {
     const existingText = matchingDocument.data.text || [];
 
     const updatedText = existingText.map((item) => {
-      // Only update if it's not the user's own message
-      // AND if the message is not already marked as read
-      if (item.messageSenderId !== senderId && item.senderType === 'user') {
-        // Only set to true if it's currently false (unread)
-        // This prevents overwriting a user's "mark as unread" action
+      // Only mark user messages as read (not admin's own messages)
+      if (
+        item.messageSenderId !== senderId &&
+        item.senderType === "user"
+      ) {
         return {
           ...item,
           isNotification: true,
@@ -524,10 +524,20 @@ const ChatBox = ({ slug, role }) => {
   };
 
   useEffect(() => {
-    if (slug) {
-      handleRemoveAllNotification(slug);
+    if (slug && messages.length > 0) {
+      // Check if there are any unread messages from user
+      const hasUnreadUserMessages = messages.some(
+        (msg) =>
+          msg.messageSenderId !== senderId &&
+          msg.senderType === "user" &&
+          msg.isNotification === false
+      );
+
+      if (hasUnreadUserMessages) {
+        handleRemoveAllNotification(slug);
+      }
     }
-  }, [slug, messages]);
+  }, [messages, slug, senderId]);
 
   const formatDate = (timestamp) => {
     const date = new Date(timestamp?.seconds * 1000);
