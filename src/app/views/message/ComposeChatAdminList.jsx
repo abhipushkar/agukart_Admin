@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Box, Button, Checkbox, Grid, List, ListItem, Typography } from "@mui/material";
+import { Box, Button, Card, Checkbox, Grid, List, ListItem, Typography } from "@mui/material";
 import { collection, getDocs, onSnapshot, orderBy, query } from "firebase/firestore";
 import { db } from "../../../../src/firebase/Firebase";
 import { useProfileData } from "app/contexts/profileContext";
@@ -348,6 +348,11 @@ const ComposeChatAdminList = () => {
                                 </Box>
                               )}
                             </Box>
+                            {chat.isSpreadStopped && (
+                              <Box color={'red'} border={'2px solid red'} mx={3} p={1} borderRadius={1.2}>
+                                Spread Stopped
+                              </Box>
+                            )}
                             {
                               chat.type === "allvendors"
                                 ? <Typography component={"span"} sx={{ color: "primary.main", fontWeight: "bold" }}>For All Vendors</Typography>

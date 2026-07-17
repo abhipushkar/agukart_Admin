@@ -92,24 +92,28 @@ const InputContainer = styled(Paper)(({ theme }) => ({
   },
 }));
 
-const StyledTextField = styled(TextField)(({ theme }) => ({
-  "& .MuiOutlinedInput-root": {
-    borderRadius: "24px",
-    backgroundColor: "#f8f9fa",
-    "& fieldset": {
-      borderColor: "transparent",
-    },
-    "&:hover fieldset": {
-      borderColor: theme.palette.primary.main,
-    },
-    "&.Mui-focused fieldset": {
-      borderColor: theme.palette.primary.main,
-    },
-    "& textarea": {
-      padding: "12px 16px",
-      fontSize: "14px",
-      lineHeight: "1.5",
-    },
+const StyledTextArea = styled('textarea')(({ theme }) => ({
+  width: '100%',
+  padding: '12px 16px',
+  fontSize: '14px',
+  lineHeight: '1.5',
+  borderRadius: '24px',
+  backgroundColor: '#f8f9fa',
+  border: '1px solid #222',
+  resize: 'vertical',
+  minHeight: '52px',
+  maxHeight: '400px',
+  outline: 'none',
+  fontFamily: 'inherit',
+  '&:focus': {
+    border: `2px solid ${theme.palette.primary.main}`
+  },
+  '&:hover': {
+    borderColor: theme.palette.primary.main,
+  },
+  [theme.breakpoints.down('sm')]: {
+    fontSize: '13px',
+    padding: '10px 12px',
   },
 }));
 
@@ -179,6 +183,7 @@ const ComposeChatAdmin = ({ slug }) => {
   const { logUserData, setLogUserData } = useProfileData();
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const textareaRef = useRef(null);
   const navigate = useNavigate();
   const senderId = logUserData?._id;
   const token = localStorage.getItem(localStorageKey.auth_key);
@@ -214,6 +219,19 @@ const ComposeChatAdmin = ({ slug }) => {
   const handleLightboxClose = () => {
     setLightboxState({ ...lightboxState, open: false });
   };
+
+  const handleTextareaInput = (e) => {
+    const textarea = e.target;
+    // Reset height to auto to get the correct scrollHeight
+    textarea.style.height = 'auto';
+    // Set height based on scrollHeight
+    const newHeight = Math.max(textarea.scrollHeight, 52); // 56px = min height
+    textarea.style.height = newHeight + 'px';
+
+    // Update input value
+    setInput(e.target.value);
+  };
+
 
   const getMediaItems = (msg) => {
     const items = [];
@@ -409,12 +427,6 @@ const ComposeChatAdmin = ({ slug }) => {
     }
   };
 
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  };
 
   const formatDate = (timestamp) => {
     const date = new Date(timestamp?.seconds * 1000);
@@ -541,14 +553,17 @@ const ComposeChatAdmin = ({ slug }) => {
                         justifyContent: isOwn ? "flex-end" : "flex-start",
                         padding: "4px 0",
                         border: "none",
+                        width: "100%",
                       }}
                     >
                       <Box
                         sx={{
                           display: "flex",
                           alignItems: "flex-end",
-                          maxWidth: "100%",
+                          maxWidth: "85%", // Increased from 100%
                           gap: 1,
+                          width: "auto", // Allow it to size based on content
+                          flex: 1
                         }}
                       >
                         {!isOwn && (
@@ -558,9 +573,17 @@ const ComposeChatAdmin = ({ slug }) => {
                           />
                         )}
 
-                        <Box sx={{ display: "flex", flexDirection: "column", alignItems: isOwn ? "flex-end" : "flex-start", maxWidth: "100%" }}>
-                          {(msg.text || msg?.imageUrls?.length > 0 || msg?.attachments?.length > 0) && (
-                            <MessageBubble elevation={0} isOwn={isOwn} images={msg?.attachments?.length} video={msg?.attachments?.length > 0 && msg?.attachments[0]?.type === "video"}>
+                        <Box sx={{
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: isOwn ? "flex-end" : "flex-start",
+                          maxWidth: "100%",
+                          minWidth: 0, // Allow shrinking
+                          flex: "1 1 auto", // Allow growth
+                        }}
+                        >
+                          {(msg?.imageUrls?.length > 0 || msg?.attachments?.length > 0) && (
+                            <MessageBubble elevation={0} isOwn={isOwn} images={msg?.attachments?.length} video={msg?.attachments?.some(att => att.type === 'video')}>
                               {/* Images from old format */}
                               {msg?.imageUrls?.length > 0 && (
                                 <Box
@@ -637,6 +660,7 @@ const ComposeChatAdmin = ({ slug }) => {
                                 </Box>
                               )}
 
+                              {/* New Attachments */}
                               {/* Images Grid */}
                               {msg?.attachments?.filter(a => a.type === 'image').length > 0 && (
                                 <Box
@@ -783,23 +807,25 @@ const ComposeChatAdmin = ({ slug }) => {
                                   </a>
                                 </Box>
                               ))}
-
-                              {/* Text Message */}
-                              {msg.text && (
-                                <Typography
-                                  sx={{
-                                    fontSize: "15px",
-                                    wordWrap: "break-word",
-                                    whiteSpace: "pre-wrap",
-                                    width: 'fit-content',
-                                    maxWidth: "100%",
-                                    textAlign: "initial",
-                                  }}
-                                >
-                                  {detectLink(msg.text || "")}
-                                </Typography>
-                              )}
                             </MessageBubble>
+                          )}
+
+                          {/* Text Message */}
+                          {msg.text && (
+                            <MessageBubble elevation={0} isOwn={isOwn}>
+                              <Typography
+                                sx={{
+                                  fontSize: "15px",
+                                  wordWrap: "break-word",
+                                  whiteSpace: "pre-wrap",
+                                  width: 'fit-content',
+                                  maxWidth: "100%",
+                                  textAlign: "initial",
+                                }}
+                              >
+                                {detectLink(msg.text || "")}
+                              </Typography>
+                            </ MessageBubble>
                           )}
 
                           <TimeStamp variant="caption">
@@ -894,17 +920,18 @@ const ComposeChatAdmin = ({ slug }) => {
 
 
           <Box sx={{ display: "flex", alignItems: "flex-end", gap: 1 }}>
-            <StyledTextField
+            <StyledTextArea
+              ref={textareaRef}
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={handleTextareaInput}
               placeholder="Type a message..."
-              multiline
-              minRows={1}
-              maxRows={4}
-              variant="outlined"
-              fullWidth
-              onKeyPress={handleKeyPress}
+              rows={1}
               disabled={isSending}
+              style={{
+                minHeight: '56px',
+                maxHeight: '300px',
+                overflow: 'auto',
+              }}
             />
 
             <Box sx={{ display: "flex", gap: 0.5, flexShrink: 0 }}>

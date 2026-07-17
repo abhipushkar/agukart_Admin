@@ -12,7 +12,6 @@ import TextField from "@mui/material/TextField";
 import { useEffect } from 'react';
 import MailOutlineIcon from "@mui/icons-material/MailOutline";
 import { REACT_APP_WEB_URL } from 'config';
-import MessagePopup from './MessagePopup';
 import { useCallback } from 'react';
 import parse from 'html-react-parser'
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
