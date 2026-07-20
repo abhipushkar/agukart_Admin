@@ -30,6 +30,8 @@ import VideoGrid from "./components/videos/VideoGrid";
 import { v4 as uuidv4 } from "uuid";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { useEffect, useState, useCallback } from "react";
+import { useProfileData } from "app/contexts/profileContext";
+
 const ProductIdentity = ({ store, currentTab, tabIndex }) => {
     const {
         formData,
@@ -44,6 +46,8 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
         allCategory,
         allVendors,
     } = useProductFormStore();
+
+    const { logUserData } = useProfileData();
     const [openEdit, setOpenEdit] = useState(false);
     const imageInputRef = React.useRef(null);
     const videoInputRef = React.useRef(null);
@@ -61,12 +65,22 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
         }
     };
 
-
     const handleVendorChange = (newValue) => {
         handleFieldChange('vendor', newValue ? newValue._id : "");
         handleFieldChange('shipingTemplates', ""); // clear shippingTemplates field on vendor change 
         handleFieldChange('exchangePolicy', ""); // clear exchangePolicy field on vendor change
     };
+
+
+    useEffect(() => {
+        if (designation_id === '2') return;
+        if (designation_id === '3') {
+            const currVendorId = logUserData._id;
+            handleFieldChange('vendor', currVendorId);
+        }
+    }, []);
+
+
     const handleCategoryChange = async (newValue) => {
         const newSubCategoryId = newValue ? newValue._id : "";
 
@@ -107,7 +121,7 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
 
         setFormData({
             subCategory: newSubCategoryId,
-            dynamicFields: preservedFields 
+            dynamicFields: preservedFields
         });
 
         if (inputErrors.subCategory) {
@@ -547,6 +561,7 @@ const ProductIdentity = ({ store, currentTab, tabIndex }) => {
                                     setInputErrors(prev => ({ ...prev, sellerSku: "Seller Sku is Required" }));
                                 }
                             }}
+                            autoFocus={true}
                             onChange={handleSKUChange}
                             fullWidth
                             label="Seller Sku"

@@ -6,6 +6,31 @@ import { HTML5Backend } from "react-dnd-html5-backend";
 import ImageTile from "./ImageTile";
 
 const ImageGrid = ({ images, setImages, altText, setAltText, onRemoveImage }) => {
+
+    const cleanupPrimaryImage = (images) => {
+        return images.map((img, index) => {
+            // Primary image keeps everything
+            if (index === 0) {
+                return {
+                    ...img,
+                    isPrimary: true,
+                    sortOrder: 1,
+                };
+            }
+
+            // Secondary images should never have edit data
+            return {
+                ...img,
+                isPrimary: false,
+                sortOrder: index + 1,
+
+                edited_image: null,
+                previewSrc: null,
+                transformData: null,
+            };
+        });
+    };
+
     const moveImage = (dragIndex, hoverIndex) => {
         const draggedImage = images[dragIndex];
         const newImages = [...images];
@@ -13,18 +38,14 @@ const ImageGrid = ({ images, setImages, altText, setAltText, onRemoveImage }) =>
         newImages.splice(dragIndex, 1);
         newImages.splice(hoverIndex, 0, draggedImage);
 
-        // Update sort order and primary status
-        newImages.forEach((img, idx) => {
-            img.isPrimary = idx === 0;
-            img.sortOrder = idx + 1;
-        });
+        const cleanedImages = cleanupPrimaryImage(newImages);
 
         const newAltText = [...altText];
         const draggedAltText = newAltText[dragIndex];
         newAltText.splice(dragIndex, 1);
         newAltText.splice(hoverIndex, 0, draggedAltText);
 
-        setImages(newImages);
+        setImages(cleanedImages);
         setAltText(newAltText);
     };
 

@@ -778,7 +778,7 @@ export const useProductFormStore = create(
                         productweight: cleanedEditData?.shipping_weight_unit || "",
                         packageweight: cleanedEditData?.package_weight_unit || "",
                         productunitValue: cleanedEditData?.display_dimension_unit || "",
-                        sellerSku: isCopied ? "" : cleanedEditData?.seller_sku || cleanedEditData?.sku_code || "",
+                        sellerSku: cleanedEditData?.seller_sku || cleanedEditData?.sku_code || "",
                         ProductTaxCode: cleanedEditData?.tax_code || "",
                         shipingTemplates: cleanedEditData?.shipping_templates || "",
                         yourPrice: cleanedEditData?.price || "",
