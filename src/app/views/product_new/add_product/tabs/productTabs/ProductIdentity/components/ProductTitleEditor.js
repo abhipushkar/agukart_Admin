@@ -59,6 +59,11 @@ const formats = [
 
 const ProductTitleEditor = ({ value, onChange, error }) => {
     const handleChange = (html) => {
+        html = html
+            // Remove trailing empty paragraphs
+            .replace(/(?:<p>(?:<br>|&nbsp;|\s)*<\/p>)+$/gi, "")
+            // Remove leading empty paragraphs
+            .replace(/^(?:<p>(?:<br>|&nbsp;|\s)*<\/p>)+/gi, "");
         onChange(html);
     };
 

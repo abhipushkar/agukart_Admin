@@ -683,6 +683,17 @@ export const useProductAPI = () => {
             imgArr.forEach((file) => {
                 fData.append("images", file);
             });
+            if (state.formData.images?.[0]?.edited_image) {
+                fData.append(
+                    "edited_image",
+                    state.formData.images[0].edited_image
+                );
+
+                console.log(
+                    "EDITED IMAGE SENT =>",
+                    state.formData.images[0].edited_image
+                );
+            }
             // ✅ Send only once
             fData.append("altText", altText);
             fData.append("_id", id);

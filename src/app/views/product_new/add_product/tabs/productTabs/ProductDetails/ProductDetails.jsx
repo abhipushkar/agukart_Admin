@@ -78,23 +78,34 @@ export default function ProductDetails() {
     const handleDateChange = (dateType) => (newDate) => {
         setFormData({ [dateType]: newDate });
     };
+
     const handleDynamicFieldChange = (fieldName, value) => {
-        setFormData({
-            dynamicFields: {
-                ...formData.dynamicFields,
-                [fieldName]: value
-            }
-        });
+        const updatedDynamicFields = { ...formData.dynamicFields };
+        const shouldDelete = value == null || value === "" || (Array.isArray(value) && value.length === 0);
+
+        if (shouldDelete) {
+            delete updatedDynamicFields[fieldName];
+        } else {
+            updatedDynamicFields[fieldName] = value;
+        }
+        setFormData({ dynamicFields: updatedDynamicFields });
     };
+
     const handleCompoundFieldChange = (parentFieldName, subFieldName, value, index = 0) => {
         const fieldKey = `${parentFieldName}.${subFieldName}`;
-        setFormData({
-            dynamicFields: {
-                ...formData.dynamicFields,
-                [fieldKey]: value
-            }
-        });
+        const updatedDynamicFields = { ...formData.dynamicFields };
+
+        const shouldDelete = value == null || value === "" || (Array.isArray(value) && value.length === 0);
+
+        if (shouldDelete) {
+            delete updatedDynamicFields[fieldKey];
+        } else {
+            updatedDynamicFields[fieldKey] = value;
+        }
+
+        setFormData({ dynamicFields: updatedDynamicFields });
     };
+
     const addCompoundInstance = (parentFieldName) => {
         const currentInstances = formData.dynamicFields?.[`${parentFieldName}_instances`] || 0;
         setFormData({
