@@ -65,6 +65,7 @@ const InternationalShipping = ({
   const [route, setRoute] = useState(null);
   const [msg, setMsg] = useState(null);
   const [expandedRows, setExpandedRows] = useState({});
+  const [regionQuery, setRegionQuery] = useState('');
 
   // Add global min/max days state
   const storedTransitTimes = JSON.parse(localStorage.getItem('globalTransitTimeData') || '[]');
@@ -666,29 +667,45 @@ const InternationalShipping = ({
         </Box>
 
         {/* Region Selection Modal */}
-        <Dialog open={openRegionModal} onClose={handleModalClose}>
+        <Dialog open={openRegionModal} onClose={handleModalClose}
+          PaperProps={{
+            sx: {
+              width: '500px'
+            }
+          }}>
           <DialogTitle>Select Regions</DialogTitle>
-          <DialogContent>
-            <FormGroup>
-              <FormControlLabel
-                control={<Checkbox checked={selectAll} onChange={handleSelectAll} />}
-                label="Select All"
-              />
-              {countryData.map((country, idx) => {
-                const isAlreadySelectedElsewhere = alreadySelectedRegions[openSection]?.has(country) || false;
-                return <FormControlLabel
-                  key={idx}
-                  control={
-                    <Checkbox
-                      checked={selectedCountries.includes(country)}
-                      disabled={isAlreadySelectedElsewhere}
-                      onChange={() => handleCountrySelect(country)}
-                    />
-                  }
-                  label={country}
+          <DialogContent sx={{ height: '75vh', overflowY: 'hidden' }}>
+            <TextField
+              id=""
+              label="Enter a Region"
+              value={regionQuery}
+              onChange={e => setRegionQuery(e.target.value)}
+              fullWidth autoFocus
+              sx={{ my: 1 }}
+              size="small"
+            />
+            <Box sx={{ height: '90%', overflowY: 'auto' }} pl={1}>
+              <FormGroup>
+                <FormControlLabel
+                  control={<Checkbox checked={selectAll} onChange={handleSelectAll} />}
+                  label="Select All"
                 />
-              })}
-            </FormGroup>
+                {countryData.filter(c => c.toLowerCase().includes(regionQuery.toLowerCase())).map((country, idx) => {
+                  const isAlreadySelectedElsewhere = alreadySelectedRegions[openSection]?.has(country) || false;
+                  return <FormControlLabel
+                    key={idx}
+                    control={
+                      <Checkbox
+                        checked={selectedCountries.includes(country)}
+                        disabled={isAlreadySelectedElsewhere}
+                        onChange={() => handleCountrySelect(country)}
+                      />
+                    }
+                    label={country}
+                  />
+                })}
+              </FormGroup>
+            </Box>
           </DialogContent>
           <DialogActions>
             <Button onClick={handleModalClose} color="secondary">

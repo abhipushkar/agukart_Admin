@@ -58,7 +58,7 @@ import LoginAsCustomerModal from "./LoginAsCustomerModal";
 import CustomerGraph from "./CustomerGraph";
 import MessagePopup from "./MessagePopup";
 import ContactMailIcon from "@mui/icons-material/ContactMail";
-const Details = ({ userdata,getUserById }) => {
+const Details = ({ userdata, getUserById }) => {
   const [openPopup, SetOpenPopup] = useState(false);
   console.log(userdata, "userdata");
   const auth_key = localStorage.getItem(localStorageKey.auth_key);
@@ -69,7 +69,7 @@ const Details = ({ userdata,getUserById }) => {
   const [msg, setMsg] = useState(null);
   const [statusData, setStatusData] = useState({});
 
-   const handleClickPopup = () => {
+  const handleClickPopup = () => {
     SetOpenPopup(true);
   };
 
@@ -218,10 +218,10 @@ const Details = ({ userdata,getUserById }) => {
             </Stack>
             <Grid container spacing={2} alignItems="center" justifyContent="space-between">
               <Grid item>
-                <Button 
-                  variant="contained" 
-                  color="primary" 
-                  startIcon={<ContactMailIcon />} 
+                <Button
+                  variant="contained"
+                  color="primary"
+                  startIcon={<ContactMailIcon />}
                   onClick={handleClickPopup}
                 >
                   Contact
@@ -240,7 +240,7 @@ const Details = ({ userdata,getUserById }) => {
                   <TableCell sx={{ px: "16px" }} align="left">
                     <Typography component="span" fontWeight={500}>Account Status</Typography>
                   </TableCell>
-                  <TableCell align="left">{userdata?.status == true ? "Active": "Suspended"}</TableCell>
+                  <TableCell align="left">{userdata?.status == true ? "Active" : "Suspended"}</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell sx={{ px: "16px" }} align="left">
@@ -320,20 +320,23 @@ const Details = ({ userdata,getUserById }) => {
                     Address 1
                   </TableCell>
                   <TableCell align="left">
-                    {userdata?.userAddresses?.[0]
-                      ? [
+                    {userdata?.userAddresses?.[0] ? (
+                      [
                         `${userdata.userAddresses[0]?.first_name} ${userdata.userAddresses[0]?.last_name}`,
                         userdata.userAddresses[0]?.address_line1,
                         userdata.userAddresses[0]?.address_line2,
-                        userdata.userAddresses[0]?.city,
-                        userdata.userAddresses[0]?.state,
+                        `${userdata.userAddresses[0]?.city + ", " + userdata.userAddresses[0]?.state}`,
                         userdata.userAddresses[0]?.pincode,
                         userdata.userAddresses[0]?.country,
                         `${userdata.userAddresses[0]?.phone_code} ${userdata.userAddresses[0]?.mobile}`,
-                        ]
-                          .filter(Boolean)
-                          .join(", ")
-                      : "No Address Available"}
+                      ]
+                        .filter(Boolean)
+                        .map((item, index) => (
+                          <div key={index}>{item}</div>
+                        ))
+                    ) : (
+                      "No Address Available"
+                    )}
                   </TableCell>
                 </TableRow>
                 <TableRow>
@@ -341,19 +344,23 @@ const Details = ({ userdata,getUserById }) => {
                     Address 2
                   </TableCell>
                   <TableCell align="left">
-                  {userdata?.userAddresses?.[1]
-                      ? [`${userdata.userAddresses[1]?.first_name} ${userdata.userAddresses[1]?.last_name}`,
+                    {userdata?.userAddresses?.[1] ? (
+                      [
+                        `${userdata.userAddresses[1]?.first_name} ${userdata.userAddresses[1]?.last_name}`,
                         userdata.userAddresses[1]?.address_line1,
                         userdata.userAddresses[1]?.address_line2,
-                        userdata.userAddresses[1]?.city,
-                        userdata.userAddresses[1]?.state,
+                        `${userdata.userAddresses[1]?.city + ", " + userdata.userAddresses[1]?.state}`,
                         userdata.userAddresses[1]?.pincode,
                         userdata.userAddresses[1]?.country,
                         `${userdata.userAddresses[1]?.phone_code} ${userdata.userAddresses[1]?.mobile}`,
                       ]
-                          .filter(Boolean)
-                          .join(", ")
-                      : "No Address Available"}
+                        .filter(Boolean)
+                        .map((item, index) => (
+                          <div key={index}>{item}</div>
+                        ))
+                    ) : (
+                      "No Address Available"
+                    )}
                   </TableCell>
                 </TableRow>
                 <TableRow>
@@ -361,26 +368,26 @@ const Details = ({ userdata,getUserById }) => {
                     Address 3
                   </TableCell>
                   <TableCell align="left">
-                  {userdata?.userAddresses?.[2]
+                    {userdata?.userAddresses?.[2]
                       ? [`${userdata.userAddresses[2]?.first_name} ${userdata.userAddresses[2]?.last_name}`,
-                        userdata.userAddresses[2]?.address_line1,
-                        userdata.userAddresses[2]?.address_line2,
-                        userdata.userAddresses[2]?.city,
-                        userdata.userAddresses[2]?.state,
-                        userdata.userAddresses[2]?.pincode,
-                        userdata.userAddresses[2]?.country,
-                        `${userdata.userAddresses[2]?.phone_code} ${userdata.userAddresses[2]?.mobile}`,
+                      userdata.userAddresses[2]?.address_line1,
+                      userdata.userAddresses[2]?.address_line2,
+                      userdata.userAddresses[2]?.city,
+                      userdata.userAddresses[2]?.state,
+                      userdata.userAddresses[2]?.pincode,
+                      userdata.userAddresses[2]?.country,
+                      `${userdata.userAddresses[2]?.phone_code} ${userdata.userAddresses[2]?.mobile}`,
                       ]
-                          .filter(Boolean)
-                          .join(", ")
+                        .filter(Boolean)
+                        .join(", ")
                       : "No Address Available"}
                   </TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell align="left" colSpan={2}>
                     <Typography component="div" sx={{ display: "flex", alignItems: "center", flexDirection: { lg: "row", md: "row", sm: "row", xs: "column" }, justifyContent: { lg: "space-between", md: "space-between", sm: "space-between", xs: "center" } }}>
-                      {userdata?.email_verified != "Confirmed" && <ResetPasswordModal userdata= {userdata} getUserById = {getUserById}/>}
-                      <LoginAsCustomerModal userdata= {userdata} getUserById = {getUserById}/>
+                      {userdata?.email_verified != "Confirmed" && <ResetPasswordModal userdata={userdata} getUserById={getUserById} />}
+                      <LoginAsCustomerModal userdata={userdata} getUserById={getUserById} />
                     </Typography>
                   </TableCell>
 
@@ -398,7 +405,7 @@ const Details = ({ userdata,getUserById }) => {
               <Typography component="div" mt={1}><Button variant="text" sx={{ color: '#000' }}><FileDownloadIcon sx={{ fontSize: '18px', marginRight: '8px' }} /> Export Data</Button></Typography>
               <Typography mt={2} color={"#8f8c8c"} display={"flex"} alignItems={"center"} gap={"6px"}><ErrorIcon sx={{ color: '#f1bc3b' }} />Once you delete account, data will be lost forever.</Typography>
               <Typography component="div" mt={2}>
-                <Button variant="contained" startIcon={userdata?.status ? <DeleteIcon /> : <CheckCircleIcon />} sx={{marginRight:"5px"}} onClick={()=>{
+                <Button variant="contained" startIcon={userdata?.status ? <DeleteIcon /> : <CheckCircleIcon />} sx={{ marginRight: "5px" }} onClick={() => {
                   handleOpen("customerStatus");
                   setStatusData(() => ({ _id: userdata._id, status: !userdata.status }));
                 }}>
@@ -460,7 +467,7 @@ const Details = ({ userdata,getUserById }) => {
       </Grid>
       <Grid item lg={7} md={6} sm={12} xs={12}>
         <Box>
-          <CustomerGraph userdata = {userdata}/>
+          <CustomerGraph userdata={userdata} />
           <Grid container mt={2} spacing={3} backgroundColor={"#fff"}>
             <Grid item lg={6} md={6} sm={6} xs={12}>
               <Box backgroundColor={"#ace2f8"} borderRadius={"5px 5px 0 0"} p={2}>
@@ -470,7 +477,7 @@ const Details = ({ userdata,getUserById }) => {
                   <Typography component="div" display={"flex"} alignItems={"center"} gap={"12px"}>
                     <Typography component="span" fontSize={22}>${userdata?.wishlistPrice}</Typography>
                     <Typography component="div">
-                      <CustomerDataModal type="favourite" userdata = {userdata} />
+                      <CustomerDataModal type="favourite" userdata={userdata} />
                     </Typography>
                   </Typography>
                 </Typography>
@@ -483,7 +490,7 @@ const Details = ({ userdata,getUserById }) => {
                   <Typography component="div" fontSize={26} color={"#444444"}>{userdata?.followCount}</Typography>
                   <Typography component="div" display={"flex"} alignItems={"center"} gap={"12px"}>
                     <Typography component="div">
-                      <CustomerDataModal type="shop" userdata = {userdata} />
+                      <CustomerDataModal type="shop" userdata={userdata} />
                     </Typography>
                   </Typography>
                 </Typography>
@@ -497,7 +504,7 @@ const Details = ({ userdata,getUserById }) => {
                   <Typography component="div" display={"flex"} alignItems={"center"} gap={"12px"}>
                     <Typography component="span" fontSize={22}>${userdata?.cartPrice}</Typography>
                     <Typography component="div">
-                      <CustomerDataModal type="cart" userdata = {userdata} />
+                      <CustomerDataModal type="cart" userdata={userdata} />
                     </Typography>
                   </Typography>
                 </Typography>
@@ -510,14 +517,14 @@ const Details = ({ userdata,getUserById }) => {
                   <Typography component="div" fontSize={26} color={"#444444"}>{userdata.ratingCount}</Typography>
                   <Typography component="div" display={"flex"} alignItems={"center"} gap={"12px"}>
                     <Typography component="div">
-                      <CustomerDataModal type="review" userdata = {userdata} />
+                      <CustomerDataModal type="review" userdata={userdata} />
                     </Typography>
                   </Typography>
                 </Typography>
               </Box>
             </Grid>
           </Grid>
-          <AdjustWalletBalance userdata={userdata} getUserById={getUserById}/>
+          <AdjustWalletBalance userdata={userdata} getUserById={getUserById} />
           {/* <Box mt={3} p={1} backgroundColor={"#faf4f4"} borderRadius={"8px"}>
             <Box backgroundColor={"#fff"} boxShadow={"0 0 3px #d7d7d7"} borderRadius={"8px"} p={2}>
               <Typography component="div" display={"flex"} alignItems={"center"} justifyContent={"space-between"}>

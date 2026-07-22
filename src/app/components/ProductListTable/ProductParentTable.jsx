@@ -468,7 +468,9 @@ export default function ProductParentTable({
                             combinations.map((item, index) => {
                                 const currentVariantData = variantArrValues[index] || {};
                                 const isExistingProduct = currentVariantData.isExistingProduct;
-                                const disableFields = shouldDisableFields(currentVariantData);
+                                const status = currentCombinationStatus.find((comb) => { return comb.sku === sellerSky[index] })?.status || "";
+                                const disableQtyField = currentVariantData?.form_values?.isCheckedQuantity || false;
+                                const disablePriceField = currentVariantData?.form_values?.isCheckedPrice || false;
                                 const combinationKey = combinationKeys?.[index];
                                 const currentSkuError = combinationKey ? skuErrors[combinationKey] : skuErrors[index];
                                 const hasInactiveAttribute = Object.values(item || {}).some(
@@ -477,11 +479,8 @@ export default function ProductParentTable({
 
                                 // Debug logging
                                 if (index < 3 || index >= combinations.length - 2) {
-                                    console.log(`Row ${index}:`, {
-                                        combinationKey,
-                                        itemKeys: Object.keys(item),
-                                        hasVariantData: !!currentVariantData._id,
-                                        skuError: currentSkuError
+                                    console.log(`test ${index}:`, {
+                                        currentVariantData, currentCombinationStatus,
                                     });
                                 }
 
@@ -511,7 +510,7 @@ export default function ProductParentTable({
                                             }}
                                         >
                                             <Typography>
-                                                {currentCombinationStatus.find((comb) => { return comb.sku === sellerSky[index] })?.status ?? ""}
+                                                {status}
                                             </Typography>
                                         </TableCell>
 
@@ -563,7 +562,7 @@ export default function ProductParentTable({
                                                     }}
                                                     id="outlined-adornment-quantity"
                                                     placeholder="Quantity"
-                                                    disabled={disableFields || currentVariantData.qty === "0"}
+                                                    disabled={disableQtyField}
                                                     // Remove required attribute for existing products
                                                     required={!isExistingProduct}
                                                     error={!isExistingProduct && !currentVariantData.qty}
@@ -588,7 +587,7 @@ export default function ProductParentTable({
                                                     value={currentVariantData.sale_price || ""}
                                                     id="outlined-adornment-quantity"
                                                     placeholder="Sale Price"
-                                                    disabled={disableFields || currentVariantData.sale_price === "0"}
+                                                    disabled={disablePriceField}
                                                     // Remove required attribute for existing products
                                                     required={!isExistingProduct}
                                                     error={!isExistingProduct && !currentVariantData.sale_price}
