@@ -104,10 +104,10 @@ const CustomerDataModal = ({ type, userdata }) => {
           {type == "cart"
             ? "Abandoned Basket Items"
             : type == "review"
-            ? "Reviews"
-            : type == "shop"
-            ? "Shop Follows"
-            : "Favourites Items"}
+              ? "Reviews"
+              : type == "shop"
+                ? "Shop Follows"
+                : "Favourites Items"}
           <IconButton onClick={handleClose} sx={{ position: "absolute", right: 8, top: 8 }}>
             <CloseIcon />
           </IconButton>
@@ -146,7 +146,7 @@ const CustomerDataModal = ({ type, userdata }) => {
                             {item?.vendor_data?.shop_name}
                           </span>
                         }
-                         secondary={
+                        secondary={
                           <>
                             {item?.createdAt && (
                               <Typography variant="body2" color="textSecondary" sx={{ mb: 0.5 }}>
@@ -177,12 +177,12 @@ const CustomerDataModal = ({ type, userdata }) => {
                             style={{ cursor: "pointer" }}
                             onClick={() => {
                               window.open(
-                                `${REACT_APP_WEB_URL}/products/?id=${item?.product_id?._id}`,
+                                `${REACT_APP_WEB_URL}/product/${item?.product_id?.slug}/${item?.product_id?.product_code}`,
                                 "_blank"
                               );
                             }}
                           >
-                            {item?.product_id?.product_title.replace(/<\/?[^>]+(>|$)/g, "") ||
+                            {item?.product_id?.product_title.replace(/<\/?[^>]+(>|$)/g, "").replace("&amp", "&") ||
                               "Product"}
                           </span>
                         }
@@ -230,10 +230,10 @@ const CustomerDataModal = ({ type, userdata }) => {
               {type == "cart"
                 ? "Abandoned Basket Items"
                 : type == "review"
-                ? "Reviews"
-                : type == "shop"
-                ? "Shop Follows"
-                : "Favourites Items"}{" "}
+                  ? "Reviews"
+                  : type == "shop"
+                    ? "Shop Follows"
+                    : "Favourites Items"}{" "}
               found.
             </Typography>
           )}

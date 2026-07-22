@@ -111,6 +111,7 @@ export const apiEndpoints = {
   getVendorsList: "getAllActiveVendor",
   getOrderInvoice: "getOrderInvoice",
   changeAllStatusProduct: "change-status-product",
+  refreshProducts: 'product-refresh',
   deleteByAdmin: "deleted-by-admin",
   getRatingByType: "getRatingByType",
   getAllVendorProduct: "getAllVendorProduct",

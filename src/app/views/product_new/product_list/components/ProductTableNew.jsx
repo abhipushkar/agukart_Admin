@@ -272,6 +272,7 @@ const ProductRow = ({ product, index }) => {
         deleteProduct,
         deleteProductByAdmin,
         persistListViewContext,
+        refreshProducts,
     } = useProductStore();
     const navigate = useNavigate();
     const [actionAnchorEl, setActionAnchorEl] = useState(null);
@@ -683,6 +684,10 @@ const ProductRow = ({ product, index }) => {
                             >
                                 Copy Listing
                             </MenuItem>
+                            {isProduct && filters.status !== "delete" && filters.status !== "draft" && filters.status !== "deleteByAdmin" && (
+                                <MenuItem onClick={() => { setActionAnchorEl(null); refreshProducts(product._id); }} sx={{ fontSize: "0.8rem" }}>
+                                    Refresh
+                                </MenuItem>)}
                             {(filters.status === "delete" && designation_id === "2") ||
                                 filters.status !== "delete" ? (
                                 <MenuItem onClick={handleDelete} sx={{ fontSize: "0.8rem" }}>
@@ -718,6 +723,7 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
         updateBadge,
         deleteProduct,
         persistListViewContext,
+        refreshProducts,
     } = useProductStore();
     const navigate = useNavigate();
     const [actionAnchorEl, setActionAnchorEl] = useState(null);
@@ -1090,6 +1096,10 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
                         >
                             Copy Listing
                         </MenuItem>
+                        {filters.status !== "delete" && filters.status !== "draft" && filters.status !== "deleteByAdmin" && (
+                            <MenuItem onClick={() => { setActionAnchorEl(null); refreshProducts(variation._id); }} sx={{ fontSize: "0.8rem" }}>
+                                Refresh
+                            </MenuItem>)}
                         <MenuItem onClick={handleDelete} sx={{ fontSize: "0.8rem" }}>
                             Delete
                         </MenuItem>

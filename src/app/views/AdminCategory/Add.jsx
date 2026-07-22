@@ -858,13 +858,11 @@ const Add = () => {
 
     const handleRestritedTagHandler = (event, newValue) => {
         const processedValues = newValue
-            .flatMap(value =>
+            .flatMap((value) =>
                 typeof value === "string"
-                    ? value.split(/[\s,]+/).map(v => v.trim())
+                    ? value.split(",").map((v) => v.trim())
                     : [value]
-            )
-            .filter(v => v);
-
+            ).filter(Boolean);
         setFormValues((prev) => ({
             ...prev,
             restrictedTags: [...new Set(processedValues)],
@@ -895,7 +893,7 @@ const Add = () => {
             case "Product Tag":
                 return option.title || '';
             case "Attributes Tag":
-                return option.name || '';
+                return option.name + (option.groupName ? ` (${option.groupName})` : "") || '';
             case "Variant Tag":
                 return option.variant_name || '';
             default:
@@ -940,7 +938,23 @@ const Add = () => {
                             <Autocomplete
                                 disablePortal
                                 options={filteredAttributes}
-                                getOptionLabel={(option) => option.name}
+                                getOptionLabel={(option) => option.name || ''}
+                                renderOption={(props, option) => (
+                                    <li
+                                        {...props}
+                                        style={{
+                                            display: "flex",
+                                            gap: 10,
+                                            alignItems: "center",
+                                            width: "100%",
+                                        }}
+                                    >
+                                        <span>{option.name || ''}</span>
+                                        <span style={{ color: "#888", fontSize: 12 }}>
+                                            {option.groupName}
+                                        </span>
+                                    </li>
+                                )}
                                 value={filteredAttributes.find(attr => attr._id === condition.value?.attributeId) || null}
                                 onChange={(event, newValue) => {
                                     const newConditions = [...formValues.conditions];
@@ -1015,7 +1029,30 @@ const Add = () => {
                         <Autocomplete
                             disablePortal
                             options={filteredAttributes}
-                            getOptionLabel={(option) => option.name}
+                            getOptionLabel={(option) => option.name || ''}
+                            renderOption={(props, option) => (
+                                <li
+                                    {...props}
+                                    style={{
+                                        display: "flex",
+                                        gap: 10,
+                                        alignItems: "center",
+                                        width: "100%",
+                                    }}
+                                >
+                                    <span>{option.name || ''}</span>
+                                    <span style={{ color: "#888", fontSize: 12 }}>
+                                        {option.groupName}
+                                    </span>
+                                </li>
+                            )}
+                            slotProps={{
+                                paper: {
+                                    sx: {
+                                        minWidth: 450,
+                                    },
+                                },
+                            }}
                             value={filteredAttributes.find(attr => attr._id === condition.value?.attributeId) || null}
                             onChange={(event, newValue) => {
                                 const newConditions = [...formValues.conditions];
@@ -1615,6 +1652,7 @@ const Add = () => {
                                                 }}
                                                 placeholder="Select file"
                                                 onClick={() => document.getElementById("file-input").click()}
+                                                helperText={<strong>Recommended aspect ratio is 2x3</strong>}
                                             />
 
                                             {errors.images && (
@@ -2023,7 +2061,7 @@ const Add = () => {
                                             return (
                                                 <Grid container spacing={2} alignItems="center" sx={{ mb: 2 }}
                                                     key={index}>
-                                                    <Grid item xs={12} sm={3}>
+                                                    <Grid item xs={12} sm={2}>
                                                         <FormControl fullWidth>
                                                             <TextField
                                                                 select
@@ -2043,7 +2081,7 @@ const Add = () => {
                                                         </FormControl>
                                                     </Grid>
 
-                                                    <Grid item xs={12} sm={3}>
+                                                    <Grid item xs={12} sm={2}>
                                                         <FormControl fullWidth>
                                                             <TextField
                                                                 select
@@ -2063,7 +2101,7 @@ const Add = () => {
                                                         </FormControl>
                                                     </Grid>
 
-                                                    <Grid item xs={12} sm={5}>
+                                                    <Grid item xs={12} sm={7}>
                                                         <FormControl fullWidth>
                                                             {renderValueInput(condition, index)}
                                                         </FormControl>

@@ -15,7 +15,7 @@ export const useProductStore = create((set, get) => ({
     actionLoading: false,
     pagination: {
         page: 0,
-        rowsPerPage: 50,
+        limit: 50,
         totalCount: 0
     },
     filters: {
@@ -25,7 +25,7 @@ export const useProductStore = create((set, get) => ({
         status: 'all',
         category: '',
         sorting: {
-            sortBy: 'createdAt',
+            sortBy: 'refresh_date',
             order: -1,
         },
         hiddenColumns: JSON.parse(localStorage.getItem(localStorageKey.productTable)) || DEFAULT_HIDDEN_COLUMNS
@@ -150,28 +150,31 @@ export const useProductStore = create((set, get) => ({
 
     // Fetch products
     fetchProducts: async () => {
-        const { filters, pagination, showFeaturedOnly } = get();
-
+        const { filters, pagination, showFeaturedOnly, setPagination, setLoading } = get();
+        setLoading(true);
         try {
             const url = `${apiEndpoints.getProduct}?type=${filters.status}&category=${filters.category}&search=${filters.search.trim()}&featured=${showFeaturedOnly ? true : ''}&sort=${filters.sorting.sortBy ? JSON.stringify({
                 [filters.sorting.sortBy]: filters.sorting.order,
-            }) : ""}&page=${pagination.page + 1}&limit=${pagination.rowsPerPage}`;
+            }) : ""}&page=${pagination.page + 1}&limit=${pagination.limit}`;
             const auth_key = localStorage.getItem(localStorageKey.auth_key);
             const res = await ApiService.get(url, auth_key);
 
             if (res.status === 200) {
+                // console.log({ products: res.data.data.slice(0, 3), keys: Object.entries(res) });
                 set({
                     products: res.data.data,
                     filteredProducts: res.data.data,
-                    pagination: {
-                        ...pagination,
-                        totalCount: res.data.data.length  // ✅ total items
-                    }
+                });
+                setPagination({
+                    ...res.data.pagination,
+                    page: res.data.pagination.page - 1
                 });
             }
         } catch (error) {
             console.error('Error fetching products:', error);
             throw error;
+        } finally {
+            setLoading(false);
         }
     },
 
@@ -214,12 +217,13 @@ export const useProductStore = create((set, get) => ({
 
     // Search products
     searchProducts: async () => {
-        const { filters, pagination, showFeaturedOnly, setFilters } = get();
+        const { filters, pagination, showFeaturedOnly, setFilters, setLoading } = get();
         try {
             set({ actionLoading: true });
+            setLoading(true);
             const url = `${apiEndpoints.getProduct}?type=${filters.status}&category=${filters.category}&search=${filters.search.trim()}&featured=${showFeaturedOnly ? true : ''}&sort=${filters.sorting.sortBy ? JSON.stringify({
                 [filters.sorting.sortBy]: filters.sorting.order,
-            }) : ""}&page=${pagination.page + 1}&limit=${pagination.rowsPerPage}`;
+            }) : ""}&page=${pagination.page + 1}&limit=${pagination.limit}`;
             const auth_key = localStorage.getItem(localStorageKey.auth_key);
             const res = await ApiService.get(url, auth_key);
 
@@ -229,7 +233,7 @@ export const useProductStore = create((set, get) => ({
                 set({
                     products: res.data.data,
                     filteredProducts: res.data.data,
-                    pagination: { ...pagination, page: 0, totalCount: res.data.data.length }
+                    pagination: res.data.pagination
                 });
             }
         } catch (e) {
@@ -237,6 +241,7 @@ export const useProductStore = create((set, get) => ({
             throw e;
         } finally {
             set({ actionLoading: false });
+            setLoading(false);
         }
     },
 
@@ -375,6 +380,28 @@ export const useProductStore = create((set, get) => ({
                 res = await ApiService.post(apiEndpoints.changeAllStatusProduct, payload, auth_key);
             }
 
+            if (res.status === 200) {
+                await get().fetchProducts();
+                get().clearSelection();
+                return { success: true, message: res.data?.message };
+            }
+        } catch (error) {
+            console.error('Error in bulk update:', error);
+            throw error;
+        } finally {
+            set({ actionLoading: false });
+        }
+    },
+
+    refreshProducts: async (id = null) => {
+        const { selection } = get();
+        if (selection.productIds.length === 0 && !id) return;
+
+        set({ actionLoading: true });
+        try {
+            const auth_key = localStorage.getItem(localStorageKey.auth_key);
+            let payload = { productIds: id ? [id] : selection.productIds };
+            const res = await ApiService.post(apiEndpoints.refreshProducts, payload, auth_key);
             if (res.status === 200) {
                 await get().fetchProducts();
                 get().clearSelection();

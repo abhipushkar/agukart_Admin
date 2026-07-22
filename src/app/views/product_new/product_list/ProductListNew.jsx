@@ -106,6 +106,7 @@ const ProductListNew = () => {
         { value: { sortBy: 'product_title', order: -1 }, label: 'Title (Z to A)' },
         { value: { sortBy: 'sku_code', order: 1 }, label: 'SKU (A to Z)' },
         { value: { sortBy: 'sku_code', order: -1 }, label: 'SKU (Z to A)' },
+        { value: { sortBy: 'refresh_date', order: -1 }, label: 'Most Recent' },
         { value: { sortBy: 'createdAt', order: -1 }, label: 'Date Created (New to Old)' },
         { value: { sortBy: 'createdAt', order: 1 }, label: 'Date Created (Old to New)' },
         { value: { sortBy: 'updatedAt', order: -1 }, label: 'Last Updated' },
@@ -120,6 +121,7 @@ const ProductListNew = () => {
         products,
         filteredProducts,
         loading,
+        setLoading,
         filters,
         pagination,
         selection,
@@ -137,8 +139,10 @@ const ProductListNew = () => {
         getAllActiveCategories,
         persistListViewContext,
         restoreListViewContext,
-        clearListViewContext
+        clearListViewContext,
+        refreshProducts
     } = useProductStore();
+
     // Local state
     const [categories, setCategories] = useState([]);
     const [actionAnchorEl, setActionAnchorEl] = useState(null);
@@ -290,18 +294,21 @@ const ProductListNew = () => {
                 return [
                     { key: 'inactive', label: 'Inactive' },
                     { key: 'delete', label: 'Delete' },
-                    ...(isVendor ? [{ key: 'template', label: 'Change Shipping Template' }] : [])
+                    ...(isVendor ? [{ key: 'template', label: 'Change Shipping Template' }] : []),
+                    { key: 'refresh', label: 'Refresh' }
                 ];
             case 'inactive':
                 return [
                     { key: 'active', label: 'Active' },
                     { key: 'delete', label: 'Delete' },
-                    ...(isVendor ? [{ key: 'template', label: 'Change Shipping Template' }] : [])
+                    ...(isVendor ? [{ key: 'template', label: 'Change Shipping Template' }] : []),
+                    { key: 'refresh', label: 'Refresh' }
                 ];
             case 'sold-out':
                 return [
                     { key: 'delete', label: 'Delete' },
-                    ...(isVendor ? [{ key: 'template', label: 'Change Shipping Template' }] : [])
+                    ...(isVendor ? [{ key: 'template', label: 'Change Shipping Template' }] : []),
+                    { key: 'refresh', label: 'Refresh' }
                 ];
             case 'draft':
                 return [
@@ -328,18 +335,21 @@ const ProductListNew = () => {
                 return [
                     { key: 'inactive', label: 'Inactive' },
                     { key: 'delete', label: 'Delete' },
-                    ...(isVendor ? [{ key: 'template', label: 'Change Shipping Template' }] : [])
+                    ...(isVendor ? [{ key: 'template', label: 'Change Shipping Template' }] : []),
+                    { key: 'refresh', label: 'Refresh' }
                 ];
             case 'inactive':
                 return [
                     { key: 'active', label: 'Active' },
                     { key: 'delete', label: 'Delete' },
-                    ...(isVendor ? [{ key: 'template', label: 'Change Shipping Template' }] : [])
+                    ...(isVendor ? [{ key: 'template', label: 'Change Shipping Template' }] : []),
+                    { key: 'refresh', label: 'Refresh' }
                 ];
             case 'sold-out':
                 return [
                     { key: 'delete', label: 'Delete' },
-                    ...(isVendor ? [{ key: 'template', label: 'Change Shipping Template' }] : [])
+                    ...(isVendor ? [{ key: 'template', label: 'Change Shipping Template' }] : []),
+                    { key: 'refresh', label: 'Refresh' }
                 ];
             case 'draft':
                 return [
@@ -372,7 +382,8 @@ const ProductListNew = () => {
             { key: 'inactive', label: 'Inactive' },
             { key: 'draft', label: 'Draft' },
             { key: 'delete', label: 'Delete' },
-            ...(isVendor ? [{ key: 'template', label: 'Change Shipping Template' }] : [])
+            ...(isVendor ? [{ key: 'template', label: 'Change Shipping Template' }] : []),
+            { key: 'refresh', label: 'Refresh' }
         ];
         // Filter actions that are valid for ALL selected statuses
         return allPossibleActions.filter(action => {
@@ -418,7 +429,12 @@ const ProductListNew = () => {
     useEffect(() => {
         fetchProductsFirstTime();
         // getAllActiveCategories();
-    }, [fetchProducts, filters.status, filters.category, filters.sorting, showFeaturedOnly, pagination.page, pagination.rowsPerPage]);
+    }, [fetchProducts, filters.status, filters.category, filters.sorting, showFeaturedOnly]);
+
+    useEffect(() => {
+        fetchProducts();
+    }, [pagination.page, pagination.limit]);
+
     useEffect(() => {
         if (loading) return;
         if (pendingScrollRestoreRef.current === null) return;
@@ -501,15 +517,18 @@ const ProductListNew = () => {
                     setActionAnchorEl(null);
                     setShippingDialogOpen(true);
                     break;
+                case 'refresh':
+                    setActionAnchorEl(null);
+                    result = await refreshProducts();
+                    break;
                 default:
                     return;
             }
             if (result?.success) {
-                toast.success(result.message || 'Action completed successfully');
-                setActionAnchorEl(null);
+                setConfirmModal({ open: true, type: 'success', message: result.message });
             }
         } catch (error) {
-            toast.error('Failed to perform bulk action');
+            setConfirmModal(true, 'error', 'Failed to update Products!');
         }
     };
     // Handle column visibility change
@@ -835,16 +854,18 @@ const ProductListNew = () => {
             <TablePagination
                 rowsPerPageOptions={[25, 50, 75, 100]}
                 component="div"
-                count={filteredProducts.length}
-                rowsPerPage={pagination.rowsPerPage}
+                count={pagination.total}
+                rowsPerPage={pagination.limit}
                 page={pagination.page}
-                onPageChange={(_, newPage) => setPagination({ page: newPage })}
-                onRowsPerPageChange={(e) => setPagination({
-                    rowsPerPage: parseInt(e.target.value, 10),
-                    page: 0
-                })}
+                onPageChange={(_, newPage) => { setPagination({ page: newPage }); }}
+                onRowsPerPageChange={(e) => {
+                    setPagination({
+                        limit: parseInt(e.target.value, 10),
+                        page: 0
+                    });
+                }}
                 labelDisplayedRows={({ from, to, count }) =>
-                    `Page ${pagination.page + 1} of ${Math.ceil(count / pagination.rowsPerPage)}`
+                    `Page ${pagination.page + 1} of ${Math.ceil((count / pagination.limit) || 1)}`
                 }
             />
             {/* Confirm Modal */}
