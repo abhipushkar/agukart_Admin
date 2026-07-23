@@ -187,9 +187,9 @@ const ShopInfo = ({
 
   const handleNext = () => {
     if (handleValidate("shopInfo")) {
-        setValue("info")
-        setCheckShopInfo(true)
-        setInfoTab(true)
+      setValue("info")
+      setCheckShopInfo(true)
+      setInfoTab(true)
     }
   }
 
@@ -441,13 +441,13 @@ const ShopInfo = ({
             autoFormat={true}
             value={`${formValues.mobileCode}${formValues.mobileNo}`}
             onChange={handlePhoneChange}
-            onBlur={() => {
-              if (!formValues.mobileNo) {
-                setErrors((prev) => ({ ...prev, mobileNo: "Mobile number is required" }));
-              } else {
-                setErrors((prev) => ({ ...prev, mobileNo: "" }));
-              }
-            }}
+            // onBlur={() => {
+            //   if (!formValues.mobileNo) {
+            //     setErrors((prev) => ({ ...prev, mobileNo: "Mobile number is required" }));
+            //   } else {
+            //     setErrors((prev) => ({ ...prev, mobileNo: "" }));
+            //   }
+            // }}
             inputProps={{
               name: "phone",
               required: true,
@@ -605,51 +605,51 @@ const ShopInfo = ({
           />
         </Grid>
 
-       <Grid item xs={12} textAlign="end">
-        {queryId && (
+        <Grid item xs={12} textAlign="end">
+          {queryId && (
+            <Button
+              endIcon={loading ? <CircularProgress size={16} color="inherit" /> : null}
+              disabled={loading}
+              sx={{
+                backgroundColor: "#000", // black
+                borderRadius: "8px",
+                color: "#fff",
+                padding: "8px 20px",
+                fontWeight: 500,
+                textTransform: "capitalize",
+                marginRight: 2,
+                boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+                "&:hover": {
+                  backgroundColor: "#333",
+                },
+                "&:disabled": {
+                  backgroundColor: "#888",
+                }
+              }}
+              onClick={handleVendorSave}
+            >
+              Save
+            </Button>
+          )}
           <Button
-            endIcon={loading ? <CircularProgress size={16} color="inherit" /> : null}
-            disabled={loading}
+            variant="contained"
+            onClick={handleNext}
             sx={{
-              backgroundColor: "#000", // black
+              backgroundColor: "#43a047", // green
               borderRadius: "8px",
               color: "#fff",
               padding: "8px 20px",
               fontWeight: 500,
               textTransform: "capitalize",
-              marginRight: 2,
               boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
               "&:hover": {
-                backgroundColor: "#333",
-              },
-              "&:disabled": {
-                backgroundColor: "#888",
+                backgroundColor: "#388e3c",
               }
             }}
-            onClick={handleVendorSave}
           >
-            Save
+            Next
           </Button>
-        )}
-        <Button
-          variant="contained"
-          onClick={handleNext}
-          sx={{
-            backgroundColor: "#43a047", // green
-            borderRadius: "8px",
-            color: "#fff",
-            padding: "8px 20px",
-            fontWeight: 500,
-            textTransform: "capitalize",
-            boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
-            "&:hover": {
-              backgroundColor: "#388e3c",
-            }
-          }}
-        >
-          Next
-        </Button>
-      </Grid>
+        </Grid>
 
       </Grid>
       <ConfirmModal open={open} handleClose={handleClose} type={type} msg={msg} />

@@ -42,6 +42,9 @@ const Add = () => {
     mobileNo: "",
     shopTitle: "",
     shopAddress: "",
+    meta_title: "",
+    meta_keywords: "",
+    meta_description: "",
     shopAnnouncement: "",
     msgToBuyers: "",
     shopIcon: null,
@@ -73,6 +76,9 @@ const Add = () => {
     images: "",
     shopTitle: "",
     shopAddress: "",
+    meta_title: "",
+    meta_keywords: "",
+    meta_description: "",
     shopAnnouncement: "",
     msgToBuyers: "",
     shopIcon: "",
@@ -174,6 +180,9 @@ const Add = () => {
           msgToBuyers: resData?.vendorData?.buyers_message,
           newShopName: resData?.vendorData?.shop_name,
           shopAddress: resData?.vendorData?.shop_address,
+          meta_title: resData?.vendorData?.meta_title,
+          meta_keywords: resData?.vendorData?.meta_keywords.join(','),
+          meta_description: resData?.vendorData?.meta_description,
           memberData: membersWithImgSrc,
           description: resData?.vendorData?.description,
           shopPolicy: resData?.vendorData?.shop_policy,
@@ -284,6 +293,10 @@ const Add = () => {
         // if (!formValues.shopAnnouncement)
         // newErrors.shopAnnouncement = "Shop Announcement is required";
         // if (!formValues.msgToBuyers) newErrors.msgToBuyers = "Message To Buyers is required";
+        if (!formValues.meta_title) newErrors.meta_title = "Meta title is required";
+        if (!formValues.meta_keywords.length) newErrors.meta_keywords = "Meta keywords is required";
+        if (!formValues.meta_description) newErrors.meta_description = "Meta Description is required";
+
         setErrors(newErrors);
         if (Object.keys(newErrors).length === 0) {
           return true;
@@ -468,7 +481,7 @@ const Add = () => {
   };
 
   const handleSave = async () => {
-    if (handleValidate("story")) {
+    if (handleValidate("story") && handleValidate(value)) {
       try {
         const filterMemberData = formValues?.memberData?.map(({ imgSrc, ...rest }) => rest);
         const filterShopData = shopData?.map(({ imgSrc, ...rest }) => rest);
@@ -488,6 +501,9 @@ const Add = () => {
           confirm_password: formValues.cPassword,
           shop_title: formValues.shopTitle,
           shop_address: formValues.shopAddress,
+          meta_title: formValues.meta_title,
+          meta_keywords: formValues.meta_keywords ? formValues.meta_keywords.split(",").map(item => item.trim()) : [],
+          meta_description: formValues.meta_description,
           shop_announcement: formValues.shopAnnouncement,
           buyers_message: formValues.msgToBuyers,
           shop_name: formValues.newShopName,

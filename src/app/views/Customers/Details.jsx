@@ -368,19 +368,23 @@ const Details = ({ userdata, getUserById }) => {
                     Address 3
                   </TableCell>
                   <TableCell align="left">
-                    {userdata?.userAddresses?.[2]
-                      ? [`${userdata.userAddresses[2]?.first_name} ${userdata.userAddresses[2]?.last_name}`,
-                      userdata.userAddresses[2]?.address_line1,
-                      userdata.userAddresses[2]?.address_line2,
-                      userdata.userAddresses[2]?.city,
-                      userdata.userAddresses[2]?.state,
-                      userdata.userAddresses[2]?.pincode,
-                      userdata.userAddresses[2]?.country,
-                      `${userdata.userAddresses[2]?.phone_code} ${userdata.userAddresses[2]?.mobile}`,
+                    {userdata?.userAddresses?.[2] ? (
+                      [
+                        `${userdata.userAddresses[2]?.first_name} ${userdata.userAddresses[2]?.last_name}`,
+                        userdata.userAddresses[2]?.address_line1,
+                        userdata.userAddresses[2]?.address_line2,
+                        `${userdata.userAddresses[2]?.city + ", " + userdata.userAddresses[2]?.state}`,
+                        userdata.userAddresses[2]?.pincode,
+                        userdata.userAddresses[2]?.country,
+                        `${userdata.userAddresses[2]?.phone_code} ${userdata.userAddresses[2]?.mobile}`,
                       ]
                         .filter(Boolean)
-                        .join(", ")
-                      : "No Address Available"}
+                        .map((item, index) => (
+                          <div key={index}>{item}</div>
+                        ))
+                    ) : (
+                      "No Address Available"
+                    )}
                   </TableCell>
                 </TableRow>
                 <TableRow>
