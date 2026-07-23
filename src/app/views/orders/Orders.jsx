@@ -24,7 +24,7 @@ import { apiEndpoints } from "app/constant/apiEndpoints";
 import { useEffect } from "react";
 import { dateRange, completedStatus, newest } from "app/data/Index";
 import ConfirmModal from "app/components/ConfirmModal";
-import { CircularProgress, Menu, Pagination, Select } from "@mui/material";
+import { CircularProgress, Menu, Pagination, Select, useMediaQuery } from "@mui/material";
 import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
 import CloseIcon from "@mui/icons-material/Close";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
@@ -36,6 +36,8 @@ import AddBulkTracking from "./AddBulkTracking";
 import UpdateBulkStatus from "./UpdateBulkStatus";
 import UpdateStatus from "./UpdateStatus";
 import AddIcon from "@mui/icons-material/Add";
+import { useTheme } from "@emotion/react";
+
 
 const Search = styled("span")(({ theme }) => ({
   position: "relative",
@@ -58,6 +60,9 @@ const DEFAULT_PAGE = 1;
 const Orders = () => {
   const auth_key = localStorage.getItem(localStorageKey.auth_key);
   const isAdmin = localStorage.getItem(localStorageKey.designation_id) === '2';
+
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   const [orders, setOrders] = useState([]);
   const [baseUrl, setBaseUrl] = useState("");
@@ -529,11 +534,11 @@ const Orders = () => {
             </Typography>
           </Grid>
           <Grid lg={6} md={6} xs={6}>
-            <Box sx={{ display: "flex", alignItems: "centre", justifyContent: "end", gap: 2 }}>
-              <Button variant="contained" onClick={handleBulkTracking}>
+            <Box sx={{ display: "flex", flexDirection: { xs: 'column-reverse', md: 'row' }, alignItems: "centre", justifyContent: "end", gap: 2 }}>
+              <Button variant="contained" onClick={handleBulkTracking} size={isMobile ? "small" : 'medium'}>
                 Add Bulk Tracking
               </Button>
-              <Button variant="contained" onClick={handleBulkStatus}>
+              <Button variant="contained" onClick={handleBulkStatus} size={isMobile ? "small" : 'medium'}>
                 Update Bulk Status
               </Button>
             </Box>
@@ -544,13 +549,23 @@ const Orders = () => {
             <Box>
               <TabContext value={tab}>
                 <Box>
-                  <Box display={"flex"} justifyContent={"space-between"} alignItems={"center"}>
-                    <Box>
+                  <Box display={"flex"} flexDirection={{ xs: 'column-reverse', md: 'row' }} justifyContent={"space-between"} alignItems={"center"}>
+                    <Box
+                      sx={{
+                        width: "100%",
+                        overflowX: "auto",
+                      }}
+                    >
+
                       {!isSearched && (<TabList
-                        onChange={handleTabChange}
-                        aria-label="lab API tabs example"
                         variant="scrollable"
                         scrollButtons="auto"
+                        allowScrollButtonsMobile
+                        sx={{
+                          "& .MuiTabs-flexContainer": {
+                            flexWrap: "nowrap",
+                          },
+                        }}
                       >
                         <Tab label={`Pending ${tab === "pending" ? orderLength : ""}`} value="pending" />
                         <Tab

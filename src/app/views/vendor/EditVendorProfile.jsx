@@ -39,6 +39,9 @@ const EditVendorProfile = () => {
         mobileNo: "",
         shopTitle: "",
         shopAddress: "",
+        meta_title: "",
+        meta_keywords: "",
+        meta_description: "",
         shopAnnouncement: "",
         msgToBuyers: "",
         shopIcon: null,
@@ -69,6 +72,9 @@ const EditVendorProfile = () => {
         images: "",
         shopTitle: "",
         shopAddress: "",
+        meta_title: "",
+        meta_keywords: "",
+        meta_description: "",
         shopAnnouncement: "",
         msgToBuyers: "",
         shopIcon: "",
@@ -151,6 +157,9 @@ const EditVendorProfile = () => {
                     msgToBuyers: resData?.vendorData?.buyers_message,
                     newShopName: resData?.vendorData?.shop_name,
                     shopAddress: resData?.vendorData?.shop_address,
+                    meta_title: resData?.vendorData?.meta_title,
+                    meta_keywords: resData?.vendorData?.meta_keywords.join(','),
+                    meta_description: resData?.vendorData?.meta_description,
                     memberData: membersWithImgSrc,
                     description: resData?.vendorData?.description,
                     shopPolicy: resData?.vendorData?.shop_policy,
@@ -339,6 +348,9 @@ const EditVendorProfile = () => {
                     confirm_password: formValues.cPassword,
                     shop_title: formValues.shopTitle,
                     shop_address: formValues.shopAddress,
+                    meta_title: formValues.meta_title,
+                    meta_keywords: formValues.meta_keywords.split(",").map(item => item.trim()) || [],
+                    meta_description: formValues.meta_description,
                     shop_announcement: formValues.shopAnnouncement,
                     buyers_message: formValues.msgToBuyers,
                     shop_name: formValues.newShopName,
@@ -347,7 +359,7 @@ const EditVendorProfile = () => {
                     shop_policy: formValues.shopPolicy,
                     story_headline: formValues.headline,
                     story: formValues.storyDesc,
-                    shop_photos: filterShopData
+                    shop_photos: filterShopData,
                 };
                 if (formValues?.shopVideo && !isDeleteVideo) {
                     payload.isDeleteVideo = false;
