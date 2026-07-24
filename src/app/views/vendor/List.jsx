@@ -245,7 +245,7 @@ const List = () => {
         email: vendor.email,
         password: vendor.showPassword
       };
-      const res = await ApiService.login(apiEndpoints.login, payload);
+      const res = await ApiService.login(apiEndpoints.login, payload, auth_key);
       console.log(res);
       if (res.status === 200) {
         localStorage.setItem(localStorageKey.adminDetail, JSON.stringify({

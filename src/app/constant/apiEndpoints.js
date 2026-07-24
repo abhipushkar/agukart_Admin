@@ -3,6 +3,8 @@
 export const apiEndpoints = {
   userlist: "user-list",
   login: "admin-login",
+  dashboardLogin: "dashboard-login",
+  verifyOtp: "verify-login-otp",
   logout: 'logout',
   changePassword: "change-password",
   getUserDetialsChat: "getUserDetails",

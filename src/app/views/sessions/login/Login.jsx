@@ -24,6 +24,7 @@ import { styled } from "@mui/system";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import ConfirmModal from "app/components/ConfirmModal";
+import OtpModal from "app/components/OtpModal";
 import { getDashboardRoute } from "app/constant/routeHelper";
 
 function Copyright(props) {
@@ -119,7 +120,9 @@ export default function LogIn() {
   const [type, setType] = useState("");
   const [route, setRoute] = useState(null);
   const [msg, setMsg] = useState(null);
-  console.log(msg, "----------")
+
+  const [otpModalOpen, setOtpModalOpen] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
 
   const logOut = () => {
     localStorage.removeItem(localStorageKey.auth_key);
@@ -154,21 +157,19 @@ export default function LogIn() {
         email: values.email,
         password: values.password
       };
-      const res = await ApiService.login(apiEndpoints.login, payload);
+      const res = await ApiService.login(apiEndpoints.dashboardLogin, payload);
       console.log(res);
       if (res.status === 200) {
-        localStorage.setItem(localStorageKey.auth_key, res?.data?.token);
-        localStorage.setItem(localStorageKey.designation_id, res?.data?.user?.designation_id);
-        if (res?.data?.user?.designation_id === 3) {
-          localStorage.setItem(localStorageKey.vendorId, res?.data?.user?._id);
-        }
-        window.location.replace(getDashboardRoute());
+        setUserEmail(values.email);
+        setOtpModalOpen(true);
+        setLoading(false);
+
+        // Show success message
         handleOpen("success", res?.data);
       }
     } catch (error) {
       console.log(error?.response?.data?.message, "error");
       handleOpen("error", error?.response?.data || error);
-    } finally {
       setLoading(false);
     }
   };
@@ -190,6 +191,12 @@ export default function LogIn() {
 
   const handleSubmit = (values) => {
     handleFormSubmit(values);
+  };
+
+  const handleOtpSuccess = () => {
+    // Cleanup
+    setOtpModalOpen(false);
+    setUserEmail('');
   };
 
   return (
@@ -284,6 +291,16 @@ export default function LogIn() {
           </Box>
           <Copyright sx={{ mt: 1, mb: 4 }} />
         </Container>
+        <OtpModal
+          open={otpModalOpen}
+          onClose={() => {
+            setOtpModalOpen(false);
+            setUserEmail('');
+            setLoading(false);
+          }}
+          email={userEmail}
+          onSuccess={handleOtpSuccess}
+        />
         <ConfirmModal open={open} handleClose={handleClose} type={type} msg={msg} />
       </ThemeProvider>
     </FirebaseRoot>

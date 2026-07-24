@@ -64,6 +64,15 @@ const Orders = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
+  const [tabSaleCount, setTabSaleCount] = useState({
+    pending: 0,
+    unshipped: 0,
+    in_progress: 0,
+    completed: 0,
+    hold: 0,
+    pinned: 0
+  });
+
   const [orders, setOrders] = useState([]);
   const [baseUrl, setBaseUrl] = useState("");
   const [date, setDate] = useState({
@@ -329,6 +338,24 @@ const Orders = () => {
     getOrderList();
   }, [tab, date, sortBy, completeStatus, page, pageSize, getOrderList]);
 
+  const getTabSalesCounts = async () => {
+    try {
+      const res = await ApiService.get('sales-count', auth_key);
+      if (res.data.success) {
+        console.log("tabs", res.data.data)
+        setTabSaleCount(res.data.data);
+      }
+    } catch (error) {
+      console.error(error)
+    }
+  };
+
+  useEffect(() => {
+    if (!auth_key) return;
+    getTabSalesCounts();
+  }, [])
+
+
   const updateOrder = async (id, orderStatus) => {
     try {
       const payload = {
@@ -511,6 +538,7 @@ const Orders = () => {
     setOpenBulkStatus(false);
   };
 
+  console.log(tabSaleCount[tab], tabSaleCount, "tabs")
   return (
     <>
       <AddBulkTracking
@@ -552,7 +580,7 @@ const Orders = () => {
                   <Box display={"flex"} flexDirection={{ xs: 'column-reverse', md: 'row' }} justifyContent={"space-between"} alignItems={"center"}>
                     <Box
                       sx={{
-                        width: "100%",
+                        width: { xs: "100%", md: "70%" },
                         overflowX: "auto",
                       }}
                     >
@@ -560,39 +588,40 @@ const Orders = () => {
                       {!isSearched && (<TabList
                         variant="scrollable"
                         scrollButtons="auto"
-                        allowScrollButtonsMobile
+                        // allowScrollButtonsMobile
                         sx={{
                           "& .MuiTabs-flexContainer": {
                             flexWrap: "nowrap",
                           },
                         }}
+                        onChange={handleTabChange}
                       >
-                        <Tab label={`Pending ${tab === "pending" ? orderLength : ""}`} value="pending" />
+                        <Tab label={`Pending ${tabSaleCount["pending"]}`} value="pending" />
                         <Tab
-                          label={`Unshipped ${tab === "unshipped" ? orderLength : ""}`}
+                          label={`Unshipped ${tabSaleCount["unshipped"]}`}
                           value="unshipped"
                         />
                         <Tab
-                          label={`In Progress ${tab === "in-progress" ? orderLength : ""}`}
+                          label={`In Progress ${tabSaleCount["in_progress"]}`}
                           value="in-progress"
                         />
                         <Tab
-                          label={`Completed ${tab === "completed" ? orderLength : ""}`}
+                          label={`Completed ${tabSaleCount["completed"]}`}
                           value="completed"
                         />
                         <Tab
-                          label={`Hold ${tab === "hold" ? orderLength : ""}`}
+                          label={`Hold ${tabSaleCount["hold"]}`}
                           value="hold"
                         />
                         <Tab
-                          label={`Pinned ${tab === "pin" ? orderLength : ""}`}
+                          label={`Pinned ${tabSaleCount["pinned"]}`}
                           value="pin"
                         >
                         </Tab>
                       </TabList>)}
                     </Box>
-                    <Box sx={{ display: "flex", alignItems: "centre", justifyContent: "end" }}>
-                      <Search>
+                    <Box sx={{ display: "flex", alignItems: "centre", justifyContent: "end", width: { xs: '100%', md: '30%' } }}>
+                      <Search sx={{ flex: 1 }}>
                         <InputBase
                           placeholder="Search all orders..."
                           inputProps={{ "aria-label": "search" }}
