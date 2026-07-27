@@ -94,6 +94,7 @@ const MessageBubble = styled(Paper)(({ theme, isOwn, images, video }) => ({
         maxWidth: "90%",
         padding: theme.spacing(1),
     },
+    marginTop: '8px'
 }));
 
 const InputContainer = styled(Paper)(({ theme }) => ({
@@ -682,14 +683,17 @@ We would love to help and make this right for you. Please let us know how we can
                                                     justifyContent: isOwn ? "flex-end" : "flex-start",
                                                     padding: "4px 0",
                                                     border: "none",
+                                                    width: "100%",
                                                 }}
                                             >
                                                 <Box
                                                     sx={{
                                                         display: "flex",
                                                         alignItems: "flex-end",
-                                                        maxWidth: "100%",
+                                                        maxWidth: "85%", // Increased from 100%
                                                         gap: 1,
+                                                        width: "auto", // Allow it to size based on content
+                                                        flex: 1
                                                     }}
                                                 >
                                                     {!isOwn && (
@@ -699,9 +703,18 @@ We would love to help and make this right for you. Please let us know how we can
                                                         />
                                                     )}
 
-                                                    <Box sx={{ display: "flex", flexDirection: "column", alignItems: isOwn ? "flex-end" : "flex-start", maxWidth: "100%" }}>
-                                                        {(msg.text || msg?.imageUrls?.length > 0 || msg?.attachments?.length > 0) && (
-                                                            <MessageBubble elevation={0} isOwn={isOwn} images={msg?.attachments?.length} video={msg?.attachments?.length > 0 && msg?.attachments[0]?.type === "video"}>
+                                                    <Box
+                                                        sx={{
+                                                            display: "flex",
+                                                            flexDirection: "column",
+                                                            alignItems: isOwn ? "flex-end" : "flex-start",
+                                                            maxWidth: "100%",
+                                                            minWidth: 0, // Allow shrinking
+                                                            flex: "1 1 auto", // Allow growth
+                                                        }}
+                                                    >
+                                                        {(msg?.imageUrls?.length > 0 || msg?.attachments?.length > 0) && (
+                                                            <MessageBubble elevation={0} isOwn={isOwn} images={msg?.attachments?.length} video={msg?.attachments?.some(att => att.type === 'video')}>
                                                                 {/* Images from old format */}
                                                                 {msg?.imageUrls?.length > 0 && (
                                                                     <Box
@@ -778,7 +791,8 @@ We would love to help and make this right for you. Please let us know how we can
                                                                     </Box>
                                                                 )}
 
-                                                                {/* New Attachments - Images */}
+                                                                {/* New Attachments */}
+                                                                {/* Images Grid */}
                                                                 {msg?.attachments?.filter(a => a.type === 'image').length > 0 && (
                                                                     <Box
                                                                         sx={{
@@ -924,23 +938,25 @@ We would love to help and make this right for you. Please let us know how we can
                                                                         </a>
                                                                     </Box>
                                                                 ))}
-
-                                                                {/* Text Message */}
-                                                                {msg.text && (
-                                                                    <Typography
-                                                                        sx={{
-                                                                            fontSize: "15px",
-                                                                            wordWrap: "break-word",
-                                                                            whiteSpace: "pre-wrap",
-                                                                            width: 'fit-content',
-                                                                            maxWidth: "100%",
-                                                                            textAlign: "initial",
-                                                                        }}
-                                                                    >
-                                                                        {detectLink(msg.text || "")}
-                                                                    </Typography>
-                                                                )}
                                                             </MessageBubble>
+                                                        )}
+
+                                                        {/* Text Message */}
+                                                        {msg.text && (
+                                                            <MessageBubble elevation={0} isOwn={isOwn}>
+                                                                <Typography
+                                                                    sx={{
+                                                                        fontSize: "15px",
+                                                                        wordWrap: "break-word",
+                                                                        whiteSpace: "pre-wrap",
+                                                                        width: 'fit-content',
+                                                                        maxWidth: "100%",
+                                                                        textAlign: "initial",
+                                                                    }}
+                                                                >
+                                                                    {detectLink(msg.text || "")}
+                                                                </Typography>
+                                                            </ MessageBubble>
                                                         )}
 
                                                         {/* Product Card */}
