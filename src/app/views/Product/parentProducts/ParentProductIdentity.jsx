@@ -5,6 +5,7 @@ import {
     Autocomplete,
     Box,
     Button,
+    Card,
     MenuItem,
     Stack,
     Tab,
@@ -46,7 +47,7 @@ const ParentProductIdentity = ({ productCode, listing }) => {
         description: "",
         subCategory: "",
         sellerSku: "",
-        zoom: { scale: 1, x: 0, y: 0 },
+        zoom: { scale: 1, x: 0, y: 0, rotation: 0 },
         Innervariations: {},
         variantData: [],
         variant_id: [],
@@ -1212,7 +1213,12 @@ const ParentProductIdentity = ({ productCode, listing }) => {
                     description: resData?.description || "",
                     sellerSku: listing === 'copy' ? "" : resData?.seller_sku || "",
                     images: listing === 'copy' ? [] : [{ src: `${res?.data?.base_url}${resData?.image}` }],
-                    zoom: resData?.zoom || { scale: 1, x: 0, y: 0 },
+                    zoom: resData?.zoom ?? {
+                        scale: 1,
+                        rotation: 0,
+                        x: 0,
+                        y: 0,
+                    },
                     variant_id: resData?.variants?.map((v) => v._id) || [],
                     variant_name: resData?.variants?.map((v) => v.variant_name) || [],
                     subCategory: resData?.sub_category || "",
@@ -1505,6 +1511,7 @@ const ParentProductIdentity = ({ productCode, listing }) => {
     if (!isClient) {
         return null;
     }
+    console.log(images, 'images');
     return (
         <>
             {isCoponentLoader ? (
@@ -1942,6 +1949,36 @@ const ParentProductIdentity = ({ productCode, listing }) => {
                                         </Typography>
                                     )}
                             </Box>
+                            {images.length > 0 && (
+                                <Card
+                                    sx={{
+                                        p: 2,
+                                        border: "2px solid",
+                                        borderColor: "primary.main",
+                                        borderRadius: "8px",
+                                        height: "fit-content", ml: 'auto'
+                                    }}
+                                >
+                                    <Typography variant="body1" color="primary.main" textAlign={'center'} mb={1}>Preview Image</Typography>
+                                    <Box width={200} height={200} overflow={'hidden'} border={'1px solid #d3cdcd'}>
+                                        <img src={images[0].src} alt={''}
+                                            style={{
+                                                width: "100%",
+                                                height: "100%",
+                                                objectFit: "contain",
+                                                transform: `
+                                                translate(${(formData.zoom?.x * 0.5) ?? 0}px, ${(formData.zoom?.y * 0.5) ?? 0}px)
+                                                scale(${formData.zoom?.scale ?? 1})
+                                                rotate(${formData.zoom?.rotation ?? 0}deg)
+                                            `,
+                                                transformOrigin: "center center",
+                                                transition: "transform 0.2s ease",
+                                                willChange: "transform",
+                                            }}
+                                        />
+                                    </Box>
+                                </Card>
+                            )}
                         </Box>
                         <Box
                             sx={{

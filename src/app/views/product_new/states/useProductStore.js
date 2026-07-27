@@ -217,7 +217,7 @@ export const useProductStore = create((set, get) => ({
 
     // Search products
     searchProducts: async () => {
-        const { filters, pagination, showFeaturedOnly, setFilters, setLoading } = get();
+        const { filters, pagination, setPagination, showFeaturedOnly, setFilters, setLoading } = get();
         try {
             set({ actionLoading: true });
             setLoading(true);
@@ -232,8 +232,11 @@ export const useProductStore = create((set, get) => ({
                 else setFilters({ isSearched: false })
                 set({
                     products: res.data.data,
-                    filteredProducts: res.data.data,
-                    pagination: res.data.pagination
+                    filteredProducts: res.data.data
+                });
+                setPagination({
+                    ...res.data.pagination,
+                    page: res.data.pagination.page - 1
                 });
             }
         } catch (e) {

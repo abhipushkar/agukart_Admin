@@ -19,7 +19,11 @@ import {
   TableRow,
   TextField,
   TablePagination,
-  Typography
+  Typography,
+  FormControl,
+  FormLabel,
+  Slider as MuiSlider,
+  Chip
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import { Icon } from "@mui/material";
@@ -36,25 +40,33 @@ import { toast } from "react-toastify";
 import { useEffect } from "react";
 import ConfirmModal from "app/components/ConfirmModal";
 import { useCallback } from "react";
+import Cropper from 'react-cropper';
+import 'cropperjs/dist/cropper.css';
+
+// Add this to your Container styled component or as a global style
 const Container = styled("div")(({ theme }) => ({
   margin: "30px",
   [theme.breakpoints.down("sm")]: { margin: "16px" },
   "& .breadcrumb": {
     marginBottom: "30px",
     [theme.breakpoints.down("sm")]: { marginBottom: "16px" }
-  }
+  },
 }));
+
 const style = {
   position: "absolute",
   top: "50%",
   left: "50%",
   transform: "translate(-50%, -50%)",
-  width: "70%",
-  // height: "90%",
+  width: "90%", // Increased width
+  maxWidth: "1200px", // Max width for large screens
   bgcolor: "background.paper",
   boxShadow: 24,
-  p: 4
+  p: 4,
+  maxHeight: "95vh",
+  overflowY: "auto"
 };
+
 const SliderList = () => {
   const [open1, setOpen1] = React.useState(false);
   const [imagePreview, setImagePreview] = useState(null);
@@ -76,12 +88,21 @@ const SliderList = () => {
   const [statusData, setStatusData] = useState({});
   const navigate = useNavigate();
   const [altText, setAltText] = useState("");
+
+  // Cropper ref and state
+  const cropperRef = React.useRef(null);
+  const [croppedImage, setCroppedImage] = useState(null);
+  const [imageToCrop, setImageToCrop] = useState(null);
+  const [showCropper, setShowCropper] = useState(false);
+  const [isCropping, setIsCropping] = useState(false);
+
   const logOut = () => {
     localStorage.removeItem(localStorageKey.auth_key);
     localStorage.removeItem(localStorageKey.designation_id);
     localStorage.removeItem(localStorageKey.vendorId);
     setRoute(ROUTE_CONSTANT.login)
   };
+
   const handleOpen = (type, msg) => {
     setMsg(msg?.message);
     setOpen(true);
@@ -90,6 +111,7 @@ const SliderList = () => {
       logOut()
     }
   };
+
   const handleClose = () => {
     setOpen(false);
     if (route !== null) {
@@ -98,7 +120,9 @@ const SliderList = () => {
     setRoute(null);
     setMsg(null);
   };
+
   const handleOpen1 = () => setOpen1(true);
+
   const handleClose1 = () => {
     setOpen1(false);
     setImageEditData(null);
@@ -107,16 +131,31 @@ const SliderList = () => {
     setFileName("");
     setImage(null);
     setAltText("");
+    setCroppedImage(null);
+    setImageToCrop(null);
+    setShowCropper(false);
+    setIsCropping(false);
   };
+
   const handleImageSelect = (event) => {
     const file = event.target.files[0];
     if (file) {
-      setImage(event.target.files[0]);
+      setImage(file);
       setFileName(file.name);
+
+      // Read file for cropping
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImageToCrop(e.target.result);
+        setShowCropper(true);
+        setImagePreview(e.target.result);
+      };
+      reader.readAsDataURL(file);
     } else {
       setFileName("");
     }
   };
+
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -127,14 +166,65 @@ const SliderList = () => {
       reader.readAsDataURL(file);
     }
   };
+
+  // Handle crop
+  const handleCrop = () => {
+    if (cropperRef.current) {
+      const cropper = cropperRef.current.cropper;
+      const croppedDataUrl = cropper.getCroppedCanvas({
+        width: 1200,
+        height: 300,
+        imageSmoothingEnabled: true,
+        imageSmoothingQuality: 'high',
+      }).toDataURL('image/jpeg', 0.95);
+
+      setCroppedImage(croppedDataUrl);
+      setImagePreview(croppedDataUrl);
+      setShowCropper(false);
+      setIsCropping(false);
+
+      // Convert data URL to file
+      fetch(croppedDataUrl)
+        .then(res => res.blob())
+        .then(blob => {
+          const file = new File([blob], fileName || 'cropped-image.jpg', { type: 'image/jpeg' });
+          setImage(file);
+        });
+    }
+  };
+
+  // Reset cropper
+  const resetCropper = () => {
+    setShowCropper(false);
+    setIsCropping(false);
+    setImageToCrop(null);
+    if (editImageData?.image) {
+      setImagePreview(editImageData.image);
+    }
+  };
+
   const auth_key = localStorage.getItem(localStorageKey.auth_key);
+
   const uploadImageHandler = async () => {
     try {
       setLoading(true);
       const formData = new FormData();
-      formData.append("file", image);
+
+      // Use cropped image if available, otherwise use original
+      if (croppedImage) {
+        const blob = await fetch(croppedImage).then(res => res.blob());
+        formData.append("file", blob, fileName || 'slider-image.jpg');
+      } else if (image) {
+        formData.append("file", image);
+      } else {
+        toast.error("No image selected");
+        setLoading(false);
+        return;
+      }
+
       formData.append("_id", editImageData ? editImageData?._id : "0");
       formData.append("image_alt", altText);
+
       const res = await ApiService.postImage(apiEndpoints.addSlider, formData, auth_key);
       console.log(res);
       if (res.status === 200) {
@@ -146,6 +236,7 @@ const SliderList = () => {
         setImagePreview(null);
         setFileName("");
         setImage(null);
+        setCroppedImage(null);
         getSliderList();
       }
     } catch (error) {
@@ -155,9 +246,11 @@ const SliderList = () => {
       setLoading(false);
     }
   };
+
   useEffect(() => {
     getSliderList();
   }, []);
+
   const getSliderList = async () => {
     try {
       const res = await ApiService.get(apiEndpoints.getSlider, auth_key);
@@ -181,6 +274,7 @@ const SliderList = () => {
       handleOpen("error", error);
     }
   };
+
   const handleStatusChange = useCallback(async () => {
     if (statusData) {
       try {
@@ -198,6 +292,7 @@ const SliderList = () => {
       }
     }
   }, [auth_key, getSliderList, statusData]);
+
   const handleDelete = useCallback(async () => {
     if (statusData) {
       try {
@@ -212,6 +307,7 @@ const SliderList = () => {
       }
     }
   }, [auth_key, getSliderList, statusData]);
+
   const editSliderHandler = async () => {
     try {
       const res = await ApiService.get(`${apiEndpoints.editSlider}/${editSliderlId}`, auth_key);
@@ -219,41 +315,32 @@ const SliderList = () => {
         setImageEditData(res?.data?.data);
         setImagePreview(res?.data?.data?.image);
         setAltText(res?.data?.data?.image_alt || "");
+        // Set image to crop for editing
+        setImageToCrop(res?.data?.data?.image);
       }
     } catch (error) {
       handleOpen("error", error);
     }
   };
+
   useEffect(() => {
     if (editSliderlId) {
       editSliderHandler();
     }
   }, [editSliderlId]);
+
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
   };
+
   const handleChangeRowsPerPage = (event) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
-  // const deleteSliderHandler = async (id) => {
-  //   setLoading(true);
-  //   try {
-  //     const res = await ApiService.delete(`${apiEndpoints.deleteSlider}/${id}`, auth_key);
-  //     if (res.status === 200) {
-  //       getSliderList();
-  //       toast.success(res?.data?.message);
-  //       setLoading(false);
-  //     }
-  //   } catch (error) {
-  //     console.log();
-  //     setLoading(false);
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
+
   const label = { inputProps: { "aria-label": "Switch demo" } };
   console.log({ sliderList });
+
   const handleRequestSort = (property) => {
     let newOrder;
     if (orderBy !== property) {
@@ -264,6 +351,7 @@ const SliderList = () => {
     setOrder(newOrder);
     setOrderBy(newOrder === "none" ? null : property);
   };
+
   const sortComparator = (a, b, orderBy) => {
     if (typeof a[orderBy] === "string" && typeof b[orderBy] === "string") {
       return a[orderBy].localeCompare(b[orderBy]);
@@ -276,6 +364,7 @@ const SliderList = () => {
     }
     return 0;
   };
+
   const sortedRows = orderBy
     ? [...sliderList].sort((a, b) =>
       order === "asc"
@@ -285,6 +374,7 @@ const SliderList = () => {
           : 0
     )
     : sliderList;
+
   return (
     <Container>
       <Modal
@@ -295,10 +385,11 @@ const SliderList = () => {
       >
         <Box sx={style}>
           <Typography sx={{ mb: 2 }} id="modal-modal-title" variant="h6" component="h2">
-            Add Image
+            {editImageData ? 'Edit Image' : 'Add Image'}
           </Typography>
-          <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-            <Box sx={{ width: "50%" }}>
+
+          <Box sx={{ display: "flex", gap: 2, mb: 2, flexWrap: "wrap" }}>
+            <Box sx={{ flex: 1, minWidth: "200px" }}>
               <label htmlFor="file-input">
                 <TextField
                   fullWidth
@@ -329,11 +420,13 @@ const SliderList = () => {
                     readOnly: true
                   }}
                   placeholder="Select file"
+                  helperText={<strong color={'primary.main'}>4:1 image is preferred</strong>}
                 />
               </label>
             </Box>
+
             {imagePreview && (
-              <Box sx={{ width: "50%" }}>
+              <Box sx={{ flex: 1, minWidth: "200px" }}>
                 <TextField
                   fullWidth
                   label="Image Alt Text"
@@ -347,34 +440,141 @@ const SliderList = () => {
                       top: "-7px",
                     }
                   }}
+                  helperText={<strong>Alt text is required!</strong>}
                 />
               </Box>
             )}
           </Box>
-          <Stack
-            sx={{
-              height: imagePreview ? "300px" : 0,
-              width: "300px",
-              mb: "16px"
-            }}
-          >
-            {imagePreview && (
-              <img
-                style={{
+
+          {/* Image Preview with Edit Button */}
+          {imagePreview && !showCropper && (
+            <Box sx={{ position: 'relative', mb: 2 }}>
+              <Stack
+                sx={{
+                  height: "200px",
                   width: "100%",
-                  height: "100%",
-                  objectFit: "contain"
+                  backgroundColor: '#f5f5f5',
+                  borderRadius: 1,
+                  overflow: 'hidden',
+                  position: 'relative'
                 }}
-                src={imagePreview}
-                alt="slider-image"
-              />
-            )}
-          </Stack>
-          <Box>
+              >
+                <img
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "contain"
+                  }}
+                  src={imagePreview}
+                  alt="slider-image"
+                />
+              </Stack>
+              {/* Edit Image Button - always visible at bottom right */}
+              <Box
+                sx={{
+                  position: 'absolute',
+                  bottom: 12,
+                  right: 12,
+                  display: 'flex',
+                  gap: 1,
+                }}
+              >
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={() => {
+                    setShowCropper(true);
+                    setImageToCrop(imagePreview);
+                    setIsCropping(true);
+                  }}
+                  startIcon={<EditIcon />}
+                >
+                  Edit
+                </Button>
+                {editImageData && (
+                  <Button
+                    variant="contained"
+                    size="small"
+                    color="error"
+                    onClick={() => {
+                      // Reset to original
+                      setImagePreview(editImageData.image);
+                      setImageToCrop(editImageData.image);
+                      setImage(null);
+                      setFileName('');
+                    }}
+                    sx={{
+                      backgroundColor: 'rgba(220, 0, 0, 0.8)',
+                      '&:hover': {
+                        backgroundColor: 'rgba(220, 0, 0, 1)',
+                      }
+                    }}
+                  >
+                    Reset
+                  </Button>
+                )}
+              </Box>
+            </Box>
+          )}
+
+          {/* Cropper Section */}
+          {showCropper && imageToCrop && (
+            <Box sx={{ mb: 3 }}>
+              <Box sx={{
+                width: '100%',
+                maxHeight: '500px',
+                backgroundColor: '#f5f5f5',
+                borderRadius: 1,
+                overflow: 'hidden'
+              }}>
+                <Cropper
+                  ref={cropperRef}
+                  src={imageToCrop}
+                  style={{ height: 400, width: '100%' }}
+                  aspectRatio={4 / 1}
+                  guides={true}
+                  viewMode={1}
+                  dragMode="move"
+                  cropBoxMovable={true}
+                  cropBoxResizable={true}
+                  toggleDragModeOnDblclick={false}
+                  minCropBoxHeight={50}
+                  minCropBoxWidth={200}
+                  background={true}
+                  responsive={true}
+                  checkOrientation={false}
+                  modal={true}
+                  movable={true}
+                  zoomable={true}
+                  rotatable={false}
+                  scalable={false}
+                  center={true}
+                />
+              </Box>
+              <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleCrop}
+                  disabled={loading}
+                >
+                  Apply Crop
+                </Button>
+                <Button
+                  variant="outlined"
+                  onClick={resetCropper}
+                  disabled={loading}
+                >
+                  Cancel Crop
+                </Button>
+              </Box>
+            </Box>
+          )}
+
+          <Box sx={{ display: 'flex', gap: 2 }}>
             <Button
               endIcon={loading ? <CircularProgress size={15} /> : ""}
               disabled={loading ? true : (!image && !editImageData) ? true : !altText.trim() ? true : false}
-              sx={{ mr: "16px" }}
               variant="contained"
               color="primary"
               type="button"
@@ -382,9 +582,17 @@ const SliderList = () => {
             >
               Submit
             </Button>
+            <Button
+              variant="outlined"
+              onClick={handleClose1}
+              disabled={loading}
+            >
+              Cancel
+            </Button>
           </Box>
         </Box>
       </Modal>
+
       <Box
         sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
         className="breadcrumb"
@@ -394,11 +602,9 @@ const SliderList = () => {
           <Button onClick={handleOpen1} variant="contained">
             Add Slider
           </Button>
-          {/* <Button onClick={() => exportToExcel(excelData)} variant="contained">
-            Export
-          </Button> */}
         </Box>
       </Box>
+
       <Box>
         <TableContainer sx={{ paddingLeft: 2, paddingRight: 2 }} component={Paper}>
           <Table>
@@ -443,7 +649,6 @@ const SliderList = () => {
                     </TableCell>
                     <TableCell>
                       <Switch
-                        // onChange={(e) => handleStatusChange({ id: row._id, status: !row.status })}
                         onClick={() => {
                           handleOpen("sliderStatus");
                           setStatusData(() => ({ id: row._id, status: !row.status }));
@@ -464,9 +669,6 @@ const SliderList = () => {
                       </IconButton>
                       <IconButton
                         disabled={loading}
-                        // onClick={() => {
-                        //   deleteSliderHandler(row._id);
-                        // }}
                         onClick={() => {
                           handleOpen("sliderDelete");
                           setStatusData(row?._id);
@@ -491,6 +693,7 @@ const SliderList = () => {
           onRowsPerPageChange={handleChangeRowsPerPage}
         />
       </Box>
+
       <ConfirmModal
         open={open}
         handleClose={handleClose}
@@ -502,4 +705,5 @@ const SliderList = () => {
     </Container>
   );
 };
+
 export default SliderList;

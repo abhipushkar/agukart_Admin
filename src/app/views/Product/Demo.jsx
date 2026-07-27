@@ -98,9 +98,13 @@ const MyImageGrid = ({ images, setImages, setFormData, formData, altText, setAlt
         open: false,
         currentImage: null,
         scale: formData.zoom?.scale || 1,
-        position: { x: formData.zoom?.x || 0, y: formData.zoom?.y || 0 },
+        rotation: formData.zoom?.rotation || 0,
+        position: {
+            x: formData.zoom?.x || 0,
+            y: formData.zoom?.y || 0,
+        },
         isDragging: false,
-        dragStart: { x: 0, y: 0 }
+        dragStart: { x: 0, y: 0 },
     });
 
     React.useEffect(() => {
@@ -139,7 +143,7 @@ const MyImageGrid = ({ images, setImages, setFormData, formData, altText, setAlt
         newAltText.splice(hoverIndex, 0, draggedAltText);
 
         setImages(newImages);
-        if(setAltText) {
+        if (setAltText) {
             setAltText(newAltText);
         }
     };
@@ -150,6 +154,7 @@ const MyImageGrid = ({ images, setImages, setFormData, formData, altText, setAlt
             open: true,
             currentImage: image.src,
             scale: formData.zoom?.scale || 1,
+            rotation: formData.zoom?.rotation || 0,
             position: {
                 x: formData.zoom?.x || 0,
                 y: formData.zoom?.y || 0
@@ -166,7 +171,8 @@ const MyImageGrid = ({ images, setImages, setFormData, formData, altText, setAlt
             zoom: {
                 scale: zoomState.scale,
                 x: zoomState.position.x,
-                y: zoomState.position.y
+                y: zoomState.position.y,
+                rotation: zoomState.rotation,
             }
         }));
 
@@ -191,7 +197,11 @@ const MyImageGrid = ({ images, setImages, setFormData, formData, altText, setAlt
         setZoomState(prev => ({
             ...prev,
             scale: 1,
-            position: { x: 0, y: 0 }
+            rotation: 0,
+            position: {
+                x: 0,
+                y: 0,
+            },
         }));
     };
 
@@ -242,6 +252,27 @@ const MyImageGrid = ({ images, setImages, setFormData, formData, altText, setAlt
         }));
     };
 
+    const handleRotateLeft = () => {
+        setZoomState(prev => ({
+            ...prev,
+            rotation: prev.rotation - 90,
+        }));
+    };
+
+    const handleRotateRight = () => {
+        setZoomState(prev => ({
+            ...prev,
+            rotation: prev.rotation + 90,
+        }));
+    };
+
+    const handleRotationSlider = (e, value) => {
+        setZoomState(prev => ({
+            ...prev,
+            rotation: value,
+        }));
+    };
+
     const ImageTile = ({ index, image }) => {
         const [{ isDragging }, drag] = useDrag({
             type: "image",
@@ -274,13 +305,13 @@ const MyImageGrid = ({ images, setImages, setFormData, formData, altText, setAlt
                         }
                     });
                     setImages(newImages);
-                    if(setAltText) {
+                    if (setAltText) {
                         setAltText((prevAltText) => prevAltText.filter((_, idx) => idx !== index));
                     }
                     // Also clear zoom data when image is deleted
                     setFormData(prevFormData => ({
                         ...prevFormData,
-                        zoom: {scale: 1, x: 0, y: 0}
+                        zoom: { scale: 1, x: 0, y: 0 }
                     }));
                 }
                 // setFormData((prevFormData) => {
@@ -330,8 +361,8 @@ const MyImageGrid = ({ images, setImages, setFormData, formData, altText, setAlt
                                 color: "#fff",
                             }}
                         >
-              Primary
-            </span>
+                            Primary
+                        </span>
                     )}
                     <img src={image.src} alt={`Image ${index}`} className={classes.image} />
                     <EditIcon
@@ -399,7 +430,15 @@ const MyImageGrid = ({ images, setImages, setFormData, formData, altText, setAlt
                                 alt="Zoomed"
                                 className={classes.zoomedImage}
                                 style={{
-                                    transform: `translate3d(${zoomState.position.x}px, ${zoomState.position.y}px, 0) scale(${zoomState.scale})`,
+                                    transform: `
+translate3d(
+${zoomState.position.x}px,
+${zoomState.position.y}px,
+0
+)
+scale(${zoomState.scale})
+rotate(${zoomState.rotation}deg)
+`,
                                     transformOrigin: 'center center',
                                     cursor: zoomState.isDragging ? 'grabbing' : 'grab'
                                 }}
@@ -407,10 +446,10 @@ const MyImageGrid = ({ images, setImages, setFormData, formData, altText, setAlt
                         )}
                     </Box>
 
-                    <Box className={classes.controlsContainer}>
-                        <Typography variant="body2" sx={{ minWidth: 80 }}>
-                            Zoom: {zoomState.scale.toFixed(1)}x
-                        </Typography>
+                    <Typography variant="body2" sx={{ minWidth: 80 }}>
+                        Zoom: {zoomState.scale.toFixed(1)}x
+                    </Typography>
+                    <Box display={'flex'}>
 
                         <IconButton
                             onClick={handleZoomOut}
@@ -435,6 +474,43 @@ const MyImageGrid = ({ images, setImages, setFormData, formData, altText, setAlt
                             <ZoomInIcon />
                         </IconButton>
 
+
+                    </Box>
+
+
+                    <Box>
+                        <Typography gutterBottom>
+                            Rotation ({zoomState.rotation}°)
+                        </Typography>
+
+                        <Box
+                            sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 2,
+                            }}
+                        >
+                            <IconButton onClick={handleRotateLeft}>
+                                <RotateLeftIcon />
+                            </IconButton>
+
+                            <Slider
+                                value={zoomState.rotation}
+                                min={0}
+                                max={360}
+                                step={1}
+                                onChange={handleRotationSlider}
+                                sx={{ flex: 1 }}
+
+                            />
+
+                            <IconButton onClick={handleRotateRight}>
+                                <RotateRightIcon />
+                            </IconButton>
+                        </Box>
+                    </Box>
+
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 2 }}>
                         <Button
                             onClick={handleResetZoom}
                             variant="outlined"
@@ -442,21 +518,10 @@ const MyImageGrid = ({ images, setImages, setFormData, formData, altText, setAlt
                         >
                             Reset
                         </Button>
-                    </Box>
-
-                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 2 }}>
                         <Button onClick={handleCloseZoom} variant="contained">
                             Apply Changes
                         </Button>
                     </Box>
-
-                    <Typography variant="caption" color="textSecondary" sx={{ mt: 1, display: 'block' }}>
-                        • Use mouse wheel to zoom in/out
-                        <br />
-                        • Click and drag to pan the image
-                        <br />
-                        • Use slider or buttons for precise control
-                    </Typography>
                 </Box>
             </Modal>
         </>
