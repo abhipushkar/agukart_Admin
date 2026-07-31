@@ -30,7 +30,7 @@ const ChatListAdmin = () => {
 
   const [notificationNumber, setNotificationNumber] = useState("");
 
-  const { chats, userDetails, handleCheckboxChange, checkMessage, pinnedMessageHadler,
+  const { chats, handleCheckboxChange, checkMessage, pinnedMessageHadler, userDetailsMap,
     page,
     setPage,
     rowsPerPage,
@@ -44,11 +44,6 @@ const ChatListAdmin = () => {
   console.log({ chats }, "dgrghhrr")
 
   const designation_id = localStorage.getItem(localStorageKey.designation_id);
-
-  // Find user details for each chat
-  const findUserDetails = (userId) => {
-    return userDetails.find((user) => user?._id === userId);
-  };
 
   // Helper function to format the date
   const formatDate = (timestamp) => {
@@ -284,7 +279,7 @@ const ChatListAdmin = () => {
             <Table sx={{ minWidth: "100%", width: "max-content" }}>
               <TableBody>
                 {chats.map((chat) => {
-                  const user = findUserDetails(chat?.user);
+                  const user = userDetailsMap[chat.user];
                   const lastMessage = chat?.text?.[chat?.text?.length - 1];
                   const isNotification = chat?.text?.filter(
                     (data) =>

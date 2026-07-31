@@ -11,7 +11,8 @@ import {
   orderBy,
   updateDoc,
   doc,
-  getDocs
+  getDocs,
+  getDoc
 } from "firebase/firestore";
 import WallpaperIcon from "@mui/icons-material/Wallpaper";
 import CloseIcon from "@mui/icons-material/Close";
@@ -187,7 +188,7 @@ const ChatBox = ({ slug, role }) => {
   const textareaRef = useRef(null);
   const senderId = logUserData?._id;
   const token = localStorage.getItem(localStorageKey.auth_key);
-  const { getUserDetails } = useChat();
+  const { getUserDetails, getUsersDetails, userDetailsMap } = useChat();
 
   const [lightboxState, setLightboxState] = useState({
     open: false,
@@ -331,26 +332,28 @@ const ChatBox = ({ slug, role }) => {
   };
 
   useEffect(() => {
-    const q = query(
-      collection(db, role == "admin" ? "composeChat" : "chatRooms"),
-      orderBy("createdAt", "asc")
+    if (!slug) return;
+
+    const chatRef = doc(
+      db,
+      role === "admin" ? "composeChat" : "chatRooms",
+      slug
     );
 
-    const unsubscribe = onSnapshot(q, async (snapshot) => {
-      const newMessages = snapshot?.docs?.map((doc) => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+    const unsubscribe = onSnapshot(chatRef, async (snapshot) => {
+      if (!snapshot.exists()) return;
+      const data = snapshot.data();
+      const cachedUser = userDetailsMap[data.user];
 
-      const matchingDocument = newMessages?.filter((doc) => {
-        return doc?.id === slug;
-      });
-      const userData = await getUserDetails(matchingDocument[0]?.user);
-      setUserData(userData);
-      matchingDocument.forEach((data) => {
-        setMessages(data?.text);
-      });
+      if (cachedUser) {
+        setUserData(cachedUser);
+      } else {
+        const user = await getUserDetails([data.user])
+        setUserData(user);
+      }
+      setMessages(data.text || []);
     });
+
     return () => unsubscribe();
   }, [slug, role]);
 
@@ -366,21 +369,23 @@ const ChatBox = ({ slug, role }) => {
     let uploadedFiles = [];
 
     try {
-      const querySnapshot = await getDocs(
-        collection(db, role === "admin" ? "composeChat" : "chatRooms")
+      const chatRef = doc(
+        db,
+        role === "admin" ? "composeChat" : "chatRooms",
+        slug
       );
-      const documents = querySnapshot.docs.map((doc) => {
-        const docId = doc.id;
-        const docData = doc.data();
-        return {
-          id: docId,
-          data: docData
-        };
-      });
 
-      const matchingDocument = documents?.find((doc) => {
-        return doc?.id === slug;
-      });
+      const chatSnap = await getDoc(chatRef);
+
+      if (!chatSnap.exists()) {
+        setIsSending(false);
+        return;
+      }
+
+      const matchingDocument = {
+        id: chatSnap.id,
+        data: chatSnap.data(),
+      };
 
       if (matchingDocument) {
         // Upload files to backend API
@@ -439,14 +444,7 @@ const ChatBox = ({ slug, role }) => {
           updateData.isTempDelete1 = "";
         }
 
-        await updateDoc(
-          doc(
-            db,
-            role === "admin" ? "composeChat" : "chatRooms",
-            matchingDocument.id
-          ),
-          updateData
-        );
+        await updateDoc(chatRef, updateData);
 
         setInput("");
       }
@@ -470,25 +468,23 @@ const ChatBox = ({ slug, role }) => {
       return;
     }
 
-    const querySnapshot = await getDocs(
-      collection(db, role === "admin" ? "composeChat" : "chatRooms")
+    const chatRef = doc(
+      db,
+      role === "admin" ? "composeChat" : "chatRooms",
+      venderID
     );
 
-    const documents = querySnapshot.docs.map((doc) => {
-      const docId = doc.id;
-      const docData = doc.data();
-      const receiverId = docData.receiverId;
+    const chatSnap = await getDoc(chatRef);
 
-      return {
-        id: docId,
-        data: docData,
-        receiverId: receiverId,
-      };
-    });
+    if (!chatSnap.exists()) {
+      console.error("No matching document found");
+      return;
+    }
 
-    const matchingDocument = documents.find((doc) => {
-      return doc.id === venderID;
-    });
+    const matchingDocument = {
+      id: chatSnap.id,
+      data: chatSnap.data(),
+    };
 
     if (!matchingDocument) {
       console.error("No matching document found for the provided venderID");
@@ -511,16 +507,9 @@ const ChatBox = ({ slug, role }) => {
       return item;
     });
 
-    await updateDoc(
-      doc(
-        db,
-        role === "admin" ? "composeChat" : "chatRooms",
-        matchingDocument.id
-      ),
-      {
-        text: updatedText,
-      }
-    );
+    await updateDoc(chatRef, {
+      text: updatedText,
+    });
   };
 
   useEffect(() => {

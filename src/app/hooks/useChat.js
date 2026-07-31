@@ -5,9 +5,10 @@ const useChat = () => {
     const {
         demo,
         chats,
+        allChats,
         composeChats,
-        setComposeChats,
         userDetails, setUserDetails,
+        userDetailsMap,
         moveToTrashHandler,
         handleCheckboxChange,
         checkMessage,
@@ -35,9 +36,10 @@ const useChat = () => {
     return {
         demo,
         chats,
+        allChats,
         composeChats,
-        setComposeChats,
         userDetails, setUserDetails,
+        userDetailsMap,
         moveToTrashHandler,
         handleCheckboxChange,
         checkMessage,

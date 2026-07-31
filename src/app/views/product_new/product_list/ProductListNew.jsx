@@ -151,6 +151,45 @@ const ProductListNew = () => {
     const listRootRef = useRef(null);
     const pendingScrollRestoreRef = useRef(null);
     const hasAppliedViewContextRef = useRef(false);
+
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+
+        params.set("page", pagination.page + 1);
+        params.set("limit", pagination.limit);
+        params.set("sortBy", filters.sorting.sortBy);
+        params.set("order", filters.sorting.order);
+
+        navigate(
+            {
+                pathname: location.pathname,
+                search: params.toString(),
+            },
+            { replace: true }
+        );
+    }, [
+        pagination.page,
+        pagination.limit,
+        filters.sorting.sortBy,
+        filters.sorting.order,
+    ]);
+
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+
+        setPagination({
+            page: Math.max((Number(params.get("page")) || 1) - 1, 0),
+            limit: Number(params.get("limit")) || 50,
+        });
+
+        setFilters({
+            sorting: {
+                sortBy: params.get("sortBy") || "refresh_date",
+                order: Number(params.get("order")) || -1,
+            },
+        });
+    }, []);
+
     const getScrollableParents = (node) => {
         if (typeof window === 'undefined') return [];
         const parents = [];
@@ -425,15 +464,17 @@ const ProductListNew = () => {
             pendingScrollRestoreRef.current = context.scrollY;
         }
     }, [filters.status, restoreListViewContext, setFilters]);
-    // Fetch initial data
-    useEffect(() => {
-        fetchProductsFirstTime();
-        // getAllActiveCategories();
-    }, [fetchProducts, filters.status, filters.category, filters.sorting, showFeaturedOnly]);
 
     useEffect(() => {
         fetchProducts();
-    }, [pagination.page, pagination.limit]);
+    }, [
+        filters.status,
+        filters.category,
+        filters.sorting,
+        showFeaturedOnly,
+        pagination.page,
+        pagination.limit,
+    ]);
 
     useEffect(() => {
         if (loading) return;

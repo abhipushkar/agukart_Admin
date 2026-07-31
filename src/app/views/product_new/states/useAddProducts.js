@@ -573,7 +573,10 @@ export const useProductFormStore = create(
             },
             handleCombChange: (e, combindex, index) => {
                 const { name, value } = e.target;
-                if (/^\d*$/.test(value) && value.length <= 7) {
+                const isValid = name === "price"
+                    ? /^\d*\.?\d{0,2}$/.test(value) && value.length <= 10
+                    : /^\d*$/.test(value) && value.length <= 7;
+                if (isValid) {
                     const state = get();
                     const updatedCombinations = [...state.combinations];
                     const newCombinations = updatedCombinations.map((item, i) => {

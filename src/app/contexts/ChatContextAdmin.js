@@ -1,8 +1,8 @@
-import React, { createContext, useEffect, useState } from "react";
+import React, { createContext, useEffect, useState, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { db } from "../../firebase/Firebase";
 
-import { collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, startAfter, updateDoc, where } from "firebase/firestore";
+import { collection, doc, getCountFromServer, getDoc, getDocs, limit, onSnapshot, orderBy, query, startAfter, updateDoc, where } from "firebase/firestore";
 import { useProfileData } from "./profileContext";
 import { apiEndpoints } from "app/constant/apiEndpoints";
 import { localStorageKey } from "app/constant/localStorageKey";
@@ -12,9 +12,11 @@ export const ChatContext = createContext();
 
 export const ChatProvider = ({ children }) => {
     const [chats, setChats] = useState([]);
-    const [composeChats, setComposeChats] = useState([]);
+    const [allChats, setAllChats] = useState([]);
+    const [allComposeChats, setAllComposeChats] = useState([]);
     const [checkMessage, setCheckMessage] = useState([]);
     const [userDetails, setUserDetails] = useState([]);
+    const [userDetailsMap, setUserDetailsMap] = useState({});
     const [searchText, setSearchText] = useState("");
     const [showCount, setShowCount] = useState(0);
     const [page, setPage] = useState(0);
@@ -27,9 +29,7 @@ export const ChatProvider = ({ children }) => {
     const { logUserData } = useProfileData();
 
     const navigate = useNavigate();
-
     const { pathname } = useLocation();
-
     const designationId = localStorage.getItem("designation_id");
 
     useEffect(() => {
@@ -51,13 +51,12 @@ export const ChatProvider = ({ children }) => {
         // setCheckMessage([]);
         if (searchText) return;
         let unsubscribe = undefined;
-        let unsubscribeforvendor = undefined;
         if (designationId === "2") {
             const getTotalCount = async () => {
                 const q = query(collection(db, "chatRooms"));
-                const snapshot = await getDocs(q);
-                setTotalCount(snapshot.docs.length);
-                return snapshot.docs.length;
+                const snapshot = await getCountFromServer(q);
+                setTotalCount(snapshot.data().count);
+                return snapshot.data().count;
             };
             getTotalCount();
 
@@ -84,69 +83,11 @@ export const ChatProvider = ({ children }) => {
                 if (snapshot.docs.length > 0) {
                     setLastVisible(snapshot.docs[snapshot.docs.length - 1]);
                 }
-                const userIds = newMessages?.map((chat) => chat?.user);
+                const userIds = [...new Set(newMessages.map(chat => chat.user).filter(Boolean))];
                 getUsersDetails(userIds);
-                let matchingDocument = newMessages;
-                if (pathname === ROUTE_CONSTANT.messageRoute.pin) {
-                    const filterPinned = matchingDocument.filter((doc) => {
-                        return doc.pinnedMsgAdmin === logUserData?._id && doc?.isTempDelete2 !== logUserData?._id;
-                    });
-                    setChats(filterPinned)
-                    return;
-                }
+                setAllChats(newMessages);
 
-
-                console.log({ matchingDocument });
-                if (pathname === ROUTE_CONSTANT.message) {
-                    const isDeletefilterData = matchingDocument.filter(
-                        (item) => item?.isTempDelete2 !== logUserData?._id
-                    );
-                    setChats(isDeletefilterData);
-                    return;
-                }
-
-                if (pathname === ROUTE_CONSTANT.messageRoute.inbox) {
-                    const isDeletefilterData = matchingDocument.filter(
-                        (item) => item?.isTempDelete2 !== logUserData?._id
-                    );
-
-                    const filteredData = isDeletefilterData?.filter((item) =>
-                        item.text.some((msg) => msg.messageSenderId !== logUserData?._id)
-                    );
-                    setChats(filteredData);
-                    return;
-                }
-                if (pathname === ROUTE_CONSTANT.messageRoute.unread) {
-                    const filteredData = matchingDocument?.filter((item) =>
-                        item.text.some(
-                            (msg) => msg.messageSenderId !== logUserData?._id && msg?.isNotification === false
-                        )
-                    );
-                    setChats(filteredData);
-                    return;
-                }
-
-                if (pathname === ROUTE_CONSTANT.messageRoute.trash) {
-                    const isDeletefilterData = matchingDocument.filter(
-                        (item) => item.isTempDelete2 === logUserData?._id
-                    );
-                    setChats(isDeletefilterData);
-                }
                 setIsLoading(false);
-            });
-            const qforvendor = query(
-                collection(db, "composeChat"),
-                orderBy("currentTime", "desc")
-            );
-            unsubscribeforvendor = onSnapshot(qforvendor, (snapshot) => {
-                const newMessages = snapshot?.docs?.map((doc) => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
-
-                if (pathname === ROUTE_CONSTANT.messageRoute.composeMessage) {
-                    setComposeChats(newMessages);
-                }
             });
 
         } else {
@@ -159,11 +100,9 @@ export const ChatProvider = ({ children }) => {
                         collection(db, "chatRooms"),
                         where("receiverId", "==", logUserData?._id)
                     );
-                    const snapshot = await getDocs(q);
-                    const total = snapshot.docs.length;
-                    console.log("📊 Total vendor chats count:", total);
-                    setTotalCount(total);
-                    return total;
+                    const snapshot = await getCountFromServer(q);
+                    setTotalCount(snapshot.data().count);
+                    return snapshot.data().count;
                 } catch (error) {
                     console.error("❌ Error getting total count:", error);
                     setTotalCount(0);
@@ -213,103 +152,11 @@ export const ChatProvider = ({ children }) => {
                     ...doc.data()
                 }));
 
-                console.log("📝 Raw messages from query:", newMessages.length);
-                console.log("📝 First message sample:", newMessages[0]);
 
-                // Debug: Check if any messages match the receiverId
-                const matchingReceiver = newMessages.filter(doc => doc.receiverId === logUserData?._id);
-                console.log(`📝 Messages with receiverId ${logUserData?._id}:`, matchingReceiver.length);
+                const userIds = [...new Set(newMessages.map(chat => chat.user).filter(Boolean))];
+                getUsersDetails(userIds);
 
-                const userIds = newMessages?.map((chat) => chat?.user);
-                if (userIds && userIds.length > 0) {
-                    console.log("👤 User IDs found:", userIds);
-                    getUsersDetails(userIds);
-                }
-
-                let matchingDocument = newMessages?.filter((doc) => {
-                    const isMatch = doc?.receiverId === logUserData?._id;
-                    console.log(`🔍 Doc ${doc.id}: receiverId=${doc?.receiverId}, match=${isMatch}`);
-                    return isMatch;
-                });
-
-                console.log("👤 After receiver filter:", matchingDocument.length);
-
-                if (pathname === ROUTE_CONSTANT.messageRoute.pin) {
-                    console.log("📌 Filtering pinned messages...");
-                    const filterPinned = matchingDocument.filter((doc) => {
-                        return doc.pinnedMsgAdmin === logUserData?._id && doc?.isTempDelete2 !== logUserData?._id;
-                    });
-                    console.log("📌 Pinned count:", filterPinned.length);
-                    setChats(filterPinned)
-                    return;
-                }
-
-                console.log("📍 Pathname:", pathname);
-                console.log("📍 ROUTE_CONSTANT.message:", ROUTE_CONSTANT.message);
-
-                let filteredData = [];
-                if (pathname === ROUTE_CONSTANT.message) {
-                    console.log("📂 Filtering for 'message' route...");
-                    const isDeletefilterData = matchingDocument.filter(
-                        (item) => item?.isTempDelete2 !== logUserData?._id
-                    );
-                    console.log("📂 After delete filter:", isDeletefilterData.length);
-                    setChats(isDeletefilterData);
-                    return;
-                }
-
-                if (pathname === ROUTE_CONSTANT.messageRoute.inbox) {
-                    console.log("📂 Filtering for 'inbox' route...");
-                    const isDeletefilterData = matchingDocument.filter(
-                        (item) => item?.isTempDelete2 !== logUserData?._id
-                    );
-                    console.log("📂 After delete filter:", isDeletefilterData.length);
-
-                    const filteredData = isDeletefilterData?.filter((item) =>
-                        item.text.some((msg) => msg.messageSenderId !== logUserData?._id)
-                    );
-                    console.log("📂 After inbox filter:", filteredData.length);
-                    setChats(filteredData);
-                    return;
-                }
-
-                if (pathname === ROUTE_CONSTANT.messageRoute.sent) {
-                    console.log("📂 Filtering for 'sent' route...");
-                    const isDeletefilterData = matchingDocument.filter(
-                        (item) => item?.isTempDelete2 !== logUserData?._id
-                    );
-
-                    const filteredData = isDeletefilterData?.filter((item) =>
-                        item.text.some((msg) => msg.messageSenderId === logUserData?._id)
-                    );
-                    console.log("📂 Sent messages count:", filteredData.length);
-                    setChats(filteredData);
-                    return;
-                }
-
-                if (pathname === ROUTE_CONSTANT.messageRoute.unread) {
-                    console.log("📂 Filtering for 'unread' route...");
-                    const filteredData = matchingDocument?.filter((item) =>
-                        item.text.some(
-                            (msg) => msg.messageSenderId !== logUserData?._id && msg?.isNotification === false
-                        )
-                    );
-                    console.log("📂 Unread messages count:", filteredData.length);
-                    setChats(filteredData);
-                    return;
-                }
-
-                if (pathname === ROUTE_CONSTANT.messageRoute.trash) {
-                    console.log("📂 Filtering for 'trash' route...");
-                    const isDeletefilterData = matchingDocument.filter(
-                        (item) => item.isTempDelete2 === logUserData?._id
-                    );
-                    console.log("📂 Trash messages count:", isDeletefilterData.length);
-                    setChats(isDeletefilterData);
-                }
-
-                console.log("✅ Final filtered data count:", filteredData.length);
-                setChats(filteredData);
+                setAllChats(newMessages);
                 setIsLoading(false);
             }, (error) => {
                 console.error("🔥 Snapshot error:", error);
@@ -317,54 +164,12 @@ export const ChatProvider = ({ children }) => {
                 console.error("🔥 Error message:", error.message);
                 setIsLoading(false);
             });
-            const qforvendor = query(
-                collection(db, "composeChat"),
-                orderBy("currentTime", "desc")
-            );
-            unsubscribeforvendor = onSnapshot(qforvendor, (snapshot) => {
-                const newMessages = snapshot?.docs?.map((doc) => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
-
-                if (pathname === ROUTE_CONSTANT.messageRoute.fromEtsy) {
-                    const filterData = newMessages.filter((item) => item.type === "allvendors");
-                    setChats(filterData);
-                }
-
-                if (pathname === ROUTE_CONSTANT.messageRoute.composeMessage) {
-                    const filtered = newMessages.filter((doc) => {
-                        if (doc.type !== "allusers") return false;
-
-                        if (!doc.userCreatedBefore || !logUserData?.createdAt) return false;
-
-                        const userCreatedAt = new Date(logUserData.createdAt);
-                        const cutoff = doc.userCreatedBefore.toDate();
-
-                        // SNAPSHOT → OLD USERS
-                        if (doc.audienceMode === "snapshot") {
-                            return userCreatedAt <= cutoff;
-                        }
-
-                        // PERSISTENT → NEW USERS ONLY
-                        if (doc.audienceMode === "persistent") {
-                            return userCreatedAt > cutoff;
-                        }
-
-                        return false;
-                    });
-
-                    setComposeChats(filtered);
-                }
-
-            });
 
         }
         return () => {
             unsubscribe();
-            unsubscribeforvendor();
         };
-    }, [logUserData?._id, pathname, searchText, page, rowsPerPage]);
+    }, [logUserData?._id, page, designationId, rowsPerPage]);
 
 
 
@@ -372,16 +177,32 @@ export const ChatProvider = ({ children }) => {
         setSearchText("");
     }, [pathname]);
 
-    const getUsersDetails = async (userIds) => {
-        const payload = {
-            userId: userIds
-        };
-
+    const getUsersDetails = async (userIds = []) => {
+        const uniqueIds = [...new Set(userIds.filter(Boolean))];
+        const missingIds = uniqueIds.filter(id => !userDetailsMap[id]);
+        if (!missingIds.length) return;
         try {
             const auth_key = localStorage.getItem(localStorageKey.auth_key);
-            const res = await ApiService.login(apiEndpoints.getUserDetialsChat, payload, auth_key);
+            const res = await ApiService.login(
+                apiEndpoints.getUserDetialsChat,
+                {
+                    userId: missingIds
+                },
+                auth_key
+            );
+
             if (res.status === 200) {
-                setUserDetails(res?.data?.data); // Assuming res.data is the array of user details
+                const users = res?.data?.data || [];
+
+                setUserDetailsMap(prev => {
+                    const updated = { ...prev };
+
+                    users.forEach(user => {
+                        updated[user._id] = user;
+                    });
+
+                    return updated;
+                });
             }
         } catch (error) {
             console.log(error);
@@ -389,18 +210,12 @@ export const ChatProvider = ({ children }) => {
     };
 
     const getUserDetails = async (id) => {
-        const payload = {
-            userId: [id]
-        };
-        try {
-            const auth_key = localStorage.getItem(localStorageKey.auth_key);
-            const res = await ApiService.login(apiEndpoints.getUserDetialsChat, payload, auth_key);
-            if (res.status === 200) {
-                return res?.data?.data[0];
-            }
-        } catch (error) {
-            console.log(error);
+        if (!id) return null;
+        if (userDetailsMap[id]) {
+            return userDetailsMap[id];
         }
+        await getUsersDetails([id]);
+        return userDetailsMap[id];
     };
 
     const moveToTrashHandler = async () => {
@@ -447,22 +262,130 @@ export const ChatProvider = ({ children }) => {
         });
     };
 
+    const unreadCount = useMemo(() => {
+        return allChats.filter(parent =>
+            parent.text.some(msg =>
+                !msg.isNotification &&
+                msg.messageSenderId !== logUserData?._id &&
+                msg.senderType === "user"
+            )
+        ).length;
+    }, [allChats, logUserData?._id]);
+
     useEffect(() => {
+        setShowCount(unreadCount);
+    }, [unreadCount]);
+
+
+    const filteredChats = useMemo(() => {
+
+        if (!allChats.length) return [];
         if (pathname === ROUTE_CONSTANT.messageRoute.pin) {
-            return;
+            return allChats.filter(item =>
+                item.pinnedMsgAdmin === logUserData?._id &&
+                item.isTempDelete2 !== logUserData?._id
+            );
         }
-        if (chats.length > 0) {
-            const count = chats?.filter((parent) =>
-                parent?.text?.some(
-                    (notification) =>
-                        !notification?.isNotification &&
-                        notification.messageSenderId !== logUserData?._id &&
-                        notification.senderType === "user" // Only count unread from user
+        if (pathname === ROUTE_CONSTANT.message) {
+            return allChats.filter(item =>
+                item.isTempDelete2 !== logUserData?._id
+            );
+        }
+        if (pathname === ROUTE_CONSTANT.messageRoute.inbox) {
+            return allChats
+                .filter(item => item.isTempDelete2 !== logUserData?._id)
+                .filter(item =>
+                    item.text.some(msg =>
+                        msg.messageSenderId !== logUserData?._id
+                    )
+                );
+        }
+        // sent route for vendor only
+        if (pathname === ROUTE_CONSTANT.messageRoute.sent) {
+            return allChats
+                .filter(item => item.isTempDelete2 !== logUserData?._id)
+                .filter(item =>
+                    item.text.some(msg =>
+                        msg.messageSenderId === logUserData?._id
+                    )
+                );
+        }
+        if (pathname === ROUTE_CONSTANT.messageRoute.unread) {
+            return allChats.filter(item =>
+                item.text.some(msg =>
+                    msg.messageSenderId !== logUserData?._id &&
+                    !msg.isNotification
                 )
-            ).length;
-            setShowCount(count);
+            );
         }
-    }, [chats, pathname]);
+        if (pathname === ROUTE_CONSTANT.messageRoute.trash) {
+            return allChats.filter(item =>
+                item.isTempDelete2 === logUserData?._id
+            );
+        }
+        return allChats;
+
+    }, [
+        allChats,
+        pathname,
+        logUserData?._id
+    ]);
+
+    useEffect(() => {
+        setChats(filteredChats);
+    }, [filteredChats]);
+
+
+    useEffect(() => {
+        const q = query(
+            collection(db, "composeChat"),
+            orderBy("currentTime", "desc")
+        );
+        const unsubscribe = onSnapshot(q, snapshot => {
+            const data = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+            setAllComposeChats(data);
+        });
+        return unsubscribe;
+    }, []);
+
+
+    const composeChats = useMemo(() => {
+
+        if (!allComposeChats.length) return [];
+
+        if (designationId === "2") {
+            if (pathname === ROUTE_CONSTANT.messageRoute.composeMessage) {
+                return allComposeChats;
+            }
+            return [];
+        }
+        if (pathname === ROUTE_CONSTANT.messageRoute.fromEtsy) {
+            return allComposeChats.filter(
+                item => item.type === "allvendors"
+            );
+        }
+        if (pathname === ROUTE_CONSTANT.messageRoute.composeMessage) {
+            return allComposeChats.filter(doc => {
+                if (doc.type !== "allusers") return false;
+                if (!doc.userCreatedBefore || !logUserData?.createdAt)
+                    return false;
+                const userCreatedAt = new Date(logUserData.createdAt);
+                const cutoff = doc.userCreatedBefore.toDate();
+
+                if (doc.audienceMode === "snapshot")
+                    return userCreatedAt <= cutoff;
+
+                if (doc.audienceMode === "persistent")
+                    return userCreatedAt > cutoff;
+
+                return false;
+            });
+        }
+        return [];
+    }, [allComposeChats, pathname, designationId, logUserData?.createdAt]);
 
     const markAsUnreadHandler = () => {
         checkMessage.map(async (docId) => {
@@ -763,9 +686,10 @@ export const ChatProvider = ({ children }) => {
             value={{
                 chats,
                 setChats,
+                allChats,
                 composeChats,
-                setComposeChats,
                 userDetails,
+                userDetailsMap,
                 setUserDetails,
                 moveToTrashHandler,
                 handleCheckboxChange,

@@ -15,7 +15,7 @@ import {
   RadioGroup,
   Typography,
 } from "@mui/material";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import AppsIcon from "@mui/icons-material/Apps";
 import ClearIcon from "@mui/icons-material/Clear";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -102,6 +102,9 @@ const Add = () => {
   const { logUserData } = useProfileData();
   const navigate = useNavigate();
   const auth_key = localStorage.getItem(localStorageKey.auth_key);
+
+  const startDateRef = useRef(null);
+  const expiryDateRef = useRef(null);
 
   const formatDateToLocalInput = (date, hours = 0, minutes = 0) => {
     const pad = (n) => (n < 10 ? "0" + n : n);
@@ -215,6 +218,9 @@ const Add = () => {
     if (!v.promotion_type) newErrors.promotion_type = "Promotion type is required";
     if (v.promotion_type.includes("amount") && !v.amount) newErrors.amount = "Amount is required";
     if (v.promotion_type.includes("qty") && !v.qty) newErrors.qty = "Qty is required";
+
+    if (v.promotion_type === "qty_total_shop" && v.qty < 2) newErrors.qty = "Qty cannot be less than 2 for shop total qauntity promotion."
+    if (v.offerType === "flat" && v.promotion_type.includes("amount") && v.discountAmout < v.amount) newErrors.amount = "Flat Discount cannot exceed total Discount Amount."
 
     // Date Validation
     if (!v.startDate) newErrors.startDate = "Start Date is required";
@@ -499,7 +505,7 @@ const Add = () => {
               Offer Time <span style={{ color: "red" }}>*</span>:
             </Box>
             <Box sx={{ width: "85%", display: "flex", gap: "20px" }}>
-              <Box width="50%">
+              <Box width="25%">
                 <CommonTextField
                   type="date"
                   name="startDate"
@@ -508,9 +514,13 @@ const Add = () => {
                   onChange={handleChange}
                   error={errors.startDate}
                   InputLabelProps={{ shrink: true }}
+                  inputRef={startDateRef}
+                  onFocus={() => {
+                    startDateRef.current?.showPicker?.();
+                  }}
                 />
               </Box>
-              <Box width="50%">
+              <Box width="25%">
                 <CommonTextField
                   type="date"
                   name="expiryDate"
@@ -519,6 +529,10 @@ const Add = () => {
                   onChange={handleChange}
                   error={errors.expiryDate}
                   InputLabelProps={{ shrink: true }}
+                  inputRef={expiryDateRef}
+                  onFocus={() => {
+                    expiryDateRef.current?.showPicker?.();
+                  }}
                 />
               </Box>
             </Box>

@@ -12,6 +12,8 @@ import ZoomInIcon from "@mui/icons-material/ZoomIn";
 import ZoomOutIcon from "@mui/icons-material/ZoomOut";
 import RotateLeftIcon from "@mui/icons-material/RotateLeft";
 import RotateRightIcon from "@mui/icons-material/RotateRight";
+import Cropper from "react-easy-crop";
+import { getCroppedImg } from '../product_new/add_product/tabs/productTabs/Variations/components/imageComponents/cropUtil.js';
 
 const useStyles = makeStyles((theme) => ({
     imageContainer: {
@@ -94,18 +96,21 @@ const MyImageGrid = ({ images, setImages, setFormData, formData, altText, setAlt
     const queryId = query.get("id");
 
     // Zoom state for the modal - separate from images array
+    const MIN_ZOOM = 0.1;
+    const MAX_ZOOM = 3;
+
     const [zoomState, setZoomState] = useState({
         open: false,
         currentImage: null,
-        scale: formData.zoom?.scale || 1,
-        rotation: formData.zoom?.rotation || 0,
-        position: {
-            x: formData.zoom?.x || 0,
-            y: formData.zoom?.y || 0,
+        zoom: formData.zoom?.scale ?? 1,
+        rotation: formData.zoom?.rotation ?? 0,
+        crop: {
+            x: formData.zoom?.x ?? 0,
+            y: formData.zoom?.y ?? 0,
         },
-        isDragging: false,
-        dragStart: { x: 0, y: 0 },
     });
+
+    const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
 
     React.useEffect(() => {
         if (images.length > 0 && !images[0].isPrimary) {
@@ -153,52 +158,72 @@ const MyImageGrid = ({ images, setImages, setFormData, formData, altText, setAlt
         setZoomState({
             open: true,
             currentImage: image.src,
-            scale: formData.zoom?.scale || 1,
-            rotation: formData.zoom?.rotation || 0,
-            position: {
-                x: formData.zoom?.x || 0,
-                y: formData.zoom?.y || 0
+            zoom: formData.zoom?.scale ?? 1,
+            rotation: formData.zoom?.rotation ?? 0,
+            crop: {
+                x: formData.zoom?.x ?? 0,
+                y: formData.zoom?.y ?? 0,
             },
-            isDragging: false,
-            dragStart: { x: 0, y: 0 }
         });
     };
 
-    const handleCloseZoom = () => {
-        // Save zoom data to formData (not images array)
-        setFormData(prevFormData => ({
-            ...prevFormData,
+    const handleCropComplete = (_, croppedPixels) => {
+        setCroppedAreaPixels(croppedPixels);
+    };
+
+    const handleCloseZoom = async () => {
+        if (!croppedAreaPixels) {
+            setZoomState(prev => ({
+                ...prev,
+                open: false,
+            }));
+            return;
+        }
+
+        const blob = await getCroppedImg(
+            zoomState.currentImage,
+            croppedAreaPixels,
+            zoomState.rotation
+        );
+
+        setFormData(prev => ({
+            ...prev,
             zoom: {
-                scale: zoomState.scale,
-                x: zoomState.position.x,
-                y: zoomState.position.y,
+                scale: zoomState.zoom,
                 rotation: zoomState.rotation,
-            }
+                x: zoomState.crop.x,
+                y: zoomState.crop.y,
+            },
+            editedImage: blob,
         }));
 
-        setZoomState(prev => ({ ...prev, open: false }));
+        setZoomState(prev => ({
+            ...prev,
+            open: false
+        }));
     };
+
 
     const handleZoomIn = () => {
         setZoomState(prev => ({
             ...prev,
-            scale: Math.min(prev.scale + 0.1, 5)
+            zoom: Math.min(prev.zoom + 0.1, MAX_ZOOM),
         }));
     };
 
     const handleZoomOut = () => {
         setZoomState(prev => ({
             ...prev,
-            scale: Math.max(prev.scale - 0.1, 0.1)
+            zoom: Math.max(prev.zoom - 0.1, MIN_ZOOM),
         }));
     };
 
     const handleResetZoom = () => {
         setZoomState(prev => ({
             ...prev,
-            scale: 1,
+            zoom: 1,
             rotation: 0,
-            position: {
+            crop: {
                 x: 0,
                 y: 0,
             },
@@ -212,45 +237,6 @@ const MyImageGrid = ({ images, setImages, setFormData, formData, altText, setAlt
         }));
     };
 
-    // Mouse event handlers for panning
-    const handleMouseDown = (e) => {
-        e.preventDefault();
-        setZoomState(prev => ({
-            ...prev,
-            isDragging: true,
-            dragStart: {
-                x: e.clientX - prev.position.x,
-                y: e.clientY - prev.position.y
-            }
-        }));
-    };
-
-    const handleMouseMove = (e) => {
-        if (!zoomState.isDragging) return;
-
-        const newX = e.clientX - zoomState.dragStart.x;
-        const newY = e.clientY - zoomState.dragStart.y;
-
-        setZoomState(prev => ({
-            ...prev,
-            position: { x: newX, y: newY }
-        }));
-    };
-
-    const handleMouseUp = () => {
-        setZoomState(prev => ({ ...prev, isDragging: false }));
-    };
-
-    const handleWheel = (e) => {
-        e.preventDefault();
-        const delta = -e.deltaY / 100;
-        const newScale = Math.max(0.1, Math.min(zoomState.scale + delta * 0.1, 5));
-
-        setZoomState(prev => ({
-            ...prev,
-            scale: newScale
-        }));
-    };
 
     const handleRotateLeft = () => {
         setZoomState(prev => ({
@@ -407,69 +393,69 @@ const MyImageGrid = ({ images, setImages, setFormData, formData, altText, setAlt
                     </Typography>
 
                     <Box
-                        onMouseDown={handleMouseDown}
-                        onMouseMove={handleMouseMove}
-                        onMouseUp={handleMouseUp}
-                        onMouseLeave={handleMouseUp}
-                        onWheel={handleWheel}
                         sx={{
-                            cursor: zoomState.isDragging ? 'grabbing' : 'grab',
-                            width: '400px',
-                            height: "400px",
-                            position: 'relative',
-                            border: '2px solid gray',
-                            borderRadius: '8px',
-                            overflow: 'hidden',
-                            bgcolor: '#f5f5f5',
-                            m: "auto",
+                            position: "relative",
+                            height: 400,
+                            width: "100%",
                         }}
                     >
-                        {zoomState.currentImage && (
-                            <img
-                                src={zoomState.currentImage}
-                                alt="Zoomed"
-                                className={classes.zoomedImage}
-                                style={{
-                                    transform: `
-translate3d(
-${zoomState.position.x}px,
-${zoomState.position.y}px,
-0
-)
-scale(${zoomState.scale})
-rotate(${zoomState.rotation}deg)
-`,
-                                    transformOrigin: 'center center',
-                                    cursor: zoomState.isDragging ? 'grabbing' : 'grab'
-                                }}
-                            />
-                        )}
+                        <Cropper
+                            image={zoomState.currentImage}
+                            crop={zoomState.crop}
+                            zoom={zoomState.zoom}
+                            rotation={zoomState.rotation}
+                            aspect={1}
+                            objectFit="contain"
+                            onCropChange={(crop) =>
+                                setZoomState(prev => ({
+                                    ...prev,
+                                    crop,
+                                }))
+                            }
+                            onZoomChange={(zoom) =>
+                                setZoomState(prev => ({
+                                    ...prev,
+                                    zoom,
+                                }))
+                            }
+                            onRotationChange={(rotation) =>
+                                setZoomState(prev => ({
+                                    ...prev,
+                                    rotation,
+                                }))
+                            }
+                            onCropComplete={handleCropComplete}
+                        />
                     </Box>
 
-                    <Typography variant="body2" sx={{ minWidth: 80 }}>
-                        Zoom: {zoomState.scale.toFixed(1)}x
+                    <Typography>
+                        Zoom: {(zoomState.zoom ?? 1).toFixed(1)}x
                     </Typography>
                     <Box display={'flex'}>
 
                         <IconButton
                             onClick={handleZoomOut}
-                            disabled={zoomState.scale <= 0.1}
+                            disabled={zoomState.zoom <= MIN_ZOOM}
                         >
                             <ZoomOutIcon />
                         </IconButton>
 
                         <Slider
-                            value={zoomState.scale}
-                            min={0.1}
-                            max={5}
+                            value={zoomState.zoom}
+                            min={MIN_ZOOM}
+                            max={MAX_ZOOM}
                             step={0.1}
-                            onChange={handleSliderChange}
-                            sx={{ flex: 1, mx: 2 }}
+                            onChange={(e, value) =>
+                                setZoomState(prev => ({
+                                    ...prev,
+                                    zoom: value,
+                                }))
+                            }
                         />
 
                         <IconButton
                             onClick={handleZoomIn}
-                            disabled={zoomState.scale >= 5}
+                            disabled={zoomState.zoom >= MAX_ZOOM}
                         >
                             <ZoomInIcon />
                         </IconButton>
@@ -479,8 +465,8 @@ rotate(${zoomState.rotation}deg)
 
 
                     <Box>
-                        <Typography gutterBottom>
-                            Rotation ({zoomState.rotation}°)
+                        <Typography>
+                            Rotation: {zoomState.rotation ?? 0}°
                         </Typography>
 
                         <Box
@@ -499,9 +485,12 @@ rotate(${zoomState.rotation}deg)
                                 min={0}
                                 max={360}
                                 step={1}
-                                onChange={handleRotationSlider}
-                                sx={{ flex: 1 }}
-
+                                onChange={(e, value) =>
+                                    setZoomState(prev => ({
+                                        ...prev,
+                                        rotation: value,
+                                    }))
+                                }
                             />
 
                             <IconButton onClick={handleRotateRight}>

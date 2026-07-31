@@ -382,11 +382,11 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                         <div onClick={handleImageClick} style={{ cursor: 'pointer' }}>
                             <img
                                 src={
-                                    saleData?.productData?.image?.[0]
-                                        ? `${baseUrl}/${saleData.productData.image[0]}`
-                                        : saleData?.productMain?.image?.[0]
-                                            ? `${baseUrl}/${saleData.productMain.image[0]}`
-                                            : ''
+                                    saleData?.productData?.edited_image
+                                        ? `${baseUrl}/${saleData.productData.edited_image}`
+                                        : saleData?.productData?.image?.[0]
+                                            ? `${baseUrl}/${saleData?.productData.image[0]}`
+                                            : `${baseUrl}/${saleData?.productMain.image[0]}`
                                 }
                                 style={{ width: "100%", height: "100%", borderRadius: 2, objectFit: "cover" }}
                                 alt="product"

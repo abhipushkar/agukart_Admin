@@ -286,9 +286,9 @@ const Orders = () => {
   }
 
 
-  console.log({ orders });
-  console.log({ date });
-  console.log({ orderIds });
+  // console.log({ orders });
+  // console.log({ date });
+  // console.log({ orderIds });
 
   const getOrderList = useCallback(async () => {
     try {
@@ -298,6 +298,7 @@ const Orders = () => {
       }
       else {
         setIsSearched(true);
+        handlePageChange(null, 1);
       }
       setOrders([]);
 

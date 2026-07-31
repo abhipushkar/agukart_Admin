@@ -7,6 +7,21 @@ import { localStorageKey } from 'app/constant/localStorageKey';
 const DEFAULT_HIDDEN_COLUMNS = ['Image Badge'];
 const PRODUCT_LIST_VIEW_CONTEXT_KEY = 'product_list_view_context';
 
+const getInitialState = () => {
+    const params = new URLSearchParams(window.location.search);
+
+    return {
+        page: Math.max((Number(params.get("page")) || 1) - 1, 0),
+        limit: Number(params.get("limit")) || 50,
+        sorting: {
+            sortBy: params.get("sortBy") || "refresh_date",
+            order: Number(params.get("order")) || -1,
+        },
+    };
+};
+
+const initial = getInitialState();
+
 export const useProductStore = create((set, get) => ({
     // State
     products: [],
@@ -14,9 +29,9 @@ export const useProductStore = create((set, get) => ({
     loading: false,
     actionLoading: false,
     pagination: {
-        page: 0,
-        limit: 50,
-        totalCount: 0
+        page: initial.page,
+        limit: initial.limit,
+        totalCount: 0,
     },
     filters: {
         search: '',
@@ -24,10 +39,7 @@ export const useProductStore = create((set, get) => ({
         isSearched: false,
         status: 'all',
         category: '',
-        sorting: {
-            sortBy: 'refresh_date',
-            order: -1,
-        },
+        sorting: initial.sorting,
         hiddenColumns: JSON.parse(localStorage.getItem(localStorageKey.productTable)) || DEFAULT_HIDDEN_COLUMNS
     },
     selection: {
@@ -223,7 +235,7 @@ export const useProductStore = create((set, get) => ({
             setLoading(true);
             const url = `${apiEndpoints.getProduct}?type=${filters.status}&category=${filters.category}&search=${filters.search.trim()}&featured=${showFeaturedOnly ? true : ''}&sort=${filters.sorting.sortBy ? JSON.stringify({
                 [filters.sorting.sortBy]: filters.sorting.order,
-            }) : ""}&page=${pagination.page + 1}&limit=${pagination.limit}`;
+            }) : ""}&page=1&limit=${pagination.limit}`;
             const auth_key = localStorage.getItem(localStorageKey.auth_key);
             const res = await ApiService.get(url, auth_key);
 
