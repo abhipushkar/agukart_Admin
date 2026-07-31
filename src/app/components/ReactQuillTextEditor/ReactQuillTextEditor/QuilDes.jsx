@@ -2,6 +2,7 @@ import React, { memo, useCallback, useEffect, useState } from "react";
 import ReactQuill, { Quill } from "react-quill";
 import ImageResize from "quill-image-resize-module-react";
 import CustomImageBlot from "../CustomImageBot";
+import "react-quill/dist/quill.snow.css";
 
 Quill.register("modules/imageResize", ImageResize);
 
@@ -10,6 +11,7 @@ const modules = {
     [{ header: "1" }, { header: "2" }, { font: [] }],
     [{ size: [] }],
     ["bold", "italic", "underline", "strike", "blockquote"],
+    [{ align: [] }],
     [{ list: "ordered" }, { list: "bullet" }, { indent: "-1" }, { indent: "+1" }],
     ["link", "image", "video"],
     ["clean"]
@@ -28,12 +30,12 @@ const formats = [
   "header",
   "font",
   "size",
-
   "bold",
   "italic",
   "underline",
   "strike",
   "blockquote",
+  "align",
   "list",
   "bullet",
   "indent",

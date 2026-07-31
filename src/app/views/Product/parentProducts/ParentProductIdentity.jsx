@@ -987,28 +987,30 @@ const ParentProductIdentity = ({ productCode, listing }) => {
             const res = await ApiService.postImage(urlWithParam, formDataObj, auth_key);
             if (res.status === 200) {
                 // Handle parent product image separately if it exists
-                if (images?.[0]?.file) {
+                const shouldUploadParentImage = images?.[0]?.file || formData.editedImage;
+
+                if (shouldUploadParentImage) {
                     const imageFormData = new FormData();
                     imageFormData.append("_id", parentId ? parentId : res?.data?.parent_product._id);
-                    imageFormData.append(
-                        "file",
-                        productId
-                            ? images?.[0]?.file
-                                ? images?.[0]?.file
-                                : images?.[0]?.src
-                            : images?.[0]?.file
-                    );
-                    if (images?.[0]?.edited_image) {
+                    if (images?.[0]?.file) {
                         imageFormData.append(
-                            "edited_image",
-                            images[0].edited_image
-                        );
-                        console.log(
-                            "Edited image appended =>",
-                            images[0].edited_image
+                            "file",
+                            images[0].file
                         );
                     }
-                    const ImagesurlWithParam = `${apiEndpoints.ParentImagesAddParentProduct}`;
+                    if (formData.editedImage) {
+                        imageFormData.append(
+                            "edited_image",
+                            formData.editedImage,
+                            "edited-image.png"
+                        );
+
+                        console.log(
+                            "Edited image appended =>",
+                            formData.editedImage
+                        );
+                    }
+                    const ImagesurlWithParam = apiEndpoints.ParentImagesAddParentProduct;
                     await ApiService.postImage(ImagesurlWithParam, imageFormData, auth_key);
                 }
                 setFormData({
@@ -1016,7 +1018,7 @@ const ParentProductIdentity = ({ productCode, listing }) => {
                     description: "",
                     subCategory: "",
                     sellerSku: "",
-                    zoom: { scale: 1, x: 0, y: 0 },
+                    zoom: {},
                     Innervariations: {},
                     variantData: [],
                     variant_id: [],
@@ -1213,6 +1215,7 @@ const ParentProductIdentity = ({ productCode, listing }) => {
                     description: resData?.description || "",
                     sellerSku: listing === 'copy' ? "" : resData?.seller_sku || "",
                     images: listing === 'copy' ? [] : [{ src: `${res?.data?.base_url}${resData?.image}` }],
+                    edited_image: listing === 'copy' ? "" : `${res?.data?.base_url}${resData?.edited_image}`,
                     zoom: resData?.zoom ?? {
                         scale: 1,
                         rotation: 0,
@@ -1961,20 +1964,14 @@ const ParentProductIdentity = ({ productCode, listing }) => {
                                 >
                                     <Typography variant="body1" color="primary.main" textAlign={'center'} mb={1}>Preview Image</Typography>
                                     <Box width={200} height={200} overflow={'hidden'} border={'1px solid #d3cdcd'}>
-                                        <img src={images[0].src} alt={''}
-                                            style={{
-                                                width: "100%",
-                                                height: "100%",
-                                                objectFit: "contain",
-                                                transform: `
-                                                translate(${(formData.zoom?.x * 0.5) ?? 0}px, ${(formData.zoom?.y * 0.5) ?? 0}px)
-                                                scale(${formData.zoom?.scale ?? 1})
-                                                rotate(${formData.zoom?.rotation ?? 0}deg)
-                                            `,
-                                                transformOrigin: "center center",
-                                                transition: "transform 0.2s ease",
-                                                willChange: "transform",
-                                            }}
+                                        <img
+                                            src={
+                                                formData.editedImage
+                                                    ? URL.createObjectURL(formData.editedImage)
+                                                    : formData.edited_image ? formData.edited_image : images[0].src
+                                            }
+                                            height={200}
+                                            width={200}
                                         />
                                     </Box>
                                 </Card>

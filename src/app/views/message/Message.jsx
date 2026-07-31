@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
 import Grid from "@mui/material/Grid";
@@ -93,14 +93,10 @@ const Message = () => {
   const [vendorId, setVendorId] = useState("");
   const [productData, setProductData] = useState({});
   const [products, setProducts] = useState([]);
-  const [userData, setUserData] = useState({});
-  const [messageHistory, setMessageHistory] = useState([]);
   const [orderHistory, setOrderHistory] = useState([]);
   const [reviewHistory, setReviewHistory] = useState([]);
   const [favoriteHistory, setFavoriteHistory] = useState([]);
-  console.log(userId, vendorId, userData, productData, reviewHistory, favoriteHistory, messageHistory, "Drtuytyutyuyu")
   const [expanded, setExpanded] = useState(null);
-  console.log({ productData, userData })
   const formatDate = (timestamp) => {
     const date = new Date(timestamp?.seconds * 1000);
     return date?.toLocaleDateString();
@@ -188,12 +184,13 @@ const Message = () => {
     showCount,
     markAsUnreadHandler,
     markAsReadHandler,
-    chats,
+    chats, allChats,
     setCheckMessage,
     searchText,
     setSearchText,
     searchHandler,
-    getUserDetails
+    getUserDetails,
+    userDetailsMap
   } = useChat();
   console.log("jkahsiduh", showCount);
   const { pathname } = useLocation();
@@ -213,42 +210,50 @@ const Message = () => {
     setDetailDrawerOpen(!detailDrawerOpen);
   };
 
+  const currentChat = useMemo(() => allChats.find(chat => chat.id === slug), [allChats, slug]);
+
+  const messageHistory = useMemo(() => {
+    if (!currentChat) return [];
+    const history = allChats
+      .filter(chat => chat.user === currentChat.user && chat.receiverId === currentChat.receiverId && chat.id !== currentChat.id)
+      .sort(
+        (a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+    console.log(allChats, "allchats", history);
+    console.log({ user: currentChat.user, vendor: currentChat.receiverId }, allChats.map(x => ({
+      id: x.id,
+      user: x.user,
+      receiverId: x.receiverId
+    })), "allchats");
+    return history;
+  }, [allChats, currentChat]);
+
   useEffect(() => {
-    if (slug) {
-      setProductData({});
-      const q = query(
-        collection(db, "chatRooms"),
-        orderBy("createdAt", "asc")
-      );
-      const unsubscribe = onSnapshot(q, async (snapshot) => {
-        const newMessages = snapshot?.docs?.map((doc) => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        const matchingDocument = newMessages?.filter((doc) => {
-          return doc?.id === slug;
-        });
-        console.log("dfhdfh", matchingDocument);
-        setUserId(matchingDocument[0]?.user);
-        setVendorId(matchingDocument[0]?.receiverId);
-        setPrivateNoteExists(matchingDocument[0]?.privateNote);
-        const chats = newMessages?.filter((doc) => {
-          return doc?.user === matchingDocument[0]?.user && doc?.receiverId === matchingDocument[0]?.receiverId && doc?.id !== slug;
-        })?.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
-        setMessageHistory(chats)
-        console.log(chats, "chats");
-        const userData = await getUserDetails(matchingDocument[0]?.user);
-        if (!pathname.includes('compose')) {
-          userData.shop_name = matchingDocument[0]?.shopName;
-        }
-        setUserData(userData);
-        setProductData(matchingDocument[0]?.productData)
-        setProducts(matchingDocument[0]?.products || [])
-        setSuborderid(matchingDocument[0]?.subOrderId || "")
-      });
-      return () => unsubscribe();
+    if (!currentChat) return;
+
+    setUserId(currentChat.user);
+    setVendorId(currentChat.receiverId);
+    setPrivateNoteExists(currentChat.privateNote || "");
+    setProductData(currentChat.productData || {});
+    setProducts(currentChat.products || []);
+    setSuborderid(currentChat.subOrderId || "");
+  }, [currentChat]);
+
+
+  const userData = useMemo(() => {
+    if (!currentChat) return null;
+    const user = userDetailsMap[currentChat.user];
+    if (!user) return null;
+    if (pathname.includes("compose")) return user;
+    return { ...user, shop_name: currentChat.shopName };
+  }, [currentChat, pathname, userDetailsMap]);
+
+  useEffect(() => {
+    if (!currentChat) return;
+    if (!userDetailsMap[currentChat.user]) {
+      getUserDetails(currentChat.user);
     }
-  }, [slug,]);
+  }, [currentChat, userDetailsMap]);
+
 
   const handleChange = (panel) => (event, isExpanded) => {
     setExpanded(isExpanded ? panel : null);
@@ -622,7 +627,7 @@ const Message = () => {
                 alignItems: "center",
               }}
             >
-              Store : {userData.shop_name || "-"}
+              Store : {userData?.shop_name || "-"}
             </Typography>
             <Typography
               component="div"
@@ -1418,7 +1423,7 @@ const Message = () => {
                           alignItems: "center",
                         }}
                       >
-                        Store : {userData.shop_name || "-"}
+                        Store : {userData?.shop_name || "-"}
                       </Typography>
                       <Typography
                         component="div"
