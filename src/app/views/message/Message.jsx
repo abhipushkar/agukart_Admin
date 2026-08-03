@@ -30,14 +30,13 @@ import { Small } from "app/components/Typography";
 import { db, storage } from "../../../../src/firebase/Firebase";
 import {
   collection,
-  addDoc,
   onSnapshot,
   query,
   orderBy,
   updateDoc,
   doc,
-  getDocs,
-  getDoc
+  getDoc,
+  limit, where
 } from "firebase/firestore";
 import { useEffect } from "react";
 import { ApiService } from "app/services/ApiService";
@@ -82,6 +81,10 @@ const Message = () => {
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
 
+  const [currentChat, setCurrentChat] = useState(null);
+  const [messageHistory, setMessageHistory] = useState([]);
+  const [messageHistoryLoading, setMessageHistoryLoading] = useState(false);
+
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [anchorEl, setAnchorEl] = useState(null);
@@ -117,47 +120,21 @@ const Message = () => {
   };
 
   const handleSave = async () => {
-    console.log("Saved Note:", note);
-    if (note.trim()) {
-      const querySnapshot = await getDocs(
-        collection(db, role === "admin" ? "composeChat" : "chatRooms")
-      );
-      const documents = querySnapshot.docs.map((doc) => {
-        const docId = doc.id;
-        const docData = doc.data();
-        console.log("Document ID: ", docId);
-        console.log("Document Data: ", docData);
-        return {
-          id: docId,
-          data: docData
-        };
+    if (!note.trim() || !slug) return;
+
+    try {
+      const collectionName = role === "admin" ? "composeChat" : "chatRooms";
+      const docRef = doc(db, collectionName, slug);
+
+      await updateDoc(docRef, {
+        privateNote: note.trim()
       });
-      console.log("All documents: ", documents);
-      const matchingDocument = documents?.find((doc) => {
-        return doc?.id === slug;
-      });
-      console.log("matchingDocumentmatchingDocumenttt", matchingDocument);
-      if (matchingDocument) {
-        console.log("Matching document:", matchingDocument);
-        await updateDoc(
-          doc(db, role === "admin" ? "composeChat" : "chatRooms", matchingDocument?.id),
-          {
-            privateNote: note
-          }
-        );
-        setNote("");
-        setIsEditing(false);
-        const updatedDocRef = doc(db, role === "admin" ? "composeChat" : "chatRooms", matchingDocument.id);
-        const updatedDocSnap = await getDoc(updatedDocRef);
-        if (updatedDocSnap.exists()) {
-          const data = updatedDocSnap.data();
-          if (data?.privateNote) {
-            setPrivateNoteExists(data?.privateNote);
-          }
-        } else {
-          console.log("No such document exists!");
-        }
-      }
+
+      setPrivateNoteExists(note.trim());
+      setNote("");
+      setIsEditing(false);
+    } catch (error) {
+      console.error("Error saving private note:", error);
     }
   };
 
@@ -210,28 +187,82 @@ const Message = () => {
     setDetailDrawerOpen(!detailDrawerOpen);
   };
 
-  const currentChat = useMemo(() => allChats.find(chat => chat.id === slug), [allChats, slug]);
+  useEffect(() => {
+    if (!slug) {
+      setCurrentChat(null);
+      return;
+    }
 
-  const messageHistory = useMemo(() => {
-    if (!currentChat) return [];
-    const history = allChats
-      .filter(chat => chat.user === currentChat.user && chat.receiverId === currentChat.receiverId && chat.id !== currentChat.id)
-      .sort(
-        (a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
-    console.log(allChats, "allchats", history);
-    console.log({ user: currentChat.user, vendor: currentChat.receiverId }, allChats.map(x => ({
-      id: x.id,
-      user: x.user,
-      receiverId: x.receiverId
-    })), "allchats");
-    return history;
-  }, [allChats, currentChat]);
+    const loadCurrentChat = async () => {
+      try {
+        const docRef = doc(db, "chatRooms", slug);
+        const docSnap = await getDoc(docRef);
+
+        if (!docSnap.exists()) {
+          setCurrentChat(null);
+          return;
+        }
+
+        setCurrentChat({
+          id: docSnap.id,
+          ...docSnap.data()
+        });
+      } catch (error) {
+        console.error("Error loading current chat:", error);
+        setCurrentChat(null);
+      }
+    };
+
+    loadCurrentChat();
+  }, [slug]);
+
+  useEffect(() => {
+    if (!currentChat?.user || !currentChat?.receiverId) {
+      setMessageHistory([]);
+      return;
+    }
+
+    setMessageHistoryLoading(true);
+
+    const historyQuery = query(
+      collection(db, "chatRooms"),
+      where("user", "==", currentChat.user),
+      where("receiverId", "==", currentChat.receiverId),
+      orderBy("createdAt", "desc")
+    );
+
+    const unsubscribe = onSnapshot(
+      historyQuery,
+      (snapshot) => {
+        const history = snapshot.docs
+          .map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }))
+          .filter(chat => chat.id !== currentChat.id);
+
+        setMessageHistory(history);
+        setMessageHistoryLoading(false);
+      },
+      (error) => {
+        console.error("Error loading message history:", error);
+        setMessageHistory([]);
+        setMessageHistoryLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [
+    currentChat?.id,
+    currentChat?.user,
+    currentChat?.receiverId
+  ]);
 
   useEffect(() => {
     if (!currentChat) return;
 
-    setUserId(currentChat.user);
-    setVendorId(currentChat.receiverId);
+    setUserId(currentChat.user || "");
+    setVendorId(currentChat.receiverId || "");
     setPrivateNoteExists(currentChat.privateNote || "");
     setProductData(currentChat.productData || {});
     setProducts(currentChat.products || []);
@@ -765,7 +796,9 @@ const Message = () => {
           <Typography fontWeight={500}>Message History</Typography>
         </AccordionSummary>
         <AccordionDetails>
-          {messageHistory?.length > 0 ? (
+          {messageHistoryLoading ? (
+            <Typography>Loading...</Typography>
+          ) : messageHistory?.length > 0 ? (
             <Stack spacing={1}>
               {messageHistory?.map((message) => {
                 const currentMessageDate = formatDate(message?.createdAt);

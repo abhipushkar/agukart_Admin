@@ -31,7 +31,7 @@ import {
   onSnapshot,
   orderBy,
   query,
-  updateDoc,
+  updateDoc, where, limit, arrayUnion
 } from "firebase/firestore";
 import { db, storage } from "../../../../src/firebase/Firebase";
 import { ref, getDownloadURL, uploadBytesResumable } from "firebase/storage";
@@ -40,6 +40,7 @@ import { localStorageKey } from "app/constant/localStorageKey";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import Video from "yet-another-react-lightbox/plugins/video";
+import { markIncomingUserMessagesAsRead } from "app/utils/markReadHandler";
 
 // Styled Components
 const MessageContainer = styled(Box)(({ theme }) => ({
@@ -209,6 +210,8 @@ const MessagePopup = ({
   const senderId = vendorID;
   const receiverId = userId;
   const token = localStorage.getItem(localStorageKey.auth_key);
+  const [currentChat, setCurrentChat] = useState(null);
+  console.log(subOrderProducts, 'pp');
 
   const [lightboxState, setLightboxState] = useState({
     open: false,
@@ -277,36 +280,70 @@ const MessagePopup = ({
   };
 
   useEffect(() => {
+    if (!openPopup || !senderId || !receiverId || !subOrderId) {
+      setCurrentChat(null);
+      setMessages([]);
+      return;
+    }
+
     setMessages([]);
-    const q = query(collection(db, "chatRooms"), orderBy("createdAt", "asc"));
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const newMessages = snapshot?.docs?.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      const matchingDocument = newMessages?.filter((doc) => {
-        return (
-          doc?.receiverId === senderId &&
-          doc?.user === receiverId &&
-          doc?.subOrderId === subOrderId
+    const chatQuery = query(
+      collection(db, "chatRooms"),
+      where("receiverId", "==", senderId),
+      where("user", "==", receiverId),
+      where("subOrderId", "==", subOrderId),
+      limit(1)
+    );
+
+    const unsubscribe = onSnapshot(
+      chatQuery,
+      async (snapshot) => {
+        if (snapshot.empty) {
+          setCurrentChat(null);
+          setMessages([]);
+          return;
+        }
+
+        const docSnap = snapshot.docs[0];
+
+        const chat = {
+          id: docSnap.id,
+          ...docSnap.data()
+        };
+
+        setCurrentChat(chat);
+
+        if (chat.permanentDeleteUser2 === senderId) {
+          setMessages([]);
+          return;
+        }
+
+        const visibleMessages = (chat.text || []).filter(
+          msg => msg.permanentDeleteUser !== senderId
         );
-      });
 
-      if (matchingDocument[0]?.permanentDeleteUser1 === senderId) {
-        setMessages([]);
-        return;
-      }
-      matchingDocument.forEach((data) => {
-        const filterArr = data?.text?.filter((msg) => {
-          return msg.permanentDeleteUser !== senderId;
+        setMessages(visibleMessages);
+
+        await markIncomingUserMessagesAsRead({
+          chatId: chat.id,
+          messages: chat.text || []
         });
-        setMessages(filterArr);
-      });
-    });
+      },
+      (error) => {
+        console.error("Sub-order chat listener error:", error);
+        setCurrentChat(null);
+        setMessages([]);
+      }
+    );
 
     return () => unsubscribe();
-  }, [senderId, receiverId, subOrderId]);
+  }, [
+    openPopup,
+    senderId,
+    receiverId,
+    subOrderId
+  ]);
 
   const handleFileChange = (e) => {
     const selectedFiles = Array.from(e.target.files);
@@ -356,154 +393,139 @@ const MessagePopup = ({
       return;
     }
 
-    const updatedFiles = [...files, ...validFiles];
-    const previews = updatedFiles.map((file) => URL.createObjectURL(file));
+    const newPreviews = validFiles.map(file => URL.createObjectURL(file));
 
-    setFiles(updatedFiles);
-    setImagePreviews(previews);
+    setFiles(prev => [...prev, ...validFiles]);
+    setImagePreviews(prev => [...prev, ...newPreviews]);
     e.target.value = "";
   };
 
-  useEffect(() => {
-    return () => {
-      imagePreviews.forEach(preview => {
-        URL.revokeObjectURL(preview);
-      });
-    };
-  }, []);
-
   const handleRemoveImage = (index) => {
-    setImagePreviews((prev) => prev.filter((_, i) => i !== index));
-    setFiles((prev) => prev.filter((_, i) => i !== index));
+    setImagePreviews(prev => {
+      if (prev[index]) {
+        URL.revokeObjectURL(prev[index]);
+      }
+      return prev.filter((_, i) => i !== index);
+    });
+    setFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleClearPreview = () => {
+    imagePreviews.forEach(preview => {
+      URL.revokeObjectURL(preview);
+    });
+
     setImagePreviews([]);
     setFiles([]);
+
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
 
   const buildSubOrderProductMessages = () => {
-    const messages = [];
-
-    subOrderProducts.forEach((product) => {
-      messages.push({
-        senderType: "vendor",
-        text: "",
-        createdAt: new Date(),
-        messageSenderId: senderId,
-        isNotification: true,
-        imageUrls: [],
-        productId: product?.product_id,
-        productData: {
-          productTitle: product?.name,
-          price: product?.sale_price,
-          imageUrl: product?.product_image,
-          qty: product?.qty,
-          isCombination: product?.isCombination,
-          variants: product?.variants,
-          variantData: product?.variantData || [],
-          variantAttributeData: product?.variantAttributeData || [],
-          customize: product?.customize,
-          customizationData: product?.customizationData,
-        },
-      });
-    });
-
-    messages.push({
-      senderType: "vendor",
-      text: input,
+    const productMessages = (subOrderProducts || []).map((p) => ({
+      senderType: "user",
+      text: "",
       createdAt: new Date(),
       messageSenderId: senderId,
-      isNotification: false,
-    });
+      isNotification: true,
+      imageUrls: [],
+      productId: p?.productData?._id || null,
+      productLink: `https://agukart.com/product/slug/${p?.productData?.product_code}`,
+      productData: {
+        productTitle: p?.productData?.product_title || "",
+        price: p?.sub_total || 0,
+        imageUrl: p?.productData?.image?.[0] ? `https://api.agukart.com/uploads/product/${p.productData.image[0]}` : "",
+      },
+      orderId: orderId || "",
+      subOrderId: subOrderId || "",
+    }));
 
-    return messages;
+    return productMessages;
   };
 
   const sendMessage = async () => {
     if ((!input.trim() && files.length === 0) || isSending) return;
+    if (!senderId || !receiverId || !subOrderId) return;
+
     setIsSending(true);
-    let uploadedFiles = [];
 
     try {
-      const querySnapshot = await getDocs(collection(db, "chatRooms"));
-      const documents = querySnapshot.docs.map((doc) => {
-        const docId = doc.id;
-        const docData = doc.data();
-        return {
-          id: docId,
-          data: docData,
-        };
-      });
-
-      const matchingDocument = documents?.find((doc) => {
-        return (
-          doc.data.receiverId === senderId &&
-          doc.data.user === receiverId &&
-          doc.data.subOrderId === subOrderId
-        );
-      });
+      let uploadedFiles = [];
 
       if (files.length > 0) {
-        try {
-          const uploadResult = await uploadChatFiles({
-            files: files,
-            token: token,
-            addToast: (msg) => console.log(msg),
-          });
-          uploadedFiles = uploadResult;
-          handleClearPreview();
-        } catch (uploadError) {
-          console.error("File upload failed:", uploadError);
-          setIsSending(false);
-          return;
-        }
+        uploadedFiles = await uploadChatFiles({
+          files,
+          token,
+          addToast: msg => console.log(msg)
+        });
       }
 
-      if (matchingDocument) {
-        const existingText = matchingDocument.data.text || [];
-        const updatedText = [
-          ...existingText,
-          {
-            senderType: "vendor",
-            text: input.trim(),
-            createdAt: {
-              seconds: Math.floor(Date.now() / 1000),
-            },
-            messageSenderId: senderId,
-            isNotification: false,
-            attachments: uploadedFiles,
-          },
-        ];
-        await updateDoc(doc(db, "chatRooms", matchingDocument.id), {
-          text: updatedText,
-          currentTime: new Date(),
-        });
+      const newMessage = {
+        senderType: "vendor",
+        text: input.trim(),
+        createdAt: new Date(),
+        messageSenderId: senderId,
+        isNotification: false,
+        attachments: uploadedFiles,
+        orderId: orderId || "",
+        subOrderId: subOrderId || ""
+      };
+
+      if (currentChat?.id) {
+        const updates = {
+          text: arrayUnion(newMessage),
+          currentTime: new Date()
+        };
+
+        if (currentChat.permanentDeleteUser2 === senderId) {
+          updates.permanentDeleteUser2 = "";
+          updates.isTempDelete2 = "";
+        }
+
+        await updateDoc(
+          doc(db, "chatRooms", currentChat.id),
+          updates
+        );
       } else {
         const productMessages = buildSubOrderProductMessages();
-        // Add attachments to the last message (the text message)
-        if (uploadedFiles.length > 0) {
-          productMessages[productMessages.length - 1].attachments = uploadedFiles;
-        }
+
         await addDoc(collection(db, "chatRooms"), {
-          text: productMessages,
+          text: [
+            ...productMessages,
+            newMessage
+          ],
           createdAt: new Date(),
           user: receiverId,
           receiverId: senderId,
           isDeleted: false,
           currentTime: new Date(),
-          userName,
-          vendorName,
-          shopName,
-          subOrderId,
+          userName: userName || "",
+          vendorName: vendorName || "",
+          shopName: shopName || "",
+          orderId: orderId || "",
+          subOrderId: subOrderId || "",
+          products: (subOrderProducts || []).map(product => ({
+            orderId: orderId || "",
+            name: product?.name || "",
+            qty: product?.qty || 0,
+            sale_price: product?.sale_price || 0,
+            product_image: product?.product_image || "",
+            isCombination: product?.isCombination || false,
+            variants: product?.variants || [],
+            variantData: product?.variantData || [],
+            variantAttributeData: product?.variantAttributeData || [],
+            customize: product?.customize || "No",
+            customizationData: product?.customizationData || []
+          }))
         });
       }
+
       setInput("");
+      handleClearPreview();
     } catch (error) {
-      console.error("Error sending message:", error);
+      console.error("Error sending sub-order message:", error);
     } finally {
       setIsSending(false);
     }
