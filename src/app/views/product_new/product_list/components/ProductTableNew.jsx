@@ -310,20 +310,6 @@ const ProductRow = ({ product, index }) => {
         });
         setActionAnchorEl(null);
     };
-    const parentImageStyle = {
-        width: "100%",
-        height: "100%",
-        objectFit: "contain",
-        transform: `
-        translate(${(product?.zoom?.x * 0.5) ?? 0}px, ${(product?.zoom?.y * 0.5) ?? 0}px)
-        scale(${product?.zoom?.scale ?? 1})
-        rotate(${product?.zoom?.rotation ?? 0}deg)
-    `,
-        transformOrigin: "center center",
-        transition: "transform 0.2s ease",
-        willChange: "transform",
-        backfaceVisibility: "hidden",
-    };
     // Check if all Product Information sub-columns are hidden
     const showProductInfoColumn = !filters.hiddenColumns.includes('Product Id') ||
         !filters.hiddenColumns.includes('SKU') ||
@@ -479,9 +465,9 @@ const ProductRow = ({ product, index }) => {
                             }}
                         >
                             <img
-                                src={product?.type === "product" ? (product.edited_image ?? product?.image?.[0]) : product?.image}
+                                src={(product.edited_image ?? product?.image?.[0])}
                                 alt="Zoomable"
-                                style={isProduct ? {
+                                style={{
                                     width: "100%",
                                     height: "100%",
                                     objectFit: "contain",
@@ -489,10 +475,7 @@ const ProductRow = ({ product, index }) => {
                                     transition: "transform 0.15s ease-out",
                                     willChange: "transform",
                                     backfaceVisibility: "hidden",
-                                }
-                                    : parentImageStyle
-
-                                }
+                                }}
                             />
                         </Box>
                     </TableCell>
