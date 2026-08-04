@@ -130,6 +130,7 @@ const Add = () => {
 
   const [formValues, setFormValues] = useState(initialFormValues);
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
   const [open, setOpen] = React.useState(false);
   const [type, setType] = useState("");
   const [route, setRoute] = useState(null);
@@ -217,10 +218,10 @@ const Add = () => {
     if (!v.discountAmout) newErrors.discountAmout = "Discount Amount is required";
     if (!v.promotion_type) newErrors.promotion_type = "Promotion type is required";
     if (v.promotion_type.includes("amount") && !v.amount) newErrors.amount = "Amount is required";
-    if (v.promotion_type.includes("qty") && !v.qty) newErrors.qty = "Qty is required";
+    if (v.promotion_type.includes("qty") && (!v.qty || +v.qty < 1)) newErrors.qty = "Qty is required";
 
-    if (v.promotion_type === "qty_total_shop" && v.qty < 2) newErrors.qty = "Qty cannot be less than 2 for shop total qauntity promotion."
-    if (v.offerType === "flat" && v.promotion_type.includes("amount") && v.discountAmout < v.amount) newErrors.amount = "Flat Discount cannot exceed total Discount Amount."
+    if (v.promotion_type === "qty_total_shop" && +v.qty < 2) newErrors.qty = "Qty cannot be less than 2 for shop total qauntity promotion.";
+    if (v.offerType === "flat" && v.promotion_type === "amount" && +v.discountAmout > +v.amount) newErrors.amount = "Flat Discount cannot exceed total Discount Amount.";
 
     // Date Validation
     if (!v.startDate) newErrors.startDate = "Start Date is required";
@@ -239,7 +240,7 @@ const Add = () => {
 
   const handleAddCoupon = async () => {
     if (!validateForm()) return;
-
+    setLoading(true);
     try {
       const payload = {
         _id: queryId || "0",
@@ -263,6 +264,8 @@ const Add = () => {
       }
     } catch (error) {
       handleOpen("error", error?.response?.data || error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -272,6 +275,7 @@ const Add = () => {
   };
 
   const getPromotionalOffer = async () => {
+    setLoading(true);
     try {
       const res = await ApiService.get(`${apiEndpoints.getPromotionalOfferById}/${queryId}`, auth_key);
       if (res?.status === 200) {
@@ -292,6 +296,8 @@ const Add = () => {
       }
     } catch (error) {
       handleOpen("error", error?.response?.data || error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -539,7 +545,7 @@ const Add = () => {
           </Box>
 
           <Box sx={{ display: "flex", justifyContent: "end", mt: "15px" }}>
-            <Button variant="contained" onClick={handleAddCoupon}>
+            <Button variant="contained" onClick={handleAddCoupon} disabled={loading}>
               Submit
             </Button>
           </Box>

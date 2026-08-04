@@ -279,7 +279,7 @@ const Add = () => {
         if (!formValues.cPassword) newErrors.cPassword = "Confirm Password is required";
         if (formValues.cPassword && formValues.password !== formValues.cPassword)
           newErrors.cPassword = "Confirm password must match the new password";
-        if (!formValues.mobileNo) newErrors.mobileNo = "Mobile No is required";
+        // if (!formValues.mobileNo) newErrors.mobileNo = "Mobile No is required";
         if (!imageSrc) newErrors.images = "Image is required";
         setErrors(newErrors);
         if (Object.keys(newErrors).length === 0) {
