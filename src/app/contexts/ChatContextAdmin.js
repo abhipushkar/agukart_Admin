@@ -20,7 +20,7 @@ export const ChatProvider = ({ children }) => {
     const [searchText, setSearchText] = useState("");
     const [showCount, setShowCount] = useState(0);
     const [page, setPage] = useState(0);
-    const [rowsPerPage, setRowsPerPage] = useState(50);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
     const [totalCount, setTotalCount] = useState(0);
     const [lastVisible, setLastVisible] = useState(null);
     const [firstVisible, setFirstVisible] = useState(null);

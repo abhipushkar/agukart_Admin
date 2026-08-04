@@ -16,7 +16,8 @@ import {
   Typography,
   MenuItem,
   LinearProgress,
-  Autocomplete
+  Autocomplete,
+  Badge
 } from "@mui/material";
 import React, { useState, useEffect, useCallback } from "react";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
@@ -67,11 +68,11 @@ const BasicInfo = ({ value }) => {
     city: "",
     state: "",
     country: "",
-    address:"",
-    createdAt:"",
-    sales:""
+    address: "",
+    createdAt: "",
+    sales: ""
   });
-  console.log({profileData});
+  console.log({ profileData });
   const [errors, setErrors] = useState({
     name: "",
     email: "",
@@ -79,7 +80,7 @@ const BasicInfo = ({ value }) => {
     city: "",
     state: "",
     country: "",
-    address:"",
+    address: "",
   });
   const [countryData, setCountryData] = useState([]);
   const [stateData, setStateData] = useState([]);
@@ -95,9 +96,9 @@ const BasicInfo = ({ value }) => {
         city: logUserData?.city?._id,
         state: logUserData?.state?._id,
         country: logUserData?.country?._id,
-        address:logUserData?.vendor?.shop_address,
-        createdAt:logUserData?.vendor?.createdAt,
-        sales:logUserData?.particularVendorSales
+        address: logUserData?.vendor?.shop_address,
+        createdAt: logUserData?.vendor?.createdAt,
+        sales: logUserData?.particularVendorSales
       });
     }
   }, [logUserData]);
@@ -121,11 +122,98 @@ const BasicInfo = ({ value }) => {
   const [route, setRoute] = useState(null);
   const [msg, setMsg] = useState(null);
 
+
+  // Add these functions inside your BasicInfo component
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [imageFile, setImageFile] = useState(null);
+
+  // Handle file selection
+  const handleProfileImageChange = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        toast.error("Please select a valid image file (JPEG, PNG, WEBP)");
+        return;
+      }
+
+      // Validate file size - max 5MB
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("Image size should be less than 5MB");
+        return;
+      }
+
+      // Create preview URL
+      const previewUrl = URL.createObjectURL(file);
+      setSelectedImage(previewUrl);
+      setImageFile(file);
+
+      // Open confirm modal
+      handleOpen("confirm", "Do you want to update your profile picture?");
+    }
+  };
+
+  // Upload profile picture
+  const uploadProfilePicture = async () => {
+    console.log('upload called');
+    if (!imageFile) return;
+
+    try {
+      const formData = new FormData();
+      formData.append("file", imageFile);
+
+      const res = await ApiService.postImage(
+        "add-admin-profile",
+        formData,
+        auth_key
+      );
+
+      if (res?.status === 200) {
+        toast.success(res?.data?.message || "Profile picture updated successfully!");
+        // Reset states
+        setSelectedImage(null);
+        setImageFile(null);
+        // Refresh profile data
+        setTimeout(() => {
+          navigate(0);
+        }, 1000);
+      }
+    } catch (error) {
+      console.error("Error uploading profile picture:", error);
+      handleOpen("error", error);
+    }
+  };
+
+  // Cancel/Close the modal without uploading
+  const handleCancelUpload = () => {
+    setSelectedImage(null);
+    setImageFile(null);
+    setOpen(false);
+    setRoute(null);
+    setMsg(null);
+  };
+
   const logOut = () => {
     localStorage.removeItem(localStorageKey.auth_key);
     localStorage.removeItem(localStorageKey.designation_id);
     localStorage.removeItem(localStorageKey.vendorId);
     setRoute(ROUTE_CONSTANT.login);
+  };
+
+  // Update your existing handleConfirm or create a new one
+  const handleConfirm = () => {
+    if (type === "confirm" && imageFile) {
+      uploadProfilePicture();
+      setOpen(false);
+      setMsg(null);
+      setType("");
+    } else {
+      // Your existing confirm logic
+      setOpen(false);
+      setRoute(null);
+      setMsg(null);
+    }
   };
 
   const handleOpen = (type, msg) => {
@@ -260,7 +348,7 @@ const BasicInfo = ({ value }) => {
           >
             <CardMedia
               component="img"
-              image={logUserData?.vendor?.shop_icon ? `${logUserData?.shopImageUrl}${logUserData?.vendor?.shop_icon}`:"https://cdn.pixabay.com/photo/2015/05/31/15/08/blank-792125_1280.jpg"}
+              image={logUserData?.vendor?.shop_icon ? `${logUserData?.shopImageUrl}${logUserData?.vendor?.shop_icon}` : "https://cdn.pixabay.com/photo/2015/05/31/15/08/blank-792125_1280.jpg"}
               alt="Paella dish"
               sx={{ objectFit: "cover" }}
             />
@@ -282,43 +370,75 @@ const BasicInfo = ({ value }) => {
             >
               <InputLabel
                 htmlFor="photo-upload"
-                sx={{ position: "relative", width: "140px", margin: "0 auto" }}
+                sx={{
+                  position: "relative",
+                  width: "140px",
+                  margin: "0 auto",
+                  cursor: designation_id === "2" ? "pointer" : "default"
+                }}
               >
-                {/* <Input
+                <Input
                   id="photo-upload"
                   type="file"
-                  aria-describedby="my-helper-text"
+                  accept="image/*"
+                  aria-describedby="photo-upload-helper"
                   sx={{
                     display: "none"
                   }}
-                /> */}
-                <Avatar
-                  alt="Remy Sharp"
-                  src={
-                    logUserData?.image ||
-                    "https://m.media-amazon.com/images/M/MV5BZDk1ZmU0NGYtMzQ2Yi00N2NjLTkyNWEtZWE2NTU4NTJiZGUzXkEyXkFqcGdeQXVyMTExNDQ2MTI@._V1_FMjpg_UX1000_.jpg"
-                  }
-                  sx={{ width: 100, height: 100, margin: "0 auto" }}
+                  onChange={handleProfileImageChange}
+                  disabled={designation_id !== "2"}
                 />
-                {/* <IconButton
-                  sx={{
-                    position: "absolute",
-                    bottom: "-6px",
-                    right: "4px"
-                  }}
+                <Badge
+                  overlap="circular"
+                  anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                  badgeContent={
+                    designation_id === "2" && (
+                      <Avatar
+                        sx={{
+                          bgcolor: "#3284d6",
+                          width: 32,
+                          height: 32,
+                          border: '2px solid white'
+                        }}
+                      >
+                        <CameraAltIcon sx={{ fontSize: 16, color: "#fff" }} />
+                      </Avatar>
+                    )
+                  }
                 >
-                  <CameraAltIcon
+                  <Avatar
+                    alt="Profile"
+                    src={selectedImage || logUserData?.image}
                     sx={{
-                      background: "#3284d6",
-                      borderRadius: "50%",
-                      height: "35px",
-                      width: "35px",
-                      padding: "7px",
-                      color: "#fff"
+                      width: 100,
+                      height: 100,
+                      margin: "0 auto",
+                      cursor: designation_id === "2" ? "pointer" : "default"
                     }}
                   />
-                </IconButton> */}
+                </Badge>
               </InputLabel>
+              {selectedImage && designation_id === "2" && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 2 }}>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    onClick={uploadProfilePicture}
+                  >
+                    Save Photo
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => {
+                      setSelectedImage(null);
+                      setImageFile(null);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </Box>
+              )}
             </Box>
             <Grid item lg={8} md={12} sm={12} xs={12} sx={{ margin: "0 auto" }}>
               <Typography
@@ -335,7 +455,7 @@ const BasicInfo = ({ value }) => {
                 {logUserData?.shopname}
               </Typography>
               {
-                designation_id == "3" &&   <Grid container spacing={2}   sx={{
+                designation_id == "3" && <Grid container spacing={2} sx={{
                   display: "flex",
                   justifyContent: "space-between",
                 }}>
@@ -476,7 +596,7 @@ const BasicInfo = ({ value }) => {
                       disabled
                     />
                   </Grid>
-                        <Grid md={6} lg={6} sm={12} xs={12} mb={1}>
+                  <Grid md={6} lg={6} sm={12} xs={12} mb={1}>
                     <TextField
                       error={errors.mobile && true}
                       helperText={errors.mobile}
@@ -502,7 +622,7 @@ const BasicInfo = ({ value }) => {
                       disabled
                     />
                   </Grid>
-                   {
+                  {
                     designation_id == "3" &&
                     <>
                       <Grid item lg={6} md={6} xs={12} mb={1}>
@@ -677,7 +797,7 @@ const BasicInfo = ({ value }) => {
           </Grid>
         </Box>
       </TabPanel>
-      <ConfirmModal open={open} handleClose={handleClose} type={type} msg={msg} />
+      <ConfirmModal open={open} handleClose={handleClose} type={type} msg={msg} handleConfirm={handleConfirm} />
     </>
   );
 };

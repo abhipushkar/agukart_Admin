@@ -228,7 +228,8 @@ const Message = () => {
       collection(db, "chatRooms"),
       where("user", "==", currentChat.user),
       where("receiverId", "==", currentChat.receiverId),
-      orderBy("createdAt", "desc")
+      orderBy("createdAt", "desc"),
+      limit(5)
     );
 
     const unsubscribe = onSnapshot(
