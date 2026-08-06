@@ -11,6 +11,7 @@ const SmartAutocomplete = ({
 
     // behavior flags
     freeSolo = true,
+    restrictToOptions = false,
     multiple = true,
     allowComma = true,
     allowEnter = true,
@@ -40,6 +41,23 @@ const SmartAutocomplete = ({
         }
 
         return [];
+    };
+
+    const filterValues = (values) => {
+        if (!restrictToOptions) {
+            return values;
+        }
+
+        const optionMap = new Map(
+            options.map(option => [
+                getOptionLabel(option).toLowerCase(),
+                option,
+            ])
+        );
+
+        return values
+            .map(value => optionMap.get(value.toLowerCase()))
+            .filter(Boolean);
     };
 
     // 🔹 Normalize values
@@ -74,7 +92,7 @@ const SmartAutocomplete = ({
         if (splitOnConfirmOnly) {
             newValues = [
                 ...value,
-                ...parseTerm(valueToUse)
+                ...filterValues(parseTerm(valueToUse))
             ];
         } else {
             newValues = normalizeValues([...value, valueToUse]);

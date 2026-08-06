@@ -37,6 +37,26 @@ export default function ProductDetails() {
     const formDataHandler = (e) => {
         setFormData({ [e.target.name]: e.target.value });
     };
+
+    const uniqueKeywords = (values) => {
+        const seen = new Set();
+
+        return values.filter((value) => {
+            const keyword = (
+                typeof value === "string"
+                    ? value
+                    : value.title
+            ).trim().toLowerCase();
+
+            if (!keyword || seen.has(keyword)) {
+                return false;
+            }
+
+            seen.add(keyword);
+            return true;
+        });
+    };
+
     const parseTerm = (term) => {
         if (Array.isArray(term)) {
             return term.map(t => t.trim());
@@ -47,30 +67,77 @@ export default function ProductDetails() {
             return newTerms;
         }
     };
+
     const handleChange = (event, newKeys) => {
-        const titles = newKeys?.reduce((acc, option) => {
+        const titles = newKeys.reduce((acc, option) => {
             return acc.concat(
-                typeof option === 'object'
+                typeof option === "object"
                     ? option.title
                     : parseTerm(option)
-            )
+            );
         }, []);
-        setFormData({ serchTemsKeyArray: titles });
+
+        setFormData({
+            serchTemsKeyArray: uniqueKeywords(titles)
+        });
+
         setError("");
     };
+
     const handleAddKey = () => {
-        if (formData.searchTerms.trim() && !formData.serchTemsKeyArray.includes(formData.searchTerms.trim())) {
-            const newKey = parseTerm(formData.searchTerms)
-            setFormData({ serchTemsKeyArray: [...formData.serchTemsKeyArray, ...newKey] });
+        if (!formData.searchTerms.trim()) return;
+
+        setFormData({
+            serchTemsKeyArray: uniqueKeywords([
+                ...formData.serchTemsKeyArray,
+                ...parseTerm(formData.searchTerms)
+            ]),
+            searchTerms: ""
+        });
+    };
+
+    // Custom renderTags function for search terms
+    const renderSearchTags = (value, getTagProps) => {
+        if (!isSearchFocused && value.length > 3) {
+            // Show first 3 chips and "+X more" indicator
+            const visibleChips = value.slice(0, 3);
+            const remainingCount = value.length - 3;
+            return (
+                <>
+                    {visibleChips.map((option, index) => (
+                        <Chip
+                            variant="outlined"
+                            label={typeof option === "string" ? option : option.title}
+                            {...getTagProps({ index })}
+                            onDelete={handleDelete(option)}
+                            size="small"
+                        />
+                    ))}
+                    {remainingCount > 0 && (
+                        <Chip
+                            label={`+${remainingCount} more`}
+                            size="small"
+                            variant="outlined"
+                            color="primary"
+                            sx={{ cursor: 'pointer' }}
+                            onClick={() => setIsSearchFocused(true)}
+                        />
+                    )}
+                </>
+            );
         }
+        // Show all chips when focused
+        return value.map((option, index) => (
+            <Chip
+                variant="outlined"
+                label={typeof option === "string" ? option : option.title}
+                {...getTagProps({ index })}
+                onDelete={handleDelete(option)}
+                size="small"
+            />
+        ));
     };
-    const onSearchTermBlur = () => {
-        const terms = formData.serchTemsKeyArray;
-        const parsedterms = terms.reduce((acc, term) => {
-            return acc.concat(parseTerm(term))
-        }, []);
-        setFormData({ serchTemsKeyArray: parsedterms })
-    };
+
     const handleDelete = (keyToDelete) => () => {
         const updatedKeys = formData.serchTemsKeyArray.filter((k) => k !== keyToDelete);
         setFormData({ serchTemsKeyArray: updatedKeys });
@@ -166,47 +233,7 @@ export default function ProductDetails() {
         if (chipCount <= 4) return "75%";
         return "100%";
     };
-    // Custom renderTags function for search terms
-    const renderSearchTags = (value, getTagProps) => {
-        if (!isSearchFocused && value.length > 3) {
-            // Show first 3 chips and "+X more" indicator
-            const visibleChips = value.slice(0, 3);
-            const remainingCount = value.length - 3;
-            return (
-                <>
-                    {visibleChips.map((option, index) => (
-                        <Chip
-                            variant="outlined"
-                            label={typeof option === "string" ? option : option.title}
-                            {...getTagProps({ index })}
-                            onDelete={handleDelete(option)}
-                            size="small"
-                        />
-                    ))}
-                    {remainingCount > 0 && (
-                        <Chip
-                            label={`+${remainingCount} more`}
-                            size="small"
-                            variant="outlined"
-                            color="primary"
-                            sx={{ cursor: 'pointer' }}
-                            onClick={() => setIsSearchFocused(true)}
-                        />
-                    )}
-                </>
-            );
-        }
-        // Show all chips when focused
-        return value.map((option, index) => (
-            <Chip
-                variant="outlined"
-                label={typeof option === "string" ? option : option.title}
-                {...getTagProps({ index })}
-                onDelete={handleDelete(option)}
-                size="small"
-            />
-        ));
-    };
+
     // Custom renderTags function for dynamic fields dropdowns
     const renderDynamicTags = (value, getTagProps) => {
         if (value?.length > 6) {
@@ -616,13 +643,7 @@ export default function ProductDetails() {
                             onChange={handleChange}
                             inputValue={formData.searchTerms}
                             // onFocus={() => setIsSearchFocused(true)}
-                            onBlur={() => {
-                                // setIsSearchFocused(false);
-                                // if (formData.serchTemsKeyArray?.length <= 0) {
-                                //     setError("Search Terms is Required");
-                                // }
-                                onSearchTermBlur();
-                            }}
+                            onBlur={handleAddKey}
                             onInputChange={(e, newInputValue) => {
                                 setFormData({ searchTerms: newInputValue });
                                 setError("");

@@ -112,15 +112,15 @@ const Layout1Topbar = () => {
     }
     updateSidebarMode({ mode });
   };
-  const { logUserData,getProfileData } = useProfileData();
-  console.log({logUserData})
+  const { logUserData, getProfileData } = useProfileData();
+  console.log({ logUserData })
   const auth_key = localStorage.getItem(localStorageKey.auth_key);
   const designation_id = localStorage.getItem(localStorageKey.designation_id);
   const admin_detail = JSON.parse(localStorage.getItem(localStorageKey.adminDetail));
   const navigate = useNavigate();
-  const logoutHandler = async() => {
-    try{
-      const res = await ApiService.get(apiEndpoints.logout,auth_key);
+  const logoutHandler = async () => {
+    try {
+      const res = await ApiService.get(apiEndpoints.logout, auth_key);
       console.log(res);
       if (res.status === 200) {
         localStorage.removeItem(localStorageKey.auth_key);
@@ -129,17 +129,17 @@ const Layout1Topbar = () => {
         localStorage.removeItem(localStorageKey.adminDetail);
         navigate("/login");
       }
-    }catch(error){
+    } catch (error) {
       console.log(error);
     }
   };
-  
+
   useEffect(() => {
     getProfileData();
   }, []);
 
-  const handleLoginAdmin = ()=>{
-    localStorage.setItem(localStorageKey.auth_key,admin_detail?.auth_key );
+  const handleLoginAdmin = () => {
+    localStorage.setItem(localStorageKey.auth_key, admin_detail?.auth_key);
     localStorage.setItem(localStorageKey.designation_id, admin_detail?.designation_id);
     localStorage.removeItem(localStorageKey.vendorId);
     localStorage.removeItem(localStorageKey.adminDetail);
@@ -154,7 +154,7 @@ const Layout1Topbar = () => {
             <Menu />
           </StyledIconButton>
           {
-            designation_id == "3" && <Button variant="contained" color="primary" onClick={()=>{
+            designation_id == "3" && <Button variant="contained" color="primary" onClick={() => {
               window.open(`${REACT_APP_WEB_URL}/store/${logUserData?.vendor?.slug}`, "_blank");
             }}>
               View Shop
@@ -196,7 +196,7 @@ const Layout1Topbar = () => {
                     Hi <strong>{logUserData?.vendor?.shop_name || logUserData?.name}</strong>
                   </Span>
                 </Hidden>
-                <Avatar src={logUserData?.vendor?.shop_icon ? `${logUserData?.shopImageUrl}${logUserData?.vendor?.shop_icon}` : "user.avatar"} sx={{ cursor: "pointer" }} />
+                <Avatar src={logUserData.image ? logUserData.image : logUserData?.vendor?.shop_icon ? `${logUserData?.shopImageUrl}${logUserData?.vendor?.shop_icon}` : "user.avatar"} sx={{ cursor: "pointer" }} />
               </UserMenu>
             }
           >

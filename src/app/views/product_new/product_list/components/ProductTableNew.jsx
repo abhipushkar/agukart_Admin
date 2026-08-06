@@ -1168,7 +1168,8 @@ const ProductTableNew = () => {
             sx={{
                 position: 'relative',
                 cursor: actionLoading ? "none" : "auto",
-                pointerEvents: actionLoading ? 'none' : 'auto'
+                pointerEvents: actionLoading ? 'none' : 'auto',
+                overflowX: "auto",
             }}
         >
             {actionLoading && (
@@ -1189,7 +1190,7 @@ const ProductTableNew = () => {
                     <CircularProgress />
                 </Box>
             )}
-            <Table sx={{ minWidth: '100%' }} size="small">
+            <Table sx={{ minWidth: "1200px", }} size="small">
                 <TableHead>
                     <TableRow>
                         {columnHeaders.map((column) => {

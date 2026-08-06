@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
     Modal,
     Box,
@@ -70,11 +70,12 @@ const VariantModal = ({ show, handleCloseVariant }) => {
         parentProductData,
         cancelDisabled
     } = useProductFormStore();
+    console.log(variationsData, "vdata");
 
     const [selectedVariant, setSelectedVariant] = useState("");
     const [attrValues, setAttrValues] = useState({ name: "", values: [] });
     const [isEdit, setIsEdit] = useState(false);
-    const [attrOptions, setAttrOptions] = useState([]);
+    // const [attrOptions, setAttrOptions] = useState([]);
     const [nameCombinations, setNameCombinations] = useState([]);
     const [showVariantList, setShowVariantList] = useState(false);
     const [draggedIndex, setDraggedIndex] = useState(null);
@@ -87,7 +88,7 @@ const VariantModal = ({ show, handleCloseVariant }) => {
     const [customVariantDialogOpen, setCustomVariantDialogOpen] = useState(false);
     const [customVariantName, setCustomVariantName] = useState("");
     const [customVariantOptions, setCustomVariantOptions] = useState([""]);
-    const [customVariants, setCustomVariants] = useState([]);
+    // const [customVariants, setCustomVariants] = useState([]);
     const [editingCustomVariant, setEditingCustomVariant] = useState(null);
 
     // Warning dialog state
@@ -96,10 +97,34 @@ const VariantModal = ({ show, handleCloseVariant }) => {
     const [affectedPrice, setAffectedPrice] = useState(false);
     const [affectedQuantity, setAffectedQuantity] = useState(false);
 
-    const auth_key = localStorage.getItem(localStorageKey.auth_key);
+
+    const customVariants = useMemo(() => {
+        return (variationsData || [])
+            .filter(v => v.type === "custom")
+            .map(v => ({
+                variant_name: v.name,
+                variant_attribute: (v.values || []).map(value => ({
+                    attribute_value: value
+                })),
+                isCustom: true,
+                customId: v.customId
+            }));
+    }, [variationsData]);
 
     // Combine predefined variants with custom variants
     const allVariants = [...varientName, ...customVariants];
+
+    const attrOptions = useMemo(() => {
+        if (!selectedVariant) return [];
+
+        const variant = allVariants.find(
+            item => item.variant_name === selectedVariant
+        );
+
+        return variant?.variant_attribute?.map(
+            item => item.attribute_value
+        ) || [];
+    }, [selectedVariant, varientName, customVariants]);
 
     // Check if there are any combined variants
     const hasCombinedVariants = useCallback(() => {
@@ -874,20 +899,16 @@ const VariantModal = ({ show, handleCloseVariant }) => {
         };
 
         if (editingCustomVariant) {
-            // Update existing custom variant
-            setCustomVariants(prev =>
-                prev.map(variant =>
-                    variant.variant_name === editingCustomVariant.variant_name
-                        ? newCustomVariant
-                        : variant
-                )
-            );
 
             // Update variationsData if this variant is currently being used
             const currentData = variationsData || [];
             const updatedVariationsData = currentData.map(variation =>
                 variation.name === editingCustomVariant.variant_name
-                    ? { name: newCustomVariant.variant_name, values: validOptions }
+                    ? {
+                        ...variation,
+                        name: newCustomVariant.variant_name,
+                        values: validOptions
+                    }
                     : variation
             );
             setVariationsData(updatedVariationsData);
@@ -905,8 +926,16 @@ const VariantModal = ({ show, handleCloseVariant }) => {
                 );
             }
         } else {
-            // Add new custom variant
-            setCustomVariants(prev => [...prev, newCustomVariant]);
+            const newVariation = {
+                name: customVariantName.trim(),
+                values: validOptions,
+                type: "custom",
+            };
+
+            setVariationsData([
+                ...(variationsData || []),
+                newVariation
+            ]);
         }
 
         // Close dialog and reset
@@ -919,8 +948,6 @@ const VariantModal = ({ show, handleCloseVariant }) => {
             setSelectedVariations([...safeSelectedVariations, newCustomVariant.variant_name]);
             setSelectedVariant(newCustomVariant.variant_name);
 
-            // Set attribute options for the new variant
-            setAttrOptions(validOptions);
             setAttrValues({
                 name: newCustomVariant.variant_name,
                 values: [],
@@ -983,7 +1010,12 @@ const VariantModal = ({ show, handleCloseVariant }) => {
             return;
         }
 
+        const existingVariation = (variationsData || []).find(
+            v => v.name === attrValues.name
+        );
+
         const normalizedAttrValues = {
+            ...(existingVariation || {}),
             name: attrValues.name,
             values: attrValues.values
         };
@@ -991,20 +1023,24 @@ const VariantModal = ({ show, handleCloseVariant }) => {
         // Use the raw variationsData from store instead of normalized version
         const currentData = variationsData || [];
 
-        if (isEdit) {
-            const updatedData = currentData.map((item) =>
-                item.name === attrValues.name ? normalizedAttrValues : item
-            );
+        const existingIndex = currentData.findIndex(
+            item => item.name === normalizedAttrValues.name
+        );
+
+        if (existingIndex !== -1) {
+            const updatedData = [...currentData];
+            updatedData[existingIndex] = normalizedAttrValues;
             setVariationsData(updatedData);
         } else {
-            const newData = [...currentData, normalizedAttrValues];
-            setVariationsData(newData);
+            setVariationsData([
+                ...currentData,
+                normalizedAttrValues
+            ]);
         }
 
         setShowVariantList(false);
         setSelectedVariant("");
         setAttrValues({ name: "", values: [] });
-        setAttrOptions([]);
         setIsEdit(false);
     };
 
@@ -1013,12 +1049,6 @@ const VariantModal = ({ show, handleCloseVariant }) => {
         const currentData = variationsData || [];
         const updatedData = currentData.filter(variation => variation.name !== selectedVariantName);
         setVariationsData(updatedData);
-
-        // Remove from custom variants if it's a custom variant
-        const isCustomVariant = customVariants.some(v => v.variant_name === selectedVariantName);
-        if (isCustomVariant) {
-            setCustomVariants(prev => prev.filter(v => v.variant_name !== selectedVariantName));
-        }
 
         const variant = allVariants.find((item) => item.variant_name === selectedVariantName);
         const parentMainName = variant?.variant_name;
@@ -1078,13 +1108,13 @@ const VariantModal = ({ show, handleCloseVariant }) => {
         }
     };
 
-    useEffect(() => {
-        if (selectedVariant) {
-            const data = allVariants.filter((item) => item?.variant_name === selectedVariant);
-            const options = data[0]?.variant_attribute?.map((item) => item?.attribute_value) || [];
-            setAttrOptions(options);
-        }
-    }, [selectedVariant, allVariants]);
+    // useEffect(() => {
+    //     if (selectedVariant) {
+    //         const data = allVariants.filter((item) => item?.variant_name === selectedVariant);
+    //         const options = data[0]?.variant_attribute?.map((item) => item?.attribute_value) || [];
+    //         setAttrOptions(options);
+    //     }
+    // }, [selectedVariant, allVariants]);
 
     const handleEditVariation = (item) => {
         setSelectedVariant(item?.name);
@@ -1466,7 +1496,8 @@ const VariantModal = ({ show, handleCloseVariant }) => {
                                         ]}
 
                                         multiple={true}
-                                        freeSolo={false}
+                                        freeSolo={true}
+                                        restrictToOptions={true}
 
                                         allowComma={true}
                                         allowEnter={true}
