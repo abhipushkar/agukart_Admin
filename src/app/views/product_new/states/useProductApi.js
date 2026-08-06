@@ -538,7 +538,7 @@ export const useProductAPI = () => {
             gift_wrap: formData.isGiftWrap,
             restock_date: formData.reStockDate,
             gender: genderdata,
-            size: formData.searchTerms,
+            size: formData.size,
             product_size: formData.productsize,
             size_map: formData.productsizeMap,
             color_textarea: formData.productcolor,

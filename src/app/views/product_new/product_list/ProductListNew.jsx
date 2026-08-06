@@ -19,7 +19,9 @@ import {
     InputAdornment,
     IconButton,
     Menu,
-    Paper, Link, styled
+    Paper, Link, styled,
+    useTheme,
+    useMediaQuery
 } from '@mui/material';
 import {
     Breadcrumb,
@@ -101,6 +103,8 @@ const IOSSwitch = styled((props) => (
 const ProductListNew = () => {
     const navigate = useNavigate();
     const location = useLocation();
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down("md"));
     const SORTING_OPTIONS = [
         { value: { sortBy: 'product_title', order: 1 }, label: 'Title (A to Z)' },
         { value: { sortBy: 'product_title', order: -1 }, label: 'Title (Z to A)' },
@@ -661,12 +665,13 @@ const ProductListNew = () => {
     return (
         <Box ref={listRootRef} sx={{ margin: '30px' }}>
             {/* Header */}
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
                 <Breadcrumb routeSegments={[{ name: 'Product', path: '' }, { name: 'Product List' }]} />
                 <Box sx={{ display: 'flex', gap: 2 }}>
                     <Link href={ROUTE_CONSTANT.catalog.product.parentProducts}>
                         <Button
                             variant="contained"
+                            size={isMobile ? 'small' : 'medium'}
                         >
                             Add Parent Products
                         </Button>
@@ -674,11 +679,12 @@ const ProductListNew = () => {
                     <Link href={ROUTE_CONSTANT.catalog.product.add}>
                         <Button
                             variant="contained"
+                            size={isMobile ? 'small' : 'medium'}
                         >
                             Add Product
                         </Button>
                     </Link>
-                    <Button variant="contained" onClick={handleExport}>
+                    <Button variant="contained" onClick={handleExport} size={isMobile ? 'small' : 'medium'}>
                         Export Products
                     </Button>
                 </Box>
@@ -793,7 +799,7 @@ const ProductListNew = () => {
                     </Select>
                 </FormControl>
                 {/* Search */}
-                <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 0.5, alignItems: 'center' }}>
                     <FormControl size="small" sx={{ minWidth: 110 }}>
                         <InputLabel>Filter Type</InputLabel>
                         <Select
@@ -813,42 +819,67 @@ const ProductListNew = () => {
                             ))}
                         </Select>
                     </FormControl>
-                    <TextField
-                        size="small"
-                        label="Search SKU, Title, Product Id"
-                        value={filters.search}
-                        onChange={(e) => setFilters({ search: e.target.value })}
-                        onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                        sx={{ minWidth: 250 }}
-                        InputProps={{
-                            endAdornment: filters.search && (
-                                <InputAdornment position="end">
-                                    <IconButton
-                                        size="small"
-                                        onClick={() => setFilters({ search: '' })}
-                                    >
-                                        <ClearIcon />
-                                    </IconButton>
-                                </InputAdornment>
-                            )
-                        }}
-                    />
-                    <Button variant="contained" onClick={handleSearch}>
-                        Search
-                    </Button>
+                    <Box display={'flex'} gap={0.5}>
+                        <TextField
+                            size="small"
+                            label="Search SKU, Title, Product Id"
+                            value={filters.search}
+                            onChange={(e) => setFilters({ search: e.target.value })}
+                            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                            sx={{ minWidth: { xs: 220, md: 250 } }}
+                            InputProps={{
+                                endAdornment: filters.search && (
+                                    <InputAdornment position="end">
+                                        <IconButton
+                                            size="small"
+                                            onClick={() => setFilters({ search: '' })}
+                                        >
+                                            <ClearIcon />
+                                        </IconButton>
+                                    </InputAdornment>
+                                )
+                            }}
+                        />
+                        <Button variant="contained" onClick={handleSearch} size={isMobile ? 'small' : 'medium'}>
+                            Search
+                        </Button>
+                    </Box>
                 </Box>
             </Box>
             {/* Status Filter and Column Preferences */}
             <Paper sx={{ p: 1, mb: 2, backgroundColor: '#f5f5f5' }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box
+                    sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        flexWrap: "wrap",
+                        gap: 2,
+                    }}
+                >
                     {/* Status Filter */}
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <Typography variant="body2" fontWeight="bold">Filters:</Typography>
-                        <Typography variant="body2">Status:</Typography>
+                    <Box
+                        sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 2,
+                            flexWrap: "wrap",
+                            flex: 1,
+                            minWidth: 300,
+                        }}
+                    >
+                        <Box display={'flex'} gap={1}>
+                            <Typography variant="body2" fontWeight="bold">Filters:</Typography>
+                            <Typography variant="body2">Status:</Typography>
+                        </Box>
                         <RadioGroup
                             row
                             value={filters.status}
                             onChange={handleStatusChange}
+                            sx={{
+                                flexWrap: "wrap",
+                                rowGap: 1,
+                            }}
                         >
                             <FormControlLabel value="all" control={<Radio />} label="All" />
                             <FormControlLabel value="active" control={<Radio />} label="Active" />
@@ -861,16 +892,20 @@ const ProductListNew = () => {
                         </RadioGroup>
                     </Box>
                     <FormControl sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
+                        flexShrink: 0,
                     }}>
                         <FormControlLabel value={showFeaturedOnly}
                             onChange={event => setShowFeaturedOnly(event.target.checked)}
                             control={<Switch sx={{ m: 1 }} />} label={"Show only Featured"} />
                     </FormControl>
                     {/* Column Preferences */}
-                    <FormControl size="small" sx={{ minWidth: 300 }}>
+                    <FormControl size="small" sx={{
+                        width: {
+                            xs: "100%",
+                            sm: 300,
+                        },
+                        flexShrink: 0,
+                    }}>
                         <InputLabel>Columns</InputLabel>
                         <Select
                             multiple
