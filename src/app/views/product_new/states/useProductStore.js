@@ -354,7 +354,7 @@ export const useProductStore = create((set, get) => ({
 
         try {
             const auth_key = localStorage.getItem(localStorageKey.auth_key);
-            const res = await ApiService.delete(apiEndpoints.deleteProduct, auth_key.at, { id: [productId] });
+            const res = await ApiService.delete(apiEndpoints.deleteProduct, auth_key, { _id: [productId] });
 
             if (res.status === 200) {
                 await get().fetchProducts();
