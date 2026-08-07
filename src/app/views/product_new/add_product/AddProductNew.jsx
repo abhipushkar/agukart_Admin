@@ -2,7 +2,7 @@
 import { Box, Button, Divider, Paper, Stack, Typography, CircularProgress } from "@mui/material";
 import AppsIcon from "@mui/icons-material/Apps";
 import { ROUTE_CONSTANT } from "../../../constant/routeContanst";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Container from "@mui/material/Container";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import ProductTabs from "./tabs/productTabs";
@@ -24,6 +24,8 @@ export default function AddProductNew() {
     const isCopyMode = Boolean(queryId || copyQueryId) && listingMode === "copy";
     const [currentTab, setCurrentTab] = useState(0);
     const [productId, setProductId] = useState(null);
+
+    const tabsRef = useRef(null);
 
     const {
         resetForm,
@@ -62,14 +64,21 @@ export default function AddProductNew() {
         localStorage.removeItem("product-form-storage");
     }, []);
 
+    useEffect(() => {
+        if (!loadingProductData && tabsRef.current) {
+            tabsRef.current.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+            });
+        }
+    }, [loadingProductData, currentTab]);
+
     // Fetch edit product data if query parameters exist
     useEffect(() => {
         const fetchData = async () => {
             try {
                 // Use fetchEditProductData from useProductAPI
                 const editData = await fetchEditProductData(queryId, copyQueryId, isCopyMode);
-
-
 
                 if (editData) {
                     // Clean parent-related fields in copy mode
@@ -313,19 +322,28 @@ export default function AddProductNew() {
                 </Stack>
                 {/* <Divider /> */}
                 {loadingProductData ?
-                    (<Box sx={{
-                        width: "100%",
-                        height: "100%",
-                        display: "flex",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        p: 5,
-                    }}><CircularProgress /></Box>) : (<ProductTabs
-                        tabsList={tabsList}
-                        tabsComponents={tabsComponents}
-                        currentTab={currentTab}
-                        setCurrentTab={setCurrentTab}
-                    />)}
+                    (<Box
+                        sx={{
+                            width: "100%",
+                            height: "100%",
+                            display: "flex",
+                            justifyContent: "center",
+                            alignItems: "center",
+                            p: 5,
+                        }}
+                    >
+                        <CircularProgress />
+                    </Box>
+                    ) : (
+                        <Box ref={tabsRef}>
+                            <ProductTabs
+                                tabsList={tabsList}
+                                tabsComponents={tabsComponents}
+                                currentTab={currentTab}
+                                setCurrentTab={setCurrentTab}
+                            />
+                        </Box>
+                    )}
                 <Box sx={{ p: 3, display: 'flex', gap: 2, justifyContent: 'space-between' }}>
                     {/* Left side - Navigation buttons */}
                     <Box sx={{ display: 'flex', gap: 2 }}>

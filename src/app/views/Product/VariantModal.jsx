@@ -58,29 +58,29 @@ const buttonStyle = {
 const label = { inputProps: { "aria-label": "Switch demo" } };
 
 const VariantModal = ({
-                          show,
-                          handleCloseVariant,
-                          varientName,
-                          combinations,
-                          setCombinations,
-                          setFormData,
-                          formValues,
-                          setFormValues,
-                          variationsData,
-                          setVariationsData,
-                          selectedVariations,
-                          setSelectedVariations,
-                          selectedVariant,
-                          setSelectedVariant,
-                          showVariantList,
-                          setShowVariantList,
-                          attrValues,
-                          setAttrValues,
-                          isEdit,
-                          setIsEdit,
-                          attrOptions,
-                          setAttrOptions
-                      }) => {
+    show,
+    handleCloseVariant,
+    varientName,
+    combinations,
+    setCombinations,
+    setFormData,
+    formValues,
+    setFormValues,
+    variationsData,
+    setVariationsData,
+    selectedVariations,
+    setSelectedVariations,
+    selectedVariant,
+    setSelectedVariant,
+    showVariantList,
+    setShowVariantList,
+    attrValues,
+    setAttrValues,
+    isEdit,
+    setIsEdit,
+    attrOptions,
+    setAttrOptions
+}) => {
     console.log(showVariantList, "showVariantList")
 
     const normalizeValues = (val) => {

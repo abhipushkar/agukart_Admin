@@ -87,9 +87,11 @@ const VariantModal = ({ show, handleCloseVariant }) => {
     // Custom variant states
     const [customVariantDialogOpen, setCustomVariantDialogOpen] = useState(false);
     const [customVariantName, setCustomVariantName] = useState("");
-    const [customVariantOptions, setCustomVariantOptions] = useState([""]);
+    const [customVariantOptions, setCustomVariantOptions] = useState([]);
     // const [customVariants, setCustomVariants] = useState([]);
     const [editingCustomVariant, setEditingCustomVariant] = useState(null);
+    const [csvInput, setCsvInput] = useState("");
+
 
     // Warning dialog state
     const [deleteWarningDialogOpen, setDeleteWarningDialogOpen] = useState(false);
@@ -97,6 +99,31 @@ const VariantModal = ({ show, handleCloseVariant }) => {
     const [affectedPrice, setAffectedPrice] = useState(false);
     const [affectedQuantity, setAffectedQuantity] = useState(false);
 
+    const handleCsvImport = () => {
+        const options = csvInput
+            .split(/[\n,]+/) // split by comma or newline
+            .map(item => item.trim())
+            .filter(Boolean);
+
+        if (options.length === 0) return;
+
+        // Remove duplicates (optional)
+        const uniqueOptions = [...new Set(options)];
+
+        setCustomVariantOptions(prev => [
+            ...new Set([
+                ...prev.filter(Boolean),
+                ...uniqueOptions
+            ])
+        ]);
+        setCsvInput("");
+    };
+    const handleCsvKeyDown = (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            handleCsvImport();
+        }
+    };
 
     const customVariants = useMemo(() => {
         return (variationsData || [])
@@ -110,6 +137,7 @@ const VariantModal = ({ show, handleCloseVariant }) => {
                 customId: v.customId
             }));
     }, [variationsData]);
+
 
     // Combine predefined variants with custom variants
     const allVariants = [...varientName, ...customVariants];
@@ -1645,7 +1673,26 @@ const VariantModal = ({ show, handleCloseVariant }) => {
                 <DialogTitle>
                     {editingCustomVariant ? 'Edit Custom Variant' : 'Add Custom Variant'}
                 </DialogTitle>
-                <DialogContent>
+                <DialogContent sx={{
+                    overflowY: "auto",
+                    // Firefox
+                    scrollbarWidth: "thin", // "auto" | "thin" | "none"
+                    // Chrome, Edge, Safari
+                    "&::-webkit-scrollbar": {
+                        width: 6, // Change to 4, 8, 10, etc.
+                    },
+                    "&::-webkit-scrollbar-track": {
+                        background: "transparent",
+                    },
+                    "&::-webkit-scrollbar-thumb": {
+                        backgroundColor: "#bdbdbd",
+                        borderRadius: 8,
+                    },
+                    "&::-webkit-scrollbar-thumb:hover": {
+                        backgroundColor: "#9e9e9e",
+                    },
+                }}
+                >
                     <TextField
                         autoFocus
                         margin="dense"
@@ -1677,6 +1724,17 @@ const VariantModal = ({ show, handleCloseVariant }) => {
                             )}
                         </Box>
                     ))}
+                    <TextField
+                        label="Paste CSV Options"
+                        multiline
+                        maxRows={4}
+                        fullWidth
+                        value={csvInput}
+                        onChange={(e) => setCsvInput(e.target.value)}
+                        onKeyDown={handleCsvKeyDown}
+                        placeholder={"paste comma saperated options or each option in new line"}
+                        sx={{ mb: 2 }}
+                    />
                     <Button onClick={handleAddOption} startIcon={<AddIcon />} sx={{ mt: 1 }}>
                         Add Option
                     </Button>
