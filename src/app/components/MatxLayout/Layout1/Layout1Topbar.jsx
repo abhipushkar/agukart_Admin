@@ -196,7 +196,7 @@ const Layout1Topbar = () => {
                     Hi <strong>{logUserData?.vendor?.shop_name || logUserData?.name}</strong>
                   </Span>
                 </Hidden>
-                <Avatar src={logUserData.image ? logUserData.image : logUserData?.vendor?.shop_icon ? `${logUserData?.shopImageUrl}${logUserData?.vendor?.shop_icon}` : "user.avatar"} sx={{ cursor: "pointer" }} />
+                <Avatar src={logUserData?.vendor?.shop_icon ? `${logUserData?.shopImageUrl}${logUserData?.vendor?.shop_icon}` : logUserData.image ? logUserData.image : "user.avatar"} sx={{ cursor: "pointer" }} />
               </UserMenu>
             }
           >
