@@ -1215,7 +1215,7 @@ const ParentProductIdentity = ({ productCode, listing }) => {
                     description: resData?.description || "",
                     sellerSku: listing === 'copy' ? "" : resData?.seller_sku || "",
                     images: listing === 'copy' ? [] : [{ src: `${res?.data?.base_url}${resData?.image}` }],
-                    edited_image: listing === 'copy' ? "" : `${res?.data?.base_url}${resData?.edited_image}`,
+                    edited_image: listing === 'copy' ? "" : resData?.edited_image ? `${res?.data?.base_url}${resData?.edited_image}` : null,
                     zoom: resData?.zoom ?? {
                         scale: 1,
                         rotation: 0,

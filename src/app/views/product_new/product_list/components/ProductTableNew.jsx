@@ -465,8 +465,8 @@ const ProductRow = ({ product, index }) => {
                             }}
                         >
                             <img
-                                src={(product.edited_image ?? product?.image?.[0])}
-                                alt="Zoomable"
+                                src={isProduct ? (product.edited_image || product?.image?.[0]) : (product.edited_image || product?.image)}
+                                alt={isProduct ? (product.edited_image || product?.image?.[0]) : (product.edited_image || product?.image)}
                                 style={{
                                     width: "100%",
                                     height: "100%",
