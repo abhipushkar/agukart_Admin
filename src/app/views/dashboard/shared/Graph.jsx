@@ -187,7 +187,7 @@ const Graph = () => {
 
   return (
     <>
-      <Box sx={{ width: "100%", backgroundColor: "#ffffff", p: 3 }}>
+      <Box sx={{ width: "100%", backgroundColor: "#ffffff", p: { xs: "16px 8px", sm: 3 } }}>
         <Box
           sx={{
             display: "flex",

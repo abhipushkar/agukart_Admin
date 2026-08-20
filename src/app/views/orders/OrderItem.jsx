@@ -18,7 +18,7 @@ import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import Product from './Product';
 import StarIcon from "@mui/icons-material/Star";
 import CompleteOrder from './CompleteOrder';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import CheckIcon from "@mui/icons-material/Check";
 import { MailOutline as MailOutlineIcon } from '@mui/icons-material';
@@ -142,7 +142,7 @@ const OrderItem = ({ items, tab, isAdmin, getOrderList, openMenuIndex2, setOpenM
     }
 
     // Get all sub-orders from all sales in this date group
-    const getAllSubOrders = () => {
+    const allSubOrders = useMemo(() => {
         const subOrders = [];
 
         if (!items?.sales) return subOrders;
@@ -163,7 +163,7 @@ const OrderItem = ({ items, tab, isAdmin, getOrderList, openMenuIndex2, setOpenM
         });
         console.log(subOrders);
         return subOrders;
-    };
+    }, [items?.sales]);
 
     const getDeliveryStatus = (shipments) => {
         const isDelivered = shipments?.some(shipment => shipment.delivery_status === 'Delivered');
@@ -175,7 +175,7 @@ const OrderItem = ({ items, tab, isAdmin, getOrderList, openMenuIndex2, setOpenM
 
     // Get sub-order count for display
     const getSubOrderCount = () => {
-        return getAllSubOrders().length;
+        return allSubOrders.length;
     };
 
     const handlePin = async ({ id, pin }) => {
@@ -315,7 +315,7 @@ const OrderItem = ({ items, tab, isAdmin, getOrderList, openMenuIndex2, setOpenM
                     >
                         <TableBody>
                             {/* Render one row per sub-order */}
-                            {getAllSubOrders().map((subOrder, index) => {
+                            {allSubOrders.map((subOrder, index) => {
                                 const subOrderId = subOrder._id || subOrder.sub_order_id;
                                 const parentSale = subOrder.parentSale;
                                 const shopName = subOrder.items?.[0]?.shop_name ||

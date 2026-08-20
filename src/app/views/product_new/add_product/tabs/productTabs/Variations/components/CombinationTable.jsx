@@ -263,7 +263,7 @@ const CombinationsTable = ({ isSynced }) => {
                                                     Quantity
                                                 </TableCell>
                                             )}
-                                        <TableCell align="center" sx={{ fontWeight: 600 }}>
+                                        <TableCell align="center" sx={{ fontWeight: 600, width: "50px" }}>
                                             Visible
                                         </TableCell>
                                     </TableRow>

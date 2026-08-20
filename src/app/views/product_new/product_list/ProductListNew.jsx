@@ -21,7 +21,8 @@ import {
     Menu,
     Paper, Link, styled,
     useTheme,
-    useMediaQuery
+    useMediaQuery,
+    Collapse,
 } from '@mui/material';
 import {
     Breadcrumb,
@@ -30,7 +31,9 @@ import {
 import {
     Search as SearchIcon,
     Clear as ClearIcon,
-    ArrowDropDown as ArrowDropDownIcon
+    ArrowDropDown as ArrowDropDownIcon,
+    ExpandMore,
+    ExpandLess,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { exportToExcel } from 'app/utils/excelExport';
@@ -155,10 +158,12 @@ const ProductListNew = () => {
     const listRootRef = useRef(null);
     const pendingScrollRestoreRef = useRef(null);
     const hasAppliedViewContextRef = useRef(false);
+    const [showFilters, setShowFilters] = useState(false);
 
     useEffect(() => {
         const params = new URLSearchParams(location.search);
 
+        params.set("status", filters.status);
         params.set("page", pagination.page + 1);
         params.set("limit", pagination.limit);
         params.set("sortBy", filters.sorting.sortBy);
@@ -176,6 +181,7 @@ const ProductListNew = () => {
         pagination.limit,
         filters.sorting.sortBy,
         filters.sorting.order,
+        filters.status,
     ]);
 
     useEffect(() => {
@@ -191,88 +197,25 @@ const ProductListNew = () => {
                 sortBy: params.get("sortBy") || "refresh_date",
                 order: Number(params.get("order")) || -1,
             },
+            status: params.get("status") || "all",
         });
     }, []);
 
-    const getScrollableParents = (node) => {
-        if (typeof window === 'undefined') return [];
-        const parents = [];
-        let current = node?.parentElement;
-        while (current) {
-            const style = window.getComputedStyle(current);
-            const canScrollY = /(auto|scroll|overlay)/.test(style.overflowY);
-            if (canScrollY && current.scrollHeight > current.clientHeight) {
-                parents.push(current);
-            }
-            current = current.parentElement;
-        }
-        return parents;
-    };
     const getCurrentScrollPosition = () => {
-        if (typeof window === 'undefined' || typeof document === 'undefined') return 0;
-        let maxScrollTop = Math.max(
-            window.scrollY || 0,
-            document.documentElement?.scrollTop || 0,
-            document.body?.scrollTop || 0,
-            document.scrollingElement?.scrollTop || 0
-        );
-        const parentScrollContainers = getScrollableParents(listRootRef.current);
-        parentScrollContainers.forEach((container) => {
-            if (container.scrollTop > maxScrollTop) {
-                maxScrollTop = container.scrollTop;
-            }
-        });
-        const knownContainers = document.querySelectorAll(
-            'main, [role="main"], .main-content, .main-content-wrap, .content-wrap, .simplebar-content-wrapper'
-        );
-        knownContainers.forEach((container) => {
-            if (container.scrollHeight > container.clientHeight && container.scrollTop > maxScrollTop) {
-                maxScrollTop = container.scrollTop;
-            }
-        });
-        // Fallback for unknown scroll containers in layout wrappers.
-        document.querySelectorAll('*').forEach((el) => {
-            if (el.scrollHeight > el.clientHeight && el.scrollTop > maxScrollTop) {
-                maxScrollTop = el.scrollTop;
-            }
-        });
-        return maxScrollTop;
+        if (typeof document === 'undefined') return 0;
+
+        const scrollContainer = document.getElementById('agukart-content-box');
+
+        return scrollContainer?.scrollTop || 0;
     };
     const restoreScrollPosition = (scrollY) => {
-        if (typeof window === 'undefined' || typeof document === 'undefined') return;
-        window.scrollTo({ top: scrollY, behavior: 'smooth' });
-        const primaryTargets = [
-            document.scrollingElement,
-            document.documentElement,
-            document.body
-        ].filter(Boolean);
-        primaryTargets.forEach((target) => {
-            target.scrollTop = scrollY;
-        });
-        const knownContainers = document.querySelectorAll(
-            'main, [role="main"], .main-content, .main-content-wrap, .content-wrap, .simplebar-content-wrapper'
-        );
-        knownContainers.forEach((container) => {
-            if (container.scrollHeight > container.clientHeight) {
-                container.scrollTop = scrollY;
-            }
-        });
-        const parentScrollContainers = getScrollableParents(listRootRef.current);
-        parentScrollContainers.forEach((container) => {
-            container.scrollTop = scrollY;
-        });
-        // Brute-force fallback: apply to all scrollable elements.
-        // This helps when app layout wraps content in dynamic containers.
-        document.querySelectorAll('*').forEach((el) => {
-            if (!el) return;
-            if (el.scrollHeight > el.clientHeight) {
-                const maxTop = el.scrollHeight - el.clientHeight;
-                const nextTop = Math.min(scrollY, maxTop);
-                if (nextTop > 0) {
-                    el.scrollTop = nextTop;
-                }
-            }
-        });
+        if (typeof document === 'undefined') return;
+
+        const scrollContainer = document.getElementById('agukart-content-box');
+
+        if (!scrollContainer) return;
+
+        scrollContainer.scrollTop = scrollY;
     };
     const isVendor = localStorage.getItem(localStorageKey.designation_id) === '3' ? true : false;
     // Column options for hide/show
@@ -436,25 +379,11 @@ const ProductListNew = () => {
             });
         });
     };
-    // Sync URL hash with status filter
-    useEffect(() => {
-        const hash = location.hash.replace('#', '');
-        if (hash && ['all', 'active', 'inactive', 'sold-out', 'draft', 'delete', 'deleteByAdmin'].includes(hash)) {
-            setFilters({ status: hash });
-        }
-    }, [location.hash]);
-    // Update URL hash when status changes
-    useEffect(() => {
-        if (filters.status && filters.status !== 'all') {
-            window.location.hash = filters.status;
-        } else {
-            window.location.hash = 'all';
-        }
-        deselectAll();
-    }, [filters.status]);
+
     useEffect(() => {
         getAllActiveCategories();
     }, []);
+
     useEffect(() => {
         if (hasAppliedViewContextRef.current) return;
         const context = restoreListViewContext();
@@ -462,7 +391,6 @@ const ProductListNew = () => {
         hasAppliedViewContextRef.current = true;
         if (context.status && context.status !== filters.status) {
             setFilters({ status: context.status });
-            window.location.hash = context.status === 'all' ? 'all' : context.status;
         }
         if (typeof context.scrollY === 'number') {
             pendingScrollRestoreRef.current = context.scrollY;
@@ -500,42 +428,35 @@ const ProductListNew = () => {
         }, 80);
         return () => clearInterval(intervalId);
     }, [clearListViewContext, filteredProducts.length, loading]);
+
     useEffect(() => {
-        if (typeof window === 'undefined') return;
+        if (typeof document === 'undefined') return;
+        const scrollContainer = document.getElementById('agukart-content-box');
+        if (!scrollContainer) return;
         let timeoutId = null;
         const saveCurrentViewContext = () => {
             if (timeoutId) clearTimeout(timeoutId);
             timeoutId = setTimeout(() => {
                 persistListViewContext({
                     status: filters.status,
-                    scrollY: getCurrentScrollPosition()
+                    scrollY: scrollContainer.scrollTop
                 });
             }, 120);
         };
-        const parentScrollContainers = getScrollableParents(listRootRef.current);
-        window.addEventListener('scroll', saveCurrentViewContext, { passive: true });
-        parentScrollContainers.forEach((container) => {
-            container.addEventListener('scroll', saveCurrentViewContext, { passive: true });
+        scrollContainer.addEventListener('scroll', saveCurrentViewContext, {
+            passive: true
         });
         return () => {
             if (timeoutId) clearTimeout(timeoutId);
-            window.removeEventListener('scroll', saveCurrentViewContext);
-            parentScrollContainers.forEach((container) => {
-                container.removeEventListener('scroll', saveCurrentViewContext);
-            });
+            scrollContainer.removeEventListener('scroll', saveCurrentViewContext);
         };
     }, [filters.status, persistListViewContext]);
+
     // Handle status filter change with hash routing
     const handleStatusChange = (event) => {
         const newStatus = event.target.value;
         setFilters({ status: newStatus });
-        setPagination({ page: 0 })
-        // Update URL hash
-        if (newStatus && newStatus !== 'all') {
-            window.location.hash = newStatus;
-        } else {
-            window.location.hash = 'all';
-        }
+        setPagination({ page: 0 });
     };
     // Handle search
     const handleSearch = () => {
@@ -662,11 +583,92 @@ const ProductListNew = () => {
     const availableActions = getAvailableActions();
     const selectedStatuses = getSelectedProductsStatus();
     // console.log("Sorting Filters: ", filters.sorting);
+
+    const statusSection = () => {
+        return (
+            <Box
+                sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                    gap: 2,
+                }}
+            >
+                {/* Status Filter */}
+                <Box
+                    sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 2,
+                        flexWrap: "wrap",
+                        flex: 1,
+                        minWidth: 300,
+                    }}
+                >
+                    <Box display={'flex'} gap={1}>
+                        <Typography variant="body2" fontWeight="bold" display={isMobile ? 'none' : 'block'}>Filters:</Typography>
+                        <Typography variant="body2">Status:</Typography>
+                    </Box>
+                    <RadioGroup
+                        row
+                        value={filters.status}
+                        onChange={handleStatusChange}
+                        sx={{
+                            flexWrap: "wrap",
+                            rowGap: 1,
+                        }}
+                    >
+                        <FormControlLabel value="all" control={<Radio />} label="All" />
+                        <FormControlLabel value="active" control={<Radio />} label="Active" />
+                        <FormControlLabel value="inactive" control={<Radio />} label="Inactive" />
+                        <FormControlLabel value="sold-out" control={<Radio />} label="Sold Out" />
+                        <FormControlLabel value="draft" control={<Radio />} label="Draft" />
+                        <FormControlLabel value="delete" control={<Radio />} label="Deleted" />
+                        {localStorage.getItem(localStorageKey.designation_id) === "2" && (
+                            <FormControlLabel value="deleteByAdmin" control={<Radio />} label="Deleted By Admin" />)}
+                    </RadioGroup>
+                </Box>
+                <FormControl sx={{
+                    flexShrink: 0,
+                }}>
+                    <FormControlLabel value={showFeaturedOnly}
+                        onChange={event => setShowFeaturedOnly(event.target.checked)}
+                        control={<Switch sx={{ m: 1 }} />} label={"Show only Featured"} />
+                </FormControl>
+                {/* Column Preferences */}
+                <FormControl size="small" sx={{
+                    width: {
+                        xs: "100%",
+                        sm: 300,
+                    },
+                    flexShrink: 0,
+                }}>
+                    <InputLabel>Columns</InputLabel>
+                    <Select
+                        multiple
+                        value={filters.hiddenColumns}
+                        onChange={handleColumnVisibilityChange}
+                        input={<OutlinedInput label="Columns" />}
+                        renderValue={(selected) => `${selected.length} columns hidden`}
+                    >
+                        {columnOptions.map(column => (
+                            <MenuItem key={column} value={column}>
+                                <Checkbox checked={!filters.hiddenColumns.includes(column)} />
+                                <ListItemText primary={column} />
+                            </MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
+            </Box>
+        )
+    };
+
     return (
-        <Box ref={listRootRef} sx={{ margin: '30px' }}>
+        <Box ref={listRootRef} sx={{ margin: { xs: 2.5, sm: '30px' } }}>
             {/* Header */}
             <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-                <Breadcrumb routeSegments={[{ name: 'Product', path: '' }, { name: 'Product List' }]} />
+                {!isMobile && (<Breadcrumb routeSegments={[{ name: 'Product', path: '' }, { name: 'Product List' }]} />)}
                 <Box sx={{ display: 'flex', gap: 2 }}>
                     <Link href={ROUTE_CONSTANT.catalog.product.parentProducts}>
                         <Button
@@ -684,13 +686,13 @@ const ProductListNew = () => {
                             Add Product
                         </Button>
                     </Link>
-                    <Button variant="contained" onClick={handleExport} size={isMobile ? 'small' : 'medium'}>
+                    {!isMobile && (<Button variant="contained" onClick={handleExport}>
                         Export Products
-                    </Button>
+                    </Button>)}
                 </Box>
             </Box>
             {/* Filters and Actions */}
-            <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', gap: { xs: 1.2, sm: 2 }, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>
                 {/* Bulk Actions */}
                 <Paper sx={{ display: 'flex', alignItems: 'center', }}>
                     <Checkbox
@@ -736,7 +738,7 @@ const ProductListNew = () => {
                     onClose={handleShippingDialogClose}
                 />
                 {/* Category Filter */}
-                <FormControl size="small" sx={{ minWidth: 200 }}>
+                {!isMobile && (<FormControl size="small" sx={{ minWidth: 200 }}>
                     <Autocomplete
                         size="small"
                         options={allActiveCategories}
@@ -768,7 +770,7 @@ const ProductListNew = () => {
                         )}
                         clearOnEscape
                     />
-                </FormControl>
+                </FormControl>)}
                 {/* Sorting Filter */}
                 <FormControl size="small" sx={{ minWidth: 200 }}>
                     <InputLabel>Sort By</InputLabel>
@@ -799,131 +801,93 @@ const ProductListNew = () => {
                     </Select>
                 </FormControl>
                 {/* Search */}
-                <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 0.5, alignItems: 'center' }}>
-                    <FormControl size="small" sx={{ minWidth: 110 }}>
-                        <InputLabel>Filter Type</InputLabel>
-                        <Select
-                            value={filters.searchType ? filters.searchType : 'all'}
-                            label="Filter Type"
-                            onChange={(e) => {
-                                setFilters({ searchType: e.target.value });
-                            }}
-                        >
-                            {FILTER_OPTIONS.map((option, index) => (
-                                <MenuItem
-                                    key={index}
-                                    value={option.value}
-                                >
-                                    {option.label}
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
-                    <Box display={'flex'} gap={0.5}>
-                        <TextField
-                            size="small"
-                            label="Search SKU, Title, Product Id"
-                            value={filters.search}
-                            onChange={(e) => setFilters({ search: e.target.value })}
-                            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                            sx={{ minWidth: { xs: 220, md: 250 } }}
-                            InputProps={{
-                                endAdornment: filters.search && (
-                                    <InputAdornment position="end">
-                                        <IconButton
-                                            size="small"
-                                            onClick={() => setFilters({ search: '' })}
-                                        >
-                                            <ClearIcon />
-                                        </IconButton>
-                                    </InputAdornment>
-                                )
-                            }}
-                        />
-                        <Button variant="contained" onClick={handleSearch} size={isMobile ? 'small' : 'medium'}>
-                            Search
-                        </Button>
-                    </Box>
-                </Box>
-            </Box>
-            {/* Status Filter and Column Preferences */}
-            <Paper sx={{ p: 1, mb: 2, backgroundColor: '#f5f5f5' }}>
-                <Box
-                    sx={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        flexWrap: "wrap",
-                        gap: 2,
-                    }}
-                >
-                    {/* Status Filter */}
-                    <Box
-                        sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 2,
-                            flexWrap: "wrap",
-                            flex: 1,
-                            minWidth: 300,
+                <FormControl size="small" sx={{ minWidth: 110 }}>
+                    <InputLabel>Filter Type</InputLabel>
+                    <Select
+                        value={filters.searchType ? filters.searchType : 'all'}
+                        label="Filter Type"
+                        onChange={(e) => {
+                            setFilters({ searchType: e.target.value });
                         }}
                     >
-                        <Box display={'flex'} gap={1}>
-                            <Typography variant="body2" fontWeight="bold">Filters:</Typography>
-                            <Typography variant="body2">Status:</Typography>
-                        </Box>
-                        <RadioGroup
-                            row
-                            value={filters.status}
-                            onChange={handleStatusChange}
-                            sx={{
-                                flexWrap: "wrap",
-                                rowGap: 1,
-                            }}
-                        >
-                            <FormControlLabel value="all" control={<Radio />} label="All" />
-                            <FormControlLabel value="active" control={<Radio />} label="Active" />
-                            <FormControlLabel value="inactive" control={<Radio />} label="Inactive" />
-                            <FormControlLabel value="sold-out" control={<Radio />} label="Sold Out" />
-                            <FormControlLabel value="draft" control={<Radio />} label="Draft" />
-                            <FormControlLabel value="delete" control={<Radio />} label="Deleted" />
-                            {localStorage.getItem(localStorageKey.designation_id) === "2" && (
-                                <FormControlLabel value="deleteByAdmin" control={<Radio />} label="Deleted By Admin" />)}
-                        </RadioGroup>
-                    </Box>
-                    <FormControl sx={{
-                        flexShrink: 0,
-                    }}>
-                        <FormControlLabel value={showFeaturedOnly}
-                            onChange={event => setShowFeaturedOnly(event.target.checked)}
-                            control={<Switch sx={{ m: 1 }} />} label={"Show only Featured"} />
-                    </FormControl>
-                    {/* Column Preferences */}
-                    <FormControl size="small" sx={{
-                        width: {
-                            xs: "100%",
-                            sm: 300,
-                        },
-                        flexShrink: 0,
-                    }}>
-                        <InputLabel>Columns</InputLabel>
-                        <Select
-                            multiple
-                            value={filters.hiddenColumns}
-                            onChange={handleColumnVisibilityChange}
-                            input={<OutlinedInput label="Columns" />}
-                            renderValue={(selected) => `${selected.length} columns hidden`}
-                        >
-                            {columnOptions.map(column => (
-                                <MenuItem key={column} value={column}>
-                                    <Checkbox checked={!filters.hiddenColumns.includes(column)} />
-                                    <ListItemText primary={column} />
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
+                        {FILTER_OPTIONS.map((option, index) => (
+                            <MenuItem
+                                key={index}
+                                value={option.value}
+                            >
+                                {option.label}
+                            </MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
+                <Box display={'flex'} gap={0.5}>
+                    <TextField
+                        size="small"
+                        label="Search SKU, Title, Product Id"
+                        value={filters.search}
+                        onChange={(e) => setFilters({ search: e.target.value })}
+                        onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                        sx={{ minWidth: { xs: 220, md: 250 } }}
+                        InputProps={{
+                            endAdornment: filters.search && (
+                                <InputAdornment position="end">
+                                    <IconButton
+                                        size="small"
+                                        onClick={() => setFilters({ search: '' })}
+                                    >
+                                        <ClearIcon />
+                                    </IconButton>
+                                </InputAdornment>
+                            )
+                        }}
+                    />
+                    <Button variant="contained" onClick={handleSearch} size={isMobile ? 'small' : 'medium'}>
+                        Search
+                    </Button>
+                </Box>
+
+            </Box>
+            {/* Status Filter and Column Preferences */}
+            <Paper sx={{ p: 1, mb: 2, backgroundColor: "#f5f5f5" }}>
+                {/* Mobile toggle */}
+                <Box
+                    sx={{
+                        display: { xs: "flex", sm: "none" },
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        px: 1,
+                        py: 0.5,
+                    }}
+                    onClick={() => setShowFilters(prev => !prev)}
+                >
+                    <Typography variant="body2" fontWeight="bold">
+                        Filters
+                    </Typography>
+
+                    <IconButton size="small">
+                        {showFilters ? <ExpandLess /> : <ExpandMore />}
+                    </IconButton>
+                </Box>
+
+                <Collapse
+                    in={showFilters}
+                    sx={{
+                        display: { xs: "block", sm: "none" },
+                    }}
+                >
+                    {statusSection()}
+                </Collapse>
+
+                <Box
+                    sx={{
+                        display: { xs: "none", sm: "flex" },
+                        // your existing desktop filter content
+                    }}
+                >
+                    {statusSection()}
                 </Box>
             </Paper>
+
             {/* Product Table */}
             <ProductTableNew />
             {/* Pagination */}
@@ -943,6 +907,7 @@ const ProductListNew = () => {
                 labelDisplayedRows={({ from, to, count }) =>
                     `Page ${pagination.page + 1} of ${Math.ceil((count / pagination.limit) || 1)}`
                 }
+                labelRowsPerPage={isMobile ? 'Rows:' : 'Rows per page:'}
             />
             {/* Confirm Modal */}
             <ConfirmModal

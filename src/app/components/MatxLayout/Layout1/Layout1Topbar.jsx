@@ -113,7 +113,7 @@ const Layout1Topbar = () => {
     updateSidebarMode({ mode });
   };
   const { logUserData, getProfileData } = useProfileData();
-  console.log({ logUserData })
+  // console.log({ logUserData })
   const auth_key = localStorage.getItem(localStorageKey.auth_key);
   const designation_id = localStorage.getItem(localStorageKey.designation_id);
   const admin_detail = JSON.parse(localStorage.getItem(localStorageKey.adminDetail));

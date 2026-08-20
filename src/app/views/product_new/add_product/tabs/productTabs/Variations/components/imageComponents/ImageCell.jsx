@@ -1,8 +1,9 @@
 import React from "react";
-import { Box, Button, Chip, styled } from "@mui/material";
+import { Box, Button, Chip, IconButton, styled } from "@mui/material";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 import CollectionsIcon from "@mui/icons-material/Collections";
 import ImageTooltip from "./ImageTooltip";
+import { useTheme, useMediaQuery } from "@mui/material";
 
 const VisuallyHiddenInput = styled("input")({
     clip: "rect(0 0 0 0)",
@@ -151,24 +152,55 @@ const ImageCell = ({
 export const BulkUploadCell = ({ item, index, combindex, onBulkImageUpload }) => {
     const hasMainImages = item?.main_images && item?.main_images.some(img => img && img !== "");
     const uploadedCount = item?.main_images ? item?.main_images.filter(img => img && img !== "").length : 0;
+    const theme = useTheme();
+    const isTablet = useMediaQuery('(max-width: 1400px)');
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-            <Button
-                component="label"
-                variant="outlined"
-                size="small"
-                startIcon={<CollectionsIcon />}
-                sx={{ fontSize: '12px', textWrap: "noWrap" }}
-            >
-                Bulk Upload
-                <VisuallyHiddenInput
-                    type="file"
-                    multiple
-                    onChange={(e) => onBulkImageUpload(combindex, index, e)}
-                    accept="image/*"
-                />
-            </Button>
+            {isTablet ? (
+                <IconButton
+                    component="label"
+                    size="small"
+                    sx={{
+                        border: "1px solid",
+                        borderColor: "primary.main",
+                        borderRadius: 1,
+                        color: "primary.main",
+                        width: 40,
+                        height: 40,
+                    }}
+                >
+                    <CollectionsIcon fontSize="small" />
+
+                    <VisuallyHiddenInput
+                        type="file"
+                        multiple
+                        onChange={(e) =>
+                            onBulkImageUpload(combindex, index, e)
+                        }
+                        accept="image/*"
+                    />
+                </IconButton>
+            ) : (
+                <Button
+                    component="label"
+                    variant="outlined"
+                    size="small"
+                    startIcon={<CollectionsIcon />}
+                    sx={{ fontSize: "12px", whiteSpace: "nowrap" }}
+                >
+                    Bulk Upload
+
+                    <VisuallyHiddenInput
+                        type="file"
+                        multiple
+                        onChange={(e) =>
+                            onBulkImageUpload(combindex, index, e)
+                        }
+                        accept="image/*"
+                    />
+                </Button>
+            )}
 
             {hasMainImages && (
                 <Chip

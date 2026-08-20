@@ -79,7 +79,7 @@ const ProductActivity = () => {
 
   return (
     <>
-      <Box sx={{ p: 2 }}>
+      <Box sx={{ p: { xs: "16px 0", md: 2 } }}>
         <Typography variant="h6" gutterBottom>
           Product And Vendor Activity
         </Typography>

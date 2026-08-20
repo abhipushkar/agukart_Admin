@@ -555,7 +555,7 @@ const Orders = () => {
         onClose={handleDialogClose}
         subOrders={selectedSubOrders}
       />
-      <Box sx={{ padding: "30px", background: "#fff" }}>
+      <Box sx={{ padding: { xs: 2, sm: "30px" }, background: "#fff" }}>
         <Grid container width={"100%"} m={0} spacing={2} alignItems={"center"}>
           <Grid lg={6} md={6} xs={6}>
             <Typography variant="h5" fontWeight={600}>
@@ -761,205 +761,223 @@ const Orders = () => {
                         </Typography>
                       </ListItem>
                     </List>
-                    <Grid container width={"100%"} m={0} spacing={2} alignItems={"center"}>
-                      <Grid lg={8} md={6} xs={12}>
-                        <Box>
-                          <List>
-                            <ListItem
-                              sx={{ width: "auto", paddingLeft: "0", display: "inline-block" }}
-                            >
-                              <Box
-                                sx={{
-                                  background: "#fff",
-                                  height: "36px",
-                                  textAlign: "center",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  border: "1px solid #c8c8c8",
-                                  borderRadius: "8px"
-                                }}
-                              >
-                                <Typography component="div" pr={1}>
-                                  <Checkbox
-                                    checked={isAllChecked}
-                                    onChange={handleMasterCheckboxChange}
-                                  />
-                                </Typography>
-                                <Typography pr={1}>{orderIds?.length}</Typography>
+                    <Grid container width={"100%"} m={0} mb={1} spacing={1} alignItems={"center"}>
+                      <Grid item lg={8} md={8} xs={12}>
+                        <Box display={"flex"} flexWrap={"wrap"} gap={1}>
 
-                                <Typography component="div" textAlign={"start"}>
-                                  <Button
-                                    sx={{ color: "#000" }}
-                                    id={`basic-button`}
-                                    aria-controls={openOption2 ? `basic-menu` : undefined}
-                                    aria-haspopup="true"
-                                    aria-expanded={openOption2 ? "true" : undefined}
-                                    onClick={handleClick2}
-                                  >
-                                    Action <ArrowDropDownIcon />
-                                  </Button>
-
-                                  <Menu
-                                    id={`basic-menu`}
-                                    anchorEl={anchorEl2}
-                                    open={openOption2}
-                                    onClose={() => setAnchorEl2(null)}
-                                    MenuListProps={{
-                                      "aria-labelledby": `basic-button`
-                                    }}
-                                  >
-                                    {(tab === "unshipped" || tab === "hold") && (
-                                      <MenuItem
-                                        onClick={() => {
-                                          updateOrder("action", "in-progress");
-                                          setAnchorEl2(null);
-                                        }}
-                                      >
-                                        <HourglassEmptyIcon
-                                          fontSize="small"
-                                          style={{ marginRight: 8 }}
-                                        />
-                                        In Progress
-                                      </MenuItem>
-                                    )}
-                                    {(tab === "unshipped" || tab === "in-progress") && (
-                                      <MenuItem
-                                        onClick={() => {
-                                          updateOrder("action", "hold");
-                                          setAnchorEl2(null);
-                                        }}
-                                      >
-                                        <CloseIcon fontSize="small" style={{ marginRight: 8 }} />
-                                        Hold
-                                      </MenuItem>
-                                    )}
-                                    {(tab === "hold") && (
-                                      <MenuItem
-                                        onClick={() => {
-                                          updateOrder("action", "unshipped");
-                                          setAnchorEl2(null);
-                                        }}
-                                      >
-                                        Unshipped
-                                      </MenuItem>
-                                    )}
-                                    {(tab === "in-progress" || tab === "unshipped" || tab === "hold") && (
-                                      <MenuItem
-                                        disabled={orderIds.length === 0}
-                                        onClick={() => {
-                                          setAnchorEl2(null);
-                                          // navigate(`${ROUTE_CONSTANT.orders.completeOrder}`, { state: { subOrders: selectedSubOrders } });
-                                          setOpenDialog(true);
-                                        }}
-                                      >
-                                        Complete Order
-                                      </MenuItem>
-                                    )}
-                                    <MenuItem
-                                      disabled={orderIds.length === 0}
-                                      onClick={() => {
-                                        setAnchorEl2(null);
-                                        downloadExcel(selectedSubOrders);
-                                      }}
-                                    >
-                                      Export Orders
-                                    </MenuItem>
-                                  </Menu>
-                                </Typography>
-                              </Box>
-                            </ListItem>
-                            {tab !== "pending" && (
-                              <ListItem
-                                sx={{ width: "auto", paddingLeft: "0", display: "inline-block" }}
-                              >
-                                <Button
-                                  onClick={handleOrderSlip}
-                                  sx={{
-                                    color: "#000",
-                                    border: "1px solid #c8c8c8",
-                                    borderRadius: "8px",
-                                    padding: "4px 16px",
-                                    background: "#fff",
-                                    textDecoration: "none"
-                                  }}
-                                >
-                                  Print Order Slip
-                                </Button>
-                              </ListItem>
-                            )}
-                            <ListItem
-                              sx={{ width: "auto", paddingLeft: "0", display: "inline-block" }}
-                            >
-                              <Button
-                                sx={{
-                                  color: "#000",
-                                  border: "1px solid #c8c8c8",
-                                  borderRadius: "8px",
-                                  padding: "4px 16px",
-                                  background: "#fff"
-                                }}
-                                onClick={() => handleOpen("order")}
-                              >
-                                Product Detail Slip
-                              </Button>
-                            </ListItem>
-                          </List>
-                        </Box>
-                      </Grid>
-                      <Grid lg={4} md={6} xs={12}>
-                        <Box>
-                          <List
+                          <Box
                             sx={{
+                              background: "#fff",
+                              height: "36px",
+                              textAlign: "center",
                               display: "flex",
                               alignItems: "center",
-                              justifyContent: { lg: "end", md: "end", xs: "start" }
+                              border: "1px solid #c8c8c8",
+                              borderRadius: "8px",
+                              width: "min-content"
                             }}
                           >
-                            <ListItem
-                              sx={{ width: "auto", paddingLeft: "0", display: "inline-block" }}
-                            >
-                              <Typography component="div">
-                                <TextField
-                                  select
-                                  defaultValue="newest"
-                                  sx={{
-                                    ".MuiInputBase-root": { height: "36px" },
-                                    ".MuiOutlinedInput-notchedOutline": { borderRadius: "8px" }
-                                  }}
-                                  onChange={(e) => setSortBy(e.target.value)}
-                                >
-                                  {newest.map((option) => (
-                                    <MenuItem key={option.value} value={option.value}>
-                                      {option.label}
-                                    </MenuItem>
-                                  ))}
-                                </TextField>
-                              </Typography>
-                            </ListItem>
-                            {tab === "completed" && (
-                              <ListItem
-                                sx={{ width: "auto", paddingLeft: "0", display: "inline-block" }}
+                            <Typography component="div" pr={1}>
+                              <Checkbox
+                                checked={isAllChecked}
+                                onChange={handleMasterCheckboxChange}
+                              />
+                            </Typography>
+                            <Typography pr={1}>{orderIds?.length}</Typography>
+
+                            <Typography component="div" textAlign={"start"}>
+                              <Button
+                                sx={{ color: "#000" }}
+                                id={`basic-button`}
+                                aria-controls={openOption2 ? `basic-menu` : undefined}
+                                aria-haspopup="true"
+                                aria-expanded={openOption2 ? "true" : undefined}
+                                onClick={handleClick2}
                               >
-                                <Typography component="div">
-                                  <TextField
-                                    select
-                                    defaultValue={completeStatus}
-                                    sx={{
-                                      ".MuiInputBase-root": { height: "36px" },
-                                      ".MuiOutlinedInput-notchedOutline": { borderRadius: "8px" }
+                                Action <ArrowDropDownIcon />
+                              </Button>
+
+                              <Menu
+                                id={`basic-menu`}
+                                anchorEl={anchorEl2}
+                                open={openOption2}
+                                onClose={() => setAnchorEl2(null)}
+                                MenuListProps={{
+                                  "aria-labelledby": `basic-button`
+                                }}
+                              >
+                                {(tab === "unshipped" || tab === "hold") && (
+                                  <MenuItem
+                                    onClick={() => {
+                                      updateOrder("action", "in-progress");
+                                      setAnchorEl2(null);
                                     }}
-                                    onChange={(e) => setCompleteStatus(e.target.value)}
                                   >
-                                    {completedStatus.map((option) => (
-                                      <MenuItem key={option.value} value={option.value}>
-                                        {option.label}
-                                      </MenuItem>
-                                    ))}
-                                  </TextField>
-                                </Typography>
-                              </ListItem>
-                            )}
-                          </List>
+                                    <HourglassEmptyIcon
+                                      fontSize="small"
+                                      style={{ marginRight: 8 }}
+                                    />
+                                    In Progress
+                                  </MenuItem>
+                                )}
+                                {(tab === "unshipped" || tab === "in-progress") && (
+                                  <MenuItem
+                                    onClick={() => {
+                                      updateOrder("action", "hold");
+                                      setAnchorEl2(null);
+                                    }}
+                                  >
+                                    <CloseIcon fontSize="small" style={{ marginRight: 8 }} />
+                                    Hold
+                                  </MenuItem>
+                                )}
+                                {(tab === "hold") && (
+                                  <MenuItem
+                                    onClick={() => {
+                                      updateOrder("action", "unshipped");
+                                      setAnchorEl2(null);
+                                    }}
+                                  >
+                                    Unshipped
+                                  </MenuItem>
+                                )}
+                                {(tab === "in-progress" || tab === "unshipped" || tab === "hold") && (
+                                  <MenuItem
+                                    disabled={orderIds.length === 0}
+                                    onClick={() => {
+                                      setAnchorEl2(null);
+                                      // navigate(`${ROUTE_CONSTANT.orders.completeOrder}`, { state: { subOrders: selectedSubOrders } });
+                                      setOpenDialog(true);
+                                    }}
+                                  >
+                                    Complete Order
+                                  </MenuItem>
+                                )}
+                                <MenuItem
+                                  disabled={orderIds.length === 0}
+                                  onClick={() => {
+                                    setAnchorEl2(null);
+                                    downloadExcel(selectedSubOrders);
+                                  }}
+                                >
+                                  Export Orders
+                                </MenuItem>
+                              </Menu>
+                            </Typography>
+                          </Box>
+
+                          {tab !== "pending" && (
+
+                            <Button
+                              onClick={handleOrderSlip}
+                              sx={{
+                                color: "#000",
+                                border: "1px solid #c8c8c8",
+                                borderRadius: "8px",
+                                padding: "4px 16px",
+                                background: "#fff",
+                                textDecoration: "none"
+                              }}
+                            >
+                              Print Order Slip
+                            </Button>
+
+                          )}
+
+                          <Button
+                            sx={{
+                              color: "#000",
+                              border: "1px solid #c8c8c8",
+                              borderRadius: "8px",
+                              padding: "4px 16px",
+                              background: "#fff"
+                            }}
+                            onClick={() => handleOpen("order")}
+                          >
+                            Product Detail Slip
+                          </Button>
+                          <Typography component="div" display={{ xs: "block", sm: "none" }}>
+                            <TextField
+                              select
+                              defaultValue="newest"
+                              sx={{
+                                ".MuiInputBase-root": { height: "36px" },
+                                ".MuiOutlinedInput-notchedOutline": { borderRadius: "8px" }
+                              }}
+                              onChange={(e) => setSortBy(e.target.value)}
+                            >
+                              {newest.map((option) => (
+                                <MenuItem key={option.value} value={option.value}>
+                                  {option.label}
+                                </MenuItem>
+                              ))}
+                            </TextField>
+                          </Typography>
+                          {tab === "completed" && (
+
+                            <Typography component="div" display={{ xs: "block", sm: "none" }}>
+                              <TextField
+                                select
+                                defaultValue={completeStatus}
+                                sx={{
+                                  ".MuiInputBase-root": { height: "36px" },
+                                  ".MuiOutlinedInput-notchedOutline": { borderRadius: "8px" }
+                                }}
+                                onChange={(e) => setCompleteStatus(e.target.value)}
+                              >
+                                {completedStatus.map((option) => (
+                                  <MenuItem key={option.value} value={option.value}>
+                                    {option.label}
+                                  </MenuItem>
+                                ))}
+                              </TextField>
+                            </Typography>
+
+                          )}
+
+                        </Box>
+                      </Grid>
+                      <Grid item display={{ xs: "none", sm: "grid" }} lg={4} md={4} xs={12}>
+                        <Box display={"flex"} justifyContent={'end'} gap={2}>
+                          <Typography component="div">
+                            <TextField
+                              select
+                              defaultValue="newest"
+                              sx={{
+                                ".MuiInputBase-root": { height: "36px" },
+                                ".MuiOutlinedInput-notchedOutline": { borderRadius: "8px" }
+                              }}
+                              onChange={(e) => setSortBy(e.target.value)}
+                            >
+                              {newest.map((option) => (
+                                <MenuItem key={option.value} value={option.value}>
+                                  {option.label}
+                                </MenuItem>
+                              ))}
+                            </TextField>
+                          </Typography>
+                          {tab === "completed" && (
+
+                            <Typography component="div">
+                              <TextField
+                                select
+                                defaultValue={completeStatus}
+                                sx={{
+                                  ".MuiInputBase-root": { height: "36px" },
+                                  ".MuiOutlinedInput-notchedOutline": { borderRadius: "8px" }
+                                }}
+                                onChange={(e) => setCompleteStatus(e.target.value)}
+                              >
+                                {completedStatus.map((option) => (
+                                  <MenuItem key={option.value} value={option.value}>
+                                    {option.label}
+                                  </MenuItem>
+                                ))}
+                              </TextField>
+                            </Typography>
+
+                          )}
+
                         </Box>
                       </Grid>
                     </Grid>
@@ -1022,22 +1040,23 @@ const Orders = () => {
                         </>
                       )
                     }
-                    <Box mt={4} display="flex" justifyContent="center" alignItems="center" position="relative">
+                    <Box mt={4} display="flex" flexDirection={{ xs: "column", sm: "row" }} justifyContent="center" alignItems="center" position="relative" gap={{ xs: 1, sm: undefined }}>
                       <Pagination
                         count={totalPages}
                         page={page}
                         onChange={handlePageChange}
                         variant="outlined"
                         shape="rounded"
+                        size={isMobile ? "small" : "medium"}
                       />
                       <Box
                         display="flex"
                         alignItems="center"
                         gap={1}
-                        position="absolute"
+                        position={{ xs: "static", sm: "absolute" }}
                         right={0}
                       >
-                        <Typography variant="body2">Rows per page:</Typography>
+                        <Typography variant="body2">{isMobile ? "Rows" : "Rows per page"}:</Typography>
                         <Select
                           value={pageSize}
                           size="small"

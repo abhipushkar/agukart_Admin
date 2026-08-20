@@ -28,7 +28,7 @@ const RecentActivity = () => {
   const [userImageBaseUrl, setUserImageBaseUrl] = useState("");
   const [productBaseUrl, setProductBaseUrl] = useState("");
   const [shopBaseUrl, setShopBaseUrl] = useState("");
-  console.log({productBaseUrl,shopBaseUrl})
+  console.log({ productBaseUrl, shopBaseUrl })
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -79,7 +79,7 @@ const RecentActivity = () => {
 
   return (
     <>
-      <Box sx={{ p: 2 }}>
+      <Box sx={{ p: { xs: "16px 0", md: 2 } }}>
         <Typography variant="h6" gutterBottom>
           Recent Activity
         </Typography>
@@ -90,19 +90,18 @@ const RecentActivity = () => {
                 {recentActivity.map((activity, index) => {
                   const imageUrl = activity?.product_id
                     ? `${productBaseUrl}${activity?.productdata?.image?.[0]}`
-                    : activity?.vendor_id ?`${shopBaseUrl}${activity?.vendordata?.shop_icon}`:`${userImageBaseUrl}${activity?.userdata?.image}`;
+                    : activity?.vendor_id ? `${shopBaseUrl}${activity?.vendordata?.shop_icon}` : `${userImageBaseUrl}${activity?.userdata?.image}`;
                   const itemName = activity?.description
                     ?.replace(/<\/?[^>]+(>|$)/g, "")
                     ?.replace(/&nbsp;/g, " ");
 
                   const relativeTimeText = `${dayjs(activity.createdAt).fromNow()}`;
-                  const shopName = `• ${
-                    activity?.vendordata?.shop_name ||
+                  const shopName = `• ${activity?.vendordata?.shop_name ||
                     activity?.productdata?.product_title
                       ?.replace(/<\/?[^>]+(>|$)/g, "")
                       ?.replace(/&nbsp;/g, " ")
-                  }`
-                  console.log({imageUrl},"frgbhfhfhfghfgh")
+                    }`
+                  console.log({ imageUrl }, "frgbhfhfhfghfgh")
                   return (
                     <React.Fragment key={index}>
                       <ListItem

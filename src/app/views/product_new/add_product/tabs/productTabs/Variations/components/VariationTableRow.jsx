@@ -255,7 +255,7 @@ const VariationTableRow = ({
                 >
                     {/* Drag Handle Column */}
                     {visibleColumns.drag && (
-                        <TableCell align="center">
+                        <TableCell align="center" sx={{ pl: 1 }}>
                             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 <IconButton
                                     className="drag-handle"

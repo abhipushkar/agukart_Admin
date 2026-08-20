@@ -17,7 +17,9 @@ import {
   FormControl,
   InputLabel,
   Select,
-  MenuItem
+  MenuItem,
+  useMediaQuery,
+  useTheme
 } from "@mui/material";
 import React from "react";
 import Switch from "@mui/material/Switch";
@@ -78,6 +80,8 @@ const List = () => {
     JSON.parse(localStorage.getItem(localStorageKey.vendorTable)) || []
   );
   const [loadingRows, setLoadingRows] = useState({});
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const auth_key = localStorage.getItem(localStorageKey.auth_key);
   const designation_id = localStorage.getItem(localStorageKey.designation_id)
@@ -273,16 +277,17 @@ const List = () => {
   return (
     <Container>
       <Box
-        sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
+        sx={{ display: "flex", flexDirection: { xs: 'column', sm: 'row' }, justifyContent: "space-between", gap: 1 }}
         className="breadcrumb"
       >
-        <Breadcrumb routeSegments={[{ name: "Vendor", path: "" }, { name: "Vendor List" }]} />
+        {isMobile ? <Typography variant="subtitle2" color="initial">Vendor List</Typography> : <Breadcrumb routeSegments={[{ name: "Vendor", path: "" }, { name: "Vendor List" }]} />}
         <Box
           sx={{
             display: "flex",
             justifyContent: "flex-end",
             flexWrap: "wrap",
-            alignItems: "center"
+            alignItems: "center",
+            gap: 1
           }}
         >
           <FormControl
@@ -290,7 +295,6 @@ const List = () => {
               width: 300,
               "& .MuiOutlinedInput-root": {
                 height: "38px",
-                marginRight: "10px"
               },
               "& .MuiFormLabel-root": {
                 top: "-7px"
@@ -301,6 +305,7 @@ const List = () => {
             <Select
               labelId="demo-multiple-checkbox-label"
               id="demo-multiple-checkbox"
+              label="Preference: Columns hidden"
               multiple
               value={personName}
               onChange={handleChange}
@@ -327,27 +332,14 @@ const List = () => {
       </Box>
 
       <Box>
-        <TableContainer sx={{ paddingLeft: 2, paddingRight: 2 }} component={Paper}>
+        <TableContainer sx={{ paddingLeft: 2, paddingRight: 2, width: "100%", overflowX: "auto" }} component={Paper}>
           <Table
             sx={{
+              minWidth: "max-content",
               width: 'auto',
-              minWidth: {
-                xl: '100%',
-                lg: '100%',
-                md: 'max-content',
-                sm: 'max-content',
-                xs: 'max-content'
-              },
-              maxWidth: {
-                xl: 'max-content',
-                lg: 'max-content',
-                md: 'auto',
-                sm: 'auto',
-                xs: 'auto'
-              },
               ".MuiTableCell-root": {
-                padding: "12px 5px"
-              }
+                padding: "12px 8px",
+              },
             }}
           >
             <TableHead>
@@ -497,7 +489,7 @@ const List = () => {
                     </TableCell>
                     <TableCell>{row?.vendorData?.shop_name}</TableCell>
                     {!personName?.includes("Orders") && <TableCell>{row?.orderCount}</TableCell>}
-                    {!personName?.includes("Revenue") && <TableCell>{row?.revenue}</TableCell>}
+                    {!personName?.includes("Revenue") && <TableCell>{row?.revenue?.toFixed(2)}</TableCell>}
                     {!personName?.includes("Followers") && <TableCell>{row?.followers}</TableCell>}
                     {!personName?.includes("Last order days") && <TableCell>{row?.lastOrderDays}</TableCell>}
                     {!personName?.includes("Name") && <TableCell>{row.name}</TableCell>}
@@ -556,6 +548,7 @@ const List = () => {
           page={page}
           onPageChange={handleChangePage}
           onRowsPerPageChange={handleChangeRowsPerPage}
+          labelRowsPerPage={isMobile ? 'Rows:' : 'Rows per page:'}
         />
       </Box>
       <ConfirmModal

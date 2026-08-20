@@ -924,7 +924,7 @@ const VariationsTable = ({ setShowVariantModal, isSynced }) => {
                                 <TableHead>
                                     <TableRow sx={{ backgroundColor: '#f5f5f5', width: "100%" }}>
                                         {tableVisibleColumns.drag && (
-                                            <TableCell width={69} align="center" sx={{ wordBreak: "keep-all", fontWeight: 600, py: 2 }}>
+                                            <TableCell width={30} align="center" sx={{ wordBreak: "keep-all", fontWeight: 600, py: 2, pl: 1 }}>
                                                 Drag
                                             </TableCell>
                                         )}
