@@ -442,6 +442,11 @@ export const navigations = [
         ]
     },
     {
+        name: "Creator Applications",
+        icon: "groups",
+        path: ROUTE_CONSTANT.creatorApplication.list
+    },
+    {
         name: "Reviews",
         icon: "message",
         path: ROUTE_CONSTANT.reviews
