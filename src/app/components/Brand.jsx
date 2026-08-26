@@ -9,7 +9,7 @@ const BrandRoot = styled(Box)(() => ({
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
-  padding: "20px 18px 20px 29px"
+  padding: "20px"
 }));
 
 const StyledSpan = styled(Span)(({ mode }) => ({
@@ -26,10 +26,7 @@ export default function Brand({ children }) {
   return (
     <BrandRoot>
       <Box display="flex" alignItems="center">
-        <MatxLogo />
-        <StyledSpan mode={mode} className="sidenavHoverShow">
-          Agukart
-        </StyledSpan>
+        <Box component="img" src={mode === "compact" ? "logo/AK_gold.png" : "logo/Agukart.png"} height={"40px"} />
       </Box>
 
       <Box className="sidenavHoverShow" sx={{ display: mode === "compact" ? "none" : "block" }}>

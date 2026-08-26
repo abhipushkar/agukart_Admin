@@ -170,7 +170,7 @@ const StatsSubTable = () => (
     </Box>
 );
 // Common Settings Column Component (without Badge)
-const CommonSettingsColumn = ({ product, isProduct, onFieldChange, actionLoading, filters }) => {
+const CommonSettingsColumn = ({ product, isProduct, onFieldChange, actionLoading, filters, isVendor }) => {
     const [localData, setLocalData] = useState({
         sale_price: product.sale_price || '',
         sort_order: product.sort_order || ''
@@ -206,7 +206,7 @@ const CommonSettingsColumn = ({ product, isProduct, onFieldChange, actionLoading
                 </Box>
             )}
             {/* Sort Order */}
-            {!filters.hiddenColumns.includes('Sort Order') && (
+            {!filters.hiddenColumns.includes('Sort Order') && isVendor && (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
                     <Typography variant="body2"
                         sx={{ fontWeight: 'bold', textWrap: "noWrap", minWidth: '50px', fontSize: '0.7rem' }}>
@@ -515,30 +515,58 @@ const ProductRow = ({ product, index }) => {
                             )}
                             {/* Product Title */}
                             {!filters.hiddenColumns.includes('Product Title') && (
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
-                                    <a
-                                        href={product.type === 'variations'
+                                <Box
+                                    component="a"
+                                    href={
+                                        product.type === 'variations'
                                             ? activeChild
                                                 ? `${REACT_APP_WEB_URL}/product/${activeChild.slug}/${activeChild.product_code}`
                                                 : undefined
                                             : `${REACT_APP_WEB_URL}/product/${product.slug}/${product.product_code}`
-                                        }
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        style={{
-                                            color: 'inherit',
-                                            textDecoration: 'underline',
-                                            cursor: 'pointer',
-                                            fontSize: '0.75rem',
-                                            lineHeight: '1.2',
-                                            wordBreak: 'break-word',
-                                            overflowWrap: 'break-word',
-                                            whiteSpace: 'normal',
-                                            textAlign: 'center'
-                                        }}
-                                    >
-                                        {getProductTitle()}
-                                    </a>
+                                    }
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    sx={{
+                                        color: 'inherit',
+                                        textDecoration: 'underline',
+                                        cursor: 'pointer',
+                                        fontSize: '0.75rem',
+                                        wordBreak: 'break-word',
+                                        overflowWrap: 'break-word',
+                                        whiteSpace: 'normal',
+                                        textAlign: 'center',
+
+                                        display: '-webkit-box',
+                                        WebkitBoxOrient: 'vertical',
+
+                                        WebkitLineClamp: {
+                                            xs: 2,
+                                            sm: 'unset',
+                                        },
+
+                                        overflow: {
+                                            xs: 'hidden',
+                                            sm: 'visible',
+                                        },
+                                    }}
+                                >
+                                    {getProductTitle()}
+                                </Box>
+                            )}
+                            {/* Product ID */}
+                            {!filters.hiddenColumns.includes('Product Id') && (
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
+                                    <Typography variant="body2"
+                                        sx={{ fontWeight: 'bold', minWidth: '25px', fontSize: '0.7rem' }}>
+                                        ID:
+                                    </Typography>
+                                    <Typography variant="body2" sx={{
+                                        fontFamily: 'monospace',
+                                        fontSize: '0.65rem',
+                                        wordBreak: 'break-all'
+                                    }}>
+                                        {product._id}
+                                    </Typography>
                                 </Box>
                             )}
                             {/* Shop Name */}
@@ -567,22 +595,6 @@ const ProductRow = ({ product, index }) => {
                                         wordBreak: 'break-all'
                                     }}>
                                         {hasVariations ? product.parent_product_code : product.product_code || ""}
-                                    </Typography>
-                                </Box>
-                            )}
-                            {/* Product ID */}
-                            {!filters.hiddenColumns.includes('Product Id') && (
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
-                                    <Typography variant="body2"
-                                        sx={{ fontWeight: 'bold', minWidth: '45px', fontSize: '0.7rem' }}>
-                                        ID:
-                                    </Typography>
-                                    <Typography variant="body2" sx={{
-                                        fontFamily: 'monospace',
-                                        fontSize: '0.65rem',
-                                        wordBreak: 'break-all'
-                                    }}>
-                                        {product._id}
                                     </Typography>
                                 </Box>
                             )}
@@ -618,6 +630,7 @@ const ProductRow = ({ product, index }) => {
                             onFieldChange={handleFieldChange}
                             actionLoading={actionLoading}
                             filters={filters}
+                            isVendor={+designation_id === 3}
                         />
                     </TableCell>
                 )}
@@ -938,25 +951,49 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
                         )}
                         {/* Product Title */}
                         {!filters.hiddenColumns.includes('Product Title') && (
+                            <Box component='a'
+                                href={`${REACT_APP_WEB_URL}/product/${variation.slug}/${variation.product_code}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                sx={{
+                                    color: 'inherit',
+                                    textDecoration: 'underline',
+                                    cursor: 'pointer',
+                                    fontSize: '0.75rem',
+                                    lineHeight: '1.2',
+                                    wordBreak: 'break-word',
+                                    overflowWrap: 'break-word',
+                                    whiteSpace: 'normal',
+                                    textAlign: 'center',
+                                    display: '-webkit-box',
+                                    WebkitBoxOrient: 'vertical',
+
+                                    WebkitLineClamp: {
+                                        xs: 2,
+                                        sm: 'unset',
+                                    },
+
+                                    overflow: {
+                                        xs: 'hidden',
+                                        sm: 'visible',
+                                    },
+                                }}
+                            >
+                                {getProductTitle()}
+
+                            </Box>
+                        )}
+                        {/* Product ID */}
+                        {!filters.hiddenColumns.includes('Product Id') && (
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
-                                <a
-                                    href={`${REACT_APP_WEB_URL}/product/${variation.slug}/${variation.product_code}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    style={{
-                                        color: 'inherit',
-                                        textDecoration: 'underline',
-                                        cursor: 'pointer',
-                                        fontSize: '0.75rem',
-                                        lineHeight: '1.2',
-                                        wordBreak: 'break-word',
-                                        overflowWrap: 'break-word',
-                                        whiteSpace: 'normal',
-                                        textAlign: 'center'
-                                    }}
-                                >
-                                    {getProductTitle()}
-                                </a>
+                                <Typography variant="body2"
+                                    sx={{ fontWeight: 'bold', minWidth: '25px', fontSize: '0.7rem' }}>
+                                    ID:
+                                </Typography>
+                                <Typography variant="body2"
+                                    sx={{ fontFamily: 'monospace', fontSize: '0.65rem', wordBreak: 'break-all' }}>
+                                    {variation._id}
+                                </Typography>
                             </Box>
                         )}
                         {/* Shop Name */}
@@ -985,19 +1022,6 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
                                     wordBreak: 'break-all'
                                 }}>
                                     {variation.product_code}
-                                </Typography>
-                            </Box>
-                        )}
-                        {/* Product ID */}
-                        {!filters.hiddenColumns.includes('Product Id') && (
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
-                                <Typography variant="body2"
-                                    sx={{ fontWeight: 'bold', minWidth: '45px', fontSize: '0.7rem' }}>
-                                    ID:
-                                </Typography>
-                                <Typography variant="body2"
-                                    sx={{ fontFamily: 'monospace', fontSize: '0.65rem', wordBreak: 'break-all' }}>
-                                    {variation._id}
                                 </Typography>
                             </Box>
                         )}
@@ -1030,6 +1054,7 @@ const VariationRow = ({ variation, parentProduct, isParentSelected }) => {
                         onFieldChange={handleFieldChange}
                         actionLoading={actionLoading}
                         filters={filters}
+                        isVendor={+designation_id === 3}
                     />
                 </TableCell>
             )}

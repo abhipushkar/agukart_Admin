@@ -1475,9 +1475,6 @@ const OptionDropdown = ({ index }) => {
                             '& .MuiTableCell-root': {
                                 whiteSpace: 'nowrap',
                             },
-                            '& .MuiTable-root': {
-                                minWidth: '1000px',
-                            },
                             '@media (max-width: 1200px)': {
                                 '& .MuiTableCell-root': {
                                     padding: '8px 4px',
@@ -1487,7 +1484,32 @@ const OptionDropdown = ({ index }) => {
                                 },
                             },
                         }}>
-                            <Table size="small">
+                            <Table size="small" sx={{
+                                width: "100%",
+                                minWidth: "1200px",
+                                tableLayout: "fixed",
+
+                                "& .MuiTableCell-root": {
+                                    whiteSpace: "nowrap",
+                                    boxSizing: "border-box",
+                                },
+                            }}
+                            >
+                                <colgroup>
+                                    <col style={{ width: "40px" }} />   {/* Drag */}
+                                    <col style={{ width: "200px" }} />  {/* Option Name */}
+                                    <col style={{ width: "120px" }} />  {/* Bulk Upload */}
+
+                                    <col style={{ width: "100px" }} />  {/* Main 1 */}
+                                    <col style={{ width: "100px" }} />  {/* Main 2 */}
+                                    <col style={{ width: "100px" }} />  {/* Main 3 */}
+                                    <col style={{ width: "100px" }} />  {/* Preview */}
+                                    <col style={{ width: "100px" }} />  {/* Thumbnail */}
+
+                                    <col style={{ width: "110px" }} />  {/* Price */}
+                                    <col style={{ width: "80px" }} />   {/* Visible */}
+                                    <col style={{ width: "80px" }} />   {/* Actions */}
+                                </colgroup>
                                 <TableHead>
                                     <TableRow>
                                         <TableCell align="center" width="40px"></TableCell>
@@ -1736,7 +1758,7 @@ const OptionDropdown = ({ index }) => {
                                         fontWeight: "600"
                                     }}
                                 >
-                                    Add Options
+                                    Add Optionss
                                 </Box>
                             </Box>
                         </Button>

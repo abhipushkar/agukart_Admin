@@ -663,7 +663,6 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                     >
                         <CloseIcon />
                     </Button>
-
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: "300px" }}>
                         <Button
                             onClick={goToPrevImage}
@@ -671,7 +670,6 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                         >
                             ‹
                         </Button>
-
                         <Box
                             sx={{
                                 flex: 1,
@@ -692,7 +690,6 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                                             objectFit: "contain",
                                         }}
                                     />
-
                                     {images[currentImageIndex].thumbnail && (
                                         <Box
                                             sx={{
@@ -722,7 +719,6 @@ const Product = ({ saleData, baseUrl, getOrderList, handleOpen, item, vendorData
                                 </>
                             )}
                         </Box>
-
                         <Button
                             onClick={goToNextImage}
                             sx={{ minWidth: 'auto', padding: '8px', fontSize: '25px' }}

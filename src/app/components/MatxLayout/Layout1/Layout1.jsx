@@ -53,6 +53,7 @@ const LayoutContainer = styled(Box)(({ width, open }) => ({
 }));
 
 const Layout1 = () => {
+  const layoutScrollContainerRef = useRef(null);
   const { settings, updateSettings } = useSettings();
   const { layout1Settings, secondarySidebar } = settings;
   const topbarTheme = settings.themes[layout1Settings.topbar.theme];
@@ -61,6 +62,7 @@ const Layout1 = () => {
   } = layout1Settings;
 
   const location = useLocation();
+
 
   const getSidenavWidth = () => {
     switch (sidenavMode) {
@@ -81,6 +83,7 @@ const Layout1 = () => {
 
   const ref = useRef({ isMdScreen, settings });
   const layoutClasses = `theme-${theme.palette.type}`;
+
 
   useEffect(() => {
     let { settings } = ref.current;
@@ -144,7 +147,7 @@ const Layout1 = () => {
         )}
 
         {!settings.perfectScrollbar && (
-          <ContentBox>
+          <ContentBox id="agukart-content-box">
             {layout1Settings.topbar.show && !layout1Settings.topbar.fixed && (
               <ThemeProvider theme={topbarTheme}>
                 <Layout1Topbar />

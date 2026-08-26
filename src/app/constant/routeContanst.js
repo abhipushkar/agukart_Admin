@@ -153,6 +153,10 @@ const BASE_ROUTES = {
     vendorBannerImage: {
         list: "/pages/vendor/banner-image",
     },
+    creatorApplication: {
+        list: "/creator-applications",
+        view: "/creator-application/details"
+    },
     manager: {
         list: "/pages/manager/list",
         add: "/pages/manager/add"

@@ -515,6 +515,8 @@ const VariantModal = ({ show, handleCloseVariant }) => {
     // ========== NEW: Confirm deletion and turn off affected switches ==========
     const handleConfirmDelete = () => {
         if (variantToDelete) {
+            const { setCancelDisabled } = useProductFormStore.getState();
+            setCancelDisabled(true);
             // Turn off the affected switches
             const updatedFormValues = { ...formValues };
 
@@ -907,11 +909,22 @@ const VariantModal = ({ show, handleCloseVariant }) => {
             alert("Please enter a variant name");
             return;
         }
-
+        setSelectedVariant(customVariantName);
+        setAttrValues(prev => ({
+            ...prev,
+            name: customVariantName
+        }));
         const validOptions = customVariantOptions.filter(opt => opt.trim() !== "");
         if (validOptions.length < 2) {
             alert("Please add at least 2 options");
             return;
+        }
+
+        if (!editingCustomVariant) {
+            if (variationsData.some(v => v.name.trim().toLowerCase() === customVariantName.trim().toLowerCase())) {
+                alert("Custom Varaint already exists. Please enter a different variant name.");
+                return;
+            }
         }
 
         // Create custom variant object
@@ -1074,6 +1087,8 @@ const VariantModal = ({ show, handleCloseVariant }) => {
 
     // ========== UPDATED: Handle delete variation with warning ==========
     const handleDeleteVariation = (selectedVariantName) => {
+        const { setCancelDisabled } = useProductFormStore.getState();
+        setCancelDisabled(true);
         const currentData = variationsData || [];
         const updatedData = currentData.filter(variation => variation.name !== selectedVariantName);
         setVariationsData(updatedData);

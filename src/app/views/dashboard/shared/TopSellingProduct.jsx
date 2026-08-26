@@ -8,6 +8,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableContainer,
   TableHead,
   TableRow,
   TextField,
@@ -19,6 +20,7 @@ import { apiEndpoints } from "app/constant/apiEndpoints";
 import { localStorageKey } from "app/constant/localStorageKey";
 import { dashboardDateRange } from "app/data/Index";
 import { REACT_APP_WEB_URL } from "config";
+import { useTheme, useMediaQuery } from "@mui/material";
 
 const LIMIT = 5;
 
@@ -28,6 +30,8 @@ const TopSellingProduct = () => {
     from: new Date().toISOString().split("T")[0],
     to: new Date().toISOString().split("T")[0]
   });
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   const auth_key = localStorage.getItem(localStorageKey.auth_key);
   const [topSellingProducts, setTopSellingProducts] = useState([]);
@@ -107,7 +111,7 @@ const TopSellingProduct = () => {
   };
 
   return (
-    <Stack sx={{ bgcolor: "white", p: 3, borderRadius: 2, boxShadow: 2 }}>
+    <Stack sx={{ bgcolor: "white", p: { xs: 1, md: 3 }, borderRadius: 2, boxShadow: 2 }}>
       <Stack direction={"row"} justifyContent={"space-between"}>
         <Typography sx={{ fontWeight: "500", fontSize: "1rem" }}>
           Top Selling Products
@@ -158,14 +162,19 @@ const TopSellingProduct = () => {
         </Box>
       </Stack>
 
-      <Box width="100%" overflow="auto" mt={2}>
-        <Table>
+      <TableContainer width="100%" mt={2} sx={{ overflowX: 'auto' }}>
+        <Table sx={{
+          tableLayout: 'fixed',
+          "& .MuiTableCell-root": {
+            fontSize: { xs: "12px", md: "14px" },
+          },
+        }}>
           <TableHead>
             <TableRow>
               <TableCell align="center">Name</TableCell>
               <TableCell align="center">SKU</TableCell>
-              <TableCell align="center">Revenue</TableCell>
-              <TableCell align="center">No. Of Orders</TableCell>
+              <TableCell align="center" sx={{ width: { xs: "20%", md: "25%" } }}>Revenue</TableCell>
+              <TableCell align="center" sx={{ width: { xs: "15%", md: "25%" } }}>{isMobile ? "Orders" : "No. Of Orders"}</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -173,11 +182,11 @@ const TopSellingProduct = () => {
               topSellingProducts.map((item, index) => (
                 <TableRow key={index}>
                   <TableCell>
-                    <Box display="flex" alignItems="center" gap={2}>
+                    <Box display="flex" alignItems="center" gap={{ xs: 1, md: 2 }}>
                       <Avatar
                         src={item?.image ? `${productBaseUrl}${item?.image}` : ""}
                         alt="product"
-                        sx={{ width: 70, height: 70 }}
+                        sx={{ width: { xs: 40, md: 70 }, aspectRatio: "1/1" }}
                       />
                       <Typography
                         sx={{
@@ -220,7 +229,7 @@ const TopSellingProduct = () => {
             </Button>
           </Box>
         )}
-      </Box>
+      </TableContainer>
     </Stack>
   );
 };

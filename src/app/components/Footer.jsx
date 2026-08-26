@@ -35,6 +35,8 @@ export default function Footer() {
   const { settings } = useSettings();
 
   const footerTheme = settings.themes[settings.footer.theme] || theme;
+  const leftSidebar = settings.layout1Settings.leftSidebar;
+  const { mode } = leftSidebar;
 
   return (
     <ThemeProvider theme={footerTheme}>
@@ -42,23 +44,7 @@ export default function Footer() {
         <AppFooter>
           <FooterContent sx={{ justifyContent: "center" }}>
             <Paragraph m={0} display={"flex"} alignItems={"center"} justifyContent={"center"}>
-              Design and Developed by{" "}
-              {/*<img style={{ height: "34px" }} src="assets/images/img-logo.webp" alt="" />
-            </Paragraph>
-            <Paragraph m={0} display={"flex"} alignItems={"center"} justifyContent={"center"}>
-              and
-              Maintained by{" "}
-              <img style={{ height: "54px", color: "white" }} src="assets/images/iskylar.png" alt="" /> */}
-              <Box
-                component="img"
-                src="/logo/agukart_white.svg"
-                alt="Agukart Logo"
-                sx={{
-                  height: 40,        // control size
-                  width: "auto",
-                  display: "block",
-                }}
-              />
+              Design and Developed by <b style={{ marginLeft: "4px", fontSize: 16 }}>Agukart</b>
             </Paragraph>
           </FooterContent>
         </AppFooter>

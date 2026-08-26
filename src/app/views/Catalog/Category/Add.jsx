@@ -467,6 +467,8 @@ const Add = () => {
             conditionType: values.conditionType,
             bestseller: values.bestSelling,
             restricted_keywords: values.tags,
+            search_keywords: values.searchKeys,
+            block_keywords: values.blockKeys,
             isAutomatic: isAutomatic,
             categoryScope: categoryScope,
             selectedCategories: selectedCategories.map(cat => cat._id),
@@ -1440,6 +1442,8 @@ const Add = () => {
                             metaKeywords: queryId ? getCatData?.meta_keywords : "",
                             metaDescription: queryId ? getCatData?.meta_description : "",
                             tags: queryId ? getCatData?.restricted_keywords || [] : [],
+                            searchKeys: queryId ? getCatData?.search_keywords || [] : [],
+                            blockKeys: queryId ? getCatData?.block_keywords || [] : [],
                             bestSelling: queryId ? getCatData?.bestseller : "No",
                             conditionType: queryId ? getCatData?.conditionType || "all" : "all",
                             conditions: queryId && getCatData?.conditions?.length > 0
@@ -1453,7 +1457,7 @@ const Add = () => {
                     >
                         {({ setFieldValue, setFieldTouched, resetForm, values, handleChange, errors, touched }) => {
                             console.log("values", values);
-                            const handleTagHandler = (event, newValue) => {
+                            const handleTagHandler = (event, newValue, field) => {
                                 const processedValues = newValue
                                     .flatMap((value) =>
                                         typeof value === "string"
@@ -1461,7 +1465,7 @@ const Add = () => {
                                             : [value]
                                     )
                                     .filter(Boolean);
-                                setFieldValue("tags", [...new Set(processedValues)]);
+                                setFieldValue(field, [...new Set(processedValues)]);
                             };
 
                             return <Form
@@ -1910,8 +1914,130 @@ const Add = () => {
                                                         }}
                                                     />
                                                 )}
-                                                onChange={handleTagHandler}
+                                                onChange={(event, newValue) =>
+                                                    handleTagHandler(event, newValue, "tags")
+                                                }
                                                 value={values.tags || []}
+                                                isOptionEqualToValue={(option, value) => option === value}
+                                            />
+                                        </Box>
+                                    </Box>
+                                </Box>
+
+                                {/* Search Keywords */}
+                                <Box sx={{ mb: 3 }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                        <Typography sx={{ minWidth: '120px', alignItems: "center", fontWeight: 'bold', display: "flex", gap: 0.4 }}>
+                                            Search Keywords
+                                            <Tooltip
+                                                title={
+                                                    <Box component={Paper} sx={{ p: 1 }} elevation={3}>
+                                                        These words will be used to query Categories to search products on Agukart.com
+                                                    </Box>
+                                                }
+                                                placement="top"
+                                                arrow
+                                                componentsProps={{
+                                                    tooltip: {
+                                                        sx: {
+                                                            bgcolor: "transparent",
+                                                            p: 0,
+                                                        }
+                                                    },
+                                                    arrow: { sx: { color: "white" } }
+                                                }}
+                                            >
+                                                <HelpOutlineIcon fontSize="small" />
+                                            </Tooltip>
+                                            :
+                                        </Typography>
+                                        <Box sx={{ flex: 1 }}>
+                                            <Autocomplete
+                                                multiple
+                                                freeSolo
+                                                limitTags={4}
+                                                id="multiple-limit-tags"
+                                                options={[]}
+                                                onKeyDown={(event) => {
+                                                    if (event.key === "Backspace") {
+                                                        event.defaultMuiPrevented = true; // 🔥 THIS is the key
+                                                    }
+                                                }}
+                                                getOptionLabel={(option) => option || ""}
+                                                renderInput={(params) => (
+                                                    <TextField
+                                                        {...params}
+                                                        placeholder="Enter Search Keywords ..."
+                                                        sx={{
+                                                            "& .MuiInputBase-root": {
+                                                                padding: "0 11px",
+                                                            }
+                                                        }}
+                                                    />
+                                                )}
+                                                onChange={(event, newValue) =>
+                                                    handleTagHandler(event, newValue, "searchKeys")
+                                                }
+                                                value={values.searchKeys || []}
+                                                isOptionEqualToValue={(option, value) => option === value}
+                                            />
+                                        </Box>
+                                    </Box>
+                                </Box>
+
+                                {/* Blocking Keywords */}
+                                <Box sx={{ mb: 3 }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                        <Typography sx={{ minWidth: '120px', alignItems: "center", display: "flex", gap: 0.4, fontWeight: 'bold' }}>
+                                            Block Keywords <Tooltip
+                                                title={
+                                                    <Box component={Paper} sx={{ p: 1 }} elevation={3}>
+                                                        This category will be blocked if any blocking keywords match the search!
+                                                    </Box>
+                                                }
+                                                placement="top"
+                                                arrow
+                                                componentsProps={{
+                                                    tooltip: {
+                                                        sx: {
+                                                            bgcolor: "transparent",
+                                                            p: 0,
+                                                        }
+                                                    },
+                                                    arrow: { sx: { color: "white" } }
+                                                }}
+                                            >
+                                                <HelpOutlineIcon fontSize="small" />
+                                            </Tooltip>:
+                                        </Typography>
+                                        <Box sx={{ flex: 1 }}>
+                                            <Autocomplete
+                                                multiple
+                                                freeSolo
+                                                limitTags={4}
+                                                id="multiple-limit-tags"
+                                                options={[]}
+                                                onKeyDown={(event) => {
+                                                    if (event.key === "Backspace") {
+                                                        event.defaultMuiPrevented = true; // 🔥 THIS is the key
+                                                    }
+                                                }}
+                                                getOptionLabel={(option) => option || ""}
+                                                renderInput={(params) => (
+                                                    <TextField
+                                                        {...params}
+                                                        placeholder="Enter Blocking Keywords ..."
+                                                        sx={{
+                                                            "& .MuiInputBase-root": {
+                                                                padding: "0 11px",
+                                                            }
+                                                        }}
+                                                    />
+                                                )}
+                                                onChange={(event, newValue) =>
+                                                    handleTagHandler(event, newValue, "blockKeys")
+                                                }
+                                                value={values.blockKeys || []}
                                                 isOptionEqualToValue={(option, value) => option === value}
                                             />
                                         </Box>
