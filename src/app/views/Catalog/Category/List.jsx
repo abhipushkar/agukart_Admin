@@ -19,7 +19,9 @@ import {
     MenuItem,
     CircularProgress
 } from "@mui/material";
-import { Icon } from "@mui/material";
+import { Icon, Menu, Typography } from "@mui/material";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
+import EditIcon from "@mui/icons-material/Edit";
 import Switch from "@mui/material/Switch";
 import { Link, useNavigate } from "react-router-dom";
 import { ROUTE_CONSTANT } from "app/constant/routeContanst";
@@ -75,6 +77,8 @@ const List = () => {
     const [personName, setPersonName] = useState(
         JSON.parse(localStorage.getItem(localStorageKey.categoryTable)) || []
     );
+    const [anchorEl, setAnchorEl] = useState(null);
+    const [selectedCategory, setSelectedCategory] = useState(null);
     const [loading, setLoading] = useState(false);
 
     // Sorting state
@@ -256,6 +260,17 @@ const List = () => {
         }
     }, [auth_key, getCategoryList, statusData]);
 
+    const handleRefreshCategory = async (id) => {
+        try {
+            const res = await ApiService.post(`${apiEndpoints.refreshCategory}/${id}`, {}, auth_key);
+            if (res.status === 200) {
+                handleOpen("success", "Category refreshed successfully!");
+            }
+        } catch (error) {
+            handleOpen("error", error);
+        }
+    }
+
     // Server-side sorting handler
     const handleServerSortingChange = (e) => {
         const newSorting = e.target.value ? JSON.parse(e.target.value) : { sortBy: '', order: 1 };
@@ -408,7 +423,7 @@ const List = () => {
             </Box>
 
             <Box>
-                <TableContainer sx={{ paddingLeft: 2, paddingRight: 2 }} component={Paper}>
+                <TableContainer component={Paper}>
                     <Table
                         sx={{
                             width: 'auto',
@@ -427,7 +442,7 @@ const List = () => {
                                 xs: 'auto'
                             },
                             '.MuiTableCell-root': {
-                                padding: "12px 5px"
+                                padding: "12px 4px"
                             }
                         }}
                     >
@@ -597,11 +612,15 @@ const List = () => {
                                                                 />
                                                             </TableCell>
                                                             <TableCell>
-                                                                <Link
-                                                                    to={`${ROUTE_CONSTANT.catalog.category.add}?id=${row._id}`}
+                                                                <IconButton
+                                                                    aria-label="category actions"
+                                                                    onClick={(event) => {
+                                                                        setAnchorEl(event.currentTarget);
+                                                                        setSelectedCategory(row);
+                                                                    }}
                                                                 >
-                                                                    <Icon color="primary">edit</Icon>
-                                                                </Link>{" "}
+                                                                    <MoreVertIcon />
+                                                                </IconButton>
                                                             </TableCell>
                                                         </TableRow>
                                                     )
@@ -619,6 +638,47 @@ const List = () => {
                             }
                         </TableBody>
                     </Table>
+                    <Menu
+                        anchorEl={anchorEl}
+                        open={Boolean(anchorEl)}
+                        onClose={() => {
+                            setAnchorEl(null);
+                            setSelectedCategory(null);
+                        }}
+                    >
+                        <MenuItem
+                            onClick={() => {
+                                if (!selectedCategory?._id) return;
+
+                                const categoryId = selectedCategory._id;
+
+                                setAnchorEl(null);
+                                setSelectedCategory(null);
+
+                                navigate(
+                                    `${ROUTE_CONSTANT.catalog.category.add}?id=${categoryId}`
+                                );
+                            }}
+                            sx={{ alignContent: "center", alignItems: "center", alignmentBaseline: "middle" }}
+                        >
+                            <EditIcon sx={{ mr: 1 }} color="primary" /> Edit
+                        </MenuItem>
+
+                        <MenuItem
+                            onClick={() => {
+                                if (!selectedCategory?._id) return;
+
+                                const categoryId = selectedCategory._id;
+
+                                setAnchorEl(null);
+                                setSelectedCategory(null);
+
+                                handleRefreshCategory(categoryId);
+                            }}
+                        >
+                            Refresh Category
+                        </MenuItem>
+                    </Menu>
                 </TableContainer>
                 <TablePagination
                     rowsPerPageOptions={[25, 50, 75, 100, 200]}

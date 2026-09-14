@@ -1758,7 +1758,7 @@ const OptionDropdown = ({ index }) => {
                                         fontWeight: "600"
                                     }}
                                 >
-                                    Add Optionss
+                                    Add Options
                                 </Box>
                             </Box>
                         </Button>

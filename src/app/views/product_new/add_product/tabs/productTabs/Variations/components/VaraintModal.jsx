@@ -515,8 +515,8 @@ const VariantModal = ({ show, handleCloseVariant }) => {
     // ========== NEW: Confirm deletion and turn off affected switches ==========
     const handleConfirmDelete = () => {
         if (variantToDelete) {
-            const { setCancelDisabled } = useProductFormStore.getState();
-            setCancelDisabled(true);
+            // const { setCancelDisabled } = useProductFormStore.getState();
+            // setCancelDisabled(true);
             // Turn off the affected switches
             const updatedFormValues = { ...formValues };
 
@@ -1087,8 +1087,8 @@ const VariantModal = ({ show, handleCloseVariant }) => {
 
     // ========== UPDATED: Handle delete variation with warning ==========
     const handleDeleteVariation = (selectedVariantName) => {
-        const { setCancelDisabled } = useProductFormStore.getState();
-        setCancelDisabled(true);
+        // const { setCancelDisabled } = useProductFormStore.getState();
+        // setCancelDisabled(true);
         const currentData = variationsData || [];
         const updatedData = currentData.filter(variation => variation.name !== selectedVariantName);
         setVariationsData(updatedData);

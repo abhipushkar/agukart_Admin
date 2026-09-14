@@ -239,7 +239,7 @@ const View = () => {
                             startIcon={<Icon>apps</Icon>}
                             variant="contained"
                         >
-                            Voucher List
+                            Application List
                         </Button>
                     </Box>
                 </Box>
@@ -248,7 +248,7 @@ const View = () => {
                 </Alert>
                 <Button
                     startIcon={<ArrowBackIcon />}
-                    onClick={() => navigate(ROUTE_CONSTANT.applications.list)}
+                    onClick={() => navigate(ROUTE_CONSTANT.creatorApplication.list)}
                     sx={{ mt: 2 }}
                 >
                     Back to Applications
@@ -312,7 +312,7 @@ const View = () => {
                             startIcon={<Icon>apps</Icon>}
                             variant="contained"
                         >
-                            Voucher List
+                            Application List
                         </Button>
                     </Box>
                 </Box>
