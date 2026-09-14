@@ -42,6 +42,8 @@ import PropTypes from "prop-types";
 import CloseIcon from "@mui/icons-material/Close";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import InfoIcon from "@mui/icons-material/Info";
+import CropPortraitIcon from '@mui/icons-material/CropPortrait';
+import CropLandscapeIcon from '@mui/icons-material/CropLandscape';
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 
 import { autocompleteClasses } from "@mui/material/Autocomplete";
@@ -128,7 +130,8 @@ const Add = () => {
         metaDescription: "",
         metaKeywords: "",
         searchTerms: [],
-        imageAlt: ""
+        imageAlt: "",
+        img_dimension: "",
     });
 
     console.log({ formValues }, "fghntntntjnt");
@@ -623,6 +626,7 @@ const Add = () => {
                 meta_description: formValues.metaDescription,
                 meta_keyword: formValues.metaKeywords,
                 search_terms: formValues.searchTerms,
+                img_dimension: formValues.img_dimension,
                 image_alt: formValues.imageAlt?.length > 0 ? formValues.imageAlt : formValues.metaTitle
             };
 
@@ -753,7 +757,8 @@ const Add = () => {
                     metaDescription: resData?.meta_description,
                     metaKeywords: resData?.meta_keyword,
                     searchTerms: resData?.search_terms,
-                    imageAlt: resData?.image_alt
+                    imageAlt: resData?.image_alt,
+                    img_dimension: resData?.img_dimension || "2x3",
                 }));
 
                 // Selected categories will be set after parent categories load
@@ -812,7 +817,8 @@ const Add = () => {
                 categoryScope: "all",
                 selectedCategories: [],
                 conditionType: "all",
-                conditions: [{ field: "", operator: "", value: "" }]
+                conditions: [{ field: "", operator: "", value: "" }],
+                img_dimension: "2x3"
             });
             setImage(null);
             setImgUrl(null);
@@ -1732,8 +1738,57 @@ const Add = () => {
                                     </Grid>
                                 </Grid>
 
+                                <Grid item xs={12} md={6} display={"flex"} justifyContent={"center"}>
+                                    {imgUrl && <img style={{ margin: "16px 0" }} src={imgUrl} width={200} alt="" />}
+                                </Grid>
+
+                                <Grid item xs={12} md={6} display={"flex"} gap={2}>
+                                    <Typography sx={{ minWidth: '120px', fontWeight: 'bold' }}>
+                                        Image Dimensions:
+                                    </Typography>
+                                    <FormControl sx={{ width: "200px", minWidth: "150px" }}>
+                                        <TextField
+                                            select
+                                            value={formValues.img_dimension}
+                                            onChange={e => setFormValues((prev) => ({ ...prev, img_dimension: e.target.value }))}
+                                            sx={{
+                                                width: "200px",
+                                                height: "40px",
+                                                "& .MuiSelect-select": {
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    gap: "10px",
+                                                    padding: "8px 12px 8px 16px",
+                                                },
+                                            }}
+                                        >
+                                            <MenuItem
+                                                value="2x3"
+                                                sx={{
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    gap: 1,
+                                                }}
+                                            >
+                                                <CropPortraitIcon fontSize="small" />
+                                                2x3
+                                            </MenuItem>
+
+                                            <MenuItem
+                                                value="4x3"
+                                                sx={{
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    gap: 1,
+                                                }}
+                                            >
+                                                <CropLandscapeIcon fontSize="small" />
+                                                4x3
+                                            </MenuItem>
+                                        </TextField>
+                                    </FormControl>
+                                </Grid>
                             </Grid>
-                            {imgUrl && <img style={{ margin: "16px 0" }} src={imgUrl} width={200} alt="" />}
                         </Box>
 
                         <Box sx={{ my: 3 }}>

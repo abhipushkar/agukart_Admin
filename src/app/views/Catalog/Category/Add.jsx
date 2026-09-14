@@ -24,13 +24,15 @@ import {
     Typography,
     Tooltip,
     Alert,
+    Select,
     // Card,
     // CardContent
 } from "@mui/material";
 
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
-// import { toast } from "react-toastify";
+import CropPortraitIcon from '@mui/icons-material/CropPortrait';
+import CropLandscapeIcon from '@mui/icons-material/CropLandscape';
 import { useNavigate, useSearchParams } from "react-router-dom";
 import styled from "@emotion/styled";
 import { ApiService } from "app/services/ApiService";
@@ -459,6 +461,7 @@ const Add = () => {
             title: values.name,
             description: values.description,
             parent_id: !selectedCatId ? null : selectedCatId,
+            img_dimension: values.img_dimension,
             meta_title: values.metaTitle,
             meta_keywords: values.metaKeywords,
             meta_description: values.metaDescription,
@@ -1438,6 +1441,7 @@ const Add = () => {
                         initialValues={{
                             name: queryId ? getCatData?.title : "",
                             description: queryId ? getCatData?.description : "",
+                            img_dimension: queryId ? getCatData?.img_dimension || "2x3" : "2x3",
                             metaTitle: queryId ? getCatData?.meta_title : "",
                             metaKeywords: queryId ? getCatData?.meta_keywords : "",
                             metaDescription: queryId ? getCatData?.meta_description : "",
@@ -1622,6 +1626,55 @@ const Add = () => {
                                                     label="No"
                                                 />
                                             </RadioGroup>
+                                        </FormControl>
+                                    </Box>
+                                </Box>
+
+                                {/*  */}
+                                <Box sx={{ mb: 3 }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                                        <Typography sx={{ minWidth: '120px', fontWeight: 'bold' }}>
+                                            Image Dimensions:
+                                        </Typography>
+                                        <FormControl sx={{ width: "200px", minWidth: "150px" }}>
+                                            <Field
+                                                as={Select}
+                                                name="img_dimension"
+                                                sx={{
+                                                    width: "200px",
+                                                    height: "40px",
+                                                    "& .MuiSelect-select": {
+                                                        display: "flex",
+                                                        alignItems: "center",
+                                                        gap: "10px",
+                                                        padding: "8px 12px 8px 16px",
+                                                    },
+                                                }}
+                                            >
+                                                <MenuItem
+                                                    value="2x3"
+                                                    sx={{
+                                                        display: "flex",
+                                                        alignItems: "center",
+                                                        gap: 1,
+                                                    }}
+                                                >
+                                                    <CropPortraitIcon fontSize="small" />
+                                                    2x3
+                                                </MenuItem>
+
+                                                <MenuItem
+                                                    value="4x3"
+                                                    sx={{
+                                                        display: "flex",
+                                                        alignItems: "center",
+                                                        gap: 1,
+                                                    }}
+                                                >
+                                                    <CropLandscapeIcon fontSize="small" />
+                                                    4x3
+                                                </MenuItem>
+                                            </Field>
                                         </FormControl>
                                     </Box>
                                 </Box>

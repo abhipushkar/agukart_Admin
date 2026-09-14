@@ -647,21 +647,18 @@ const List = () => {
                         }}
                     >
                         <MenuItem
+                            component={Link}
+                            to={`${ROUTE_CONSTANT.catalog.category.add}?id=${selectedCategory?._id || ""}`}
                             onClick={() => {
-                                if (!selectedCategory?._id) return;
-
-                                const categoryId = selectedCategory._id;
-
                                 setAnchorEl(null);
                                 setSelectedCategory(null);
-
-                                navigate(
-                                    `${ROUTE_CONSTANT.catalog.category.add}?id=${categoryId}`
-                                );
                             }}
-                            sx={{ alignContent: "center", alignItems: "center", alignmentBaseline: "middle" }}
+                            sx={{
+                                alignItems: "center",
+                            }}
                         >
-                            <EditIcon sx={{ mr: 1 }} color="primary" /> Edit
+                            <EditIcon sx={{ mr: 1 }} color="primary" />
+                            Edit
                         </MenuItem>
 
                         <MenuItem
