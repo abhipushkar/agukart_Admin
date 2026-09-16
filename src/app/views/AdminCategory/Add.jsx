@@ -1617,14 +1617,14 @@ const Add = () => {
                         </Box>
 
                         {/* Image Upload */}
-                        <Box sx={{ my: 3 }}>
-                            <Grid container spacing={2} alignItems="center">
+                        <Box sx={{ my: 4 }}>
+                            <Grid container spacing={3} alignItems="center">
 
                                 {/* Category Image */}
                                 <Grid item xs={12} md={6}>
                                     <Grid container alignItems="center" spacing={2}>
 
-                                        <Grid item xs={12} sm={4}>
+                                        <Grid item xs={12} sm={3}>
                                             <Typography sx={{ fontWeight: "bold" }}>
                                                 Category Image:
                                             </Typography>
@@ -1658,7 +1658,6 @@ const Add = () => {
                                                 }}
                                                 placeholder="Select file"
                                                 onClick={() => document.getElementById("file-input").click()}
-                                                helperText={<strong>Recommended aspect ratio is 2x3</strong>}
                                             />
 
                                             {errors.images && (
@@ -1679,9 +1678,9 @@ const Add = () => {
 
                                 {/* Image Alt */}
                                 <Grid item xs={12} md={6}>
-                                    <Grid container alignItems="center" spacing={2}>
+                                    <Grid container alignItems="center">
 
-                                        <Grid item xs={12} sm={4}>
+                                        <Grid item xs={12} sm={3}>
                                             <Typography
                                                 sx={{
                                                     fontWeight: "bold",

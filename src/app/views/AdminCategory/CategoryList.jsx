@@ -17,11 +17,13 @@ import {
     InputLabel,
     Select,
     MenuItem,
-    CircularProgress
+    CircularProgress,
+    Stack, Typography, Divider,
+    Card
 } from "@mui/material";
 import { Icon } from "@mui/material";
 import Switch from "@mui/material/Switch";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ROUTE_CONSTANT } from "app/constant/routeContanst";
 import { ApiService } from "app/services/ApiService";
 import { localStorageKey } from "app/constant/localStorageKey";
@@ -32,8 +34,12 @@ import styled from "@emotion/styled";
 import ConfirmModal from "app/components/ConfirmModal";
 import OutlinedInput from "@mui/material/OutlinedInput";
 import ListItemText from "@mui/material/ListItemText";
-import Checkbox from "@mui/material/Checkbox";
+import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import debounce from "lodash.debounce";
+import {
+    Apps as AppsIcon,
+    DragIndicator as DragIndicatorIcon,
+} from "@mui/icons-material";
 
 const ITEM_HEIGHT = 48;
 const ITEM_PADDING_TOP = 8;
@@ -49,17 +55,17 @@ const MenuProps = {
 
 const names = ["Status", "Popular", "Special", "Menu Item", "Action"];
 
-// Sorting options for admin category column
-const SORTING_OPTIONS = [
-    { value: { sortBy: 'parent', order: 1 }, label: 'Admin Category (A to Z)' },
-    { value: { sortBy: 'parent', order: -1 }, label: 'Admin Category (Z to A)' },
-    { value: { sortBy: 'createdAt', order: -1 }, label: 'Date Created (New to Old)' },
-    { value: { sortBy: 'createdAt', order: 1 }, label: 'Date Created (Old to New)' },
-    { value: { sortBy: 'updatedAt', order: -1 }, label: 'Last Updated' },
-];
+const reorderList = (list, startIndex, endIndex) => {
+    const result = Array.from(list);
+    const [removed] = result.splice(startIndex, 1);
+    result.splice(endIndex, 0, removed);
+    return result;
+};
 
-const List = () => {
+const CategoryList = () => {
     // State management
+    const [searchParams] = useSearchParams();
+    const queryId = searchParams.get("id");
     const [categoryList, setCategoryList] = useState([]);
     const [excelData, setExcelData] = useState([]);
     const [page, setPage] = useState(0);
@@ -88,8 +94,10 @@ const List = () => {
 
     // Sorting state
     const [order, setOrder] = useState("none");
-    const [orderBy, setOrderBy] = useState(null);
-    const [serverSorting, setServerSorting] = useState({ sortBy: "parent", order: 1 });
+    const [orderBy, setOrderBy] = useState(null);// Add with other state declarations
+    const [isDragging, setIsDragging] = useState(false);
+    const [hasOrderChanges, setHasOrderChanges] = useState(false);
+    const [pendingOrderIds, setPendingOrderIds] = useState([]);
 
     const navigate = useNavigate();
     const auth_key = localStorage.getItem(localStorageKey.auth_key);
@@ -169,14 +177,11 @@ const List = () => {
                 params.append('search', debouncedSearch);
             }
 
-            // Add server-side sorting if provided
-            if (serverSorting.sortBy) {
-                params.append('sort', JSON.stringify({
-                    [serverSorting.sortBy]: serverSorting.order
-                }));
+            if (queryId) {
+                params.append('categoryId', queryId);
             }
 
-            const url = `${apiEndpoints.getAdminCategory}?${params.toString()}`;
+            const url = `${apiEndpoints.getChildrenAdminCategory}?${params.toString()}`;
             const res = await ApiService.get(url, auth_key);
 
             if (res.status === 200) {
@@ -215,7 +220,7 @@ const List = () => {
         } finally {
             setLoading(false);
         }
-    }, [auth_key, debouncedSearch, serverSorting, page, rowsPerPage]);
+    }, [auth_key, debouncedSearch, queryId, page, rowsPerPage]);
 
     // Fetch data when dependencies change
     useEffect(() => {
@@ -306,13 +311,6 @@ const List = () => {
         }
     }, [auth_key, getCategoryList, statusData]);
 
-    // Server-side sorting handler
-    const handleServerSortingChange = (e) => {
-        const newSorting = e.target.value ? JSON.parse(e.target.value) : { sortBy: '', order: 1 };
-        setServerSorting(newSorting);
-        setPage(0); // Reset to first page when sorting changes
-    };
-
     // Client-side sorting (for other columns)
     const handleRequestSort = (property) => {
         let newOrder;
@@ -349,86 +347,107 @@ const List = () => {
         )
         : categoryList;
 
-    const Container = styled("div")(({ theme }) => ({
-        margin: "30px",
-        [theme.breakpoints.down("sm")]: { margin: "16px" },
-        "& .breadcrumb": {
-            marginBottom: "30px",
-            [theme.breakpoints.down("sm")]: { marginBottom: "16px" }
+    const onDragStart = () => {
+        setIsDragging(true);
+    };
+
+    const onDragEnd = (result) => {
+        setIsDragging(false);
+
+        if (!result.destination) return;
+
+        const { source, destination } = result;
+
+        if (source.index === destination.index) return;
+
+        // Reorder the category list
+        const reordered = reorderList(sortedRows, source.index, destination.index);
+
+        // Update the category list with new order
+        setCategoryList(reordered);
+
+        // Extract the ordered IDs
+        const orderedIds = reordered.map((item) => item._id);
+        setPendingOrderIds(orderedIds);
+        setHasOrderChanges(true);
+    };
+
+    const handleSaveOrder = async () => {
+        if (!pendingOrderIds.length) return;
+
+        try {
+            setLoading(true);
+            const payload = {
+                parentId: queryId || null,
+                orderedIds: pendingOrderIds,
+            };
+
+            const res = await ApiService.patch(
+                apiEndpoints.reorderAdminCategory,
+                payload,
+                auth_key
+            );
+
+            if (res.status === 200) {
+                setHasOrderChanges(false);
+                setPendingOrderIds([]);
+                getCategoryList();
+            }
+        } catch (error) {
+            handleOpen("error", error);
+        } finally {
+            setLoading(false);
         }
-    }));
+    };
 
     return (
         <Box sx={{ margin: "30px" }}>
+            {queryId ? (
+                <Box sx={{ py: "16px", marginBottom: "20px" }} component={Paper}>
+                    <Stack sx={{ ml: "24px", mb: "12px" }} gap={1} direction={"row"}>
+                        <AppsIcon />
+                        <Typography sx={{ fontWeight: "600", fontSize: "18px" }}>Go To</Typography>
+                    </Stack>
+                    <Divider />
+                    <Box sx={{ ml: "24px", mt: "16px" }}>
+                        <Button
+                            onClick={() => navigate(ROUTE_CONSTANT.catalog.adminCategory.list)}
+                            startIcon={<AppsIcon />}
+                            variant="contained"
+                        >
+                            Admin Categories
+                        </Button>
+                    </Box>
+                </Box>
+            ) : (
+                <Box sx={{ py: "16px", marginBottom: "20px" }} component={Paper}>
+                    <Stack sx={{ ml: "24px", mb: "12px" }} gap={1} direction={"row"}>
+                        <AppsIcon />
+                        <Typography sx={{ fontWeight: "600", fontSize: "18px" }}>Go To</Typography>
+                    </Stack>
+                    <Divider />
+                    <Box sx={{ ml: "24px", mt: "16px" }}>
+                        <Button
+                            onClick={() => navigate(ROUTE_CONSTANT.dashboard)}
+                            startIcon={<AppsIcon />}
+                            variant="contained"
+                        >
+                            Dashboard
+                        </Button>
+                    </Box>
+                </Box>
+            )}
             <Box
                 sx={{
                     display: "flex",
                     alignItems: "center",
-                    justifyContent: "end",
+                    justifyContent: "space-between",
                     marginBottom: 2
                 }}
                 className="breadcrumb"
             >
-                <Box display={"flex"} gap={2} alignItems={"center"} flexWrap={"wrap"}>
-                    {/* Server-side Sorting Filter */}
-                    <FormControl size="small" sx={{ minWidth: 200 }}>
-                        <InputLabel>Sort Admin Category</InputLabel>
-                        <Select
-                            value={JSON.stringify(serverSorting)}
-                            label="Sort Admin Category"
-                            onChange={handleServerSortingChange}
-                            renderValue={(selected) => {
-                                const selectedSorting = JSON.parse(selected);
-                                const option = SORTING_OPTIONS.find(opt =>
-                                    opt.value.sortBy === selectedSorting.sortBy &&
-                                    opt.value.order === selectedSorting.order
-                                );
-                                return option ? option.label : 'Custom Sort';
-                            }}
-                        >
-                            {SORTING_OPTIONS.map((option, index) => (
-                                <MenuItem
-                                    key={index}
-                                    value={JSON.stringify(option.value)}
-                                >
-                                    {option.label}
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
-
-                    <Box>
-                        <FormControl
-                            sx={{
-                                width: 225,
-                                "& .MuiOutlinedInput-root": {
-                                    height: "38px"
-                                },
-                                "& .MuiFormLabel-root": {
-                                    top: "-7px"
-                                }
-                            }}
-                        >
-                            <InputLabel id="demo-multiple-checkbox-label">Preference: Columns hidden</InputLabel>
-                            <Select
-                                labelId="demo-multiple-checkbox-label"
-                                id="demo-multiple-checkbox"
-                                multiple
-                                value={personName}
-                                onChange={handleChange}
-                                input={<OutlinedInput label="Preference: Columns hidden" />}
-                                renderValue={(selected) => `${selected.length} columns hidden`}
-                                MenuProps={MenuProps}
-                            >
-                                {names.map((name) => (
-                                    <MenuItem key={name} value={name}>
-                                        <Checkbox checked={personName.indexOf(name) > -1} />
-                                        <ListItemText primary={name} />
-                                    </MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
-                    </Box>
+                <Breadcrumb routeSegments={[{ name: "Catalog", path: "" }, { name: "Admin Category" }]} />
+                <Box display={"flex"} gap={"16px"} alignItems={"center"}>
                     <Box>
                         <TextField
                             size="small"
@@ -443,17 +462,15 @@ const List = () => {
                         to={ROUTE_CONSTANT.catalog.adminCategory.add}
                     >
                         <Button variant="contained"
-                            sx={{ whiteSpace: "nowrap", width: "180px", minWidth: "120px" }}>
+                            sx={{ whiteSpace: "nowrap" }}
+                        >
                             Add Admin Category
                         </Button>
                     </Link>
-
-                    <Button onClick={() => exportToExcel(excelData)} variant="contained" sx={{ whiteSpace: "nowrap", width: "180px", minWidth: "120px" }}>
-                        Export Categories
-                    </Button>
                     <Button
-                        onClick={() => navigate(ROUTE_CONSTANT.catalog.adminCategory.list)}
+                        onClick={() => navigate(ROUTE_CONSTANT.catalog.adminCategory.all)}
                         variant="outlined"
+                        component={Card}
                         sx={{
                             border: "2px solid",
                             borderWidth: 2,
@@ -462,136 +479,126 @@ const List = () => {
                             }, whiteSpace: "nowrap"
                         }}
                     >
-                        Parent Categories
+                        All Admin Categories
                     </Button>
                 </Box>
             </Box>
 
             <Box>
-                <TableContainer sx={{ paddingLeft: 2, paddingRight: 2 }} component={Paper}>
-                    <Table
-                        sx={{
-                            width: 'auto',
-                            minWidth: {
-                                xl: '100%',
-                                lg: '100%',
-                                md: 'max-content',
-                                sm: 'max-content',
-                                xs: 'max-content'
-                            },
-                            maxWidth: {
-                                xl: 'max-content',
-                                lg: 'max-content',
-                                md: 'auto',
-                                sm: 'auto',
-                                xs: 'auto'
-                            },
-                            '.MuiTableCell-root': {
-                                padding: "12px 5px"
-                            }
-                        }}
-                    >
-                        <TableHead>
-                            <TableRow>
-                                <TableCell sortDirection={orderBy === "S.No" ? order : false}>
-                                    <TableSortLabel
-                                        active={orderBy === "S.No"}
-                                        direction={orderBy === "S.No" ? order : "asc"}
-                                        onClick={() => handleRequestSort("S.No")}
-                                    >
-                                        S.No
-                                    </TableSortLabel>
-                                </TableCell>
-                                <TableCell>
-                                    Admin Category
-                                </TableCell>
-                                {/* {!personName?.includes("Tags") && (
-                                    <TableCell sortDirection={orderBy === "tag" ? order : false}>
-                                        <TableSortLabel
-                                            active={orderBy === "tag"}
-                                            direction={orderBy === "tag" ? order : "asc"}
-                                            onClick={() => handleRequestSort("tag")}
-                                        >
-                                            Tags
-                                        </TableSortLabel>
+                <TableContainer component={Paper} sx={{ overflow: 'visible' }}>
+                    <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
+                        <Table
+                            sx={{
+                                width: 'auto',
+                                minWidth: '100%',
+                                maxWidth: 'max-content',
+                                '.MuiTableCell-root': {
+                                    padding: "12px 5px"
+                                }
+                            }}
+                        >
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell>
+                                        Drag
                                     </TableCell>
-                                )} */}
-                                {!personName?.includes("Status") && (
-                                    <TableCell sortDirection={orderBy === "status" ? order : false}>
-                                        <TableSortLabel
-                                            active={orderBy === "status"}
-                                            direction={orderBy === "status" ? order : "asc"}
-                                            onClick={() => handleRequestSort("status")}
-                                        >
-                                            Status
-                                        </TableSortLabel>
+                                    <TableCell>
+                                        Admin Category
                                     </TableCell>
-                                )}
-                                {!personName?.includes("Popular") && (
-                                    <TableCell sortDirection={orderBy === "popular" ? order : false}>
-                                        <TableSortLabel
-                                            active={orderBy === "popular"}
-                                            direction={orderBy === "popular" ? order : "asc"}
-                                            onClick={() => handleRequestSort("popular")}
-                                        >
-                                            Popular
-                                        </TableSortLabel>
-                                    </TableCell>
-                                )}
-                                {!personName?.includes("Special") && (
-                                    <TableCell sortDirection={orderBy === "special" ? order : false}>
-                                        <TableSortLabel
-                                            active={orderBy === "special"}
-                                            direction={orderBy === "special" ? order : "asc"}
-                                            onClick={() => handleRequestSort("special")}
-                                        >
-                                            Special
-                                        </TableSortLabel>
-                                    </TableCell>
-                                )}
-                                {!personName?.includes("Menu Item") && (
-                                    <TableCell sortDirection={orderBy === "menuStatus" ? order : false}>
-                                        <TableSortLabel
-                                            active={orderBy === "menuStatus"}
-                                            direction={orderBy === "menuStatus" ? order : "asc"}
-                                            onClick={() => handleRequestSort("menuStatus")}
-                                        >
-                                            Menu Item
-                                        </TableSortLabel>
-                                    </TableCell>
-                                )}
-                                {!personName?.includes("Action") && <TableCell>Action</TableCell>}
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {
-                                loading ? (
-                                    <TableRow>
-                                        <TableCell colSpan={9} sx={{ textAlign: "center" }}>
-                                            <CircularProgress />
+                                    {!personName?.includes("Status") && (
+                                        <TableCell sortDirection={orderBy === "status" ? order : false}>
+                                            <TableSortLabel
+                                                active={orderBy === "status"}
+                                                direction={orderBy === "status" ? order : "asc"}
+                                                onClick={() => handleRequestSort("status")}
+                                            >
+                                                Status
+                                            </TableSortLabel>
                                         </TableCell>
-                                    </TableRow>
-                                ) : (
-                                    <>
-                                        {
-                                            sortedRows?.length > 0 ? (
-                                                <>
-                                                    {
-                                                        sortedRows.map((row, i) => {
-                                                            return (
-                                                                <TableRow key={row._id}>
-                                                                    <TableCell>{row["S.No"]}</TableCell>
-                                                                    <TableCell sx={{ wordBreak: "break-word" }}>{row?.parent}</TableCell>
-                                                                    {/* {!personName?.includes("Tags") && (
-                                                                        <TableCell>
-                                                                            {row?.tag?.map((tag, index) => (
-                                                                                <span key={index}>
-                                                                                    {tag}
-                                                                                    {index < row.tag.length - 1 ? ", " : ""}
-                                                                                </span>
-                                                                            ))}
-                                                                        </TableCell>
-                                                                    )} */}
+                                    )}
+                                    {!personName?.includes("Popular") && (
+                                        <TableCell sortDirection={orderBy === "popular" ? order : false}>
+                                            <TableSortLabel
+                                                active={orderBy === "popular"}
+                                                direction={orderBy === "popular" ? order : "asc"}
+                                                onClick={() => handleRequestSort("popular")}
+                                            >
+                                                Popular
+                                            </TableSortLabel>
+                                        </TableCell>
+                                    )}
+                                    {!personName?.includes("Special") && (
+                                        <TableCell sortDirection={orderBy === "special" ? order : false}>
+                                            <TableSortLabel
+                                                active={orderBy === "special"}
+                                                direction={orderBy === "special" ? order : "asc"}
+                                                onClick={() => handleRequestSort("special")}
+                                            >
+                                                Special
+                                            </TableSortLabel>
+                                        </TableCell>
+                                    )}
+                                    {!personName?.includes("Menu Item") && (
+                                        <TableCell sortDirection={orderBy === "menuStatus" ? order : false}>
+                                            <TableSortLabel
+                                                active={orderBy === "menuStatus"}
+                                                direction={orderBy === "menuStatus" ? order : "asc"}
+                                                onClick={() => handleRequestSort("menuStatus")}
+                                            >
+                                                Menu Item
+                                            </TableSortLabel>
+                                        </TableCell>
+                                    )}
+                                    {!personName?.includes("Action") && <TableCell>Action</TableCell>}
+                                </TableRow>
+                            </TableHead>
+                            <Droppable droppableId="adminCategoryList" type="adminCategoryList">
+                                {(provided) => (
+                                    <TableBody
+                                        ref={provided.innerRef}
+                                        {...provided.droppableProps}
+                                    >
+                                        {loading ? (
+                                            <TableRow>
+                                                <TableCell colSpan={9} sx={{ textAlign: "center" }}>
+                                                    <CircularProgress />
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : (
+                                            <>
+                                                {sortedRows?.length > 0 ? (
+                                                    sortedRows.map((row, i) => (
+                                                        <Draggable
+                                                            key={row._id}
+                                                            draggableId={row._id.toString()}
+                                                            index={i}
+                                                            isDragDisabled={loading}
+                                                        >
+                                                            {(provided, snapshot) => (
+                                                                <TableRow
+                                                                    ref={provided.innerRef}
+                                                                    {...provided.draggableProps}
+                                                                    sx={{
+                                                                        ...provided.draggableProps.style,
+                                                                        backgroundColor: snapshot.isDragging ? 'rgba(51, 138, 224, 0.1)' : 'inherit',
+                                                                        borderBottom: snapshot.isDragging ? '2px dashed rgb(51, 138, 224)' : 'inherit',
+                                                                    }}
+                                                                >
+                                                                    <TableCell
+                                                                        {...provided.dragHandleProps}
+                                                                        sx={{ cursor: "grab" }}
+                                                                    >
+                                                                        <DragIndicatorIcon color="disabled" />
+                                                                    </TableCell>
+                                                                    <TableCell
+                                                                        sx={{ '&:hover': { color: 'primary.main' } }}
+                                                                        component={Link}
+                                                                        to={`${ROUTE_CONSTANT.catalog.adminCategory.list}?id=${row?._id}`}
+                                                                    >
+                                                                        {row?.title}
+                                                                    </TableCell>
+
+                                                                    {/* ... keep the rest of the cells EXACTLY the same ... */}
                                                                     {!personName?.includes("Status") && (
                                                                         <TableCell>
                                                                             <Switch
@@ -646,34 +653,49 @@ const List = () => {
                                                                         </TableCell>
                                                                     )}
                                                                 </TableRow>
-                                                            );
-                                                        })
-                                                    }
-                                                </>
-                                            ) : (
-                                                <TableRow>
-                                                    <TableCell colSpan={8} sx={{ textAlign: "center" }}>
-                                                        {loading ? 'Loading admin categories...' : 'No admin categories found'}
-                                                    </TableCell>
-                                                </TableRow>
-                                            )
-                                        }
-                                    </>
-                                )
-                            }
-                        </TableBody>
-                    </Table>
+                                                            )}
+                                                        </Draggable>
+                                                    ))
+                                                ) : (
+                                                    <TableRow>
+                                                        <TableCell colSpan={8} sx={{ textAlign: "center" }}>
+                                                            No admin categories found
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )}
+                                            </>
+                                        )}
+                                        {provided.placeholder}
+                                    </TableBody>
+                                )}
+                            </Droppable>
+                        </Table>
+                    </DragDropContext>
                 </TableContainer>
-                <TablePagination
-                    rowsPerPageOptions={[25, 50, 75, 100, 200]}
-                    component="div"
-                    count={pagination.total}
-                    rowsPerPage={rowsPerPage}
-                    page={page}
-                    onPageChange={handleChangePage}
-                    onRowsPerPageChange={handleChangeRowsPerPage}
-                    disabled={loading}
-                />
+                <Box display="flex" justifyContent="space-between" alignItems="center" my={2}>
+                    {hasOrderChanges && (
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            onClick={handleSaveOrder}
+                            disabled={loading}
+                            startIcon={loading ? <CircularProgress size={20} /> : null}
+                        >
+                            Update Order
+                        </Button>
+                    )}
+                    <TablePagination
+                        rowsPerPageOptions={[25, 50, 75, 100, 200]}
+                        component="div"
+                        count={pagination.total}
+                        rowsPerPage={rowsPerPage}
+                        page={page}
+                        onPageChange={handleChangePage}
+                        onRowsPerPageChange={handleChangeRowsPerPage}
+                        disabled={loading}
+                        sx={{ ml: "auto" }}
+                    />
+                </Box>
             </Box>
             <ConfirmModal
                 open={open}
@@ -689,4 +711,4 @@ const List = () => {
     );
 };
 
-export default List;
+export default CategoryList;
