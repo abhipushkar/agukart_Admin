@@ -22,8 +22,9 @@ const BASE_ROUTES = {
             add: "/catalog/category/addcategory"
         },
         adminCategory: {
-            list: "/catalog/admin-category/list",
-            add: "/catalog/admin-category/add-admin-category"
+            all: "/catalog/admin-category/list",
+            add: "/catalog/admin-category/add-admin-category",
+            list: "/catalog/admin-category"
         },
         variant: {
             list: "/catalog/variant-list",
