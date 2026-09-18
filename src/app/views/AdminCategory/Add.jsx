@@ -47,16 +47,18 @@ import CropLandscapeIcon from '@mui/icons-material/CropLandscape';
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 
 import { autocompleteClasses } from "@mui/material/Autocomplete";
-import { TextRotateVerticalRounded } from "@mui/icons-material";
+import { Clear, Remove, RemoveCircle, TextRotateVerticalRounded } from "@mui/icons-material";
 import { useCallback } from "react";
 import ClearIcon from "@mui/icons-material/Clear";
 import ConfirmModal from "app/components/ConfirmModal";
 import AppsIcon from "@mui/icons-material/Apps";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import CommonQuill from "app/components/ReactQuillTextEditor/ReusableReactQuill/CommonQuill";
 import SmartAutocomplete from "app/components/SmartAutocomplete";
 import PasskeyModal from "./PasskeyModal";
+import { useRef } from "react";
 
 function Tag(props) {
     const { label, onDelete, ...other } = props;
@@ -90,7 +92,8 @@ const getOperatorsForField = (field) => {
         "Product Title": ["is equal to", "is not equal to", "starts with", "ends with"],
         "Product Tag": ["is equal to", "is not equal to", "starts with", "ends with"],
         "Attributes Tag": ["is equal to", "is not equal to", "starts with", "ends with"],
-        "Variant Tag": ["is equal to", "is not equal to", "starts with", "ends with"]
+        "Variant Tag": ["is equal to", "is not equal to", "starts with", "ends with"],
+        "Customization Tag": ["is equal to", "is not equal to", "starts with", "ends with"]
     };
     return operatorMap[field] || [];
 };
@@ -123,8 +126,11 @@ const Add = () => {
         isAutomatic: false,
         categoryScope: "specific",
         selectedCategories: [],
-        conditionType: "all",
-        conditions: [{ field: "", operator: "", value: "" }],
+        conditionGroups: [
+            {
+                conditionType: "all",
+                conditions: [{ field: "", operator: "", value: "" }]
+            }],
         description: "",
         metaTitle: "",
         metaDescription: "",
@@ -179,6 +185,7 @@ const Add = () => {
     console.log({ selectedCatLable });
     const [parentId, setParentId] = useState(null);
     console.log({ parentId });
+    const submitRef = useRef(null)
 
     // New states for conditions
     const [parentCategories, setParentCategories] = useState([]);
@@ -569,11 +576,16 @@ const Add = () => {
     };
 
     // Process conditions before submitting - extract only IDs
-    const processConditionsForSubmit = (conditions) => {
-        return conditions.map(condition => ({
-            field: condition.field,
-            operator: condition.operator,
-            value: extractValueIds(condition.value, condition.field)
+    const processConditionsForSubmit = (matchLogic) => {
+        if (!Array.isArray(matchLogic)) return [];
+
+        return matchLogic.map(logic => ({
+            conditionType: logic.conditionType || "all",
+            conditions: (logic.conditions || []).map(condition => ({
+                field: condition.field,
+                operator: condition.operator,
+                value: extractValueIds(condition.value, condition.field),
+            })),
         }));
     };
 
@@ -608,7 +620,7 @@ const Add = () => {
             setLoading(true);
 
             // Process conditions for payload
-            const processedConditions = processConditionsForSubmit(formValues.conditions);
+            const processedConditions = processConditionsForSubmit(formValues.conditionGroups);
 
             const payload = {
                 _id: queryId ? queryId : "new",
@@ -619,8 +631,7 @@ const Add = () => {
                 isAutomatic: formValues.isAutomatic,
                 categoryScope: formValues.categoryScope,
                 selectedCategories: formValues.selectedCategories.map(cat => cat._id),
-                conditionType: formValues.conditionType,
-                conditions: processedConditions,
+                conditionGroups: processedConditions,
                 description: formValues.description,
                 meta_title: formValues.metaTitle,
                 meta_description: formValues.metaDescription,
@@ -641,7 +652,7 @@ const Add = () => {
                 if (image) {
                     await handleUploadImg(res?.data?.adminCategory?._id);
                 }
-                setRoute(ROUTE_CONSTANT.catalog.adminCategory.list);
+                setRoute(`${ROUTE_CONSTANT.catalog.adminCategory.list}${parentId ? `?id=${parentId}` : ""}`);
                 handleOpen("success", res?.data);
             }
         } catch (error) {
@@ -713,7 +724,7 @@ const Add = () => {
     }, [auth_key]);
 
     useEffect(() => {
-        getTagList();
+        // getTagList();
         getActiveCategory();
     }, []);
 
@@ -733,9 +744,26 @@ const Add = () => {
                 setExistingData(resData);
 
                 // Process conditions data if exists
-                let conditions = [{ field: "", operator: "", value: "" }];
-                if (resData?.conditions && resData.conditions.length > 0) {
-                    conditions = resData.conditions;
+                // Process conditionGroups from API (or migrate from legacy shape)
+                let matchLogicFromApi = [];
+
+                if (Array.isArray(resData?.conditionGroups) && resData.conditionGroups.length > 0) {
+                    matchLogicFromApi = resData.conditionGroups.map(logic => ({
+                        conditionType: logic.conditionType || "all",
+                        conditions:
+                            Array.isArray(logic.conditions) && logic.conditions.length > 0
+                                ? logic.conditions
+                                : [{ field: "", operator: "", value: "" }],
+                    }));
+                } else {
+                    // Legacy fallback
+                    matchLogicFromApi = [{
+                        conditionType: resData?.conditionType || "all",
+                        conditions:
+                            Array.isArray(resData?.conditions) && resData.conditions.length > 0
+                                ? resData.conditions
+                                : [{ field: "", operator: "", value: "" }],
+                    }];
                 }
 
                 // Set basic form values immediately
@@ -750,8 +778,7 @@ const Add = () => {
                     // New conditions data - set basic values first
                     isAutomatic: resData?.isAutomatic || false,
                     categoryScope: resData?.categoryScope || "all",
-                    conditionType: resData?.conditionType || "all",
-                    conditions: conditions,
+                    conditionGroups: matchLogicFromApi,
                     description: resData?.description,
                     metaTitle: resData?.meta_title,
                     metaDescription: resData?.meta_description,
@@ -816,8 +843,11 @@ const Add = () => {
                 isAutomatic: false,
                 categoryScope: "all",
                 selectedCategories: [],
-                conditionType: "all",
-                conditions: [{ field: "", operator: "", value: "" }],
+                conditionGroups: [
+                    {
+                        conditionType: "all",
+                        conditions: [{ field: "", operator: "", value: "" }]
+                    }],
                 img_dimension: "2x3"
             });
             setImage(null);
@@ -884,6 +914,7 @@ const Add = () => {
             case "Attributes Tag":
                 return filteredAttributes;
             case "Variant Tag":
+            case "Customization Tag":
                 return filteredVariants;
             default:
                 return [];
@@ -901,6 +932,7 @@ const Add = () => {
             case "Attributes Tag":
                 return option.name + (option.groupName ? ` (${option.groupName})` : "") || '';
             case "Variant Tag":
+            case "Customization Tag":
                 return option.variant_name || '';
             default:
                 return String(option);
@@ -908,83 +940,63 @@ const Add = () => {
     };
 
     // Enhanced renderValueInput function with compound attribute support
-    const renderValueInput = (condition, index) => {
+    const renderValueInput = (condition, logicIndex, conditionIndex) => {
         const field = condition.field;
+        const setValue = (v) => setConditionValue(logicIndex, conditionIndex, v);
 
         if (field === "Product Title" || field === "Product Tag") {
             return (
                 <TextField
                     fullWidth
                     value={condition.value || ""}
-                    onChange={(e) => {
-                        const newConditions = [...formValues.conditions];
-                        newConditions[index].value = e.target.value;
-                        setFormValues(prev => ({ ...prev, conditions: newConditions }));
-                    }}
+                    onChange={(e) => setValue(e.target.value)}
                     placeholder="Enter value"
-                    sx={{
-                        "& .MuiInputBase-root": { height: "40px" }
-                    }}
+                    sx={{ "& .MuiInputBase-root": { height: "40px" } }}
                 />
             );
         }
 
         if (field === "Attributes Tag") {
-            const selectedAttribute = filteredAttributes.find(attr => attr._id === condition.value?.attributeId);
+            const selectedAttribute = filteredAttributes.find(
+                attr => attr._id === condition.value?.attributeId
+            );
 
-            // Handle compound attributes with sub-attributes
+            // Compound attributes
             if (selectedAttribute?.type === "Compound") {
                 const subAttributes = selectedAttribute?.subAttributes || [];
-                const selectedSubAttribute = subAttributes.find(sub => sub._id === condition.value?.subAttributeId);
+                const selectedSubAttribute = subAttributes.find(
+                    sub => sub._id === condition.value?.subAttributeId
+                );
 
                 return (
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                        {/* Attribute Selection */}
                         <FormControl fullWidth>
                             <Autocomplete
                                 disablePortal
                                 options={filteredAttributes}
                                 getOptionLabel={(option) => option.name || ''}
                                 renderOption={(props, option) => (
-                                    <li
-                                        {...props}
-                                        style={{
-                                            display: "flex",
-                                            gap: 10,
-                                            alignItems: "center",
-                                            width: "100%",
-                                        }}
-                                    >
+                                    <li {...props} style={{ display: "flex", gap: 10, alignItems: "center", width: "100%" }}>
                                         <span>{option.name || ''}</span>
-                                        <span style={{ color: "#888", fontSize: 12 }}>
-                                            {option.groupName}
-                                        </span>
+                                        <span style={{ color: "#888", fontSize: 12 }}>{option.groupName}</span>
                                     </li>
                                 )}
                                 value={filteredAttributes.find(attr => attr._id === condition.value?.attributeId) || null}
-                                onChange={(event, newValue) => {
-                                    const newConditions = [...formValues.conditions];
-                                    newConditions[index].value = {
+                                onChange={(event, newValue) =>
+                                    setValue({
                                         attributeId: newValue?._id || "",
                                         subAttributeId: "",
-                                        value: ""
-                                    };
-                                    setFormValues(prev => ({ ...prev, conditions: newConditions }));
-                                }}
+                                        value: "",
+                                    })
+                                }
                                 renderInput={(params) => (
-                                    <TextField
-                                        {...params}
-                                        label="Select Attribute"
-                                        sx={{
-                                            "& .MuiInputBase-root": { height: "40px" }
-                                        }}
-                                    />
+                                    <TextField {...params} label="Select Attribute"
+                                        sx={{ "& .MuiInputBase-root": { height: "40px" } }} />
                                 )}
                                 isOptionEqualToValue={(option, value) => option._id === value._id}
                             />
                         </FormControl>
 
-                        {/* Sub-attribute Selection for Compound types */}
                         {selectedAttribute?.type === "Compound" && (
                             <FormControl fullWidth>
                                 <Autocomplete
@@ -992,41 +1004,38 @@ const Add = () => {
                                     options={subAttributes}
                                     getOptionLabel={(option) => option.name}
                                     value={subAttributes.find(sub => sub._id === condition.value?.subAttributeId) || null}
-                                    onChange={(event, newValue) => {
-                                        const newConditions = [...formValues.conditions];
-                                        newConditions[index].value = {
+                                    onChange={(event, newValue) =>
+                                        setValue({
                                             ...condition.value,
                                             subAttributeId: newValue?._id || "",
-                                            value: ""
-                                        };
-                                        setFormValues(prev => ({ ...prev, conditions: newConditions }));
-                                    }}
+                                            value: "",
+                                            valueIds: [],
+                                        })
+                                    }
                                     renderInput={(params) => (
-                                        <TextField
-                                            {...params}
-                                            label="Select Sub-Attribute"
-                                            sx={{
-                                                "& .MuiInputBase-root": { height: "40px" }
-                                            }}
-                                        />
+                                        <TextField {...params} label="Select Sub-Attribute"
+                                            sx={{ "& .MuiInputBase-root": { height: "40px" } }} />
                                     )}
                                     isOptionEqualToValue={(option, value) => option._id === value._id}
                                 />
                             </FormControl>
                         )}
 
-                        {/* Value Input based on selected sub-attribute type */}
                         {selectedSubAttribute && (
                             <FormControl fullWidth>
-                                {renderSubAttributeValueInput(selectedSubAttribute, condition, index)}
+                                {renderSubAttributeValueInput(
+                                    selectedSubAttribute,
+                                    condition,
+                                    logicIndex,
+                                    conditionIndex
+                                )}
                             </FormControl>
                         )}
                     </Box>
                 );
             }
 
-            // Handle regular attributes (Dropdown, Yes/No, Text)
-            const attributeValues = selectedAttribute?.values || [];
+            // Regular attributes
             const selectedValuesCount = condition.value?.valueIds?.length || 0;
 
             return (
@@ -1037,59 +1046,40 @@ const Add = () => {
                             options={filteredAttributes}
                             getOptionLabel={(option) => option.name || ''}
                             renderOption={(props, option) => (
-                                <li
-                                    {...props}
-                                    style={{
-                                        display: "flex",
-                                        gap: 10,
-                                        alignItems: "center",
-                                        width: "100%",
-                                    }}
-                                >
+                                <li {...props} style={{ display: "flex", gap: 10, alignItems: "center", width: "100%" }}>
                                     <span>{option.name || ''}</span>
-                                    <span style={{ color: "#888", fontSize: 12 }}>
-                                        {option.groupName}
-                                    </span>
+                                    <span style={{ color: "#888", fontSize: 12 }}>{option.groupName}</span>
                                 </li>
                             )}
-                            slotProps={{
-                                paper: {
-                                    sx: {
-                                        minWidth: 450,
-                                    },
-                                },
-                            }}
+                            slotProps={{ paper: { sx: { minWidth: 450 } } }}
                             value={filteredAttributes.find(attr => attr._id === condition.value?.attributeId) || null}
-                            onChange={(event, newValue) => {
-                                const newConditions = [...formValues.conditions];
-                                newConditions[index].value = {
-                                    attributeId: newValue?._id || "",
-                                    valueIds: []
-                                };
-                                setFormValues(prev => ({ ...prev, conditions: newConditions }));
-                            }}
+                            onChange={(event, newValue) =>
+                                setValue({ attributeId: newValue?._id || "", valueIds: [] })
+                            }
                             renderInput={(params) => (
-                                <TextField
-                                    {...params}
-                                    label="Select Attribute"
-                                    sx={{
-                                        "& .MuiInputBase-root": { height: "40px" }
-                                    }}
-                                />
+                                <TextField {...params} label="Select Attribute"
+                                    sx={{ "& .MuiInputBase-root": { height: "40px" } }} />
                             )}
                             isOptionEqualToValue={(option, value) => option._id === value._id}
                         />
                     </FormControl>
 
                     <FormControl fullWidth>
-                        {renderAttributeValueInput(selectedAttribute, condition, index)}
+                        {renderAttributeValueInput(
+                            selectedAttribute,
+                            condition,
+                            logicIndex,
+                            conditionIndex
+                        )}
                     </FormControl>
                 </Box>
             );
         }
 
-        if (field === "Variant Tag") {
-            const selectedVariantType = filteredVariants.find(variant => variant._id === condition.value?.variantId);
+        if (field === "Variant Tag" || field === "Customization Tag") {
+            const selectedVariantType = filteredVariants.find(
+                variant => variant._id === condition.value?.variantId
+            );
             const variantAttributes = selectedVariantType?.attributes || [];
             const selectedAttributesCount = condition.value?.attributeIds?.length || 0;
 
@@ -1101,22 +1091,12 @@ const Add = () => {
                             options={filteredVariants}
                             getOptionLabel={(option) => option.variant_name}
                             value={filteredVariants.find(variant => variant._id === condition.value?.variantId) || null}
-                            onChange={(event, newValue) => {
-                                const newConditions = [...formValues.conditions];
-                                newConditions[index].value = {
-                                    variantId: newValue?._id || "",
-                                    attributeIds: []
-                                };
-                                setFormValues(prev => ({ ...prev, conditions: newConditions }));
-                            }}
+                            onChange={(event, newValue) =>
+                                setValue({ variantId: newValue?._id || "", attributeIds: [] })
+                            }
                             renderInput={(params) => (
-                                <TextField
-                                    {...params}
-                                    label="Select Variant"
-                                    sx={{
-                                        "& .MuiInputBase-root": { height: "40px" }
-                                    }}
-                                />
+                                <TextField {...params} label="Select Variant"
+                                    sx={{ "& .MuiInputBase-root": { height: "40px" } }} />
                             )}
                             isOptionEqualToValue={(option, value) => option._id === value._id}
                         />
@@ -1131,26 +1111,31 @@ const Add = () => {
                             value={variantAttributes.filter(attr =>
                                 condition.value?.attributeIds?.includes(attr._id)
                             ) || []}
-                            onChange={(event, newValue) => {
-                                const attributeIds = newValue.map(attr => attr._id);
-                                const newConditions = [...formValues.conditions];
-                                newConditions[index].value = {
+                            onChange={(event, newValue) =>
+                                setValue({
                                     ...condition.value,
-                                    attributeIds: attributeIds
-                                };
-                                setFormValues(prev => ({ ...prev, conditions: newConditions }));
-                            }}
+                                    attributeIds: newValue.map(attr => attr._id),
+                                })
+                            }
                             renderInput={(params) => (
-                                <TextField
-                                    {...params}
-                                    label="Select Attributes"
+                                <TextField {...params} label="Select Attributes"
                                     sx={{
                                         "& .MuiInputBase-root": {
                                             height: selectedAttributesCount > 1 ? "auto" : "40px",
-                                            minHeight: "40px"
-                                        }
-                                    }}
-                                />
+                                            minHeight: "40px",
+                                        },
+                                        "& .MuiAutocomplete-tag": {
+                                            flexShrink: 0,
+                                            height: "24px",
+                                            fontSize: "12px",
+                                            margin: "2px",
+                                        },
+                                        "& .MuiAutocomplete-input": {
+                                            height: "24px !important",
+                                            padding: "0 4px !important",
+                                            fontSize: "14px",
+                                        },
+                                    }} />
                             )}
                             isOptionEqualToValue={(option, value) => option._id === value._id}
                         />
@@ -1159,47 +1144,49 @@ const Add = () => {
             );
         }
 
-        // Default autocomplete for other fields
+        // Default autocomplete
         return (
             <Autocomplete
                 multiple
                 options={getValueOptions(field)}
                 getOptionLabel={(option) => getOptionLabel(option, field)}
                 value={condition.value || []}
-                onChange={(event, newValue) => {
-                    const newConditions = [...formValues.conditions];
-                    newConditions[index].value = newValue;
-                    setFormValues(prev => ({ ...prev, conditions: newConditions }));
-                }}
+                onChange={(event, newValue) => setValue(newValue)}
                 renderInput={(params) => (
-                    <TextField
-                        {...params}
-                        placeholder="Select values"
+                    <TextField {...params} placeholder="Select values"
                         sx={{
                             "& .MuiInputBase-root": {
                                 height: "40px",
-                                minHeight: "40px"
-                            }
-                        }}
-                    />
+                                minHeight: "40px",
+                            },
+                            "& .MuiAutocomplete-tag": {
+                                flexShrink: 0,
+                                height: "24px",
+                                fontSize: "12px",
+                                margin: "2px",
+                            },
+                            "& .MuiAutocomplete-input": {
+                                height: "24px !important",
+                                padding: "0 4px !important",
+                                fontSize: "14px",
+                            },
+                        }} />
                 )}
-                isOptionEqualToValue={(option, value) =>
-                    option._id === value._id
-                }
+                isOptionEqualToValue={(option, value) => option._id === value._id}
             />
         );
     };
 
     // Helper function to render attribute value input based on attribute type
-    const renderAttributeValueInput = (attribute, condition, index) => {
+    const renderAttributeValueInput = (attribute, condition, logicIndex, conditionIndex) => {
+        const setValue = (v) => setConditionValue(logicIndex, conditionIndex, v);
+
         if (!attribute) {
             return (
                 <TextField
                     label="Select Attribute First"
                     disabled
-                    sx={{
-                        "& .MuiInputBase-root": { height: "40px" }
-                    }}
+                    sx={{ "& .MuiInputBase-root": { height: "40px" } }}
                 />
             );
         }
@@ -1218,15 +1205,12 @@ const Add = () => {
                         value={attributeValues.filter(val =>
                             condition.value?.valueIds?.includes(val._id)
                         )}
-                        onChange={(event, newValue) => {
-                            const valueIds = newValue.map(val => val._id);
-                            const newConditions = [...formValues.conditions];
-                            newConditions[index].value = {
+                        onChange={(event, newValue) =>
+                            setValue({
                                 ...condition.value,
-                                valueIds: valueIds
-                            };
-                            setFormValues(prev => ({ ...prev, conditions: newConditions }));
-                        }}
+                                valueIds: newValue.map(val => val._id),
+                            })
+                        }
                         renderInput={(params) => (
                             <TextField
                                 {...params}
@@ -1234,8 +1218,19 @@ const Add = () => {
                                 sx={{
                                     "& .MuiInputBase-root": {
                                         height: selectedValuesCount > 1 ? "auto" : "40px",
-                                        minHeight: "40px"
-                                    }
+                                        minHeight: "40px",
+                                    },
+                                    "& .MuiAutocomplete-tag": {
+                                        flexShrink: 0,
+                                        height: "24px",
+                                        fontSize: "12px",
+                                        margin: "2px",
+                                    },
+                                    "& .MuiAutocomplete-input": {
+                                        height: "24px !important",
+                                        padding: "0 4px !important",
+                                        fontSize: "14px",
+                                    },
                                 }}
                             />
                         )}
@@ -1243,38 +1238,31 @@ const Add = () => {
                     />
                 );
 
-            case "Yes/No":
+            case "Yes/No": {
                 const yesNoOptions = [
                     { _id: "yes", value: "Yes" },
-                    { _id: "no", value: "No" }
+                    { _id: "no", value: "No" },
                 ];
-
                 return (
                     <Autocomplete
                         disablePortal
                         options={yesNoOptions}
                         getOptionLabel={(option) => option.value}
                         value={yesNoOptions.find(opt => opt._id === condition.value?.valueIds?.[0]) || null}
-                        onChange={(event, newValue) => {
-                            const newConditions = [...formValues.conditions];
-                            newConditions[index].value = {
+                        onChange={(event, newValue) =>
+                            setValue({
                                 ...condition.value,
-                                valueIds: newValue ? [newValue._id] : []
-                            };
-                            setFormValues(prev => ({ ...prev, conditions: newConditions }));
-                        }}
+                                valueIds: newValue ? [newValue._id] : [],
+                            })
+                        }
                         renderInput={(params) => (
-                            <TextField
-                                {...params}
-                                label="Select Value"
-                                sx={{
-                                    "& .MuiInputBase-root": { height: "40px" }
-                                }}
-                            />
+                            <TextField {...params} label="Select Value"
+                                sx={{ "& .MuiInputBase-root": { height: "40px" } }} />
                         )}
                         isOptionEqualToValue={(option, value) => option._id === value._id}
                     />
                 );
+            }
 
             default:
                 return (
@@ -1284,13 +1272,8 @@ const Add = () => {
                         value={null}
                         disabled
                         renderInput={(params) => (
-                            <TextField
-                                {...params}
-                                label="Select Value"
-                                sx={{
-                                    "& .MuiInputBase-root": { height: "40px" }
-                                }}
-                            />
+                            <TextField {...params} label="Select Value"
+                                sx={{ "& .MuiInputBase-root": { height: "40px" } }} />
                         )}
                     />
                 );
@@ -1298,7 +1281,8 @@ const Add = () => {
     };
 
     // Helper function to render sub-attribute value input
-    const renderSubAttributeValueInput = (subAttribute, condition, index) => {
+    const renderSubAttributeValueInput = (subAttribute, condition, logicIndex, conditionIndex) => {
+        const setValue = (v) => setConditionValue(logicIndex, conditionIndex, v);
         const subAttributeValues = subAttribute.values || [];
 
         switch (subAttribute.type) {
@@ -1312,15 +1296,12 @@ const Add = () => {
                         value={subAttributeValues.filter(val =>
                             condition.value?.valueIds?.includes(val._id)
                         )}
-                        onChange={(event, newValue) => {
-                            const valueIds = newValue.map(val => val._id);
-                            const newConditions = [...formValues.conditions];
-                            newConditions[index].value = {
+                        onChange={(event, newValue) =>
+                            setValue({
                                 ...condition.value,
-                                valueIds: valueIds
-                            };
-                            setFormValues(prev => ({ ...prev, conditions: newConditions }));
-                        }}
+                                valueIds: newValue.map(val => val._id),
+                            })
+                        }
                         renderInput={(params) => (
                             <TextField
                                 {...params}
@@ -1328,8 +1309,19 @@ const Add = () => {
                                 sx={{
                                     "& .MuiInputBase-root": {
                                         height: "auto",
-                                        minHeight: "40px"
-                                    }
+                                        minHeight: "40px",
+                                    },
+                                    "& .MuiAutocomplete-tag": {
+                                        flexShrink: 0,
+                                        height: "24px",
+                                        fontSize: "12px",
+                                        margin: "2px",
+                                    },
+                                    "& .MuiAutocomplete-input": {
+                                        height: "24px !important",
+                                        padding: "0 4px !important",
+                                        fontSize: "14px",
+                                    },
                                 }}
                             />
                         )}
@@ -1337,38 +1329,31 @@ const Add = () => {
                     />
                 );
 
-            case "Yes/No":
+            case "Yes/No": {
                 const yesNoOptions = [
                     { _id: "yes", value: "Yes" },
-                    { _id: "no", value: "No" }
+                    { _id: "no", value: "No" },
                 ];
-
                 return (
                     <Autocomplete
                         disablePortal
                         options={yesNoOptions}
                         getOptionLabel={(option) => option.value}
                         value={yesNoOptions.find(opt => opt._id === condition.value?.valueIds?.[0]) || null}
-                        onChange={(event, newValue) => {
-                            const newConditions = [...formValues.conditions];
-                            newConditions[index].value = {
+                        onChange={(event, newValue) =>
+                            setValue({
                                 ...condition.value,
-                                valueIds: newValue ? [newValue._id] : []
-                            };
-                            setFormValues(prev => ({ ...prev, conditions: newConditions }));
-                        }}
+                                valueIds: newValue ? [newValue._id] : [],
+                            })
+                        }
                         renderInput={(params) => (
-                            <TextField
-                                {...params}
-                                label="Select Value"
-                                sx={{
-                                    "& .MuiInputBase-root": { height: "40px" }
-                                }}
-                            />
+                            <TextField {...params} label="Select Value"
+                                sx={{ "& .MuiInputBase-root": { height: "40px" } }} />
                         )}
                         isOptionEqualToValue={(option, value) => option._id === value._id}
                     />
                 );
+            }
 
             default:
                 return (
@@ -1378,45 +1363,126 @@ const Add = () => {
                         value={null}
                         disabled
                         renderInput={(params) => (
-                            <TextField
-                                {...params}
-                                label="Select Value"
-                                sx={{
-                                    "& .MuiInputBase-root": { height: "40px" }
-                                }}
-                            />
+                            <TextField {...params} label="Select Value"
+                                sx={{ "& .MuiInputBase-root": { height: "40px" } }} />
                         )}
                     />
                 );
         }
     };
 
-    // Add new condition
-    const addCondition = () => {
+    // === MATCH LOGIC HELPERS ===
+
+    // Update a conditionGroups block (either its conditionType, or a nested condition)
+    const handleConditionChange = (field, value, conditionInd, logicIndex) => {
+        setFormValues(prev => {
+            const updatedMatchLogic = [...prev.conditionGroups];
+            const currentLogic = { ...updatedMatchLogic[logicIndex] };
+
+            if (field === 'conditionType') {
+                currentLogic.conditionType = value;
+            } else {
+                const newConditions = [...currentLogic.conditions];
+                newConditions[conditionInd] = value;
+                currentLogic.conditions = newConditions;
+            }
+
+            updatedMatchLogic[logicIndex] = currentLogic;
+            return { ...prev, conditionGroups: updatedMatchLogic };
+        });
+    };
+
+    // Add a new conditionGroups block
+    const handleAddMatchLogic = () => {
         setFormValues(prev => ({
             ...prev,
-            conditions: [...prev.conditions, { field: "", operator: "", value: "" }]
+            conditionGroups: [
+                ...prev.conditionGroups,
+                {
+                    conditionType: "all",
+                    conditions: [{ field: "", operator: "", value: "" }],
+                },
+            ],
+        }));
+        setTimeout(() => {
+            submitRef.current?.scrollIntoView({
+                behavior: "smooth",
+                block: "center",
+            });
+        }, 100);
+    };
+
+    // Remove a conditionGroups block (keep at least one)
+    const handleRemoveMatchLogic = (logicIndex) => {
+        setFormValues(prev => ({
+            ...prev,
+            conditionGroups: prev.conditionGroups.filter((_, i) => i !== logicIndex),
         }));
     };
 
-    // Remove condition
-    const removeCondition = (index) => {
-        const newConditions = formValues.conditions.filter((_, i) => i !== index);
-        setFormValues(prev => ({ ...prev, conditions: newConditions }));
+    // Add a condition inside a specific block
+    const addCondition = (logicIndex) => {
+        setFormValues(prev => {
+            const updatedMatchLogic = [...prev.conditionGroups];
+            const currentLogic = { ...updatedMatchLogic[logicIndex] };
+            currentLogic.conditions = [
+                ...currentLogic.conditions,
+                { field: "", operator: "", value: "" },
+            ];
+            updatedMatchLogic[logicIndex] = currentLogic;
+            return { ...prev, conditionGroups: updatedMatchLogic };
+        });
     };
 
-    // Update condition field
-    const updateConditionField = (index, field, value) => {
-        const newConditions = [...formValues.conditions];
-        newConditions[index][field] = value;
+    // Remove a condition from a specific block
+    const removeCondition = (logicIndex, conditionIndex) => {
+        setFormValues(prev => {
+            const updatedMatchLogic = [...prev.conditionGroups];
+            const currentLogic = { ...updatedMatchLogic[logicIndex] };
+            currentLogic.conditions = currentLogic.conditions.filter(
+                (_, i) => i !== conditionIndex
+            );
+            updatedMatchLogic[logicIndex] = currentLogic;
+            return { ...prev, conditionGroups: updatedMatchLogic };
+        });
+    };
 
-        // Reset value when field changes
-        if (field === 'field') {
-            newConditions[index].value = "";
-            newConditions[index].operator = "";
-        }
+    // Update a single key of a single condition
+    const updateConditionField = (logicIndex, conditionIndex, key, value) => {
+        setFormValues(prev => {
+            const updatedMatchLogic = [...prev.conditionGroups];
+            const currentLogic = { ...updatedMatchLogic[logicIndex] };
+            const newConditions = [...currentLogic.conditions];
 
-        setFormValues(prev => ({ ...prev, conditions: newConditions }));
+            const updated = { ...newConditions[conditionIndex], [key]: value };
+
+            if (key === 'field') {
+                updated.operator = "";
+                updated.value = "";
+            }
+
+            newConditions[conditionIndex] = updated;
+            currentLogic.conditions = newConditions;
+            updatedMatchLogic[logicIndex] = currentLogic;
+
+            return { ...prev, conditionGroups: updatedMatchLogic };
+        });
+    };
+
+    // Set the whole value object of one condition
+    const setConditionValue = (logicIndex, conditionIndex, value) => {
+        setFormValues(prev => {
+            const updatedMatchLogic = [...prev.conditionGroups];
+            const currentLogic = { ...updatedMatchLogic[logicIndex] };
+            const newConditions = [...currentLogic.conditions];
+            newConditions[conditionIndex] = {
+                ...newConditions[conditionIndex],
+                value,
+            };
+            currentLogic.conditions = newConditions;
+            updatedMatchLogic[logicIndex] = currentLogic;
+            return { ...prev, conditionGroups: updatedMatchLogic };
+        });
     };
 
     // Debug useEffect to track loading states
@@ -1445,7 +1511,7 @@ const Add = () => {
                         <Divider />
                         <Box sx={{ ml: "24px", mt: "16px" }}>
                             <Button
-                                onClick={() => navigate(ROUTE_CONSTANT.catalog.adminCategory.list)}
+                                onClick={() => navigate(`${ROUTE_CONSTANT.catalog.adminCategory.list}${parentId ? `?id=${parentId}` : ""}`)}
                                 startIcon={<AppsIcon />}
                                 variant="contained"
                             >
@@ -1517,24 +1583,11 @@ const Add = () => {
                                                                                 ) :
                                                                                     <ArrowDropDownIcon />
                                                                                 }
-
-
                                                                                 {/* Dropdown icon */}
-
                                                                             </>
                                                                         ),
                                                                     }}
                                                                 />
-
-                                                                {/* <ArrowDropDownIcon
-                                                                    sx={{
-                                                                        position: "absolute",
-                                                                        right: "10px",
-                                                                        top: "28%",
-                                                                        width: "20px",
-                                                                        height: "20px"
-                                                                    }}
-                                                                /> */}
                                                             </Stack>
                                                         }
                                                         menu={returnJSX(item?.subs || []) || []}
@@ -1840,6 +1893,11 @@ const Add = () => {
                                                         ...prev,
                                                         metaTitle: "Meta Title is required"
                                                     }));
+                                                } else {
+                                                    setErrors((prev) => ({
+                                                        ...prev,
+                                                        metaTitle: ""
+                                                    }));
                                                 }
                                             }}
                                             error={!!errors.metaTitle}
@@ -1878,6 +1936,11 @@ const Add = () => {
                                                         ...prev,
                                                         metaDescription: "Meta Description is required"
                                                     }));
+                                                } else {
+                                                    setErrors((prev) => ({
+                                                        ...prev,
+                                                        metaDescription: ""
+                                                    }));
                                                 }
                                             }}
                                             error={!!errors.metaDescription}
@@ -1909,6 +1972,11 @@ const Add = () => {
                                                     setErrors((prev) => ({
                                                         ...prev,
                                                         metaKeywords: "Meta Keywords are required"
+                                                    }));
+                                                } else {
+                                                    setErrors((prev) => ({
+                                                        ...prev,
+                                                        metaKeywords: ""
                                                     }));
                                                 }
                                             }}
@@ -1965,14 +2033,16 @@ const Add = () => {
 
                         {/* AUTOMATION SECTION - Updated with Label: Input layout */}
                         <Box sx={{
-                            mb: 3,
-                            mt: 3,
+                            my: 3,
                             p: 3,
                             border: '1px solid #e0e0e0',
                             borderRadius: 2,
-                            width: '100%',
-                            maxWidth: '100%',
-                            boxSizing: 'border-box'
+                            width: '115%',
+                            maxWidth: '90vw',
+                            boxSizing: 'border-box',
+                            position: "relative",
+                            left: "50%",
+                            transform: "translateX(-50%)"
                         }}>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
                                 <Typography sx={{ minWidth: '120px', fontWeight: 'bold' }}>
@@ -2071,117 +2141,163 @@ const Add = () => {
                                         )}
                                     </Box>
 
-                                    {/* Product Match Logic */}
-                                    <Box sx={{ mb: 3 }}>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-                                            <Typography sx={{ minWidth: '120px', fontWeight: 'bold' }}>
-                                                Match Logic:
-                                            </Typography>
-                                            <RadioGroup
-                                                row
-                                                name="conditionType"
-                                                value={formValues.conditionType}
-                                                onChange={(e) => setFormValues(prev => ({
-                                                    ...prev,
-                                                    conditionType: e.target.value
-                                                }))}
+                                    {/* MATCH LOGIC BLOCKS */}
+                                    {formValues.conditionGroups.map((matchLogic, logicIndex) => {
+                                        const fieldOptions = [
+                                            "Product Title",
+                                            "Product Tag",
+                                            "Attributes Tag",
+                                            "Variant Tag",
+                                            "Customization Tag",
+                                        ];
+
+                                        return (
+                                            <Paper
+                                                key={logicIndex}
+                                                sx={{
+                                                    mt: 3,
+                                                    p: 2,
+                                                    border: "1px solid #e0e0e0",
+                                                    borderRadius: 4,
+                                                    position: "relative",
+
+                                                }}
                                             >
-                                                <FormControlLabel
-                                                    value="all"
-                                                    control={<Radio />}
-                                                    label="All conditions (AND)"
-                                                />
-                                                <FormControlLabel
-                                                    value="any"
-                                                    control={<Radio />}
-                                                    label="Any conditions (OR)"
-                                                />
-                                            </RadioGroup>
-                                        </Box>
-                                    </Box>
+                                                {/* Match Logic Header */}
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                                                    <Typography sx={{ minWidth: '120px', fontWeight: 'bold' }}>
+                                                        Match Logic {logicIndex + 1}:
+                                                    </Typography>
 
-                                    {/* Dynamic Conditions */}
-                                    <Box>
-                                        {formValues.conditions.map((condition, index) => {
-                                            const fieldOptions = [
-                                                "Product Title",
-                                                "Product Tag",
-                                                "Attributes Tag",
-                                                "Variant Tag"
-                                            ];
+                                                    <RadioGroup
+                                                        row
+                                                        name={`conditionType-${logicIndex}`}
+                                                        value={matchLogic.conditionType}
+                                                        onChange={(e) =>
+                                                            handleConditionChange(
+                                                                'conditionType',
+                                                                e.target.value,
+                                                                null,
+                                                                logicIndex
+                                                            )
+                                                        }
+                                                    >
+                                                        <FormControlLabel value="all" control={<Radio />} label="All conditions (AND)" />
+                                                        <FormControlLabel value="any" control={<Radio />} label="Any conditions (OR)" />
+                                                    </RadioGroup>
 
-                                            const operatorOptions = getOperatorsForField(condition.field);
-
-                                            return (
-                                                <Grid container spacing={2} alignItems="center" sx={{ mb: 2 }}
-                                                    key={index}>
-                                                    <Grid item xs={12} sm={2}>
-                                                        <FormControl fullWidth>
-                                                            <TextField
-                                                                select
-                                                                sx={{
-                                                                    "& .MuiInputBase-root": { height: "40px" },
-                                                                }}
-                                                                label="Field"
-                                                                value={condition.field}
-                                                                onChange={(e) => updateConditionField(index, 'field', e.target.value)}
-                                                            >
-                                                                {fieldOptions.map((option) => (
-                                                                    <MenuItem key={option} value={option}>
-                                                                        {option}
-                                                                    </MenuItem>
-                                                                ))}
-                                                            </TextField>
-                                                        </FormControl>
-                                                    </Grid>
-
-                                                    <Grid item xs={12} sm={2}>
-                                                        <FormControl fullWidth>
-                                                            <TextField
-                                                                select
-                                                                sx={{
-                                                                    "& .MuiInputBase-root": { height: "40px" },
-                                                                }}
-                                                                label="Operator"
-                                                                value={condition.operator}
-                                                                onChange={(e) => updateConditionField(index, 'operator', e.target.value)}
-                                                            >
-                                                                {operatorOptions.map((option) => (
-                                                                    <MenuItem key={option} value={option}>
-                                                                        {option}
-                                                                    </MenuItem>
-                                                                ))}
-                                                            </TextField>
-                                                        </FormControl>
-                                                    </Grid>
-
-                                                    <Grid item xs={12} sm={7}>
-                                                        <FormControl fullWidth>
-                                                            {renderValueInput(condition, index)}
-                                                        </FormControl>
-                                                    </Grid>
-
-                                                    <Grid item xs={12} sm={1}>
-                                                        <IconButton
-                                                            onClick={() => removeCondition(index)}
-                                                            color="error"
-                                                        >
-                                                            <DeleteIcon />
+                                                    {formValues.conditionGroups.length > 1 && (
+                                                        <IconButton sx={{ ml: 'auto', p: 0, borderRadius: 2, bgcolor: "#feefef86", "&:hover": { bgcolor: "#ffe7e7aa" } }}>
+                                                            <Clear sx={{ fontSize: "30px" }}
+                                                                onClick={() => handleRemoveMatchLogic(logicIndex)}
+                                                                color="error"
+                                                            />
                                                         </IconButton>
-                                                    </Grid>
-                                                </Grid>
-                                            );
-                                        })}
+                                                    )}
+                                                </Box>
 
-                                        <Button
-                                            startIcon={<AddIcon />}
-                                            variant="outlined"
-                                            onClick={addCondition}
-                                            sx={{ mt: 1 }}
-                                        >
-                                            Add another condition
-                                        </Button>
-                                    </Box>
+                                                {/* Conditions inside this logic block */}
+                                                {matchLogic.conditions.map((condition, conditionIndex) => {
+                                                    const operatorOptions = getOperatorsForField(condition.field);
+
+                                                    return (
+                                                        <Grid
+                                                            container
+                                                            spacing={2}
+                                                            alignItems="center"
+                                                            sx={{ mb: "40px" }}
+                                                            key={conditionIndex}
+                                                        >
+                                                            <Grid item xs={12} sm={2}>
+                                                                <FormControl fullWidth>
+                                                                    <TextField
+                                                                        select
+                                                                        sx={{ "& .MuiInputBase-root": { height: "40px" } }}
+                                                                        label="Field"
+                                                                        value={condition.field}
+                                                                        onChange={(e) =>
+                                                                            updateConditionField(
+                                                                                logicIndex,
+                                                                                conditionIndex,
+                                                                                'field',
+                                                                                e.target.value
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        {fieldOptions.map((option) => (
+                                                                            <MenuItem key={option} value={option}>
+                                                                                {option}
+                                                                            </MenuItem>
+                                                                        ))}
+                                                                    </TextField>
+                                                                </FormControl>
+                                                            </Grid>
+
+                                                            <Grid item xs={12} sm={2}>
+                                                                <FormControl fullWidth>
+                                                                    <TextField
+                                                                        select
+                                                                        sx={{ "& .MuiInputBase-root": { height: "40px" } }}
+                                                                        label="Operator"
+                                                                        value={condition.operator}
+                                                                        onChange={(e) =>
+                                                                            updateConditionField(
+                                                                                logicIndex,
+                                                                                conditionIndex,
+                                                                                'operator',
+                                                                                e.target.value
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        {operatorOptions.map((option) => (
+                                                                            <MenuItem key={option} value={option}>
+                                                                                {option}
+                                                                            </MenuItem>
+                                                                        ))}
+                                                                    </TextField>
+                                                                </FormControl>
+                                                            </Grid>
+
+                                                            <Grid item xs={12} sm={7}>
+                                                                <FormControl fullWidth>
+                                                                    {renderValueInput(condition, logicIndex, conditionIndex)}
+                                                                </FormControl>
+                                                            </Grid>
+
+                                                            <Grid item xs={12} sm={1}>
+                                                                {matchLogic.conditions.length > 1 && (
+                                                                    <IconButton
+                                                                        onClick={() => removeCondition(logicIndex, conditionIndex)}
+                                                                        color="error"
+                                                                    >
+                                                                        <DeleteIcon />
+                                                                    </IconButton>)}
+                                                            </Grid>
+                                                        </Grid>
+                                                    );
+                                                })}
+
+                                                <Button
+                                                    startIcon={<AddIcon />}
+                                                    variant="outlined"
+                                                    onClick={() => addCondition(logicIndex)}
+                                                    sx={{ mt: 1 }}
+                                                >
+                                                    Add another condition
+                                                </Button>
+                                            </Paper>
+                                        );
+                                    })}
+
+                                    {/* Add Match Logic Button */}
+                                    <Button
+                                        variant="contained"
+                                        startIcon={<AddIcon />}
+                                        onClick={handleAddMatchLogic}
+                                        sx={{ position: "fixed", bottom: "40px", right: "40px" }}
+                                    >
+                                        Add Match Logic Group
+                                    </Button>
                                 </Box>
                             )}
                         </Box>
@@ -2193,6 +2309,7 @@ const Add = () => {
                             variant="contained"
                             color="primary"
                             onClick={handleSubmit}
+                            ref={submitRef}
                         >
                             Submit
                         </Button>
